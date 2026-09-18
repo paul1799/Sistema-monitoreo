@@ -1,0 +1,752 @@
+{
+  "ft_materiales_cebe": {
+    "descripcion": "Verifica la recepción, distribución, uso pedagógico, seguimiento y conservación de los materiales educativos en CEBE y PRITE.",
+    "extras": [
+      {
+        "label": "REI"
+      }
+    ],
+    "icono": "📦",
+    "nombre": "Monitoreo de Gestión y Uso Pedagógico de Materiales Educativos (CEBE/PRITE)",
+    "secciones": [
+      {
+        "items": [
+          {
+            "id": "mc_1",
+            "texto": "La institución educativa recibió materiales educativos fungibles"
+          },
+          {
+            "id": "mc_2",
+            "texto": "La institución educativa recibió materiales educativos no fungibles"
+          },
+          {
+            "id": "mc_3",
+            "texto": "Los materiales no fungibles recibidos están registrados en el inventario institucional"
+          }
+        ],
+        "nombre": "Recepción"
+      },
+      {
+        "items": [
+          {
+            "id": "mc_4",
+            "texto": "Se realizó la distribución de materiales fungibles a los docentes"
+          },
+          {
+            "id": "mc_5",
+            "texto": "Se realizó la distribución de materiales no fungibles a los docentes"
+          }
+        ],
+        "nombre": "Distribución"
+      },
+      {
+        "items": [
+          {
+            "id": "mc_6",
+            "texto": "Los docentes incorporan los materiales educativos en su planificación curricular"
+          },
+          {
+            "id": "mc_7",
+            "texto": "Se evidencia el uso de los materiales durante las actividades de aprendizaje"
+          },
+          {
+            "id": "mc_8",
+            "texto": "Los materiales utilizados guardan relación con los propósitos de aprendizaje planteados"
+          },
+          {
+            "id": "mc_9",
+            "texto": "Los materiales cuentan con adaptaciones acordes a las características y necesidades de los estudiantes"
+          }
+        ],
+        "nombre": "Uso pedagógico"
+      },
+      {
+        "items": [
+          {
+            "id": "mc_10",
+            "texto": "La dirección realiza monitoreo del uso de los materiales distribuidos a docentes/tutores"
+          },
+          {
+            "id": "mc_11",
+            "texto": "La dirección brinda orientaciones a los docentes sobre el uso pertinente de los materiales durante el monitoreo pedagógico"
+          }
+        ],
+        "nombre": "Seguimiento"
+      },
+      {
+        "items": [
+          {
+            "id": "mc_12",
+            "texto": "Los materiales fungibles se encuentran en espacios con condiciones adecuadas de conservación y seguridad"
+          },
+          {
+            "id": "mc_13",
+            "texto": "Los materiales no fungibles entregados mantienen condiciones adecuadas para su uso"
+          },
+          {
+            "id": "mc_14",
+            "texto": "La institución cuenta con un mecanismo de control de ingreso, salida y préstamo de materiales no fungibles"
+          }
+        ],
+        "nombre": "Conservación y control"
+      }
+    ],
+    "tipoRespuesta": "si_no"
+  },
+  "ft_coord_tutoria_jec": {
+    "descripcion": "Evalúa el cumplimiento de las funciones del coordinador de tutoría: planificación, visitas de aula, reuniones colegiadas, tutoría individual y trabajo con familias.",
+    "extras": [
+      {
+        "label": "Coordinador(a) de tutoría"
+      },
+      {
+        "label": "N° de docentes tutores a cargo"
+      }
+    ],
+    "icono": "🧭",
+    "nombre": "Monitoreo a las Funciones del Coordinador(a) de Tutoría (JEC)",
+    "secciones": [
+      {
+        "items": [
+          {
+            "id": "ct_1",
+            "texto": "Orienta a los docentes tutores en la planificación colegiada de la tutoría grupal"
+          },
+          {
+            "id": "ct_2",
+            "texto": "Analiza las planificaciones de las sesiones de tutoría grupal con el fin de orientar su mejora"
+          },
+          {
+            "id": "ct_3",
+            "texto": "Brinda retroalimentación reflexiva, logrando compromisos de mejora con el docente tutor"
+          }
+        ],
+        "nombre": "Planificación de la tutoría grupal"
+      },
+      {
+        "items": [
+          {
+            "id": "ct_4",
+            "texto": "Elabora un cronograma y comunica oportunamente a los docentes tutores a su cargo"
+          },
+          {
+            "id": "ct_5",
+            "texto": "Realiza visitas de acompañamiento al docente tutor de forma planificada, conforme a cronograma"
+          },
+          {
+            "id": "ct_6",
+            "texto": "Registra información utilizando el cuaderno de campo u otro instrumento de observación"
+          },
+          {
+            "id": "ct_7",
+            "texto": "Prepara preguntas reflexivas para brindar la retroalimentación al docente tutor"
+          },
+          {
+            "id": "ct_8",
+            "texto": "Brinda retroalimentación mediante un diálogo reflexivo con el docente tutor visitado"
+          },
+          {
+            "id": "ct_9",
+            "texto": "Planifica reuniones colegiadas orientadas al acompañamiento tutorial de los docentes"
+          },
+          {
+            "id": "ct_10",
+            "texto": "Conduce reuniones semanales de trabajo colegiado según lo planificado"
+          },
+          {
+            "id": "ct_11",
+            "texto": "Registra los acuerdos asumidos en las actas de las reuniones colegiadas"
+          }
+        ],
+        "nombre": "Visita al aula"
+      },
+      {
+        "items": [
+          {
+            "id": "ct_12",
+            "texto": "Asegura que los docentes realicen tutorías individuales según las necesidades de los estudiantes, incluyendo casos priorizados"
+          },
+          {
+            "id": "ct_13",
+            "texto": "Coordina acciones con el psicólogo para identificar, atender y derivar casos priorizados"
+          },
+          {
+            "id": "ct_14",
+            "texto": "Coordina con el psicólogo espacios de orientación y encuentro con las familias"
+          },
+          {
+            "id": "ct_15",
+            "texto": "Gestiona junto al psicólogo las redes de apoyo de instituciones y redes comunitarias para familias vulnerables"
+          }
+        ],
+        "nombre": "Tutoría individual y trabajo con las familias"
+      },
+      {
+        "items": [
+          {
+            "id": "ct_16",
+            "texto": "Realiza el seguimiento a los espacios de participación estudiantil"
+          },
+          {
+            "id": "ct_17",
+            "texto": "Planifica actividades específicas que promuevan la participación activa e inclusiva de los estudiantes"
+          },
+          {
+            "id": "ct_18",
+            "texto": "Gestiona y articula con docentes tutores y no tutores la implementación de la orientación educativa"
+          }
+        ],
+        "nombre": "Participación estudiantil y orientación educativa permanente"
+      },
+      {
+        "items": [
+          {
+            "id": "ct_19",
+            "texto": "Participa activamente en las reuniones de trabajo colegiado con los directivos de la IE"
+          },
+          {
+            "id": "ct_20",
+            "texto": "Presenta a la dirección un informe sobre los hallazgos del proceso de acompañamiento a los docentes tutores"
+          },
+          {
+            "id": "ct_21",
+            "texto": "Socializa los resultados del acompañamiento a la acción tutorial, proponiendo alternativas de mejora"
+          }
+        ],
+        "nombre": "Reuniones de trabajo con el equipo directivo"
+      }
+    ],
+    "tipoRespuesta": "escala_1_3"
+  },
+  "ft_msejec_2do": {
+    "descripcion": "Verifica la implementación de los componentes pedagógico, de gestión y de soporte del Modelo de Servicio Educativo Jornada Escolar Completa.",
+    "extras": [
+      {
+        "label": "Cantidad de estudiantes"
+      },
+      {
+        "label": "Cantidad de docentes"
+      },
+      {
+        "label": "N° de secciones"
+      }
+    ],
+    "icono": "🏫",
+    "nombre": "Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC",
+    "secciones": [
+      {
+        "items": [
+          {
+            "id": "jec_1",
+            "texto": "El horario institucional evidencia la organización de la jornada escolar en 9 horas pedagógicas diarias de 45 minutos, conforme al plan de estudios MSE JEC"
+          },
+          {
+            "id": "jec_2",
+            "texto": "La IE cuenta con un diagnóstico de las necesidades de aprendizaje de los estudiantes que orienta la planificación pedagógica"
+          },
+          {
+            "id": "jec_3",
+            "texto": "La IE cuenta con Plan TOECE actualizado, aprobado y coherente con las necesidades socioemocionales identificadas"
+          },
+          {
+            "id": "jec_4",
+            "texto": "La IE cuenta con informes, actas, registros o acuerdos que evidencian el seguimiento a la implementación del Plan TOECE"
+          },
+          {
+            "id": "jec_5",
+            "texto": "La IE cuenta con sesiones de tutoría grupal que evidencian coherencia con el Plan TOECE y las necesidades socioemocionales identificadas"
+          },
+          {
+            "id": "jec_6",
+            "texto": "La IE cuenta con registros de atención tutorial individual que evidencian seguimiento a estudiantes con necesidades específicas"
+          },
+          {
+            "id": "jec_7",
+            "texto": "La IE cuenta con el plan de trabajo del psicólogo(a) actualizado, con actividades para estudiantes, orientación a familias y acciones formativas con docentes"
+          },
+          {
+            "id": "jec_8",
+            "texto": "La IE cuenta con informes, registros, actas u otros documentos que evidencian que el psicólogo(a) desarrolla acciones dirigidas a estudiantes, docentes y familias"
+          },
+          {
+            "id": "jec_9",
+            "texto": "Las sesiones de aprendizaje revisadas evidencian que responden a las necesidades de aprendizaje identificadas en los estudiantes"
+          }
+        ],
+        "nombre": "Componente pedagógico (Implementación TOECE)"
+      },
+      {
+        "items": [
+          {
+            "id": "jec_10",
+            "texto": "La IE cuenta con un Plan Anual de Trabajo (PAT) que incorpora acciones del MSE JEC relacionadas con tutoría, acompañamiento, trabajo colegiado y CIST"
+          },
+          {
+            "id": "jec_11",
+            "texto": "La IE cuenta con actas, acuerdos u otros registros que evidencian la organización de la comunidad educativa para asegurar el refrigerio escolar y recreos"
+          },
+          {
+            "id": "jec_12",
+            "texto": "La IE cuenta con actas, comunicados, informes o registros que evidencian acciones de información y orientación a las familias"
+          },
+          {
+            "id": "jec_13",
+            "texto": "La IE cuenta con actas, informes o registros que evidencian la promoción de espacios de participación estudiantil"
+          },
+          {
+            "id": "jec_14",
+            "texto": "La IE cuenta con fichas, actas, registros u otros documentos que evidencian acciones de acompañamiento del director y subdirector a docentes y coordinadores"
+          },
+          {
+            "id": "jec_15",
+            "texto": "La IE organiza las evidencias de la implementación del PEAI de acuerdo a la matriz de logros ambientales"
+          },
+          {
+            "id": "jec_16",
+            "texto": "Los directivos monitorean la ejecución de las acciones del Plan Lector para la toma de decisiones y mejoras"
+          },
+          {
+            "id": "jec_17",
+            "texto": "Se identifican buenas prácticas/proyectos de innovación y se promueven espacios de intercambio de experiencias"
+          },
+          {
+            "id": "jec_18",
+            "texto": "El equipo directivo realiza el monitoreo y seguimiento al uso pedagógico de textos escolares y material concreto"
+          },
+          {
+            "id": "jec_19",
+            "texto": "El directivo realiza el seguimiento a la participación de los docentes en las acciones formativas MINEDU (DIFODS-JEC)"
+          },
+          {
+            "id": "jec_20",
+            "texto": "Los directivos han socializado los oficios múltiples correspondientes, asegurando su conocimiento e implementación"
+          }
+        ],
+        "nombre": "Componente de gestión"
+      },
+      {
+        "items": [
+          {
+            "id": "jec_21",
+            "texto": "La IE cuenta con actas, registros o materiales que evidencian la sensibilización realizada por los coordinadores pedagógicos (CP) a sus docentes a cargo"
+          },
+          {
+            "id": "jec_22",
+            "texto": "El CP cuenta con evidencias de la realización de la visita diagnóstica y de ejecución de los docentes a su cargo"
+          },
+          {
+            "id": "jec_23",
+            "texto": "El CP cuenta con registros que evidencian, de manera objetiva, la práctica pedagógica observada del docente en las visitas de aula"
+          },
+          {
+            "id": "jec_24",
+            "texto": "El CP cuenta con matrices, planificador semanal, fichas u otros registros que evidencian el desarrollo del diálogo reflexivo con los docentes acompañados"
+          },
+          {
+            "id": "jec_25",
+            "texto": "El CP cuenta con actas, guías u otros registros que evidencian que las reuniones de trabajo colegiado responden a las necesidades formativas identificadas"
+          },
+          {
+            "id": "jec_26",
+            "texto": "La IE cuenta con actas, registros o materiales que evidencian la sensibilización realizada por los coordinadores de tutoría (CT) a sus docentes tutores"
+          },
+          {
+            "id": "jec_27",
+            "texto": "El CT cuenta con evidencias de la realización de la visita diagnóstica y de ejecución de los docentes tutores a su cargo"
+          },
+          {
+            "id": "jec_28",
+            "texto": "El CT cuenta con registros que evidencian, de manera objetiva, la práctica pedagógica observada del docente tutor posterior a la visita diagnóstica"
+          },
+          {
+            "id": "jec_29",
+            "texto": "El CT cuenta con matrices, fichas u otros registros que evidencian el desarrollo del diálogo reflexivo con los docentes tutores acompañados"
+          },
+          {
+            "id": "jec_30",
+            "texto": "El CT cuenta con actas, materiales u otros registros que evidencian las acciones formativas desarrolladas con docentes tutores en las reuniones colegiadas"
+          },
+          {
+            "id": "jec_31",
+            "texto": "El CIST cuenta con planificador semanal, informes u otros registros que evidencian acciones de fortalecimiento de competencias digitales y mantenimiento de equipos"
+          }
+        ],
+        "nombre": "Componente de soporte"
+      }
+    ],
+    "tipoRespuesta": "si_no"
+  },
+  "ft_gestion_cebe": {
+    "descripcion": "Monitorea el acompañamiento a la práctica docente, fortalecimiento docente, evaluación de aprendizajes, uso de materiales, Plan Lector, enfoque ambiental e innovación educativa en los CEBE.",
+    "extras": [
+      {
+        "label": "Niveles que atiende"
+      },
+      {
+        "label": "Total de estudiantes matriculados"
+      }
+    ],
+    "icono": "🎯",
+    "nombre": "Monitoreo y Asistencia Técnica a la Gestión Escolar - CEBE",
+    "secciones": [
+      {
+        "items": [
+          {
+            "id": "gc_1",
+            "texto": "La directora cuenta con un Plan de Monitoreo y Acompañamiento Pedagógico"
+          },
+          {
+            "id": "gc_2",
+            "texto": "El Plan de Monitoreo incluye una matriz de identificación de necesidades formativas del personal docente y no docente"
+          },
+          {
+            "id": "gc_3",
+            "texto": "El Plan de Monitoreo cuenta con un cronograma socializado con el equipo docente y no docente"
+          },
+          {
+            "id": "gc_4",
+            "texto": "La directora realiza acciones de monitoreo a la práctica pedagógica"
+          },
+          {
+            "id": "gc_5",
+            "texto": "La directora retroalimenta las planificaciones curriculares de los docentes"
+          },
+          {
+            "id": "gc_6",
+            "texto": "La directora sistematiza los resultados del monitoreo realizado"
+          },
+          {
+            "id": "gc_7",
+            "texto": "La directora socializa los resultados del monitoreo en espacios de gestión institucional"
+          }
+        ],
+        "nombre": "Monitoreo y acompañamiento a la práctica docente"
+      },
+      {
+        "items": [
+          {
+            "id": "gc_8",
+            "texto": "La directora identifica necesidades formativas del personal a partir de los resultados del monitoreo pedagógico"
+          },
+          {
+            "id": "gc_9",
+            "texto": "La directora cuenta con un plan de acciones formativas"
+          },
+          {
+            "id": "gc_10",
+            "texto": "La directora implementa espacios de fortalecimiento pedagógico acordes a las necesidades identificadas"
+          },
+          {
+            "id": "gc_11",
+            "texto": "La directora realiza seguimiento a los compromisos de mejora asumidos por el personal docente y no docente"
+          }
+        ],
+        "nombre": "Fortalecimiento docente"
+      },
+      {
+        "items": [
+          {
+            "id": "gc_12",
+            "texto": "La directora monitorea el proceso de evaluación psicopedagógica realizado por los docentes"
+          },
+          {
+            "id": "gc_13",
+            "texto": "Los Informes Psicopedagógicos (IPP) se encuentran elaborados de manera oportuna"
+          },
+          {
+            "id": "gc_14",
+            "texto": "Los Planes Educativos Personalizados (PEP) se encuentran elaborados a partir de los IPP"
+          },
+          {
+            "id": "gc_15",
+            "texto": "La institución cuenta con un sistema organizado de resguardo de IPP y PEP que garantiza la confidencialidad"
+          },
+          {
+            "id": "gc_16",
+            "texto": "La directora promueve el análisis y revisión semestral del PEP con el equipo docente"
+          },
+          {
+            "id": "gc_17",
+            "texto": "Los docentes elaboran informes de progreso del estudiante en función a los propósitos de aprendizaje del PEP"
+          },
+          {
+            "id": "gc_18",
+            "texto": "La institución asegura la entrega oportuna de los informes de progreso a la familia"
+          },
+          {
+            "id": "gc_19",
+            "texto": "La directora garantiza que la familia reciba explicación clara y orientaciones sobre el IPP, PEP y avances del estudiante"
+          }
+        ],
+        "nombre": "Evaluación de los aprendizajes"
+      },
+      {
+        "items": [
+          {
+            "id": "gc_20",
+            "texto": "La directora promueve espacios de fortalecimiento pedagógico orientados al uso de materiales educativos accesibles"
+          },
+          {
+            "id": "gc_21",
+            "texto": "La directora monitorea el uso de materiales educativos y apoyos en los espacios pedagógicos del CEBE"
+          },
+          {
+            "id": "gc_22",
+            "texto": "La directora promueve el uso de espacios educativos funcionales y materiales diversos adecuados a las características de los estudiantes"
+          },
+          {
+            "id": "gc_23",
+            "texto": "La directora promueve el uso de recursos tecnológicos y apoyos digitales accesibles como parte de los procesos pedagógicos"
+          }
+        ],
+        "nombre": "Uso de materiales y espacios educativos"
+      },
+      {
+        "items": [
+          {
+            "id": "gc_24",
+            "texto": "La institución cuenta con un Plan Lector como estrategia institucional de acceso a la lectura y la comunicación"
+          },
+          {
+            "id": "gc_25",
+            "texto": "El Plan Lector planifica la frecuencia semanal de experiencias de lectura considerando la atención educativa del CEBE"
+          },
+          {
+            "id": "gc_26",
+            "texto": "El Plan Lector involucra a diversos mediadores de lectura en la institución y la comunidad"
+          },
+          {
+            "id": "gc_27",
+            "texto": "El Plan Lector promueve el uso de diversos espacios para el desarrollo de experiencias de lectura"
+          },
+          {
+            "id": "gc_28",
+            "texto": "El Plan Lector promueve el uso de diversos materiales de lectura elaborados, adquiridos o de uso cotidiano"
+          }
+        ],
+        "nombre": "Plan Lector"
+      },
+      {
+        "items": [
+          {
+            "id": "gc_29",
+            "texto": "La IE cuenta con el Proyecto Educativo Ambiental Integrado (PEAI) contextualizado a la modalidad CEBE"
+          },
+          {
+            "id": "gc_30",
+            "texto": "La IE cuenta con Resolución Directoral de conformación de las Brigadas de Educación Ambiental y Gestión del Riesgo de Desastres"
+          },
+          {
+            "id": "gc_31",
+            "texto": "La directora monitorea el cumplimiento de las funciones de las brigadas y el desarrollo de las actividades previstas"
+          }
+        ],
+        "nombre": "Implementación del enfoque ambiental"
+      },
+      {
+        "items": [
+          {
+            "id": "gc_32",
+            "texto": "La directora identifica y sistematiza Buenas Prácticas pedagógicas que responden a las necesidades educativas de los estudiantes"
+          },
+          {
+            "id": "gc_33",
+            "texto": "La directora promueve y acompaña Proyectos de Innovación Educativa orientados a la mejora de los aprendizajes y la calidad de vida de los estudiantes"
+          },
+          {
+            "id": "gc_34",
+            "texto": "La directora realiza seguimiento a la implementación y promueve la socialización de las Buenas Prácticas y/o Proyectos de Innovación"
+          }
+        ],
+        "nombre": "Innovación educativa"
+      }
+    ],
+    "tipoRespuesta": "ips"
+  },
+  "ft_rubricas_aula": {
+    "descripcion": "Registra el nivel de logro del desempeño docente observado en el aula, según las rúbricas de observación de aula de MINEDU.",
+    "extras": [
+      {
+        "label": "Docente observado"
+      },
+      {
+        "label": "Nivel educativo"
+      },
+      {
+        "label": "Grado y sección"
+      },
+      {
+        "label": "Área curricular observada"
+      }
+    ],
+    "icono": "👩‍🏫",
+    "nombre": "Monitoreo Pedagógico a Docentes - Rúbricas de Observación de Aula",
+    "secciones": [
+      {
+        "items": [
+          {
+            "id": "ra_1",
+            "texto": "Involucra activamente a los estudiantes en el proceso de aprendizaje"
+          },
+          {
+            "id": "ra_2",
+            "texto": "Promueve el desarrollo de habilidades cognitivas básicas en los estudiantes"
+          },
+          {
+            "id": "ra_3",
+            "texto": "Evalúa el progreso de los aprendizajes y brinda apoyo pedagógico"
+          },
+          {
+            "id": "ra_4",
+            "texto": "Propicia un ambiente favorable para el aprendizaje"
+          },
+          {
+            "id": "ra_5",
+            "texto": "Promueve el desarrollo de la autonomía de los estudiantes"
+          }
+        ],
+        "nombre": "Rúbricas de observación de aula (MINEDU)"
+      }
+    ],
+    "tipoRespuesta": "nivel_1_4"
+  },
+  "ft_gestion_ugel03_ebr": {
+    "descripcion": "Monitorea el cumplimiento de la Política Regional 01 (Instituciones Educativas que Aseguran Aprendizajes) en IE de Educación Básica Regular.",
+    "extras": [
+      {
+        "label": "RED"
+      },
+      {
+        "label": "Total docentes Inicial"
+      },
+      {
+        "label": "Total docentes Primaria"
+      },
+      {
+        "label": "Total docentes Secundaria"
+      }
+    ],
+    "icono": "🏛️",
+    "nombre": "Monitoreo y Asistencia Técnica a la Gestión Escolar - UGEL 03 EBR",
+    "secciones": [
+      {
+        "items": [
+          {
+            "id": "ge_1",
+            "texto": "El equipo directivo realiza el monitoreo y acompañamiento a los docentes según el cronograma establecido, promoviendo un diálogo reflexivo con cada docente visitado"
+          },
+          {
+            "id": "ge_2",
+            "texto": "El equipo directivo realiza la sistematización del monitoreo a la práctica pedagógica en sus tres etapas (inicio, proceso y salida)"
+          },
+          {
+            "id": "ge_3",
+            "texto": "El equipo directivo, a partir del análisis del monitoreo, identifica logros y necesidades formativas, los cuales son socializados en las semanas de gestión"
+          }
+        ],
+        "nombre": "Monitoreo y acompañamiento a la práctica docente"
+      },
+      {
+        "items": [
+          {
+            "id": "ge_4",
+            "texto": "El equipo directivo promueve la participación de los docentes en las ofertas formativas brindadas por MINEDU, DRELM o UGEL y realiza seguimiento"
+          },
+          {
+            "id": "ge_5",
+            "texto": "El equipo directivo ejecuta acciones formativas en relación a las necesidades encontradas (GIA, microtalleres, pasantías, etc.) de acuerdo al cronograma establecido"
+          }
+        ],
+        "nombre": "Fortalecimiento docente"
+      },
+      {
+        "items": [
+          {
+            "id": "ge_6",
+            "texto": "El equipo directivo sistematiza, analiza y reflexiona sobre los resultados de aprendizaje por competencias, con el propósito de proponer acciones de mejora"
+          },
+          {
+            "id": "ge_7",
+            "texto": "A partir de la evaluación diagnóstica, la IE incorpora en su PAT metas de aprendizaje contextualizadas que responden a las características y necesidades de los estudiantes"
+          },
+          {
+            "id": "ge_8",
+            "texto": "Se cuenta con evidencias para el reporte de las actividades de atención diferenciada realizada con los estudiantes en el horario de Refuerzo Escolar"
+          },
+          {
+            "id": "ge_9",
+            "texto": "Se cuenta con evidencias de fortalecimiento y/o acompañamiento pedagógico a los docentes sobre Refuerzo Escolar (primaria y secundaria)"
+          }
+        ],
+        "nombre": "Evaluación de los aprendizajes / Refuerzo escolar"
+      },
+      {
+        "items": [
+          {
+            "id": "ge_10",
+            "texto": "El equipo directivo realiza acciones de fortalecimiento docente sobre el uso pedagógico de los materiales educativos"
+          },
+          {
+            "id": "ge_11",
+            "texto": "El equipo directivo monitorea el uso adecuado de los cuadernos de trabajo y textos escolares en las sesiones de aprendizaje"
+          },
+          {
+            "id": "ge_12",
+            "texto": "Se cuenta con espacios lúdicos matemáticos implementados con materiales concretos proporcionados por el MINEDU u otros"
+          },
+          {
+            "id": "ge_13",
+            "texto": "El equipo directivo promueve el uso de espacios y materiales educativos diversos (laboratorios, talleres, bibliotecas, aulas flexibles, AIP, entre otros)"
+          },
+          {
+            "id": "ge_14",
+            "texto": "El Profesor de Innovación Pedagógica (PIP) realiza acciones de fortalecimiento con la comunidad educativa, promoviendo la incorporación de las TIC en los procesos pedagógicos"
+          },
+          {
+            "id": "ge_15",
+            "texto": "El equipo directivo realiza el seguimiento al plan de trabajo del PIP, cumpliendo con presentar el reporte de las actividades realizadas"
+          },
+          {
+            "id": "ge_16",
+            "texto": "En la IE se realiza el monitoreo a la implementación de la estrategia Khan Academy"
+          }
+        ],
+        "nombre": "Uso de materiales y espacios educativos"
+      },
+      {
+        "items": [
+          {
+            "id": "ge_17",
+            "texto": "El directivo ha identificado e implementado buenas prácticas (pedagógica y/o de gestión) y/o Proyecto(s) de Innovación en la IE, incluyéndolos en el PAT actualizado"
+          },
+          {
+            "id": "ge_18",
+            "texto": "Presenta evidencias de los avances o resultados de la implementación de Buenas Prácticas o Proyectos Innovadores"
+          },
+          {
+            "id": "ge_19",
+            "texto": "Ha monitoreado la implementación de las actividades consideradas en el Plan Lector"
+          },
+          {
+            "id": "ge_20",
+            "texto": "Ha aplicado ficha de monitoreo en el momento/hora de la lectura"
+          },
+          {
+            "id": "ge_21",
+            "texto": "Monitorea la implementación de actividades según el PEAI propuestas en el plan de trabajo (enfoque ambiental)"
+          },
+          {
+            "id": "ge_22",
+            "texto": "Presenta el Plan de Trabajo de Vida Activa y Saludable"
+          },
+          {
+            "id": "ge_23",
+            "texto": "Registra en el SIMON el Plan de monitoreo correspondiente"
+          }
+        ],
+        "nombre": "Otros aspectos"
+      }
+    ],
+    "tipoRespuesta": "ips"
+  }
+}

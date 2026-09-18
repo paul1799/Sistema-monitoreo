@@ -1,0 +1,4266 @@
+[
+  {
+    "tipoConcurso": "Premio Nacional de Narrativa y Ensayo José María Arguedas",
+    "etapa": "UGEL",
+    "categoria": "A - Fábula",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "1098 CAP FAP JOSE ABELARDO QUIÑONES",
+    "codigoModular": null,
+    "tituloTrabajo": "EL CÓNDOR Y LA SEMILLA OLVIDADA",
+    "seudonimo": "SEMILLITA ANDINA",
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "BADE HERRERA LAINES",
+        "apellidos": "",
+        "dni": "79529597",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "ADITA LILIANA RODRÍGUEZ POÉMAPE",
+        "apellidos": "",
+        "dni": "19188912",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 04715-2026-UGEL03",
+    "fecha": "2026-08-07"
+  },
+  {
+    "tipoConcurso": "Premio Nacional de Narrativa y Ensayo José María Arguedas",
+    "etapa": "UGEL",
+    "categoria": "B - Cuento (EBA)",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "MIGUEL GRAU",
+    "codigoModular": null,
+    "tituloTrabajo": "EL RÍO QUE NO APARECÍA EN EL MAPA",
+    "seudonimo": "ISIDORA",
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "ISIDORA KUJIKAT TAKI",
+        "apellidos": "",
+        "dni": "48369494",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "ALEX GEORGE GÓMEZ RODRÍGUEZ",
+        "apellidos": "",
+        "dni": "40049592",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 04715-2026-UGEL03",
+    "fecha": "2026-08-07"
+  },
+  {
+    "tipoConcurso": "Premio Nacional de Narrativa y Ensayo José María Arguedas",
+    "etapa": "UGEL",
+    "categoria": "C - Ensayo (EBR)",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "1070 MELITON CARVAJAL",
+    "codigoModular": null,
+    "tituloTrabajo": "ARGUEDAS EL ENCUENTRO DE DOS MUNDOS",
+    "seudonimo": "KILLA SÚMAC",
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "ALBA VALENTINA PALOMINO AGUILAR",
+        "apellidos": "",
+        "dni": "73284879",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "MARIA ELENA SOLIS ALAN",
+        "apellidos": "",
+        "dni": "08842688",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 04715-2026-UGEL03",
+    "fecha": "2026-08-07"
+  },
+  {
+    "tipoConcurso": "Premio Nacional de Narrativa y Ensayo José María Arguedas",
+    "etapa": "UGEL",
+    "categoria": "D - Ensayo (EBA)",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "TERESA GONZALEZ DE FANNING",
+    "codigoModular": null,
+    "tituloTrabajo": "LOS RÍOS QUE FLUYEN EN MI EL QUECHUA COMO IDENTIDAD",
+    "seudonimo": "ROSA",
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "NOEMÍ SÁNCHEZ VÁSQUEZ",
+        "apellidos": "",
+        "dni": "47927981",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "LEONARDO JUNYOR SERRANO ZAPATA",
+        "apellidos": "",
+        "dni": "46381239",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 04715-2026-UGEL03",
+    "fecha": "2026-08-07"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "ALFA - Nivel 1",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "TUPAC AMARU",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "ENRIQUEZ CASTRO DUANÉ",
+        "apellidos": "",
+        "dni": "77892932",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "VILLANUEVA MAURICIO CINDY LORENA",
+        "apellidos": "",
+        "dni": "44407797",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "ALFA - Nivel 1",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "1112 VICTOR ANDRES BELAUNDE",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "2°",
+    "participantes": [
+      {
+        "nombres": "ESPINOZA LOBO MANUEL ALEXANDER",
+        "apellidos": "",
+        "dni": "77754319",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "CAPARACHIN CARRANZA ELIANA MARIA",
+        "apellidos": "",
+        "dni": "75166711",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "ALFA - Nivel 1",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "1112 VICTOR ANDRES BELAUNDE",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "3°",
+    "participantes": [
+      {
+        "nombres": "CORDOVA ORDINOLA ALESSANDRA SAORI YAMILETH",
+        "apellidos": "",
+        "dni": "77761497",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "CAPARACHIN CARRANZA ELIANA MARIA",
+        "apellidos": "",
+        "dni": "75166711",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "ALFA - Nivel 1",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "1120 PEDRO ADOLFO LABARTHE EFFIO",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "4°",
+    "participantes": [
+      {
+        "nombres": "GUTIERREZ PAYE LUCAS GUSTAVO",
+        "apellidos": "",
+        "dni": "77966537",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "CALIXTRO FASHE IRMA",
+        "apellidos": "",
+        "dni": "07421066",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "BETA - Nivel 1",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "SACO OLIVEROS DE ELIO",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "BELTRAN PARICAHUA IMANOL IVMAR",
+        "apellidos": "",
+        "dni": "63485832",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "NAVARRETE QUIROZ CESAR",
+        "apellidos": "",
+        "dni": "08067472",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "BETA - Nivel 1",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "SACO OLIVEROS DE JESUS MARIA",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "2°",
+    "participantes": [
+      {
+        "nombres": "ANGELES TICONA RAHUL JUNN",
+        "apellidos": "",
+        "dni": "81156464",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "SUAREZ CARRASCO ORLANDO IVAN",
+        "apellidos": "",
+        "dni": "25709365",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "BETA - Nivel 1",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "SACO OLIVEROS DE JESUS MARIA",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "3°",
+    "participantes": [
+      {
+        "nombres": "BENAVENTE SANDOVAL PERCY VALERIUS MAXIMILIANO",
+        "apellidos": "",
+        "dni": "77627113",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "SUAREZ CARRASCO ORLANDO IVAN",
+        "apellidos": "",
+        "dni": "25709365",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "BETA - Nivel 1",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "SACO OLIVEROS DE SAN MIGUEL",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "4°",
+    "participantes": [
+      {
+        "nombres": "BAZAN ALVINO ZAHIR ATIK",
+        "apellidos": "",
+        "dni": "78390467",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "ARIAS ORDOÑEZ RICARDO ARTURO",
+        "apellidos": "",
+        "dni": "10620691",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "ALFA - Nivel 2",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "1160 JOSE FAUSTINO SANCHEZ CARRION",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "CASTRO CHERRES ASTRID ARIANA",
+        "apellidos": "",
+        "dni": "75043576",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "REJAS CARMONA LESKO ROBERT",
+        "apellidos": "",
+        "dni": "08649397",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "ALFA - Nivel 2",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "ISABEL LA CATOLICA",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "2°",
+    "participantes": [
+      {
+        "nombres": "YACTAYO CERON DIEGO MESI",
+        "apellidos": "",
+        "dni": "77459701",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "FRANCIA ZAVALA VICTOR JESUS",
+        "apellidos": "",
+        "dni": "40286307",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "ALFA - Nivel 2",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "NUESTRA SEÑORA DE GUADALUPE",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "3°",
+    "participantes": [
+      {
+        "nombres": "URBANO MESONES ROHAN RAJHIV",
+        "apellidos": "",
+        "dni": "76715874",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "LUJAN MINCHOLA PIO MARTIN",
+        "apellidos": "",
+        "dni": "07244501",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "ALFA - Nivel 2",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "PNP.CAP. ALIPIO PONCE VASQUEZ",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "4°",
+    "participantes": [
+      {
+        "nombres": "DIAZ MUÑOZ JEAN PIERE RICHARD",
+        "apellidos": "",
+        "dni": "75636308",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "PALOMINO MOLINA RUBEN RONALD",
+        "apellidos": "",
+        "dni": "21859237",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "BETA - Nivel 2",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "SACO OLIVEROS DE JESUS MARIA",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "ALI MEDINA AMYLEE KIARA",
+        "apellidos": "",
+        "dni": "63085439",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "SUAREZ CARRASCO ORLANDO IVAN",
+        "apellidos": "",
+        "dni": "25709365",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "BETA - Nivel 2",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "SACO OLIVEROS DE SANTA BEATRIZ",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "2°",
+    "participantes": [
+      {
+        "nombres": "TENAZOA CARRANZA THIAGO ARIC",
+        "apellidos": "",
+        "dni": "62833314",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "PEREZ ROJAS EDWIN CARLOS",
+        "apellidos": "",
+        "dni": "06666726",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "BETA - Nivel 2",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "SACO OLIVEROS DE JESUS MARIA",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "3°",
+    "participantes": [
+      {
+        "nombres": "OCHOA HUAMAN CALEB MATEO",
+        "apellidos": "",
+        "dni": "77260561",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "SUAREZ CARRASCO ORLANDO IVAN",
+        "apellidos": "",
+        "dni": "25709365",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "BETA - Nivel 2",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "SACO OLIVEROS",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "4°",
+    "participantes": [
+      {
+        "nombres": "CARDENAS D'ORLEMONT AUGUSTO EMILIO",
+        "apellidos": "",
+        "dni": "81625050",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "CASTILLA HUAMAN JESUS ANTONIO",
+        "apellidos": "",
+        "dni": "40321206",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "ALFA - Nivel 3",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "1148 JUANA INFANTES VERA",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "ARMESTAR CASTRO GIANELLA JESÚS",
+        "apellidos": "",
+        "dni": "73725731",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "NOVOA LEGUA LEONCIO ALBERTO",
+        "apellidos": "",
+        "dni": "44253564",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "ALFA - Nivel 3",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "1003 REPUBLICA DE COLOMBIA",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "2°",
+    "participantes": [
+      {
+        "nombres": "YATACO FUENTES JESUS HUMBERTO",
+        "apellidos": "",
+        "dni": "61908308",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "GUEVARA CHILCON MAITE",
+        "apellidos": "",
+        "dni": "42646383",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "ALFA - Nivel 3",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "1087 GRAL ROQUE SAENZ PEÑA",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "3°",
+    "participantes": [
+      {
+        "nombres": "DE LA CRUZ CRESPO JAHAN DAYRON",
+        "apellidos": "",
+        "dni": "61805569",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "ORCCON HUACAC WALTER",
+        "apellidos": "",
+        "dni": "10237481",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "ALFA - Nivel 3",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "MARIANO MELGAR",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "4°",
+    "participantes": [
+      {
+        "nombres": "VARGAS HUILLCA MAYRA GABRIELA",
+        "apellidos": "",
+        "dni": "61967258",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "ANCHAY PONCE CARLOS ANGEL",
+        "apellidos": "",
+        "dni": "09798294",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "BETA - Nivel 3",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "SACO OLIVEROS DE JESUS MARIA",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "CRISOSTOMO QUISPE SEBASTIAN JOSEPH",
+        "apellidos": "",
+        "dni": "61878503",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "SUAREZ CARRASCO ORLANDO IVAN",
+        "apellidos": "",
+        "dni": "25709365",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "BETA - Nivel 3",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "SACO OLIVEROS DE JESUS MARIA",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "2°",
+    "participantes": [
+      {
+        "nombres": "ALARCON HUAMANI DHAMARIS ALESSIA",
+        "apellidos": "",
+        "dni": "73557426",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "SUAREZ CARRASCO ORLANDO IVAN",
+        "apellidos": "",
+        "dni": "25709365",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "BETA - Nivel 3",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "SACO OLIVEROS DE LINCE",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "3°",
+    "participantes": [
+      {
+        "nombres": "CAMONES HUAMAN FRANZ LIONEL",
+        "apellidos": "",
+        "dni": "74102909",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "PALACIOS CACERES CARLOS HUMBERTO",
+        "apellidos": "",
+        "dni": "07548721",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Olimpiada Nacional Escolar de Matemática (ONEM)",
+    "etapa": "UGEL",
+    "categoria": "BETA - Nivel 3",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "INTERNACIONAL ELIM",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "4°",
+    "participantes": [
+      {
+        "nombres": "SALAZAR LOPEZ SERGIO JOSIAS",
+        "apellidos": "",
+        "dni": "73834258",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "BERNAOLA JAUREGUI ANGEL EDUARDO",
+        "apellidos": "",
+        "dni": "06207871",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05055-2026-UGEL03",
+    "fecha": "2026-08-26"
+  },
+  {
+    "tipoConcurso": "Concurso Nacional de Comprensión Lectora El Perú Lee",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "SAN NORBERTO",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      {
+        "nombres": "BELTRAN JUÑO MACARENA BRIANNA",
+        "apellidos": "",
+        "dni": "91018735",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "VERGARA DE MOJICA ANGELICA MARIA",
+        "apellidos": "",
+        "dni": "002148277",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05268-2026-UGEL03",
+    "fecha": "2026-09-04"
+  },
+  {
+    "tipoConcurso": "Concurso Nacional de Comprensión Lectora El Perú Lee",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "HERMANN BUSE DE LA GUERRA",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      {
+        "nombres": "CASTRO PARILLO EMY ANDREA",
+        "apellidos": "",
+        "dni": "79897247",
+        "rol": "Estudiante"
+      },
+      {
+        "nombres": "PATIÑO MARTINEZ LUIS ANGEL",
+        "apellidos": "",
+        "dni": "24033864000030",
+        "rol": "Estudiante"
+      },
+      {
+        "nombres": "MALAGA RENGIFO SOFÍA CATALINA",
+        "apellidos": "",
+        "dni": "90162577",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "SUYCO CACERES PATRICIA NELLY",
+        "apellidos": "",
+        "dni": "10177875",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05268-2026-UGEL03",
+    "fecha": "2026-09-04"
+  },
+  {
+    "tipoConcurso": "Concurso Nacional de Comprensión Lectora El Perú Lee",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "1008 VIRGEN DE LOURDES",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      {
+        "nombres": "CARRILLO VASQUEZ ADRIANO VALENTINO",
+        "apellidos": "",
+        "dni": "78554353",
+        "rol": "Estudiante"
+      },
+      {
+        "nombres": "SEGURA SALDAÑA LIAM EYAL",
+        "apellidos": "",
+        "dni": "78640840",
+        "rol": "Estudiante"
+      },
+      {
+        "nombres": "GONZALES CASTILLO ALAN GABRIEL LUDWING",
+        "apellidos": "",
+        "dni": "78867417",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "CASTILLO PAREDES DAYANA YADYRA",
+        "apellidos": "",
+        "dni": "70310086",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05268-2026-UGEL03",
+    "fecha": "2026-09-04"
+  },
+  {
+    "tipoConcurso": "Concurso Nacional de Comprensión Lectora El Perú Lee",
+    "etapa": "UGEL",
+    "categoria": "D",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "NUESTRA SEÑORA DE GUADALUPE",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      {
+        "nombres": "CANCHURICRA VEGA JHÉREMY IVÁN",
+        "apellidos": "",
+        "dni": "77629160",
+        "rol": "Estudiante"
+      },
+      {
+        "nombres": "REYES HUAMAN HANS JOSÉ YAMIL",
+        "apellidos": "",
+        "dni": "77881738",
+        "rol": "Estudiante"
+      },
+      {
+        "nombres": "VASQUEZ CARLOS MARVIN",
+        "apellidos": "",
+        "dni": "77848265",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "HURTADO VILCA LIZ",
+        "apellidos": "",
+        "dni": "06774457",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05268-2026-UGEL03",
+    "fecha": "2026-09-04"
+  },
+  {
+    "tipoConcurso": "Concurso Nacional de Comprensión Lectora El Perú Lee",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": null,
+    "institucion": "GABRIELA MISTRAL",
+    "codigoModular": null,
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      {
+        "nombres": "ROMERO ALMONACID FATIMA CAMILA",
+        "apellidos": "",
+        "dni": "62243265",
+        "rol": "Estudiante"
+      },
+      {
+        "nombres": "ORTIZ GUTIERREZ KARLA YAZIEL",
+        "apellidos": "",
+        "dni": "77265281",
+        "rol": "Estudiante"
+      },
+      {
+        "nombres": "JULCA RAMIREZ LUZ MARLENI",
+        "apellidos": "",
+        "dni": "77403344",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "PALOMINO GARGATE CAROLINA MARIBEL",
+        "apellidos": "",
+        "dni": "09221721",
+        "rol": "Docente Asesor"
+      }
+    ],
+    "resolucionRef": "RD 05268-2026-UGEL03",
+    "fecha": "2026-09-04"
+  },
+  {
+    "tipoConcurso": "Feria Escolar Nacional de Ciencia y Tecnología Eureka",
+    "etapa": "UGEL",
+    "categoria": "D",
+    "genero": null,
+    "disciplina": "Indagación Científica",
+    "institucion": "DE LA CRUZ",
+    "codigoModular": null,
+    "tituloTrabajo": "ANALISIS DEL IMPACTO DE LA INTELIGENCIA ARTIFICIAL EN EL PENSAMIENTO CRÍTICO Y RENDIMIENTO ACADÉMICO DE LOS ESTUDIANTES DE II DE SECUNDARIA DE LA IEP DE LA CRUZ",
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "ESPEJO VELEZ THIAGO NICOLAS",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Estudiante"
+      },
+      {
+        "nombres": "ZAPATA CORDERO MARIAPAZ",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "VERA HUAMAN VICTOR ANTONIO",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Docente Asesor(a)"
+      }
+    ],
+    "resolucionRef": "RD 05362-2026-UGEL03",
+    "fecha": "2026-09-17"
+  },
+  {
+    "tipoConcurso": "Feria Escolar Nacional de Ciencia y Tecnología Eureka",
+    "etapa": "UGEL",
+    "categoria": "D",
+    "genero": null,
+    "disciplina": "Soluciones Tecnológicas",
+    "institucion": "BARTOLOME HERRERA",
+    "codigoModular": null,
+    "tituloTrabajo": "VID VIRTUAL IDENTITY DEVICE",
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "SANCHEZ RAMIREZ CHRISTIAN ANDRÉS",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Estudiante"
+      },
+      {
+        "nombres": "HUAMAN MEZA PIERO JULIÁN",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "PEREZ HERRERA VILMA ROCIO",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Docente Asesor(a)"
+      }
+    ],
+    "resolucionRef": "RD 05362-2026-UGEL03",
+    "fecha": "2026-09-17"
+  },
+  {
+    "tipoConcurso": "Feria Escolar Nacional de Ciencia y Tecnología Eureka",
+    "etapa": "UGEL",
+    "categoria": "D",
+    "genero": null,
+    "disciplina": "Indagación Social",
+    "institucion": "VIRGO POTENS",
+    "codigoModular": null,
+    "tituloTrabajo": "TÚNELES DE VIDA: EL LEGADO DE LA INGENIERÍA CHAVÍN EN EL RESCATE DE 1997 Y SUS LECCIONES DE DISCIPLINA PARA NUESTRO FUTURO ESCOLAR",
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "ANGLES YAURI RENATA CATALINA",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "FLORES SIFUENTES ROSA MARIA",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Docente Asesor(a)"
+      }
+    ],
+    "resolucionRef": "RD 05362-2026-UGEL03",
+    "fecha": "2026-09-17"
+  },
+  {
+    "tipoConcurso": "Feria Escolar Nacional de Ciencia y Tecnología Eureka",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": "Indagación Científica",
+    "institucion": "ANGELICA RECHARTE",
+    "codigoModular": null,
+    "tituloTrabajo": "CELLUDERMAX 10 CREACIÓN DE UN APÓSITO BIODEGRADABLE A PARTIR DE LA PRODUCCIÓN DE MEMBRANA VEGETAL BASADA EN CELULOSA BACTERIANA FORMANDO SCOBY DE KOMBUCHA COMO ALTERNATIVA ECOAMIGABLE",
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "ACUÑA LLANOS LUIS MATÍAS",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Estudiante"
+      },
+      {
+        "nombres": "VERA SOCOLA YANPOOL",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "MORENO CONTRERAS JAVIER JOSE",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Docente Asesor(a)"
+      }
+    ],
+    "resolucionRef": "RD 05362-2026-UGEL03",
+    "fecha": "2026-09-17"
+  },
+  {
+    "tipoConcurso": "Feria Escolar Nacional de Ciencia y Tecnología Eureka",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": "Soluciones Tecnológicas",
+    "institucion": "NUESTRA SEÑORA DE MONTSERRAT",
+    "codigoModular": null,
+    "tituloTrabajo": "KINUWA LLIKLLA",
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "MONTALVO SOLIS ALEJANDRA GUADALUPE TAMARA",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Estudiante"
+      },
+      {
+        "nombres": "SENCIO MAQUEN RODRIGO LEONEL",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "ALCCA QUISPE FERNANDO",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Docente Asesor(a)"
+      }
+    ],
+    "resolucionRef": "RD 05362-2026-UGEL03",
+    "fecha": "2026-09-17"
+  },
+  {
+    "tipoConcurso": "Feria Escolar Nacional de Ciencia y Tecnología Eureka",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": "Indagación Social",
+    "institucion": "DE LA CRUZ",
+    "codigoModular": null,
+    "tituloTrabajo": "HUMEDAD INTERIOR EN LIMA PROBLEMA AMBIENTAL Y PROPUESTA TECNOLÓGICA DE BAJO COSTO SEDHI",
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      {
+        "nombres": "HUAMAN LEON CAMILA GABRIELA",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Estudiante"
+      },
+      {
+        "nombres": "CHILET FLORES GABRIELA MARIA DE GUADALUPE",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Estudiante"
+      }
+    ],
+    "asesores": [
+      {
+        "nombres": "ROMERO HERRERA JHIMMEMBLAU FAYOL",
+        "apellidos": "",
+        "dni": "",
+        "rol": "Docente Asesor(a)"
+      }
+    ],
+    "resolucionRef": "RD 05362-2026-UGEL03",
+    "fecha": "2026-09-17"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "D",
+    "genero": null,
+    "disciplina": "Artes escénicas / Danza tradicional",
+    "institucion": "SAN FRANCISCO DE SALES",
+    "codigoModular": "0332346",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "ALCANTARA LEMOS LEONARDO ANGELLO", "apellidos": "", "dni": "79120011", "rol": "Estudiante" },
+      { "nombres": "BARRANTES ZAPATERO NELSON ALBERTO", "apellidos": "", "dni": "78875431", "rol": "Estudiante" },
+      { "nombres": "CONDORI VALERA ANGEL EDUARDO", "apellidos": "", "dni": "81223982", "rol": "Estudiante" },
+      { "nombres": "CUBA TEJADA SANTIAGO MATHIAS", "apellidos": "", "dni": "78816816", "rol": "Estudiante" },
+      { "nombres": "DE LA CRUZ SEGURA JIMMY FABIÁN", "apellidos": "", "dni": "78933812", "rol": "Estudiante" },
+      { "nombres": "ELERA HUAYLLAPUMA JUAN ALBERTO", "apellidos": "", "dni": "78600942", "rol": "Estudiante" },
+      { "nombres": "GAMIO LAMBRUSCHINI GIACOMO", "apellidos": "", "dni": "78552421", "rol": "Estudiante" },
+      { "nombres": "HIGUERAS CONDE RICARDO ALONSO", "apellidos": "", "dni": "78573915", "rol": "Estudiante" },
+      { "nombres": "HIRANO LA ROSA ÍAN DAIKI", "apellidos": "", "dni": "79060338", "rol": "Estudiante" },
+      { "nombres": "LAGUERRE MARTINEZ SEBASTIAN LEONARDO", "apellidos": "", "dni": "78875681", "rol": "Estudiante" },
+      { "nombres": "MARROQUIN PANTOJA LEONARDO", "apellidos": "", "dni": "78560589", "rol": "Estudiante" },
+      { "nombres": "MARQUEZ ORTEGA MATEO PABLO", "apellidos": "", "dni": "78751779", "rol": "Estudiante" },
+      { "nombres": "OBREGON CAJJAK YAHIR JOSUÉ", "apellidos": "", "dni": "79025439", "rol": "Estudiante" },
+      { "nombres": "TORRES LUNA VICTORIA GAEL IGNACIO", "apellidos": "", "dni": "79004163", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "ZAVALETA BRICEÑO JULIO ENRIQUE", "apellidos": "", "dni": "73074231", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "D",
+    "genero": null,
+    "disciplina": "Artes musicales / Canto Solista",
+    "institucion": "TERESA GONZALES DE FANNING",
+    "codigoModular": "0824813",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "CAYETANO ALCOSER YARETZI ALESSANDRA", "apellidos": "", "dni": "78960447", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "LOZADA CARRION GLADYS CRISTINA", "apellidos": "", "dni": "03604289", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": "Artes escénicas / Teatro",
+    "institucion": "1049 JUANA ALARCO DE DAMMERT",
+    "codigoModular": "0501676",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "MUCHO BRAÑEZ ANALY KICHI", "apellidos": "", "dni": "78207728", "rol": "Estudiante" },
+      { "nombres": "NINA HUAMAN JUAN DIEGO", "apellidos": "", "dni": "77844628", "rol": "Estudiante" },
+      { "nombres": "ZELADA TOLENTINO EDUWAR ANTONY", "apellidos": "", "dni": "78039467", "rol": "Estudiante" },
+      { "nombres": "HUAMALIANO GARCIA MADELY DAJHARA", "apellidos": "", "dni": "77856178", "rol": "Estudiante" },
+      { "nombres": "AGUILAR QUISPE WILMER MATIAS", "apellidos": "", "dni": "63148946", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "FRETEL BERNARDO LISBEL ELIZABETH", "apellidos": "", "dni": "40467601", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": "Artes escénicas / Baile urbano",
+    "institucion": "1166 LIBERTADOR SIMON BOLIVAR",
+    "codigoModular": "0336602",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "BORJA AYQUIPA ANTHONELLA FLAVIA JAZMIN", "apellidos": "", "dni": "78453294", "rol": "Estudiante" },
+      { "nombres": "ARIAS ISUIZA ADRIANO", "apellidos": "", "dni": "62904092", "rol": "Estudiante" },
+      { "nombres": "QUISPE FERNANDEZ DANIELLA FERNANDA", "apellidos": "", "dni": "78224292", "rol": "Estudiante" },
+      { "nombres": "HIYO CRUZ GENESIS MARIA DEL PILAR", "apellidos": "", "dni": "78385913", "rol": "Estudiante" },
+      { "nombres": "NAVARRO CASTRO IOTSURI ALEXANDRA", "apellidos": "", "dni": "78514338", "rol": "Estudiante" },
+      { "nombres": "LA CRUZ PAREDES ENYERBER JOSE", "apellidos": "", "dni": "2303393900007 0", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "BUSTAMANTE MARTELL MELCHOR REYNALDO", "apellidos": "", "dni": "06662761", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": "Artes escénicas / Danza tradicional",
+    "institucion": "1070 MELITON CARVAJAL",
+    "codigoModular": "0245647",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "ESPINAL LOPEZ DAPHNE LUCIANA", "apellidos": "", "dni": "77959262", "rol": "Estudiante" },
+      { "nombres": "PRADO MANTILLA MICAELA ROSARIO D' GUADALUPE", "apellidos": "", "dni": "79533988", "rol": "Estudiante" },
+      { "nombres": "CANO SILVA JOHANNA KRISTEL", "apellidos": "", "dni": "77973352", "rol": "Estudiante" },
+      { "nombres": "REYES VILCHEZ DIEGO ADRIANO", "apellidos": "", "dni": "77627082", "rol": "Estudiante" },
+      { "nombres": "ESPINOZA NUÑEZ JOSE MARIA", "apellidos": "", "dni": "77764654", "rol": "Estudiante" },
+      { "nombres": "GAMBOA GOMEZ GIOMAR EYAL", "apellidos": "", "dni": "78467297", "rol": "Estudiante" },
+      { "nombres": "ESQUIVEL PEREZ VIVIANA SOFIA", "apellidos": "", "dni": "78495035", "rol": "Estudiante" },
+      { "nombres": "MAS SAAVEDRA INGRID NATALY", "apellidos": "", "dni": "63517374", "rol": "Estudiante" },
+      { "nombres": "SANTILLAN VILLALOBOS OMAR ADRIANO", "apellidos": "", "dni": "63517374", "rol": "Estudiante" },
+      { "nombres": "PRIETO CHAUCA ANA CECILIA", "apellidos": "", "dni": "77722788", "rol": "Estudiante" },
+      { "nombres": "REYES GARCIA MIJAEL SEBASTIAN", "apellidos": "", "dni": "77984882", "rol": "Estudiante" },
+      { "nombres": "CORONEL SILVA RUSVELT YERICK", "apellidos": "", "dni": "78123346", "rol": "Estudiante" },
+      { "nombres": "ALVAN COBA MARIA FERNANDA", "apellidos": "", "dni": "77716694", "rol": "Estudiante" },
+      { "nombres": "MEDINA LEZAMA FRANCISCO MATHIAS", "apellidos": "", "dni": "78151128", "rol": "Estudiante" },
+      { "nombres": "CHIRINOS SIRLOPU SAYUMI DE LOS MILAGROS", "apellidos": "", "dni": "78137755", "rol": "Estudiante" },
+      { "nombres": "VENTURA MOLINA MIGUEL ANGEL", "apellidos": "", "dni": "81106494", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "PERA PEREZ PALMA ASTRID MILAGROS", "apellidos": "", "dni": "44764609", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": "Artes musicales / Canto Solista",
+    "institucion": "DE LA CRUZ",
+    "codigoModular": "0336818",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "DEL RIO GARCIA ANA BELÉN", "apellidos": "", "dni": "78146827", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "MORI TORIBIO JOSHUA ROBERTO", "apellidos": "", "dni": "70072343", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": "Artes musicales / Ensamble instrumental",
+    "institucion": "ROSA DOMINGA PEREZ LIENDO",
+    "codigoModular": "0340398",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "AZABACHE ROBLES JEFFERSON ADRIANO", "apellidos": "", "dni": "77824223", "rol": "Estudiante" },
+      { "nombres": "CARRANZA TELLO LUCIANA VALERIA", "apellidos": "", "dni": "63228338", "rol": "Estudiante" },
+      { "nombres": "GOVEA TUANAMA ANGELLO FLAVIO", "apellidos": "", "dni": "77644931", "rol": "Estudiante" },
+      { "nombres": "GONZALES GOICOCHEA CIELO TATIANA", "apellidos": "", "dni": "77861886", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "SUCLUPE OSORIO EIMER JESUS", "apellidos": "", "dni": "45480063", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": "Artes visuales / Pintura",
+    "institucion": "ARGENTINA",
+    "codigoModular": "0337568",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "VILCHEZ CALVO BERENICE MARIA MILAGROS", "apellidos": "", "dni": "78336284", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "ALEGRE LOPEZ NORMA BEATRIZ", "apellidos": "", "dni": "06737633", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": "Artes visuales / Escultura",
+    "institucion": "1071 ALFONSO UGARTE",
+    "codigoModular": "0340224",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "CARHUACHIN BARRETO SOPHIA XIMENA", "apellidos": "", "dni": "81173005", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "CARDOZO CHURA CARMEN ROSA", "apellidos": "", "dni": "00450665", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": "Artes visuales / Fotografía",
+    "institucion": "TERESA GONZALES DE FANNING",
+    "codigoModular": "0245688",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "LOPEZ CHAVEZ DANNA ALEJANDRA", "apellidos": "", "dni": "78339074", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "LEVANO MEDINA GLORIA BETHZABE", "apellidos": "", "dni": "22191832", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": "Artes visuales / Arte tradicional",
+    "institucion": "CESAR A. VALLEJO",
+    "codigoModular": "0245696",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "HUAMANI ENCALADA SHANDY", "apellidos": "", "dni": "78167419", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "CAYETANO CRUZ ELIZABETH NANCY", "apellidos": "", "dni": "44864636", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": "Arte Literarias / Poesía",
+    "institucion": "SAN NORBERTO",
+    "codigoModular": "0314468",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "ACOSTA ALCANTARA ANA VALENTINA", "apellidos": "", "dni": "78207856", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "JUAREZ ESCALANTE DE RAMOS JULIA ANTONIETA", "apellidos": "", "dni": "08968425", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "E",
+    "genero": null,
+    "disciplina": "Arte, diseño y tecnología / Historietas interactivas",
+    "institucion": "NUESTRA SEÑORA DE GUADALUPE",
+    "codigoModular": "0336495",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "AYALA BARZOLA JHOAN ALEXIS", "apellidos": "", "dni": "78365894", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "PINTO HUARANGA LUIS GUILLERMO", "apellidos": "", "dni": "07303631", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "F",
+    "genero": null,
+    "disciplina": "Artes escénicas / Teatro",
+    "institucion": "NUESTRA SEÑORA DE LA LUZ",
+    "codigoModular": "0827022",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "PEREZ CASTILLO MIGUEL", "apellidos": "", "dni": "73168559", "rol": "Estudiante" },
+      { "nombres": "LOPEZ CASTILLO MARIANA", "apellidos": "", "dni": "73848117", "rol": "Estudiante" },
+      { "nombres": "JARAMILLO VILCAÑAUPA ELVA CLARISA", "apellidos": "", "dni": "73841338", "rol": "Estudiante" },
+      { "nombres": "PEREZ CASTILLO GABRIEL", "apellidos": "", "dni": "73168550", "rol": "Estudiante" },
+      { "nombres": "DIAZ CANALES ADRIANA LUCIA", "apellidos": "", "dni": "73725067", "rol": "Estudiante" },
+      { "nombres": "FERNANDEZ GUTIERREZ JACOB ALEJANDRO", "apellidos": "", "dni": "73910188", "rol": "Estudiante" },
+      { "nombres": "RAMIREZ ARAUJO ADRIANA BELEN", "apellidos": "", "dni": "62543983", "rol": "Estudiante" },
+      { "nombres": "REYES HIDALGO VALENTINA MILAGRO", "apellidos": "", "dni": "73844365", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "LAZO KING JORGE ANGEL", "apellidos": "", "dni": "07940079", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "F",
+    "genero": null,
+    "disciplina": "Artes escénicas / Baile urbano",
+    "institucion": "1086 JESUS REDENTOR",
+    "codigoModular": "0774455",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "CASTRO REYES JESUS BENJAMIN", "apellidos": "", "dni": "76901062", "rol": "Estudiante" },
+      { "nombres": "CARRION SIFUENTES CARLOS ESTEBAN", "apellidos": "", "dni": "76994896", "rol": "Estudiante" },
+      { "nombres": "COLLANTES VASQUEZ HILARY FABIANA", "apellidos": "", "dni": "74678166", "rol": "Estudiante" },
+      { "nombres": "AZALDEGUI ALVA LUANA FATIMA", "apellidos": "", "dni": "74257011", "rol": "Estudiante" },
+      { "nombres": "ROBLES VARGAS BIANCA VALENTINA", "apellidos": "", "dni": "74257877", "rol": "Estudiante" },
+      { "nombres": "ENRIQUEZ CAMPOS NAHOMI NICOLE", "apellidos": "", "dni": "62393051", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "MONTOYA RODRIGUEZ KATHERINI ELENA", "apellidos": "", "dni": "43560344", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "F",
+    "genero": null,
+    "disciplina": "Arte escénico / Danza tradicional",
+    "institucion": "1070 MELITON CARVAJAL",
+    "codigoModular": "0245647",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "FELIX JAIMES ESTRELLA ESMERALDA", "apellidos": "", "dni": "73843183", "rol": "Estudiante" },
+      { "nombres": "ECHEVARRIA PALOMINO EVOLED LUHANNA", "apellidos": "", "dni": "77617598", "rol": "Estudiante" },
+      { "nombres": "RICALDI VALIENTE BRANIA LUCIANA", "apellidos": "", "dni": "76902108", "rol": "Estudiante" },
+      { "nombres": "DESPOSORIO OLIVOS ARIEL VALENTINO", "apellidos": "", "dni": "76112545", "rol": "Estudiante" },
+      { "nombres": "MARTEL ADANAQUE BRUNELA JHAZMIN", "apellidos": "", "dni": "77317420", "rol": "Estudiante" },
+      { "nombres": "HUAMAN SALDARRIAGA JOAQUIN ALONSO", "apellidos": "", "dni": "74342968", "rol": "Estudiante" },
+      { "nombres": "FIGUEROA EUFRACIO FABRICIO SEBASTIAN", "apellidos": "", "dni": "61966549", "rol": "Estudiante" },
+      { "nombres": "USCAMAYTA BAUTISTA ESTRELLA VENUS PERLA", "apellidos": "", "dni": "73922129", "rol": "Estudiante" },
+      { "nombres": "ARCE GAMBINI LEONARDO GADIEL", "apellidos": "", "dni": "62715068", "rol": "Estudiante" },
+      { "nombres": "LEYVA CAPUÑAY JOHANNA JAZMIN", "apellidos": "", "dni": "76887712", "rol": "Estudiante" },
+      { "nombres": "RAMIREZ SANDOVAL JUAN LUIS", "apellidos": "", "dni": "61709124", "rol": "Estudiante" },
+      { "nombres": "RARAZ FLORES ARLETTE VALERIA", "apellidos": "", "dni": "76118371", "rol": "Estudiante" },
+      { "nombres": "SIPION YTURRIZAGA IGNACIO RAUL", "apellidos": "", "dni": "76492704", "rol": "Estudiante" },
+      { "nombres": "MEZA RIOS JOSHUA ESTEBAN", "apellidos": "", "dni": "73840276", "rol": "Estudiante" },
+      { "nombres": "REIS CAMPOS PORTOCARRERO ARÍAN ANDRES", "apellidos": "", "dni": "75041088", "rol": "Estudiante" },
+      { "nombres": "LEON NAVARRO BARBARA VALENTINA", "apellidos": "", "dni": "2203176100002 8", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "PERA PEREZ PALMA ASTRID MILOS", "apellidos": "", "dni": "44764609", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "F",
+    "genero": null,
+    "disciplina": "Artes musicales / Canto solista",
+    "institucion": "TERESA GONZALES DE FANNING",
+    "codigoModular": "0245688",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "SOTO CASTILLO ELISABETH VALERIA", "apellidos": "", "dni": "19033899600188", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "CORDOVA HOYOS MARTHA TOMASA", "apellidos": "", "dni": "44470019", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "F",
+    "genero": null,
+    "disciplina": "Artes musicales / Ensamble instrumental",
+    "institucion": "1071 ALFONSO UGARTE",
+    "codigoModular": "0340224",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "PEREZ GARCIA FAURICIO AUGUSTO", "apellidos": "", "dni": "73837507", "rol": "Estudiante" },
+      { "nombres": "MU MARTTI BRUNELLA AYELEN", "apellidos": "", "dni": "78120127", "rol": "Estudiante" },
+      { "nombres": "MOGOLLON ESCOBAR ANA MARIA DEL PILAR", "apellidos": "", "dni": "74334941", "rol": "Estudiante" },
+      { "nombres": "CAHUAS DE LA CRUZ DAFNE DARLETH TABATA", "apellidos": "", "dni": "75305449", "rol": "Estudiante" },
+      { "nombres": "FERNANDEZ CARRILLO MARIA ESTHER", "apellidos": "", "dni": "127296201", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "MUÑICO ARRIETA JESUS ANGEL", "apellidos": "", "dni": "47100304", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "F",
+    "genero": null,
+    "disciplina": "Artes musicales / Banda escolar de música",
+    "institucion": "DE LA CRUZ",
+    "codigoModular": "0336818",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "AZURIN ROJAS GAEL NICOLA", "apellidos": "", "dni": "78100369", "rol": "Estudiante" },
+      { "nombres": "AZURIN ROJAS MISHELLE NICOLE", "apellidos": "", "dni": "78100387", "rol": "Estudiante" },
+      { "nombres": "AZNARAN AUCCALLA NICOLETTA", "apellidos": "", "dni": "78151574", "rol": "Estudiante" },
+      { "nombres": "ESPINOZA ESPINOZA DANIEL ALONSO", "apellidos": "", "dni": "78061279", "rol": "Estudiante" },
+      { "nombres": "MEZA VARGAS ARIANA VALESKA", "apellidos": "", "dni": "78469119", "rol": "Estudiante" },
+      { "nombres": "GUTIERREZ DE LA CRUZ RAFAELA LUCIA", "apellidos": "", "dni": "77872886", "rol": "Estudiante" },
+      { "nombres": "CHUICA POLANCO CALLIA GIANELLA", "apellidos": "", "dni": "63716097", "rol": "Estudiante" },
+      { "nombres": "SOLF SARAPURA BRUNO NICOLAS", "apellidos": "", "dni": "61790655", "rol": "Estudiante" },
+      { "nombres": "SOLF SARAPURA MARÍA FERNANDA", "apellidos": "", "dni": "77790519", "rol": "Estudiante" },
+      { "nombres": "SANCHEZ LIZA LÍA SOLARA", "apellidos": "", "dni": "77618688", "rol": "Estudiante" },
+      { "nombres": "GALLEGOS TORRES CAYETANA", "apellidos": "", "dni": "77783718", "rol": "Estudiante" },
+      { "nombres": "TARAZONA RAMIREZ THIAGO FABRIZIO", "apellidos": "", "dni": "77588375", "rol": "Estudiante" },
+      { "nombres": "MESIA VARGAS SEBASTIAN DAVID", "apellidos": "", "dni": "77442925", "rol": "Estudiante" },
+      { "nombres": "INFANTES VILLALON ESTEBAN IGNACIO", "apellidos": "", "dni": "77252016", "rol": "Estudiante" },
+      { "nombres": "GOMEZ TORREJON AINHOA", "apellidos": "", "dni": "63137163", "rol": "Estudiante" },
+      { "nombres": "GARCIA REYES VALERIA ABIGAIL", "apellidos": "", "dni": "76896116", "rol": "Estudiante" },
+      { "nombres": "SALAZAR REYNOSO IVANNA", "apellidos": "", "dni": "77589414", "rol": "Estudiante" },
+      { "nombres": "VELASQUEZ MAYORGA ARIANA", "apellidos": "", "dni": "74677285", "rol": "Estudiante" },
+      { "nombres": "MARTEL SOTO RODOLFO", "apellidos": "", "dni": "76118228", "rol": "Estudiante" },
+      { "nombres": "CARRASCO ZAPATA RODRIGO ALEXANDER", "apellidos": "", "dni": "76482113", "rol": "Estudiante" },
+      { "nombres": "SANDOVAL LAVADO LUCIANA JAVIERA", "apellidos": "", "dni": "73846281", "rol": "Estudiante" },
+      { "nombres": "CHILET FLORES GABRIELA MARIA DE GUADALUPE", "apellidos": "", "dni": "73844306", "rol": "Estudiante" },
+      { "nombres": "MAURICIO RODRIGUEZ JULIO SEBASTIAN", "apellidos": "", "dni": "61906844", "rol": "Estudiante" },
+      { "nombres": "BUSTINZA MAIZ LUIS GERARDO", "apellidos": "", "dni": "73288037", "rol": "Estudiante" },
+      { "nombres": "PACHECO PONTE NICOLAS STEFANO", "apellidos": "", "dni": "74112893", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "GARCIA SARMIENTO RAUL RENE", "apellidos": "", "dni": "41315566", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "F",
+    "genero": null,
+    "disciplina": "Artes visuales / Pintura",
+    "institucion": "VIRGO POTENS",
+    "codigoModular": "0336545",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "CHURAMPI LLACZA JAMY KIARA", "apellidos": "", "dni": "62373923", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "PEÑA PEREZ MIGUEL ANGEL", "apellidos": "", "dni": "21536925", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "F",
+    "genero": null,
+    "disciplina": "Artes visuales / Escultura",
+    "institucion": "VIRGO POTENS",
+    "codigoModular": "0336545",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "REYES SAENZ AGLAE ALIZ", "apellidos": "", "dni": "73294593", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "PEÑA PEREZ MIGUEL ANGEL", "apellidos": "", "dni": "21536925", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "F",
+    "genero": null,
+    "disciplina": "Artes (VISUALES) / Fotografía",
+    "institucion": "VIRGO POTENS",
+    "codigoModular": "0336545",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "AGUILAR MONESTERIO PAOLA ROMINA", "apellidos": "", "dni": "62536245", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "PEÑA PEREZ MIGUEL ANGEL", "apellidos": "", "dni": "21536925", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "F",
+    "genero": null,
+    "disciplina": "Artes (visuales) / Arte tradicional",
+    "institucion": "DEPORTIVO EXPERIMENTAL JULIA SANCHEZ DEZA",
+    "codigoModular": "0643692",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "FLORES FUENTES BRISA ASTRID", "apellidos": "", "dni": "77516392", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "GOMEZ LOPEZ TANIA YSABEL", "apellidos": "", "dni": "10114499", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "F",
+    "genero": null,
+    "disciplina": "Artes literarias / Poesía",
+    "institucion": "TERESA GONZALES DE FANNING",
+    "codigoModular": "0245688",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "CHAVEZ LLAVE ARACELY MARIEL", "apellidos": "", "dni": "00000077187339", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "CORDOVA HOYOS MARTHA TOMASA", "apellidos": "", "dni": "44470019", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "F",
+    "genero": null,
+    "disciplina": "Arte, diseño y tecnología / Historietas interactivas",
+    "institucion": "NUESTRA SEÑORA DE GUADALUPE",
+    "codigoModular": "0336495",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "URBANO MESONES ROHAN RAJHIV", "apellidos": "", "dni": "76715874", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "PINTO HUARANGA LUIS GUILLERMO", "apellidos": "", "dni": "07303631", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "F",
+    "genero": null,
+    "disciplina": "Artes (visuales) / Corto Audiovisual",
+    "institucion": "TERESA GONZALES DE FANNING",
+    "codigoModular": "0245688",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "GOMEZ CAMPOS CAMILA LAURA", "apellidos": "", "dni": "62577296", "rol": "Estudiante" },
+      { "nombres": "GOMEZ CAMPOS VALENTINA LAURA", "apellidos": "", "dni": "62577297", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "MAURICIO ALVINO NIEL FELIX", "apellidos": "", "dni": "41565574", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "H",
+    "genero": null,
+    "disciplina": "Artes escénicas / Danza tradicional",
+    "institucion": "CEBA - CRISTO JOVEN",
+    "codigoModular": "1491349 Avanzado",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "MANCILLA PEÑA CARLOS JAMPIER", "apellidos": "", "dni": "60578108", "rol": "Estudiante" },
+      { "nombres": "YARICAHUA JUMACHI GARY CHRISTOPHER", "apellidos": "", "dni": "60653631", "rol": "Estudiante" },
+      { "nombres": "DOMINGUEZ CANDUELAS JOSVANNY ARAD", "apellidos": "", "dni": "63290182", "rol": "Estudiante" },
+      { "nombres": "DESPOSORIO GALARRETA STEPHANO ADRIANO", "apellidos": "", "dni": "62431408", "rol": "Estudiante" },
+      { "nombres": "ABREU HUAMAN ENMANUEL ALFREDO", "apellidos": "", "dni": "81893349", "rol": "Estudiante" },
+      { "nombres": "QUISPE SOTO ALEXIS DANIEL", "apellidos": "", "dni": "61376494", "rol": "Estudiante" },
+      { "nombres": "PIEPP VELASQUEZ JUAN DIEGO", "apellidos": "", "dni": "61966098", "rol": "Estudiante" },
+      { "nombres": "PEÑA VILCA ALEXANDER DAVID", "apellidos": "", "dni": "61086982", "rol": "Estudiante" },
+      { "nombres": "MELGAR ANICAMA SEBASTIAN MATEO", "apellidos": "", "dni": "61838035", "rol": "Estudiante" },
+      { "nombres": "TAYPE MATIENZO JHONIER ENRIQUE", "apellidos": "", "dni": "70957151", "rol": "Estudiante" },
+      { "nombres": "SOLANO QUISPE RODRIGO NICANOR", "apellidos": "", "dni": "79500343", "rol": "Estudiante" },
+      { "nombres": "CHANG MOSTACERO JOSE ADRIANO", "apellidos": "", "dni": "61411598", "rol": "Estudiante" },
+      { "nombres": "MANRIQUE VALLADARES FRANCO VALENTINO", "apellidos": "", "dni": "81400284", "rol": "Estudiante" },
+      { "nombres": "MANSILLA MINAYA ALEX JOAQUIN", "apellidos": "", "dni": "61765236", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "BOY BARRETO ANA MARITZA", "apellidos": "", "dni": "06766507", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "H",
+    "genero": null,
+    "disciplina": "Artes visuales / Pintura",
+    "institucion": "CEBA - BARTOLOME HERRERA",
+    "codigoModular": "0337337",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "ANTEZANA ANDRADE PAZ ELIANA", "apellidos": "", "dni": "73550753", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "IZARRA ESPEJO TEODOSIA", "apellidos": "", "dni": "07746299", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Florales Escolares Nacionales (JFEN)",
+    "etapa": "UGEL",
+    "categoria": "H",
+    "genero": null,
+    "disciplina": "Artes visuales / Escultura",
+    "institucion": "CEBA - 0040 HIPOLITO UNANUE",
+    "codigoModular": "0337345",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": "1°",
+    "participantes": [
+      { "nombres": "ADCO PERALTA RONALD FRANK", "apellidos": "", "dni": "70007646", "rol": "Estudiante" }
+    ],
+    "asesores": [
+      { "nombres": "CASTRO SALAZAR MASSIEL", "apellidos": "", "dni": "40350002", "rol": "Docente Asesor" }
+    ],
+    "resolucionRef": "RD 05200-2026-UGEL03",
+    "fecha": "2026-08-28"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "DAMAS",
+    "disciplina": "AJEDREZ",
+    "institucion": "SACO OLIVEROS HELICOIDAL",
+    "codigoModular": "0694265",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "DANIELA GERALDINE", "apellidos": "YANAPA ALMANZA", "dni": "79592611", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "DANTE ARTURO", "apellidos": "SOTO CONDE", "dni": "09531985", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "DAMAS",
+    "disciplina": "AJEDREZ",
+    "institucion": "0005 ROSA DE SANTA MARIA",
+    "codigoModular": "0334862",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "SOPHYA VALENTINA", "apellidos": "PAUCAR CARHUAZ", "dni": "78664220", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "EVELYN", "apellidos": "AGUIRRE ALARCON", "dni": "42432321", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "VARONES",
+    "disciplina": "AJEDREZ",
+    "institucion": "SACO OLIVEROS DE LINCE",
+    "codigoModular": "0319665",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "VICTOR GABRIEL", "apellidos": "MENDOZA ALATA", "dni": "78949438", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "DANTE ARTURO", "apellidos": "SOTO CONDE", "dni": "09531985", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "VARONES",
+    "disciplina": "AJEDREZ",
+    "institucion": "1094 JACARANDA",
+    "codigoModular": "0318063",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "DAVID ALEXANDER", "apellidos": "RUIZ VARGAS", "dni": "81804079", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "IVAN ARTURO", "apellidos": "SARAVIA CONDORPUSA", "dni": "10725228", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "LICEO NAVAL CONTRALMIRANTE MONTERO",
+    "codigoModular": "0693465",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "NICOLE YAMILETH", "apellidos": "ESPEJO ECHE", "dni": "78708903", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "JUAN", "apellidos": "EGOAVIL ORE", "dni": "09657174", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "COLEGIO PERUANO JAPONES LA UNION",
+    "codigoModular": "0333658",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "AMI", "apellidos": "WATANABE MIYASHIRO", "dni": "79104545", "rol": "Deportista" },
+      { "nombres": "AKEMI SILVANA", "apellidos": "ORTIZ KAMIYA", "dni": "78418863", "rol": "Deportista" },
+      { "nombres": "AIRI ZOE", "apellidos": "NAKAMOTO URASAKI", "dni": "78810870", "rol": "Deportista" },
+      { "nombres": "ALONDRA AYUMI", "apellidos": "AVILA NAKASHIMA", "dni": "79331479", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "CARMEN DEL ROSARIO", "apellidos": "VALLEJO FUENTES", "dni": "09920449", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "SAGRADO CORAZON SOPHIANUM",
+    "codigoModular": "0314633",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "LUANA ISABELLA", "apellidos": "TAM CISNEROS", "dni": "79140411", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "SIMON", "apellidos": "ESCURRA ZAPATA", "dni": "09428296", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "PERUANO CHINO JUAN XXIII",
+    "codigoModular": "0331413",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "KAYETANA SOFIA", "apellidos": "ORDOÑEZ LORA", "dni": "79836942", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "DEPORTIVO EXPERIMENTAL JULIA SANCHEZ DEZA",
+    "codigoModular": "0639161",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "YARED NAHEL", "apellidos": "HURTADO YAURI", "dni": "78650582", "rol": "Deportista" },
+      { "nombres": "FERNANDO GENARO SALVADOR", "apellidos": "LOPEZ ESPICHAN", "dni": "79050802", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "RICARDO", "apellidos": "SALGADO GUTIERREZ", "dni": "099302116", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "LA SALLE",
+    "codigoModular": "0331488",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MATTEO GUSTAVO", "apellidos": "SUAREZ RUIZ", "dni": "78617176", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "COLEGIO PERUANO JAPONES LA UNION",
+    "codigoModular": "0333658",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "SEBASTIAN TOMOYUKI", "apellidos": "GUIMA FUKUHARA", "dni": "78556941", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "SAGRADO CORAZON SOPHIANUM",
+    "codigoModular": "0314633",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MISAEL ELIAS", "apellidos": "ALANIA ROSALES", "dni": "78726210", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "PERUANO CHINO JUAN XXIII",
+    "codigoModular": "0331413",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ALVARO JOSE", "apellidos": "ESCALLY CORTIJO", "dni": "78806726", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "AKIRA ARHAMIZ", "apellidos": "CORTEZ NOVORIKAWA", "dni": "60945690", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "1160 JOSE FAUSTINO SANCHEZ CARRION",
+    "codigoModular": "0339275",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "JOSE ARMANDO", "apellidos": "DIAZ BASTARDO", "dni": "006875301", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "YSABEL CATALINA", "apellidos": "GUTIERREZ BLONDET", "dni": "25774484", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "DAMAS",
+    "disciplina": "GIMNASIA ARTÍSTICA",
+    "institucion": "24 ROSA IRENE INFANTES DE CANALES",
+    "codigoModular": "0337766",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "SOPHIE ISABELLA", "apellidos": "FASHE RUIZ", "dni": "78518138", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "LUIS ALBERTO", "apellidos": "SUAZO ROMERO", "dni": "08558278", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "DAMAS",
+    "disciplina": "NATACIÓN",
+    "institucion": "DANTE ALIGHIERI",
+    "codigoModular": "1490846",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "BRISA SOFIA", "apellidos": "MARTINEZ PINEDA", "dni": "78567818", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "GIANCARLOS", "apellidos": "YATACO VILLANUEVA", "dni": "46102717", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "DAMAS",
+    "disciplina": "NATACIÓN",
+    "institucion": "PERUANO CHINO JUAN XXIII",
+    "codigoModular": "0336966",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "CLAUDIA ELENA", "apellidos": "CARRASCO MEZA", "dni": "78567933", "rol": "Deportista" },
+      { "nombres": "ABRIL SOFIA", "apellidos": "CERNA FLORES", "dni": "79043072", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "DAMAS",
+    "disciplina": "NATACIÓN",
+    "institucion": "1071 ALFONSO UGARTE",
+    "codigoModular": "0340224",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "BRITANI TERESA", "apellidos": "GONZALES BARRIOS", "dni": "78428113", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "WENDY", "apellidos": "QUISPE QUISPE", "dni": "70604702", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "LA SALLE",
+    "codigoModular": "0336982",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "LEONARDO", "apellidos": "LARA ANGULO", "dni": "78524968", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "ROSA YSABEL", "apellidos": "VIVANCO VALVERDE", "dni": "40164677", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "CLARETIANO",
+    "codigoModular": "0336743",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "DANIEL ALONSO", "apellidos": "MELGAR MEDRANO", "dni": "78505570", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "ALEX", "apellidos": "VELASCO BOÑON", "dni": "41971542", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "PERUANO CHINO JUAN XXIII",
+    "codigoModular": "0336966",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "GIÁCOMO RENE", "apellidos": "CRESPO HI", "dni": "78419352", "rol": "Deportista" },
+      { "nombres": "MATIAS", "apellidos": "ALONSO GARCIA", "dni": "78598996", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "JOSEPH AND MARY HIGH SCHOOL",
+    "codigoModular": "1433689",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "JULIO ENRIQUE ISAIAS", "apellidos": "PACHECO CANO", "dni": "78607271", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "DAMAS",
+    "disciplina": "TAEKWONDO",
+    "institucion": "ALBERT EINSTEIN - BREÑA",
+    "codigoModular": "1426048",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [],
+    "asesores": [
+      { "nombres": "JORGE LUIS", "apellidos": "HUAMAN PALACIOS", "dni": "41002010", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "VARONES",
+    "disciplina": "TAEKWONDO",
+    "institucion": "1154 NUESTRA SEÑORA DEL CARMEN",
+    "codigoModular": "0339150",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [],
+    "asesores": [
+      { "nombres": "JANET VIOLETA", "apellidos": "PASTOR MOLINA", "dni": "09799965", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "A",
+    "genero": "VARONES",
+    "disciplina": "TAEKWONDO",
+    "institucion": "1094 JACARANDA",
+    "codigoModular": "0318063",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [],
+    "asesores": [
+      { "nombres": "IVAN ARTURO", "apellidos": "SARAVIA CONDORPUSA", "dni": "10725228", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "AJEDREZ",
+    "institucion": "SACO OLIVEROS LINCE",
+    "codigoModular": "0340612",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "RIHANNA IRINA", "apellidos": "ROJAS SALAS", "dni": "77723240", "rol": "Deportista" },
+      { "nombres": "FABIANA", "apellidos": "JIMENEZ SALAS", "dni": "78083297", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "AJEDREZ",
+    "institucion": "SACO OLIVEROS DE LINCE",
+    "codigoModular": "0340612",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [],
+    "asesores": [
+      { "nombres": "DANTE ARTURO", "apellidos": "SOTO CONDE", "dni": "09531985", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "AJEDREZ",
+    "institucion": "SACO OLIVEROS LINCE",
+    "codigoModular": "0340612",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "DANTE IVAN", "apellidos": "VILCA CONTRERAS", "dni": "77722163", "rol": "Deportista" },
+      { "nombres": "MARCOS BELTRAN", "apellidos": "MENESES MORALES", "dni": "77764342", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "AJEDREZ",
+    "institucion": "SACO OLIVEROS DE LINCE",
+    "codigoModular": "0340612",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [],
+    "asesores": [
+      { "nombres": "DANTE ARTURO", "apellidos": "SOTO CONDE", "dni": "09531985", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "SANTA ANA",
+    "codigoModular": "0337220",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "RAFAELA MARINA", "apellidos": "PACHECO NUÑEZ", "dni": "78063955", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "PERUANO CHINO JUAN XXIII",
+    "codigoModular": "0336966",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ZULEMA DANA", "apellidos": "YONG SANCHEZ", "dni": "62983431", "rol": "Deportista" },
+      { "nombres": "KEI GUADALUPE", "apellidos": "ONAJA VALDIVIA", "dni": "77771378", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "LEONARDO JAVIER", "apellidos": "MATOS GUTIERREZ", "dni": "09643526", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "COLEGIO PERUANO JAPONES LA UNION",
+    "codigoModular": "0336727",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ZOE ARITZA", "apellidos": "PARRA VILLACREZ", "dni": "77990645", "rol": "Deportista" },
+      { "nombres": "MIDORI KEILY", "apellidos": "QUESADA YTO", "dni": "78222429", "rol": "Deportista" },
+      { "nombres": "CATALINA KAORI", "apellidos": "VALENCIA INOUYE", "dni": "78173422", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "CARMEN DEL ROSARIO", "apellidos": "VALLEJOS FUENTES RIVERA", "dni": "09920449", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "JESUS REPARADOR",
+    "codigoModular": "1490127",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "DAYLIN THAMARA", "apellidos": "RAMOS ALAVE", "dni": "63132827", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "SAN AGUSTIN",
+    "codigoModular": "0314476",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "LUZ MICAELA", "apellidos": "CHAVEZ CASTILLO", "dni": "78122971", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "SAGRADO CORAZON SOPHIANUM",
+    "codigoModular": "0449520",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ISABELLA VALENTINA", "apellidos": "GUZMAN DIAZ", "dni": "78136221", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "MIGUEL GRAU",
+    "codigoModular": "0245670",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "NALLELY TEREZA", "apellidos": "APAZA VILCA", "dni": "77544930", "rol": "Deportista" },
+      { "nombres": "ARIANNA NALEXY", "apellidos": "DEZA SUAREZ", "dni": "78225792", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "LICEO NAVAL CONTRALMIRANTE MONTERO",
+    "codigoModular": "0693499",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "REYSHEL CELESTE", "apellidos": "CLAUDIO ROSAS", "dni": "77649018", "rol": "Deportista" },
+      { "nombres": "ANGIE ISABEL", "apellidos": "AGUERO DAMASO", "dni": "78126149", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "NILTON CESAR", "apellidos": "GIL MONTEZA", "dni": "41314316", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "ROSA DOMINGA PEREZ LIENDO",
+    "codigoModular": "0340398",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "SOFIA ALEXANDRA", "apellidos": "PEREZ FERRER", "dni": "005511134", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "DEPORTIVO EXPERIMENTAL JULIA SANCHEZ DEZA",
+    "codigoModular": "0643692",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MIGUEL ANGEL", "apellidos": "TAYPE APAZA", "dni": "77845356", "rol": "Deportista" },
+      { "nombres": "PAOLO ISMAEL", "apellidos": "ARROYO ROJAS", "dni": "77754317", "rol": "Deportista" },
+      { "nombres": "DANTE LEANDRO", "apellidos": "CRUZ COTRINA", "dni": "77626523", "rol": "Deportista" },
+      { "nombres": "STEFANO FELIMON", "apellidos": "FLORES QUISPE", "dni": "78216833", "rol": "Deportista" },
+      { "nombres": "DIDDIER ENGHINO LIONEL", "apellidos": "GARCIA CHAPARRO", "dni": "77747238", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "LUIS RODOLFO", "apellidos": "MUANTE CABRERA", "dni": "09678687", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "COLEGIO PERUANO JAPONES LA UNION",
+    "codigoModular": "0336727",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "JUAN CAMILO", "apellidos": "OSHIRO YARA", "dni": "78123432", "rol": "Deportista" },
+      { "nombres": "LUIS ENRIQUE", "apellidos": "AREVALO CHINININ", "dni": "63160027", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "CARMEN DEL ROSARIO", "apellidos": "VALLEJOS FUENTES RIVERA", "dni": "09920449", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "LOS ALAMOS",
+    "codigoModular": "1098656",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MIZAEL ALEJANDRO", "apellidos": "MORI TORRES", "dni": "77722379", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "SAN FRANCISCO DE SALES",
+    "codigoModular": "0337311",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "RODRIGO LEONARDO", "apellidos": "PAREDES MIJICHICH", "dni": "78053626", "rol": "Deportista" },
+      { "nombres": "DYLAN IKER MATHIEL", "apellidos": "LAVERIANO CHUQUIJA", "dni": "77640376", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "BARTOLOME HERRERA",
+    "codigoModular": "0334649",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ZEAM JUNIOR", "apellidos": "PEZO ZEVALLOS", "dni": "77889815", "rol": "Deportista" },
+      { "nombres": "JESUS ALONSO", "apellidos": "TRUCIOS PIPA", "dni": "77752927", "rol": "Deportista" },
+      { "nombres": "ANGEL DAVID", "apellidos": "BOLEJE NAVA", "dni": "93265659", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "VICTOR JESÚS", "apellidos": "HERNANDEZ RAMIREZ", "dni": "10403776", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "SAN AGUSTIN",
+    "codigoModular": "0314476",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MATEO ALONSO", "apellidos": "RABORG SOLIS", "dni": "77546078", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "SANTO DOMINGO EL APOSTOL",
+    "codigoModular": "1199009",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "AARON ENRIQUE KALEB", "apellidos": "COSTA BERNAL", "dni": "77543639", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "1112 VICTOR ANDRES BELAUNDE",
+    "codigoModular": "0340323",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "AARON JOSUE", "apellidos": "MADRID VELASQUEZ", "dni": "005925317", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "NATACIÓN",
+    "institucion": "PERUANO CHINO JUAN XXIII",
+    "codigoModular": "0336966",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "DANIELA AIRI", "apellidos": "TAMASHIRO ISHIKI", "dni": "77631712", "rol": "Deportista" },
+      { "nombres": "MARIANA RAFAELA", "apellidos": "BAZÁN VARGAS", "dni": "77846952", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "JORGE WILLIAM", "apellidos": "GALLEGOS HERNANDEZ", "dni": "22184812", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "NATACIÓN",
+    "institucion": "SAN AGUSTÍN",
+    "codigoModular": "0314476",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ANTONELLA LUCIANA", "apellidos": "MELENDEZ BAYONA", "dni": "77944904", "rol": "Deportista" },
+      { "nombres": "MÍA", "apellidos": "SÁNCHEZ ELIAS ROSS MORREY", "dni": "77868399", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "RIGOBERTO", "apellidos": "HUAMAN PIZARRO", "dni": "09209568", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "NATACIÓN",
+    "institucion": "DE LA CRUZ",
+    "codigoModular": "0336818",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ENYA", "apellidos": "CARRILLO ZEGARRA", "dni": "81015063", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "NATACIÓN",
+    "institucion": "CLARETIANO",
+    "codigoModular": "0336743",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ZOE DARINKA", "apellidos": "MORALES OYARCE", "dni": "77635562", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "NATACIÓN",
+    "institucion": "SANTO DOMINGO EL APOSTOL",
+    "codigoModular": "1199009",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "YIANNINA JESUS", "apellidos": "RANGEL ALMANZA", "dni": "81116579", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "NATACIÓN",
+    "institucion": "JOSEPH AND MARY HIGH SCHOOL",
+    "codigoModular": "1489483",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "LUCIANA BELEN", "apellidos": "NÚÑEZ DE LA CRUZ", "dni": "78047809", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "CLARETIANO",
+    "codigoModular": "0336743",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MATHIAS SANTIAGO", "apellidos": "MEZA SERPA", "dni": "63094593", "rol": "Deportista" },
+      { "nombres": "EDER LEONARDO", "apellidos": "VASQUEZ NARVAEZ", "dni": "78048128", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "ALEX", "apellidos": "VELASCO BOÑON", "dni": "41971542", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "SACO OLIVEROS",
+    "codigoModular": "1489327",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MATEO FRANCISCO", "apellidos": "SANTIVAÑEZ RAMOS", "dni": "63709080", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "SACO OLIVEROS DE SAN FELIPE",
+    "codigoModular": "1168848",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "SANTIAGO ENRIQUE", "apellidos": "ROMAN TEJADA", "dni": "77652200", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "KARLA MELISSA", "apellidos": "CASTILLO ELGUERA", "dni": "76023202", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "SAGRADO CORAZÓN SOPHIANUM",
+    "codigoModular": "0449520",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ERICO FABRICIO", "apellidos": "ZUMAETA ESCOBEDO", "dni": "63347095", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "LOS ROSALES - SAN MIGUEL",
+    "codigoModular": "1241660",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "DAVID SEBASTIAN", "apellidos": "QUINTO VENTURA", "dni": "77847210", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "SAN AGUSTIN",
+    "codigoModular": "0314476",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "LUCAS DOMENICO", "apellidos": "TORRES MEDINA", "dni": "78370372", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "DE LA CRUZ",
+    "codigoModular": "03366818",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "GIANFRANCO", "apellidos": "HILARIO ACUACHE", "dni": "77836936", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "PERUANO CHINO JUAN XXIII",
+    "codigoModular": "0336966",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "LUCIANA BELÉN", "apellidos": "SOLANO QUISPIALAYA", "dni": "78052851", "rol": "Deportista" },
+      { "nombres": "JANFI ANA", "apellidos": "WEI LIN", "dni": "78423280", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "MICHELE", "apellidos": "MAURA DOS SANTOS", "dni": "000834567", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "TENIS DE MESA",
+    "institucion": "SAN AGUSTIN",
+    "codigoModular": "0314476",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "SANTIAGO ALONSO", "apellidos": "LOO CHANG", "dni": "77600972", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "WASHINGTON", "apellidos": "VILLENA CANO", "dni": "41088039", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "TENIS DE MESA",
+    "institucion": "PERUANO CHINO JUAN XXIII",
+    "codigoModular": "0336966",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ARIAN VALENTINO", "apellidos": "RAMOS DE ROSAS OLIVEROS", "dni": "77595446", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "MICHELE", "apellidos": "MAURA DOS SANTOS", "dni": "000834567", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "REINA DE LA PAZ",
+    "codigoModular": "0449975",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "BRISSA YAMELL", "apellidos": "REYES MONTAÑEZ", "dni": "62600104", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "1112 VICTOR ANDRES BELAUNDE",
+    "codigoModular": "0340323",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MARIA JOSE SAMINIA", "apellidos": "S0LANO NUÑEZ", "dni": "62641878", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "AYME ZULEMA", "apellidos": "ROSALES PACHECO", "dni": "07497741", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "SAGRADO CORAZON SOPHIANUM",
+    "codigoModular": "0449520",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MICAELA", "apellidos": "MENDEZ MENDOZA", "dni": "77316305", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "MIGUEL GRAU",
+    "codigoModular": "0245670",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "NICOLE SAORI", "apellidos": "LANDAURO OBLITAS", "dni": "77375291", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "LICEO NAVAL CONTRALMIRANTE MONTERO",
+    "codigoModular": "0693499",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "SOFIA KATHERINE", "apellidos": "HUAMANI HUAMANI", "dni": "62350891", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "PERUANO JAPONES LA VICTORIA",
+    "codigoModular": "0582338",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "KIRSTEN HARUKO", "apellidos": "HIGA CAMPOS", "dni": "77300698", "rol": "Deportista" },
+      { "nombres": "ASAMI SOFIA", "apellidos": "CHINEN ARAKAKI", "dni": "77106019", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "COLEGIO PERUANO JAPONES LA UNION",
+    "codigoModular": "0336727",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "THAIS LUCIANA", "apellidos": "CHAGUA CASTAÑEDA", "dni": "77190451", "rol": "Deportista" },
+      { "nombres": "KIARA LUCIANA", "apellidos": "ASCENCIO CALDERON", "dni": "76883607", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "CARMEN DEL ROSARIO", "apellidos": "VALLEJOS FUENTES RIVERA", "dni": "09920449", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "DEPORTIVO EXPERIMENTAL JULIA SANCHEZ DEZA",
+    "codigoModular": "0643692",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MARIA GRAZIA", "apellidos": "REYES ESPINOZA", "dni": "75637849", "rol": "Deportista" },
+      { "nombres": "BRISSA GISELL", "apellidos": "CHIRA VARGAS", "dni": "62645726", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "JUAN JOSE", "apellidos": "ROJAS BESADA", "dni": "06711701", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "PERUANO CHINO JUAN XXIII",
+    "codigoModular": "0336966",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "VIVIANA NICOLE", "apellidos": "GARCIA CHAVEZ", "dni": "73927388", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "1105 LA SAGRADA FAMILIA",
+    "codigoModular": "0535666",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "TALITA AKEMY", "apellidos": "BARZOLA PINZGER", "dni": "74257387", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "ISABEL LA CATOLICA",
+    "codigoModular": "0245662",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "AYNARA VALENTINA", "apellidos": "RENGEL ACOSTA", "dni": "21031835200048", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "NUESTRA SEÑORA DE LA LUZ",
+    "codigoModular": "0827022",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ANEL ANDREA", "apellidos": "MARENGO MANZO", "dni": "77256383", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "ATLETISMO",
+    "institucion": "INNOVA SCHOOLS SAN MIGUEL 3 LA PAZ",
+    "codigoModular": "1723873",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "LUCIANA", "apellidos": "RIVERA PEZO", "dni": "73298195", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "DEPORTIVO EXPERIMENTAL JULIA SANCHEZ DEZA",
+    "codigoModular": "0643692",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "GEREMY ARLETT", "apellidos": "VILLCAS ARROYO", "dni": "62375904", "rol": "Deportista" },
+      { "nombres": "CHRISTIAN LEONEL ANDRE", "apellidos": "GARCIA PORRAS", "dni": "74511059", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "JUAN JOSE", "apellidos": "ROJAS BESADA", "dni": "06711701", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "1107 JAVIER PRADO",
+    "codigoModular": "1007160",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "LEANDRO GERAD", "apellidos": "ROJAS LANDA", "dni": "77265869", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "COLEGIO PERUANO JAPONES LA UNION",
+    "codigoModular": "0336727",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "GIAN", "apellidos": "TAKAESU TAKARA", "dni": "62367203", "rol": "Deportista" },
+      { "nombres": "ANDY KOJI", "apellidos": "TOYAMA HIGA", "dni": "77191880", "rol": "Deportista" },
+      { "nombres": "MATIAS KAZUO", "apellidos": "CHAGUA CASTAÑEDA", "dni": "74012837", "rol": "Deportista" },
+      { "nombres": "YUGA NICOLAS", "apellidos": "KOBAYASHI SHIMABUKURO", "dni": "77189417", "rol": "Deportista" },
+      { "nombres": "OLIVER MASAKI", "apellidos": "WESTERKAM TOBARU", "dni": "74027463", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "CARMEN DEL ROSARIO", "apellidos": "VALLEJOS FUENTES RIVERA", "dni": "09920449", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "1070 MELITON CARVAJAL",
+    "codigoModular": "0245647",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "DEREK ELIAS", "apellidos": "MORENO QUIROZ", "dni": "61843388", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "LA SALLE",
+    "codigoModular": "0336982",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "JON KEVIN", "apellidos": "BLUA VALDIVIEZO", "dni": "61790949", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "DE JESUS",
+    "codigoModular": "0336800",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MATTEO DANIEL", "apellidos": "LERZO VALLEBUONA", "dni": "62762004", "rol": "Deportista" },
+      { "nombres": "LEONARDO SALVADOR", "apellidos": "RENJIFO RAMIREZ", "dni": "74198240", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "EDGAR", "apellidos": "CARRASCO MENDEZ", "dni": "08884629", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "SAGRADO CORAZON SOPHIANUM",
+    "codigoModular": "0449520",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "IAN PIERO IRISHI", "apellidos": "MATOS TSUKAZAN", "dni": "73411439", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "SAN FRANCISCO DE SALES",
+    "codigoModular": "0337311",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "YADIR OZIEL", "apellidos": "APAZA VARGAS", "dni": "62648374", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "NUESTRA SEÑORA DE GUADALUPE",
+    "codigoModular": "0336495",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ALVARO DANIEL", "apellidos": "JUSTINIANI ÑAUPA", "dni": "76492519", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "ATLETISMO",
+    "institucion": "1071 ALFONSO UGARTE",
+    "codigoModular": "0340224",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MISHELS JAMC", "apellidos": "LOAYZA CHIA", "dni": "61901742 ADJUNTAR EXPEDIENTE", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "NATACIÓN",
+    "institucion": "LA SALLE",
+    "codigoModular": "0336982",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "LUHANA BRIANA", "apellidos": "OLAYA VELIZ", "dni": "76708346", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "ROSA YSABEL", "apellidos": "VIVANCO VALVERDE", "dni": "40164677", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "NATACIÓN",
+    "institucion": "COLEGIO PERUANO JAPONÉS LA UNIÓN",
+    "codigoModular": "0336727",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "LUCIANA", "apellidos": "MONZÓN ZAAD", "dni": "77003268", "rol": "Deportista" },
+      { "nombres": "MORELIA", "apellidos": "ALVAREZ EGUCHI", "dni": "74783133", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "CARLOS ANDRES", "apellidos": "NAKACHI UECHI", "dni": "43073456", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "NATACIÓN",
+    "institucion": "PERUANO CHINO JUAN XXIII",
+    "codigoModular": "0336966",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MARIA FE", "apellidos": "LIENDO PELAEZ", "dni": "61912654", "rol": "Deportista" },
+      { "nombres": "ISABELLA", "apellidos": "REYNOSO BALDOCEDA", "dni": "77314457", "rol": "Deportista" },
+      { "nombres": "DANIELA ALEXANDRA", "apellidos": "FUENTES MOSCOL", "dni": "76887355", "rol": "Deportista" },
+      { "nombres": "AMELIA ORIANA", "apellidos": "RIVERA CHOY", "dni": "74001305", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "NATACIÓN",
+    "institucion": "TERESA GONZALES DE FANNING",
+    "codigoModular": "0245688",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "CIELO YAZMIN", "apellidos": "DOMINGUEZ CHUMACERO", "dni": "74272264", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "SACO OLIVEROS DE ELIO",
+    "codigoModular": "1785831",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ÁNGEL AUGUSTO", "apellidos": "AMU SUQUILANDIA", "dni": "74004851", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "REINA DE LA PAZ",
+    "codigoModular": "0449975",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ANIBAL AMIN", "apellidos": "PACHECO PIMENTEL", "dni": "74101830", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "DE LA CRUZ",
+    "codigoModular": "0336818",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ESTEBAN IGNACIO", "apellidos": "INFANTES VILLALON", "dni": "77252016", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "JHON ALDO", "apellidos": "TELLO CANDELA", "dni": "41607344", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "CLEMENTE ALTHAUS",
+    "codigoModular": "1234384",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "CARLOS ADRIAN", "apellidos": "VALLEJO GUZMAN", "dni": "74008312", "rol": "Deportista" },
+      { "nombres": "JOAQUIN ANTONIO", "apellidos": "MERCADO HUERTAS", "dni": "76714011", "rol": "Deportista" },
+      { "nombres": "PATRICK ADRIANO", "apellidos": "CARDENAS FEDALTO", "dni": "62712865", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "JAIME DAVID", "apellidos": "GUTIERREZ DESCALZI", "dni": "40159053", "rol": "Delegado" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "BARTOLOMÉ HERRERA",
+    "codigoModular": "0334649",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ANDRE", "apellidos": "DURAND RENGIFO", "dni": "62765758", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "LICEO NAVAL CONTRALMIRANTE MONTERO",
+    "codigoModular": "0693499",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "EDUARDO SEBASTIAN", "apellidos": "POMAHUACRE LOAYZA", "dni": "76886315", "rol": "Deportista" }
+    ],
+    "asesores": [],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "NATACIÓN",
+    "institucion": "COLEGIO PERUANO JAPONES LA UNION",
+    "codigoModular": "0336727",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "KIARA STEFANIA", "apellidos": "TAFUR GARGATE", "dni": "74275134", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "SUSUMU DAVID ALEJANDRO", "apellidos": "YOZA NAMISATO", "dni": "45586475", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "TENIS DE MESA",
+    "institucion": "PERUANO CHINO JUAN XXIII",
+    "codigoModular": "0336966",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "VALENTIN FACUNDO", "apellidos": "SILVERA GIL", "dni": "76111677", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "EDUARDO", "apellidos": "BRITTO DE MARCOS", "dni": "001691100", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04851-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "BÁSQUET",
+    "institucion": "CLARETIANO",
+    "codigoModular": "0336743",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "DANYA ISABELLA", "apellidos": "GIRALDO BARRERA", "dni": "77605544", "rol": "Deportista" },
+      { "nombres": "MARÍA GRACIA", "apellidos": "VELA PAJARES", "dni": "77613315", "rol": "Deportista" },
+      { "nombres": "BIANCA ESTEFANÍA", "apellidos": "MENDOZA LOAYZA", "dni": "77978666", "rol": "Deportista" },
+      { "nombres": "EVA VICTORIA", "apellidos": "ESPINOZA VILLANUEVA", "dni": "78025653", "rol": "Deportista" },
+      { "nombres": "LUCERO ESMERALDA", "apellidos": "CAYCHO SOLANO", "dni": "77748592", "rol": "Deportista" },
+      { "nombres": "CATALINA MIKELA", "apellidos": "SALCEDO NUÑEZ", "dni": "77898309", "rol": "Deportista" },
+      { "nombres": "VALERIA", "apellidos": "GOMERO GONZALES", "dni": "77948466", "rol": "Deportista" },
+      { "nombres": "LUANA GIANELLA", "apellidos": "FAIJO CORNEJO", "dni": "77832695", "rol": "Deportista" },
+      { "nombres": "MELANIE VALERIA", "apellidos": "ROSADIO CROVETTO", "dni": "77621703", "rol": "Deportista" },
+      { "nombres": "AMY FABIANA", "apellidos": "ROSADIO CROVETTO", "dni": "77621697", "rol": "Deportista" },
+      { "nombres": "MIA RAFAELA", "apellidos": "COLONNA GONZALES", "dni": "78246465", "rol": "Deportista" },
+      { "nombres": "LUANA VICTORIA", "apellidos": "CARTY VILCAPOMA", "dni": "78526335", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "RICARDO ANTONIO", "apellidos": "CAMPOS REYMUNDO", "dni": "08566762", "rol": "Delegado" },
+      { "nombres": "VICTOR JULIO", "apellidos": "LANDAVERRY GIL", "dni": "70007905", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "BÁSQUET",
+    "institucion": "LOS ALAMOS",
+    "codigoModular": "1098656",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "LUCIANO", "apellidos": "TAVERA CASTAÑEDA", "dni": "77788968", "rol": "Deportista" },
+      { "nombres": "ALVARO DARIO", "apellidos": "MOSQUEIRA NIETO", "dni": "77822870", "rol": "Deportista" },
+      { "nombres": "MATÍAS SEBASTIÁN", "apellidos": "NACION TELLO", "dni": "80998534", "rol": "Deportista" },
+      { "nombres": "CARLOS IGNACIO", "apellidos": "ANTONIO ROJAS", "dni": "77636483", "rol": "Deportista" },
+      { "nombres": "SEBASTHIAN ANTONIO", "apellidos": "RAMIREZ RIOS", "dni": "77715508", "rol": "Deportista" },
+      { "nombres": "LUCAS LUCIANO", "apellidos": "LEYVA VILLAR", "dni": "77963659", "rol": "Deportista" },
+      { "nombres": "MATEO SEBASTIAN", "apellidos": "RIJALBA SERRANO", "dni": "81194609", "rol": "Deportista" },
+      { "nombres": "JOAQUÍN ENRIQUE", "apellidos": "LIZARAZO VILLANUEVA", "dni": "78046414", "rol": "Deportista" },
+      { "nombres": "PEDRO PABLO MARCO", "apellidos": "ARICOCHE AGUINAGA", "dni": "77938562", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "SIMON ANTONIO", "apellidos": "MENENDEZ CUPEN", "dni": "08742982", "rol": "Delegado" },
+      { "nombres": "VICTOR ALBERTO", "apellidos": "ROMERO ARTEAGA", "dni": "07483785", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "FÚTBOL",
+    "institucion": "0040 HIPOLITO UNANUE",
+    "codigoModular": "0334656",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MARIO RICARDO", "apellidos": "GOLLES ROJAS", "dni": "77601148", "rol": "Deportista" },
+      { "nombres": "JHIRE JOSHUA", "apellidos": "HERRERA PUERTA", "dni": "77632599", "rol": "Deportista" },
+      { "nombres": "SEBASTIAN ALEXANDER", "apellidos": "CERNA MORENO", "dni": "77989448", "rol": "Deportista" },
+      { "nombres": "DAVID NEYMAR", "apellidos": "CANTO LUCAR", "dni": "77551753", "rol": "Deportista" },
+      { "nombres": "LUIS ESTEFANO", "apellidos": "BANQUERO CORDOVA", "dni": "77519155", "rol": "Deportista" },
+      { "nombres": "THIAGO ARTURO", "apellidos": "CHAMPAC FALCON", "dni": "78563067", "rol": "Deportista" },
+      { "nombres": "MATHIUS AMIR", "apellidos": "MENDOZA ZEGARRA", "dni": "78086084", "rol": "Deportista" },
+      { "nombres": "LEONARDO SAID", "apellidos": "LUNA LUIS", "dni": "77735889", "rol": "Deportista" },
+      { "nombres": "EVANS THAYLOR", "apellidos": "CURACA AVALOS", "dni": "78068768", "rol": "Deportista" },
+      { "nombres": "JOES GUSTAVO", "apellidos": "GUEVARA CARREÑO", "dni": "78093333", "rol": "Deportista" },
+      { "nombres": "YEISON DAVID", "apellidos": "ROJAS ROMALDO", "dni": "79050971", "rol": "Deportista" },
+      { "nombres": "EDUARDO ENRIQUE", "apellidos": "SUAREZ HERRERA", "dni": "77872935", "rol": "Deportista" },
+      { "nombres": "FRANSHESCO EFRAIN", "apellidos": "LOYOLA ATOCHE", "dni": "77823030", "rol": "Deportista" },
+      { "nombres": "MICHAEL JHUNIOR", "apellidos": "SOSA FERNANDEZ", "dni": "77742784", "rol": "Deportista" },
+      { "nombres": "ANDERSON JOSÉ ROBERTO", "apellidos": "ASCA PEROTTI", "dni": "77747205", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "VICTOR MANUEL", "apellidos": "SILVA ZURITA", "dni": "08366724", "rol": "Delegado" },
+      { "nombres": "ROBERT REINER", "apellidos": "QUISPE LICLA", "dni": "72546099", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "FUTSAL",
+    "institucion": "0005 ROSA DE SANTA MARIA",
+    "codigoModular": "0334722",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "YONALETH ISABELLA", "apellidos": "LARA GARCIA", "dni": "007107834", "rol": "Deportista" },
+      { "nombres": "ITCHELL JARETZI", "apellidos": "CASTILLO SAMAME", "dni": "81213934", "rol": "Deportista" },
+      { "nombres": "NAHOMI SOPHIA", "apellidos": "VILLAPAREDES ANGARITA", "dni": "007638524", "rol": "Deportista" },
+      { "nombres": "KIARA ABIGAIL", "apellidos": "VARGAS COLLAZOS", "dni": "78274579", "rol": "Deportista" },
+      { "nombres": "ASHLEY SARAHI", "apellidos": "TORRES JIMENEZ", "dni": "004154231", "rol": "Deportista" },
+      { "nombres": "ZOE ANAHI", "apellidos": "CORTEZ MEDINA", "dni": "90818296", "rol": "Deportista" },
+      { "nombres": "GIANELLA DARLYN", "apellidos": "GUINOCCHIO GOÑI", "dni": "77582553", "rol": "Deportista" },
+      { "nombres": "ASHLEY KAORY", "apellidos": "SIANCAS HURTADO", "dni": "78429675", "rol": "Deportista" },
+      { "nombres": "ANDREA PAULA", "apellidos": "VELIZ VELASQUEZ", "dni": "78055777", "rol": "Deportista" },
+      { "nombres": "LUCIA VALENTINA", "apellidos": "DE LA CRUZ ALCANTARA", "dni": "78151810", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "CINDY SHERLEY", "apellidos": "ACOSTA CALVERA", "dni": "40452053", "rol": "Delegado" },
+      { "nombres": "CESAR ISIDORO", "apellidos": "CAVALIER CUYA", "dni": "09688502", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "FUTSAL",
+    "institucion": "1112 VICTOR ANDRES BELAUNDE",
+    "codigoModular": "0340323",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "EVAN LUIS", "apellidos": "GUERRERO RAMOS", "dni": "78169197", "rol": "Deportista" },
+      { "nombres": "JOCOB DAVID", "apellidos": "HIDALGO DEL AGUILA", "dni": "78249020", "rol": "Deportista" },
+      { "nombres": "EDRIAN DOMINIC", "apellidos": "UBILLUS NAVARRO", "dni": "78314870", "rol": "Deportista" },
+      { "nombres": "JOSE ALEXANDER", "apellidos": "SULBARAN SANCHEZ", "dni": "005674018", "rol": "Deportista" },
+      { "nombres": "THIAGO ADRIANO", "apellidos": "LIZA MARQUEZ", "dni": "77751394", "rol": "Deportista" },
+      { "nombres": "OSCAR RAFAEL", "apellidos": "ALCANTARA ECHEVARRIA", "dni": "77634489", "rol": "Deportista" },
+      { "nombres": "SANDRO", "apellidos": "TABOADA RIVERA", "dni": "77828122", "rol": "Deportista" },
+      { "nombres": "CESAR CRISTHOFER", "apellidos": "ABON AYZANOA", "dni": "77779756", "rol": "Deportista" },
+      { "nombres": "LEONARDO SEBASTIAN", "apellidos": "QUINTERO LANDAETA", "dni": "009047023", "rol": "Deportista" },
+      { "nombres": "ANDY LUIS HERMINIO MANUEL", "apellidos": "CAPISO GOMEZ", "dni": "77520625", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "ROBERT DAMIAN", "apellidos": "GALVEZ NEYRA", "dni": "41090955", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "HANDBALL",
+    "institucion": "1112 VICTOR ANDRES BELAUNDE",
+    "codigoModular": "0340323",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ALEJANDRA", "apellidos": "HUAMAN CASALLO", "dni": "78295586", "rol": "Deportista" },
+      { "nombres": "ANGELA VICTORIA", "apellidos": "CAMPOS MARTINEZ", "dni": "005647291", "rol": "Deportista" },
+      { "nombres": "VALENTINA ALEXANDRA", "apellidos": "OSORIO GARCIA", "dni": "007706738", "rol": "Deportista" },
+      { "nombres": "BRIANNA NASHELY", "apellidos": "OBREGON RINZA", "dni": "79303483", "rol": "Deportista" },
+      { "nombres": "BRIHANA DAYLIN", "apellidos": "OLIVA ESPINOZA", "dni": "78159642", "rol": "Deportista" },
+      { "nombres": "SULY MAYDELI", "apellidos": "LARA ESCOBAR", "dni": "78074562", "rol": "Deportista" },
+      { "nombres": "MIA FERNANDA", "apellidos": "CASTILLO CAVERO", "dni": "77608488", "rol": "Deportista" },
+      { "nombres": "ESTRELLA CIELO", "apellidos": "ROMERO IPANAQUE", "dni": "77760418", "rol": "Deportista" },
+      { "nombres": "VALENTINA NAZARETH", "apellidos": "MIRANDA BRICEÑO", "dni": "008257128", "rol": "Deportista" },
+      { "nombres": "ANA JALESKA", "apellidos": "UZURIAGA ESPINOZA", "dni": "77722687", "rol": "Deportista" },
+      { "nombres": "ADRIANA MISHELL", "apellidos": "CHAVEZ GONZALES", "dni": "78195798", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "ROBERT DAMIAN", "apellidos": "GALVEZ NEYRA", "dni": "41090955", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "HANDBALL",
+    "institucion": "INNOVA SCHOOLS - SAN MIGUEL 2",
+    "codigoModular": "1646959",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "RICARDO LIONEL", "apellidos": "AEDO LOPEZ", "dni": "77713555", "rol": "Deportista" },
+      { "nombres": "SALVADOR ALEXANDER", "apellidos": "NARVAEZ PADILLA", "dni": "77730409", "rol": "Deportista" },
+      { "nombres": "JORGE DYLAN", "apellidos": "CANALES SANTOS", "dni": "77777056", "rol": "Deportista" },
+      { "nombres": "JESUS WILLIAMS", "apellidos": "ARROYO LA COTERA", "dni": "78137470", "rol": "Deportista" },
+      { "nombres": "RASEC ANGELO", "apellidos": "PADILLA LAZO", "dni": "77615738", "rol": "Deportista" },
+      { "nombres": "DIEGO RAFAEL", "apellidos": "ALEGRE ORMEÑO", "dni": "77985922", "rol": "Deportista" },
+      { "nombres": "LUIS ANDRE", "apellidos": "ORELLANO ROJAS", "dni": "77847155", "rol": "Deportista" },
+      { "nombres": "FABRICIO ADRIANO", "apellidos": "MENDEZ MONCADA", "dni": "77838743", "rol": "Deportista" },
+      { "nombres": "JOSÉ MATÍAS", "apellidos": "BRAGAYRAC OBLITAS", "dni": "77877028", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "ANA LUCIA", "apellidos": "CORDOVA TORRES", "dni": "74878088", "rol": "Delegado" },
+      { "nombres": "RENZO RAUL", "apellidos": "TORRES CHUMBES", "dni": "72757431", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "DAMAS",
+    "disciplina": "VOLEIBOL",
+    "institucion": "SACO OLIVEROS DE LINCE",
+    "codigoModular": "0340612",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "SSUZZET ADRIANA", "apellidos": "SANCHEZ PEREDA", "dni": "77589791", "rol": "Deportista" },
+      { "nombres": "FERNANDA MIA", "apellidos": "LAYNES DONAYRE", "dni": "77543501", "rol": "Deportista" },
+      { "nombres": "ALEXA DANIELA", "apellidos": "SALCEDO GARCIA", "dni": "77825765", "rol": "Deportista" },
+      { "nombres": "NASHA ALEJANDRA", "apellidos": "CORONADO VERTIZ", "dni": "77638415", "rol": "Deportista" },
+      { "nombres": "DAPHNE ALEXIA", "apellidos": "SANTIAGO SEGOVIA", "dni": "77656124", "rol": "Deportista" },
+      { "nombres": "VANESSA LUANA", "apellidos": "TORRES SALCEDO", "dni": "77590607", "rol": "Deportista" },
+      { "nombres": "CINDY", "apellidos": "BENITES DE LA CRUZ", "dni": "77742500", "rol": "Deportista" },
+      { "nombres": "KIRIAN LARISA", "apellidos": "AREVALO GOMEZ", "dni": "80977119", "rol": "Deportista" },
+      { "nombres": "ARIEL VALERIA", "apellidos": "PAREJA GUTIERREZ", "dni": "77896771", "rol": "Deportista" },
+      { "nombres": "CAMILA ALEXANDRA", "apellidos": "MEDINA RAMOS", "dni": "77622294", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "JOSE CARLOS", "apellidos": "CASTILLO BRAVO", "dni": "41589785", "rol": "Delegado" },
+      { "nombres": "JOSE DE LA ENCARNACION", "apellidos": "CASTILLO VIDAURRE", "dni": "09199453", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "B",
+    "genero": "VARONES",
+    "disciplina": "VOLEIBOL",
+    "institucion": "1154 NUESTRA SEÑORA DEL CARMEN",
+    "codigoModular": "1048990",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "LUCIANO ALEJANDRO", "apellidos": "MOTESINOS LEON", "dni": "009656178", "rol": "Deportista" },
+      { "nombres": "JEYKO JOORDANO", "apellidos": "RAMOS SEGURA", "dni": "78184782", "rol": "Deportista" },
+      { "nombres": "OSCAR SANTIAGO", "apellidos": "MORALES CASTAÑON", "dni": "77779239", "rol": "Deportista" },
+      { "nombres": "JOSE MATHIAS", "apellidos": "CAYCHO GORDILLO", "dni": "77767524", "rol": "Deportista" },
+      { "nombres": "ANDRÉ ALESSANDRO", "apellidos": "BENAVENTE TORRES", "dni": "77824012", "rol": "Deportista" },
+      { "nombres": "ERICK LEONARDO", "apellidos": "VILLAGOMEZ SOSA", "dni": "90037776", "rol": "Deportista" },
+      { "nombres": "GREIVIN JOSUE", "apellidos": "TIAMO RODRIGUEZ", "dni": "005817177", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "PABLO FABRIZZIO", "apellidos": "SANCHEZ LOYOLA", "dni": "73263962", "rol": "Delegado" },
+      { "nombres": "JULISSA BELINDA", "apellidos": "BALLON CANDELARIO", "dni": "09577333", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "BÁSQUET",
+    "institucion": "TERESA GONZALES DE FANNING",
+    "codigoModular": "0245688",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "MARJORIE VALESKA", "apellidos": "RENGIFO ACOSTA", "dni": "61908943", "rol": "Deportista" },
+      { "nombres": "MICAELA ALANA", "apellidos": "FERNANDEZ GIL", "dni": "76717842", "rol": "Deportista" },
+      { "nombres": "ALESSANDRA JEANETH", "apellidos": "CAYO DOMADOR", "dni": "73406573", "rol": "Deportista" },
+      { "nombres": "STEFANY LUCILA", "apellidos": "POLINAR JORGE", "dni": "62052512", "rol": "Deportista" },
+      { "nombres": "GREIDYS PAOLA", "apellidos": "LEON CADENAS", "dni": "009369746", "rol": "Deportista" },
+      { "nombres": "YAMILLE INES", "apellidos": "INZA FABIAN", "dni": "62432818", "rol": "Deportista" },
+      { "nombres": "SET IRIS", "apellidos": "UBILLUS SILVA", "dni": "74799370", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "CAROLINA", "apellidos": "VASQUEZ LARA", "dni": "42083880", "rol": "Delegado" },
+      { "nombres": "VICTORIA CINDIA", "apellidos": "BOVADILLA FLOREZ", "dni": "46211901", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "BÁSQUET",
+    "institucion": "BARTOLOME HERRERA",
+    "codigoModular": "0334649",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ERICK PAOLO", "apellidos": "CALLE RAMIREZ", "dni": "61993933", "rol": "Deportista" },
+      { "nombres": "CHRISTOFER MITCHEL", "apellidos": "FASHE RUIZ", "dni": "74189722", "rol": "Deportista" },
+      { "nombres": "MARIANO MIGUEL", "apellidos": "LEON ENCINAS", "dni": "73722336", "rol": "Deportista" },
+      { "nombres": "ALEXIS ADRIAN OCTAVIO", "apellidos": "NIETO BOLIVAR", "dni": "73410917", "rol": "Deportista" },
+      { "nombres": "JOEL ALEXANDER", "apellidos": "PEREZ CRUZATT", "dni": "74100357", "rol": "Deportista" },
+      { "nombres": "ANDREW ENRIQUE", "apellidos": "SARRIA AQUINO", "dni": "003066056", "rol": "Deportista" },
+      { "nombres": "DIEGO ANTONIO", "apellidos": "RODRIGUEZ FUCHS", "dni": "75291071", "rol": "Deportista" },
+      { "nombres": "JOSE GABRIEL", "apellidos": "FIGUEROA CASTILLO", "dni": "61911984", "rol": "Deportista" },
+      { "nombres": "AARON ENMANUEL", "apellidos": "PITER CHIRINOS", "dni": "005922316", "rol": "Deportista" },
+      { "nombres": "JOSE SANTIAGO", "apellidos": "HAYRE DONAYRE", "dni": "62607534", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "AUGUSTO ALBERTO", "apellidos": "CHAMORRO LEANDRO", "dni": "09271379", "rol": "Delegado" },
+      { "nombres": "VICTOR JESUS", "apellidos": "HERNANDEZ RAMIREZ", "dni": "10403776", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "FÚTBOL",
+    "institucion": "1120 PEDRO ADOLFO LABARTHE EFFIO",
+    "codigoModular": "0245654",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "VIVIANA GORETTY", "apellidos": "DAVILA GUERRA", "dni": "62273485", "rol": "Deportista" },
+      { "nombres": "ASHLY YAMILE", "apellidos": "SANCHEZ RIOS", "dni": "78154855", "rol": "Deportista" },
+      { "nombres": "DOMENICA SOLANCHS", "apellidos": "COARITA BALLON", "dni": "61861947", "rol": "Deportista" },
+      { "nombres": "JOHANA YANELA", "apellidos": "GARCIA HUAMAN", "dni": "60704833", "rol": "Deportista" },
+      { "nombres": "DHAINUBYS SHANYN", "apellidos": "MARQUEZ UZCATEGUI", "dni": "009094806", "rol": "Deportista" },
+      { "nombres": "LARISSA ANTONELLA", "apellidos": "MILLAN RIOJA", "dni": "75027382", "rol": "Deportista" },
+      { "nombres": "MERCEDES LIZETH", "apellidos": "SIGNOL PISFIL", "dni": "62501210", "rol": "Deportista" },
+      { "nombres": "ROSA ISABEL", "apellidos": "YANA COAQUIRA", "dni": "61842718", "rol": "Deportista" },
+      { "nombres": "ROSA AURELIA", "apellidos": "CHICLLASTO TENIENTE", "dni": "60270103", "rol": "Deportista" },
+      { "nombres": "MARIA MISHEYLA", "apellidos": "FERNANDEZ HANCCO", "dni": "63035714", "rol": "Deportista" },
+      { "nombres": "LEIA EVANGELINE", "apellidos": "HUERTAS VASQUEZ", "dni": "61841339", "rol": "Deportista" },
+      { "nombres": "ANGELY XIOMARA", "apellidos": "MATOREL CAPILLO", "dni": "80988185", "rol": "Deportista" },
+      { "nombres": "ANGELICA", "apellidos": "MERCADO LANCHA", "dni": "78988971", "rol": "Deportista" },
+      { "nombres": "ANJHALI GABRIELA", "apellidos": "GALVEZ FLORIAN", "dni": "61844343", "rol": "Deportista" },
+      { "nombres": "JESSICA CELINA", "apellidos": "SULCA HUARCAYA", "dni": "62009513", "rol": "Deportista" },
+      { "nombres": "AIDA MERCEDES", "apellidos": "QUICHIZ CORONEL", "dni": "81399807", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "ANA MARIA REBECA", "apellidos": "HERRERA MOGOLLON", "dni": "07508503", "rol": "Delegado" },
+      { "nombres": "VERONICA YACKELINA", "apellidos": "BERNILLA LLACSAHUANGA", "dni": "41830215", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "FÚTBOL",
+    "institucion": "MARIANO MELGAR",
+    "codigoModular": "0334664",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "DOMINIC PIARELLO LEON", "apellidos": "BRITO DE LA CRUZ", "dni": "74681687", "rol": "Deportista" },
+      { "nombres": "STHEFANO GIORDANO", "apellidos": "FARFAN MIRANDA", "dni": "61841127", "rol": "Deportista" },
+      { "nombres": "ARCANGEL MANUEL", "apellidos": "SANGUINO CASTAÑEDA", "dni": "003844056", "rol": "Deportista" },
+      { "nombres": "RENATO FABIAN", "apellidos": "GONZALES CALLE", "dni": "73413818", "rol": "Deportista" },
+      { "nombres": "DAYRON ORLANDO", "apellidos": "SANCHEZ VARGAS", "dni": "61844595", "rol": "Deportista" },
+      { "nombres": "MARCO RODRIGO", "apellidos": "ARRUE YAÑEZ", "dni": "61908560", "rol": "Deportista" },
+      { "nombres": "VICTOR MARIANO", "apellidos": "LLANOS MENDOZA", "dni": "62606623", "rol": "Deportista" },
+      { "nombres": "ANGEL GABRIEL JESUS", "apellidos": "RAMIREZ CAMPOS", "dni": "74788192", "rol": "Deportista" },
+      { "nombres": "FRITZ ALEXANDRO", "apellidos": "MUNAYCO CRUZ", "dni": "77253427", "rol": "Deportista" },
+      { "nombres": "HARNIK YHOSUE", "apellidos": "CABALLERO TACILLA", "dni": "75648065", "rol": "Deportista" },
+      { "nombres": "GIACOMO FRANSHESCO", "apellidos": "GARCIA TARAZONA", "dni": "76116376", "rol": "Deportista" },
+      { "nombres": "IKER FABIANO", "apellidos": "CAZORLA HERRERA", "dni": "61967707", "rol": "Deportista" },
+      { "nombres": "MISAEL RODRIGO", "apellidos": "BELTRAN CHUMPITAZ", "dni": "61968083", "rol": "Deportista" },
+      { "nombres": "FACUNDO ARIEL", "apellidos": "CHAVEZ GARCIA", "dni": "61891353", "rol": "Deportista" },
+      { "nombres": "AARON WILLIAM", "apellidos": "ESPICHAN RAMOS", "dni": "61982294", "rol": "Deportista" },
+      { "nombres": "ANTHONY BRAYAN", "apellidos": "VEGA VALLEJOS", "dni": "62432652", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "JHON EDGAR", "apellidos": "TARAZONA NORABUENA", "dni": "31651082", "rol": "Delegado" },
+      { "nombres": "FRITZ ANTONIO", "apellidos": "MUNAYCO PADILLA", "dni": "21812042", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "DAMAS",
+    "disciplina": "VOLEIBOL",
+    "institucion": "SACO OLIVEROS DE LINCE",
+    "codigoModular": "0340612",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "ANGELA SOFIA", "apellidos": "PARICAHUA MARTINEZ", "dni": "73548214", "rol": "Deportista" },
+      { "nombres": "VALERY THAIS", "apellidos": "SANCHEZ TORRES", "dni": "75288060", "rol": "Deportista" },
+      { "nombres": "ORIANIS YADHIRA", "apellidos": "TABARA MARQUINA", "dni": "76714122", "rol": "Deportista" },
+      { "nombres": "VALLERI", "apellidos": "CUBA ENCALADA", "dni": "62235574", "rol": "Deportista" },
+      { "nombres": "MARITA KATHERINE", "apellidos": "DELGADO PRADO", "dni": "76896025", "rol": "Deportista" },
+      { "nombres": "DAYANA STEFANI", "apellidos": "MELENDREZ HOCHUPE", "dni": "77373037", "rol": "Deportista" },
+      { "nombres": "DJOANEF DAYMARA", "apellidos": "PISCO ESQUIVEL", "dni": "74257319", "rol": "Deportista" },
+      { "nombres": "ALEXA VALENTINA", "apellidos": "PAREDES SALDAÑA", "dni": "62785054", "rol": "Deportista" },
+      { "nombres": "ESTRELLA DE LOS ANGELES", "apellidos": "ORONCOY BECERRA", "dni": "76885939", "rol": "Deportista" },
+      { "nombres": "FRANCESCA LUANA", "apellidos": "BERNUY HUARCAYA", "dni": "74180251", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "JOSE CARLOS", "apellidos": "CASTILLO BRAVO", "dni": "41589785", "rol": "Delegado" },
+      { "nombres": "JOSE DE LA ENCARNACIÓN", "apellidos": "CASTILLO VIDAURRE", "dni": "09199453", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  },
+  {
+    "tipoConcurso": "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+    "etapa": "UGEL",
+    "categoria": "C",
+    "genero": "VARONES",
+    "disciplina": "VOLEIBOL",
+    "institucion": "PERUANO CHINO JUAN XXIII",
+    "codigoModular": "0336966",
+    "tituloTrabajo": null,
+    "seudonimo": null,
+    "puesto": null,
+    "participantes": [
+      { "nombres": "YIMING DIEGO", "apellidos": "CAI QIN", "dni": "62544292", "rol": "Deportista" },
+      { "nombres": "FRANCISCO DANIEL", "apellidos": "VILELA BAILON", "dni": "73284335", "rol": "Deportista" },
+      { "nombres": "DIEGO ALONSO", "apellidos": "CHIRA MARTINEZ", "dni": "74264279", "rol": "Deportista" },
+      { "nombres": "LEONARDO JOSUE", "apellidos": "MARQUEZ CORDOVA", "dni": "73295091", "rol": "Deportista" },
+      { "nombres": "CARLOS MIGUEL", "apellidos": "CASTAÑEDA CASTELLANOS", "dni": "74339983", "rol": "Deportista" },
+      { "nombres": "AXEL SEBASTIAN", "apellidos": "CUYA LAPA", "dni": "62607777", "rol": "Deportista" },
+      { "nombres": "ERICK ALONSO", "apellidos": "BONILLA SALDAÑA", "dni": "73290478", "rol": "Deportista" },
+      { "nombres": "JUAN MANUEL", "apellidos": "MORALES GONZALEZ", "dni": "74800127", "rol": "Deportista" },
+      { "nombres": "SEBASTIAN", "apellidos": "YANG LI", "dni": "73838121", "rol": "Deportista" },
+      { "nombres": "ALVARO DANIEL", "apellidos": "DIEZ JULVE", "dni": "76489153", "rol": "Deportista" },
+      { "nombres": "NICOLÁS ALFONSO", "apellidos": "PRÍNCIPE BALLARTA", "dni": "77199235", "rol": "Deportista" }
+    ],
+    "asesores": [
+      { "nombres": "GERARDO EUGENIO", "apellidos": "SANCHEZ TORRES", "dni": "40040586", "rol": "Delegado" },
+      { "nombres": "CESAR ADRIAN", "apellidos": "GUERRERO SANCHEZ", "dni": "75181300", "rol": "Entrenador" }
+    ],
+    "resolucionRef": "RD 04854-2026-UGEL03",
+    "fecha": "2026-08-18"
+  }
+]

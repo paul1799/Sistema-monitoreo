@@ -1,0 +1,77 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/roles/$(request.auth.uid))
+        && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // --- Arranque: la primera persona que entra reclama el rol de admin ---
+    match /meta/bootstrap {
+      allow read: if signedIn();
+      // Solo permite pasar de "no reclamado" a "reclamado", nunca al revés.
+      allow update: if signedIn() && resource.data.claimed == false && request.resource.data.claimed == true;
+      allow create: if false; // este documento se crea una sola vez desde scripts/seed.js
+    }
+
+    // --- Roles de cada usuario ---
+    match /roles/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      // Un usuario puede crear su propio documento de rol como "general" en
+      // cualquier momento, o como "admin" SOLO si el bootstrap aún no fue
+      // reclamado (ver resolveRole() en el frontend).
+      allow create: if signedIn() && request.auth.uid == uid && (
+        request.resource.data.role == 'general' ||
+        (request.resource.data.role == 'admin'
+          && get(/databases/$(database)/documents/meta/bootstrap).data.claimed == false)
+      );
+      // Cambiar el rol de alguien (promover/degradar) es solo para admins.
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // --- Tipos de ficha: cualquiera con sesión los lee, solo admin los administra ---
+    match /fichaTypes/{docId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- Fichas registradas: cualquiera con sesión lee, crea y actualiza; solo admin borra ---
+    match /submissions/{docId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+
+    // --- Padrón de colegios: cualquiera con sesión lee, solo admin lo administra ---
+    match /colegios/{docId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- Directorio de responsables / especialistas: cualquiera con sesión lee, solo admin lo administra ---
+    match /responsables/{docId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- Catálogo de tipos de concurso: cualquiera con sesión lee, solo admin administra ---
+    match /tiposConcurso/{docId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- Registros de concursos: cualquiera con sesión lee, crea y actualiza; solo admin borra ---
+    match /concursoRegistros/{docId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+  }
+}

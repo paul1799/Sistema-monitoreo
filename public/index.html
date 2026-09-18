@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistematización de Fichas de Monitoreo</title>
+  <meta name="description"
+    content="Sistema compartido de fichas de monitoreo educativo: registra visitas, cruza colegios con tu REI y genera reportes de avance al instante.">
+
+  <!-- Favicon -->
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%97%82%EF%B8%8F%3C/text%3E%3C/svg%3E">
+
+  <!-- Librerías externas para exportar PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- SheetJS para leer/escribir archivos Excel (.xlsx) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- Tipografía Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Hoja de estilos de la aplicación -->
+  <link rel="stylesheet" href="./css/style.css?v=20260918_v9">
+</head>
+
+<body>
+
+  <!-- ===== PANTALLA DE LOGIN ===== -->
+  <div id="loginScreen" style="display:none;">
+    <div class="loginWrap">
+      <div class="loginBrand">
+        <div class="ico">📚</div>
+        <h1>Sistematización de Fichas de Monitoreo</h1>
+        <p>Un solo lugar para registrar visitas, dar seguimiento a los colegios de tu REI y compartir reportes de avance
+          con todo el equipo.</p>
+        <ul class="loginFeatures">
+          <li><span class="dot"></span> Registra fichas por institución y tipo de monitoreo</li>
+          <li><span class="dot"></span> Cruza el padrón de colegios con las visitas realizadas</li>
+          <li><span class="dot"></span> Reportes, alertas y descarga en PDF al instante</li>
+        </ul>
+      </div>
+      <div class="loginPane">
+        <div class="loginCard">
+          <h2>Iniciar sesión</h2>
+          <p class="sub">Ingresa con la cuenta que te asignaron para acceder al sistema compartido por el equipo.</p>
+          <form id="loginForm">
+            <div class="field">
+              <label for="loginEmail">Correo</label>
+              <input type="email" id="loginEmail" autocomplete="username" required>
+            </div>
+            <div class="field">
+              <label for="loginPassword">Contraseña</label>
+              <div class="pwWrap">
+                <input type="password" id="loginPassword" autocomplete="current-password" required>
+                <button type="button" class="pwToggle" id="pwToggleBtn" tabindex="-1">Mostrar</button>
+              </div>
+            </div>
+            <button type="submit" class="btn" id="loginBtn">Iniciar sesión</button>
+          </form>
+          <p id="loginError" class="helpText" style="color:var(--danger);"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== APLICACIÓN PRINCIPAL ===== -->
+  <div id="app" style="display:none;">
+    <nav id="sidebar">
+      <div class="brand">
+        <h1>Fichas de Monitoreo</h1>
+        <p>Sistematización &amp; reportes de avance</p>
+      </div>
+      <button class="navbtn active" data-tab="dashboard"><span class="ic">◇</span> Resumen</button>
+      <button class="navbtn" data-tab="registrar"><span class="ic">＋</span> Registrar ficha</button>
+      <button class="navbtn" data-tab="consolidado"><span class="ic">▤</span> Reportes</button>
+      <button class="navbtn" data-tab="concursos"><span class="ic">🏆</span> Concursos</button>
+      <button class="navbtn" data-tab="colegios"><span class="ic">🏫</span> Colegios</button>
+      <button class="navbtn" data-tab="alertas"><span class="ic">⚠</span> Alertas</button>
+      <button class="navbtn" data-tab="responsables"><span class="ic">👥</span> Responsables</button>
+      <button class="navbtn" data-tab="tipos" data-admin-only="1"><span class="ic">⚙</span> Tipos de ficha</button>
+      <button class="navbtn" data-tab="usuarios" data-admin-only="1"><span class="ic">◈</span> Usuarios</button>
+      <div id="sidebarFoot">Conectando…</div>
+    </nav>
+    <main id="main">
+      <div id="tabContent"></div>
+    </main>
+  </div>
+
+  <!-- ===== TOAST DE NOTIFICACIONES ===== -->
+  <div id="toast" class="toast"></div>
+
+  <!-- ===== MÓDULO PRINCIPAL (ES6 Modules) ===== -->
+  <script type="module" src="./js/app.js?v=20260918_v10"></script>
+
+</body>
+
+</html>
