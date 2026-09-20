@@ -3,6 +3,21 @@
    ========================================================================= */
 
 import { AI_SCAN_ENDPOINT } from './firebase-config.js?v=20260918_v8';
+import {
+  createOfficialPdfDocument,
+  exportFichaIndividualPdf,
+  exportConsolidadoReportPdf,
+  exportConcursosReportPdf,
+  exportActaOrdenMeritoPdf,
+  exportColegiosReportPdf,
+  formatDate,
+  formatPersonName,
+  formatResolucionRef,
+  formatPuestoLabel,
+  puestoRank,
+  generateVerificationCode,
+  getLimaDateStr
+} from './pdf-template.js?v=20260919_v1';
 
 /* ============================= CONSTANTES COMPARTIDAS ============================= */
 export const RESPONSE_OPTIONS = {
@@ -18,15 +33,22 @@ export const RESPONSE_LABELS = {
   ips: 'Inicio / Proceso / Logrado',
 };
 export const OPTION_COLORS = {
-  si_no:     { si: 'var(--primary)', no: 'var(--danger)', na: 'var(--line-strong)' },
-  escala_1_3:{ '1': 'var(--danger)', '2': 'var(--accent)', '3': 'var(--primary)', na: 'var(--line-strong)' },
-  nivel_1_4: { '1': 'var(--danger)', '2': 'var(--accent)', '3': '#34D399', '4': 'var(--primary)', na: 'var(--line-strong)' },
-  ips:       { inicio: 'var(--danger)', proceso: 'var(--accent)', logrado: 'var(--primary)', na: 'var(--line-strong)' },
+  si_no:     { si: 'var(--ok)', no: 'var(--danger)', na: 'var(--neutral)' },
+  escala_1_3:{ '1': 'var(--danger)', '2': 'var(--warn)', '3': 'var(--ok)', na: 'var(--neutral)' },
+  nivel_1_4: { '1': 'var(--danger)', '2': 'var(--warn)', '3': '#34D399', '4': 'var(--ok)', na: 'var(--neutral)' },
+  ips:       { inicio: 'var(--danger)', proceso: 'var(--warn)', logrado: 'var(--ok)', na: 'var(--neutral)' },
 };
 
-/* ============================= ESTADO DE EDICIÓN ============================= */
+/* ============================= USUARIO DE SESIÓN ============================= */
+let _currentSessionUser = null;
+export function setSessionUser(user) {
+  if (user) _currentSessionUser = user;
+}
+
+/* ============================= ESTADO DE EDICIÓN Y ORDEN ============================= */
 let editingSubmissionId   = null;
 let editingSubmissionData = null;
+let dashboardSortAsc      = true; // Por defecto: urgente (menor avance) arriba
 
 /** Activa el modo edición de una ficha ya registrada. Llamar antes de navegar a 'registrar'. */
 export function setEditMode(id, data) {
@@ -53,10 +75,11 @@ export function fmtDate(s) {
 }
 export function showToast(msg) {
   const t = document.getElementById('toast');
+  if (!t) return;
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(showToast._h);
-  showToast._h = setTimeout(() => t.classList.remove('show'), 2600);
+  showToast._h = setTimeout(() => t.classList.remove('show'), 2800);
 }
 export function scoreValue(tipo, v) {
   if (v === undefined || v === null || v === '' || v === 'na') return null;
@@ -68,14 +91,14 @@ export function scoreValue(tipo, v) {
 }
 export function statusFromPct(pct) {
   if (pct === null || pct === undefined) return { label: 'Sin datos', cls: 'st-none' };
-  if (pct >= 80) return { label: 'Logrado', cls: 'st-logrado' };
-  if (pct >= 50) return { label: 'En proceso', cls: 'st-proceso' };
-  return { label: 'Inicio', cls: 'st-inicio' };
+  if (pct >= 85) return { label: 'Logrado', cls: 'st-logrado' };
+  if (pct >= 70) return { label: 'En proceso', cls: 'st-proceso' };
+  return { label: 'Por mejorar', cls: 'st-inicio' };
 }
 export function colorForPct(pct) {
-  if (pct === null || pct === undefined) return 'var(--line-strong)';
-  if (pct >= 80) return 'var(--primary)';
-  if (pct >= 50) return 'var(--accent)';
+  if (pct === null || pct === undefined) return 'var(--neutral)';
+  if (pct >= 85) return 'var(--ok)';
+  if (pct >= 70) return 'var(--warn)';
   return 'var(--danger)';
 }
 export function normalizeText(s) {
@@ -86,7 +109,8 @@ export function normalizeText(s) {
 /* ============================= HELPERS DE RENDER ============================= */
 export function bar(pct) {
   const w = pct === null || pct === undefined ? 0 : pct;
-  return '<div class="barTrack"><div class="barFill" style="width:' + w + '%;background:' + colorForPct(pct) + '"></div></div>';
+  const cls = pct === null || pct === undefined ? 'none' : (pct >= 85 ? 'ok' : (pct >= 70 ? 'warn' : 'danger'));
+  return '<div class="barTrack" title="' + (pct === null ? 'Sin datos' : pct + '%') + '"><div class="barFill ' + cls + '" style="width:' + w + '%"></div></div>';
 }
 
 export function donutChart(parts, opts) {
@@ -108,18 +132,18 @@ export function donutChart(parts, opts) {
       return html;
     }).join('')
     : '<circle cx="' + cx + '" cy="' + cy + '" r="' + r +
-      '" fill="none" stroke="var(--line)" stroke-width="' + stroke + '"></circle>';
+      '" fill="none" stroke="var(--border)" stroke-width="' + stroke + '"></circle>';
 
   const centerLabel = opts.centerLabel !== undefined ? opts.centerLabel : (total || '');
   const centerSub = opts.centerSub || '';
   return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" role="img">' +
     segs +
     '<text x="' + cx + '" y="' + (cy - (centerSub ? 4 : -4)) +
-    '" text-anchor="middle" font-family="var(--serif)" font-weight="600" font-size="22" fill="var(--ink)">' +
+    '" text-anchor="middle" font-family="var(--serif)" font-weight="700" font-size="24" fill="var(--navy-900)">' +
     esc(String(centerLabel)) + '</text>' +
     (centerSub
-      ? '<text x="' + cx + '" y="' + (cy + 16) +
-        '" text-anchor="middle" font-family="var(--sans)" font-size="10.5" fill="var(--ink-soft)">' +
+      ? '<text x="' + cx + '" y="' + (cy + 17) +
+        '" text-anchor="middle" font-family="var(--sans)" font-size="11" font-weight="600" fill="var(--text-600)">' +
         esc(centerSub) + '</text>'
       : '') +
     '</svg>';
@@ -176,24 +200,73 @@ export function computeItemAgg(subs, ft) {
 }
 
 export function renderItemReportHtml(itemAgg, tipoRespuesta) {
-  const legend = RESPONSE_OPTIONS[tipoRespuesta].map(o =>
-    '<span><span class="dot" style="background:' + OPTION_COLORS[tipoRespuesta][o.v] + '"></span>' + esc(o.l) + '</span>'
-  ).join('');
-  const sections = itemAgg.map((sec, si) => {
-    const rows = sec.items.map(it =>
-      '<div class="itemReportRow">' +
-        '<div class="irTxt">' + esc(it.texto) + '</div>' +
-        '<div class="irBar">' + stackedBar(it.counts, it.total, tipoRespuesta) + '</div>' +
-        '<div class="irPct">' + (it.pct === null ? '—' : it.pct + '%') + '</div>' +
-        '<div class="irN">n=' + it.total + '</div>' +
-      '</div>'
-    ).join('');
-    return '<details' + (si === 0 ? ' open' : '') + ' class="secDetails">' +
-      '<summary><span>' + esc(sec.nombre) + '</span><span class="secAvg">' + (sec.avg === null ? '—' : sec.avg + '%') + '</span></summary>' +
-      '<div class="secDetailsBody">' + rows + '</div>' +
-      '</details>';
+  const legendMap = {
+    '1': '1 = No logrado / Inicio',
+    '2': '2 = En proceso',
+    '3': '3 = Logrado',
+    'na': 'N/A = No aplica',
+    'si': 'Sí = Cumple',
+    'no': 'No = No cumple',
+    'inicio': 'Inicio = Por mejorar',
+    'proceso': 'Proceso = En proceso',
+    'logrado': 'Logrado = Cumplido'
+  };
+
+  const legend = (RESPONSE_OPTIONS[tipoRespuesta] || []).map(o => {
+    const text = legendMap[o.v] || o.l;
+    const col = (OPTION_COLORS[tipoRespuesta] && OPTION_COLORS[tipoRespuesta][o.v]) || 'var(--neutral)';
+    return '<span><span class="dot" style="background:' + col + '"></span>' + esc(text) + '</span>';
   }).join('');
-  return '<div class="seglegend" style="margin:0 0 12px">' + legend + '</div>' + sections;
+
+  const sections = itemAgg.map((sec, si) => {
+    const secStatus = statusFromPct(sec.avg);
+    const tableRows = sec.items.map((it, idx) => {
+      const itStatus = statusFromPct(it.pct);
+      const respPills = (RESPONSE_OPTIONS[tipoRespuesta] || []).map(o => {
+        const cnt = it.counts[o.v] || 0;
+        if (!cnt) return '';
+        const col = (OPTION_COLORS[tipoRespuesta] && OPTION_COLORS[tipoRespuesta][o.v]) || 'var(--neutral)';
+        return '<span style="display:inline-flex;align-items:center;gap:3px;margin-right:6px;font-size:11px"><span class="dot" style="width:8px;height:8px;background:' + col + '"></span>' + esc(o.l) + ': <strong>' + cnt + '</strong></span>';
+      }).join('');
+
+      return '<tr>' +
+        '<td style="text-align:center;font-weight:700;color:var(--primary)">' + (idx + 1) + '</td>' +
+        '<td><strong>' + esc(it.texto) + '</strong></td>' +
+        '<td style="text-align:center"><span class="badge ' + itStatus.cls + '">' + itStatus.label + '</span></td>' +
+        '<td><div style="margin-bottom:3px">' + stackedBar(it.counts, it.total, tipoRespuesta) + '</div>' + respPills + '</td>' +
+        '<td style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums">' + (it.pct === null ? '—' : it.pct + '%') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    return '<details class="secDetails"' + (si === 0 ? ' open' : '') + ' data-secitem="' + si + '">' +
+      '<summary>' +
+        '<div class="secSummaryLeft">' +
+          '<span class="secChevron">▶</span>' +
+          '<strong>' + esc(sec.nombre) + '</strong>' +
+          '<span style="font-size:12px;color:var(--text-600);font-weight:400">(' + sec.items.length + ' indicadores)</span>' +
+        '</div>' +
+        '<div class="secSummaryRight">' +
+          bar(sec.avg) +
+          '<span style="font-weight:700;font-size:13px;min-width:42px;text-align:right">' + (sec.avg === null ? '—' : sec.avg + '%') + '</span>' +
+          '<span class="badge ' + secStatus.cls + '">' + secStatus.label + '</span>' +
+        '</div>' +
+      '</summary>' +
+      '<div class="secDetailsBody">' +
+        '<div class="tblWrap"><table class="itemTable"><thead><tr>' +
+          '<th style="width:40px;text-align:center">N.°</th>' +
+          '<th>Indicador / Ítem</th>' +
+          '<th style="width:110px;text-align:center">Resultado</th>' +
+          '<th style="min-width:180px">Distribución (n=' + (sec.items[0] ? sec.items[0].total : 0) + ')</th>' +
+          '<th style="width:60px;text-align:right">%</th>' +
+        '</tr></thead><tbody>' + tableRows + '</tbody></table></div>' +
+      '</div>' +
+    '</details>';
+  }).join('');
+
+  return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">' +
+    '<div class="itemReportLegend" style="margin-bottom:0">' + legend + '</div>' +
+    '<button type="button" class="btn secondary small" id="toggleAllItemsBtn">⊞ Expandir / Contraer todo</button>' +
+  '</div>' + sections;
 }
 
 export function seedSuggestions(field, submissions) {
@@ -222,47 +295,661 @@ export function downloadCsv(filename, header, rows) {
 /* ============================= EXPORTAR PDF ============================= */
 export async function exportReportPdf(el, title, btnEl) {
   if (!el) { showToast('No hay reporte para exportar.'); return; }
-  if (typeof html2canvas === 'undefined' || !window.jspdf) {
-    showToast('No se pudo cargar el generador de PDF (revisa tu conexión a internet).');
-    return;
-  }
   const originalText = btnEl ? btnEl.textContent : null;
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Generando PDF...'; }
   try {
-    const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches &&
-      !document.documentElement.getAttribute('data-theme');
-    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#141A17' : '#F5F6F3');
-    const canvas = await html2canvas(el, { scale: 2, backgroundColor: bg, useCORS: true });
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'pt', 'a4');
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const imgW = pageW;
-    const pageCanvas = document.createElement('canvas');
-    const ctx = pageCanvas.getContext('2d');
-    const pxPerPage = Math.floor(canvas.width * (pageH / imgW));
-    pageCanvas.width = canvas.width;
-    let renderedY = 0, first = true;
-    while (renderedY < canvas.height) {
-      const sliceH = Math.min(pxPerPage, canvas.height - renderedY);
-      pageCanvas.height = sliceH;
-      ctx.clearRect(0, 0, pageCanvas.width, sliceH);
-      ctx.drawImage(canvas, 0, renderedY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-      const sliceImg = pageCanvas.toDataURL('image/png');
-      if (!first) pdf.addPage();
-      pdf.addImage(sliceImg, 'PNG', 0, 0, imgW, sliceH * (imgW / canvas.width));
-      renderedY += sliceH;
-      first = false;
-    }
-    const fname = 'reporte_' + (title || 'ficha').replace(/[^a-z0-9]+/gi, '_').toLowerCase() + '_' + todayStr() + '.pdf';
-    pdf.save(fname);
-    showToast('PDF descargado.');
+    showToast('Generando documento oficial en PDF...');
   } catch (err) {
     console.error('PDF export error', err);
     showToast('No se pudo generar el PDF.');
   } finally {
     if (btnEl) { btnEl.disabled = false; btnEl.textContent = originalText; }
   }
+}
+
+/* ============================= DIÁLOGO UNIVERSAL "CONFIGURAR DESCARGA" (PARTE A / D) ============================= */
+export const DEFAULT_AREAS = [
+  { id: 'agebre', nombre: 'Área de Gestión de la Educación Básica Regular y Especial', sigla: 'AGEBRE', descripcionEncabezado: 'Área de Gestión de la\nEducación Básica (2026)', logo: '', activa: true, esPredeterminada: true, orden: 1 },
+  { id: 'agebatp', nombre: 'Área de Gestión de la Educación Básica Alternativa y Técnico-Productiva', sigla: 'AGEBATP', descripcionEncabezado: 'Área de Gestión de la Educ. Básica\nAlternativa y Técnico-Prod. (2026)', logo: '', activa: true, esPredeterminada: false, orden: 2 },
+  { id: 'agp', nombre: 'Área de Gestión Pedagógica', sigla: 'AGP', descripcionEncabezado: 'Área de Gestión Pedagógica\nUGEL 03 (2026)', logo: '', activa: true, esPredeterminada: false, orden: 3 },
+  { id: 'agi', nombre: 'Área de Gestión Institucional', sigla: 'AGI', descripcionEncabezado: 'Área de Gestión Institucional\nUGEL 03 (2026)', logo: '', activa: true, esPredeterminada: false, orden: 4 },
+  { id: 'dir_ugel', nombre: 'Dirección de la UGEL N.° 03', sigla: 'DIRECCIÓN', descripcionEncabezado: 'Dirección de la Unidad de Gestión\nEducativa Local N.° 03', logo: '', activa: true, esPredeterminada: false, orden: 5 }
+];
+
+export const DEFAULT_PLANTILLAS = [
+  // Concursos
+  { tipoReporte: 'concursos', orden: 1, cargo: 'Coordinador(a) del Concurso — Comisión Organizadora UGEL 03', nombreOpcional: '', entidad: 'Comisión Organizadora UGEL 03', leyenda: 'Firma y Sello' },
+  { tipoReporte: 'concursos', orden: 2, cargo: 'Especialista de [ÁREA] / Jurado — UGEL 03 – DRELM', nombreOpcional: '', entidad: 'UGEL 03 – DRELM', leyenda: 'Firma y Sello' },
+  { tipoReporte: 'concursos', orden: 3, cargo: 'V.° B.° Jefatura [ÁREA] — UGEL 03', nombreOpcional: '', entidad: 'UGEL 03', leyenda: 'Sello Institucional' },
+  // Consolidado
+  { tipoReporte: 'consolidado', orden: 1, cargo: 'Especialista Responsable de Monitoreo — [ÁREA] – UGEL 03', nombreOpcional: '', entidad: 'UGEL 03 – DRELM', leyenda: 'Firma y Sello' },
+  { tipoReporte: 'consolidado', orden: 2, cargo: 'Jefatura de [ÁREA] — UGEL 03 – DRELM', nombreOpcional: '', entidad: 'UGEL 03 – DRELM', leyenda: 'V.° B.° y Sello' },
+  // Individual
+  { tipoReporte: 'individual', orden: 1, cargo: 'Especialista que monitorea — [ÁREA]', nombreOpcional: '', entidad: 'UGEL 03 – DRELM', leyenda: 'Firma y Sello' },
+  { tipoReporte: 'individual', orden: 2, cargo: 'Director(a) / Autoridad de la I.E.', nombreOpcional: '', entidad: 'Institución Educativa', leyenda: 'Firma y Sello' },
+  { tipoReporte: 'individual', orden: 3, cargo: 'Jefatura de [ÁREA]', nombreOpcional: '', entidad: 'UGEL 03', leyenda: 'V.° B.°' },
+  // Avance
+  { tipoReporte: 'avance', orden: 1, cargo: 'Especialista Responsable — [ÁREA]', nombreOpcional: '', entidad: 'UGEL 03 – DRELM', leyenda: 'Firma y Sello' },
+  { tipoReporte: 'avance', orden: 2, cargo: 'Jefatura de [ÁREA]', nombreOpcional: '', entidad: 'UGEL 03', leyenda: 'V.° B.°' }
+];
+
+/**
+ * Abre el diálogo modal universal "Configurar descarga" con selección de área de firmas,
+ * firmantes reordenables, revisión previa de datos (Parte D), opciones y vista previa en vivo.
+ */
+export function openDownloadConfigModal({
+  documentTitle = 'DOCUMENTO OFICIAL',
+  tipoReporte = 'concursos', // 'concursos' | 'consolidado' | 'individual' | 'avance' | 'colegios'
+  dataRows = [],
+  currentUser = null,
+  state = {},
+  dbNs = null,
+  isAdmin = false,
+  onConfirm = async (downloadConfig) => {}
+}) {
+  const oldModal = document.getElementById('downloadConfigModal');
+  if (oldModal) oldModal.remove();
+
+  const areasList = (state.areasFirma && state.areasFirma.length > 0)
+    ? state.areasFirma.filter(a => a.activa !== false)
+    : DEFAULT_AREAS;
+
+  let savedPref = null;
+  try {
+    const raw = localStorage.getItem('download_pref_' + tipoReporte);
+    if (raw) savedPref = JSON.parse(raw);
+  } catch (e) {}
+
+  let currentAreaId = (savedPref && savedPref.areaId) ? savedPref.areaId : 'agebre';
+  if (!areasList.some(a => a.id === currentAreaId) && currentAreaId !== 'personalizado' && currentAreaId !== 'sin_firmas') {
+    const defArea = areasList.find(a => a.esPredeterminada) || areasList[0];
+    currentAreaId = defArea ? defArea.id : 'agebre';
+  }
+
+  let sinFirmas = currentAreaId === 'sin_firmas' || (savedPref && savedPref.sinFirmas === true);
+  let mostrarEncabezadoArea = savedPref ? (savedPref.mostrarEncabezadoArea !== false) : true;
+  let incluirQr = savedPref ? (savedPref.incluirQr !== false) : true;
+  let orientationChoice = savedPref ? (savedPref.orientation || 'auto') : 'auto';
+  let formatoConcurso = savedPref ? (savedPref.formatoConcurso || 'completo') : 'completo';
+  let recordarEleccion = true;
+
+  let lugar = (savedPref && savedPref.lugar) ? savedPref.lugar : 'Lima';
+  let fecha = (savedPref && savedPref.fecha) ? savedPref.fecha : formatDate(getLimaDateStr());
+
+  let customAreaNombre = (savedPref && savedPref.customAreaNombre) || '';
+  let customAreaSigla = (savedPref && savedPref.customAreaSigla) || '';
+  let customAreaDesc = (savedPref && savedPref.customAreaDesc) || '';
+  let guardarEnCatalogo = false;
+
+  function getSignersForArea(areaId) {
+    if (savedPref && savedPref.areaId === areaId && Array.isArray(savedPref.firmantes) && savedPref.firmantes.length > 0) {
+      return JSON.parse(JSON.stringify(savedPref.firmantes));
+    }
+
+    const areaObj = areasList.find(a => a.id === areaId);
+    const sigla = areaObj ? areaObj.sigla : (customAreaSigla || 'AGEBRE');
+
+    const plantillasDb = (state.plantillasFirmantes || []).filter(p => p.areaId === areaId && p.tipoReporte === tipoReporte);
+    if (plantillasDb.length > 0) {
+      return plantillasDb.sort((a, b) => (a.orden || 99) - (b.orden || 99)).map(p => ({
+        cargo: p.cargo.replace(/\[ÁREA\]/g, sigla),
+        nombre: p.nombreOpcional || '',
+        entidad: p.entidad ? p.entidad.replace(/\[ÁREA\]/g, sigla) : 'UGEL 03 – DRELM',
+        leyenda: p.leyenda || 'Firma y Sello'
+      }));
+    }
+
+    const defaults = DEFAULT_PLANTILLAS.filter(p => p.tipoReporte === tipoReporte);
+    if (defaults.length > 0) {
+      return defaults.map(p => ({
+        cargo: p.cargo.replace(/\[ÁREA\]/g, sigla),
+        nombre: p.nombreOpcional || '',
+        entidad: p.entidad.replace(/\[ÁREA\]/g, sigla),
+        leyenda: p.leyenda
+      }));
+    }
+
+    return [
+      { cargo: `Especialista Responsable — ${sigla}`, nombre: '', entidad: 'UGEL 03 – DRELM', leyenda: 'Firma y Sello' },
+      { cargo: `Jefatura de ${sigla}`, nombre: '', entidad: 'UGEL 03 – DRELM', leyenda: 'V.° B.° y Sello' }
+    ];
+  }
+
+  let firmantesList = getSignersForArea(currentAreaId);
+
+  // PARTE D: Análisis de datos
+  const anomalies = {
+    sinPuesto: 0,
+    sinAsesor: 0,
+    sinParticipante: 0,
+    sinResolucion: 0,
+    posiblesDuplicados: 0,
+    dniInvalido: 0,
+    sinUgelRed: 0
+  };
+
+  if (tipoReporte === 'concursos' && Array.isArray(dataRows)) {
+    const seenDup = new Set();
+    dataRows.forEach(r => {
+      if (!r.puesto || r.puesto === '—' || r.puesto === '') anomalies.sinPuesto++;
+      const hasAsesor = r.asesores && r.asesores.length > 0 && r.asesores.some(a => (a.nombres || a.apellidos || '').trim());
+      if (!hasAsesor) anomalies.sinAsesor++;
+      const hasPart = r.participantes && r.participantes.length > 0 && r.participantes.some(p => (p.nombres || p.apellidos || '').trim());
+      if (!hasPart) anomalies.sinParticipante++;
+      if (!r.resolucionRef || r.resolucionRef === '—' || r.resolucionRef === '') anomalies.sinResolucion++;
+
+      [...(r.participantes || []), ...(r.asesores || [])].forEach(p => {
+        if (p.dni && (p.dni.length !== 8 || !/^\d+$/.test(p.dni))) anomalies.dniInvalido++;
+      });
+
+      const pDnis = (r.participantes || []).map(p => (p.dni || '').trim()).filter(Boolean).sort().join(',');
+      const dupKey = [(r.tipoConcursoNombre || r.tipoConcursoId || '').toLowerCase(), (r.etapa || '').toLowerCase(), (r.categoria || '').toLowerCase(), (r.disciplina || '').toLowerCase(), (r.institucion || '').toLowerCase(), pDnis].join('|');
+      if (seenDup.has(dupKey)) {
+        anomalies.posiblesDuplicados++;
+      } else {
+        seenDup.add(dupKey);
+      }
+    });
+  } else if (tipoReporte === 'consolidado' && Array.isArray(dataRows)) {
+    dataRows.forEach(x => {
+      const s = x.s || x;
+      if (!s.ugel || s.ugel === '—' || !s.red || s.red === '—') anomalies.sinUgelRed++;
+    });
+  }
+
+  const totalAnomalies = Object.values(anomalies).reduce((a, b) => a + b, 0);
+
+  const overlay = document.createElement('div');
+  overlay.id = 'downloadConfigModal';
+  overlay.className = 'downloadModalOverlay';
+
+  function renderModalContent() {
+    const isCustom = currentAreaId === 'personalizado';
+    const isSinFirmas = currentAreaId === 'sin_firmas' || sinFirmas;
+
+    overlay.innerHTML = `
+      <div class="downloadModalCard" role="dialog" aria-modal="true" aria-labelledby="dl_title">
+        <div class="downloadModalHeader">
+          <div>
+            <h3 id="dl_title">Configurar descarga</h3>
+            <div class="sub">${esc(documentTitle)}</div>
+          </div>
+          <button type="button" class="downloadModalClose" id="dl_close_btn" aria-label="Cerrar">✕</button>
+        </div>
+
+        <div class="downloadModalBody">
+          ${totalAnomalies > 0 ? `
+            <div class="downloadReviewAlert">
+              <h5>⚠️ Revisión previa de datos: Se detectaron observaciones en los registros a exportar:</h5>
+              <ul>
+                ${anomalies.sinPuesto > 0 ? `<li><strong>${anomalies.sinPuesto}</strong> registro(s) sin puesto asignado (se mostrará como "—")</li>` : ''}
+                ${anomalies.sinAsesor > 0 ? `<li><strong>${anomalies.sinAsesor}</strong> registro(s) sin docente asesor (se mostrará "Sin docente asesor registrado")</li>` : ''}
+                ${anomalies.sinParticipante > 0 ? `<li><strong>${anomalies.sinParticipante}</strong> registro(s) sin participantes (se mostrará "Sin participante registrado")</li>` : ''}
+                ${anomalies.sinResolucion > 0 ? `<li><strong>${anomalies.sinResolucion}</strong> registro(s) sin resolución de referencia</li>` : ''}
+                ${anomalies.posiblesDuplicados > 0 ? `<li><strong>${anomalies.posiblesDuplicados}</strong> posible(s) registro(s) duplicado(s) detectado(s)</li>` : ''}
+                ${anomalies.dniInvalido > 0 ? `<li><strong>${anomalies.dniInvalido}</strong> DNI(s) con formato no estándar (diferente de 8 dígitos numéricos)</li>` : ''}
+                ${anomalies.sinUgelRed > 0 ? `<li><strong>${anomalies.sinUgelRed}</strong> ficha(s) sin UGEL o RED asignada</li>` : ''}
+              </ul>
+              <div class="downloadReviewActions">
+                <button type="button" class="btn secondary small" id="dl_btn_fix">🔍 Ver y corregir</button>
+                <button type="button" class="btn small" id="dl_btn_anyway" style="background:#B45309;color:#FFF">⬇ Descargar de todos modos (con marca de datos por completar)</button>
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="downloadModalSection">
+            <label class="secLabel" for="dl_area_select">Área que firma *</label>
+            <select id="dl_area_select" style="padding:8px 10px;font-size:13.5px;font-weight:600;border:1.5px solid var(--primary);border-radius:7px">
+              ${areasList.map(a => `
+                <option value="${esc(a.id)}" ${a.id === currentAreaId ? 'selected' : ''}>
+                  ${esc(a.sigla)} — ${esc(a.nombre)} ${a.esPredeterminada ? '(Predeterminada)' : ''}
+                </option>
+              `).join('')}
+              <option value="personalizado" ${currentAreaId === 'personalizado' ? 'selected' : ''}>✍️ Personalizado…</option>
+              <option value="sin_firmas" ${currentAreaId === 'sin_firmas' ? 'selected' : ''}>🚫 Sin bloque de firmas</option>
+            </select>
+          </div>
+
+          ${isCustom ? `
+            <div style="background:#F1F5F9;border:1px solid #CBD5E1;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+                <div>
+                  <label class="secLabel">Nombre completo del área *</label>
+                  <input type="text" id="dl_custom_nombre" placeholder="Ej: Comisión Especial de Monitoreo" value="${esc(customAreaNombre)}" style="width:100%;padding:6px 8px">
+                </div>
+                <div>
+                  <label class="secLabel">Sigla *</label>
+                  <input type="text" id="dl_custom_sigla" placeholder="Ej: CEM" value="${esc(customAreaSigla)}" style="width:100%;padding:6px 8px">
+                </div>
+              </div>
+              <div>
+                <label class="secLabel">Descripción para el encabezado</label>
+                <input type="text" id="dl_custom_desc" placeholder="Ej: Comisión Especial de Monitoreo (2026)" value="${esc(customAreaDesc)}" style="width:100%;padding:6px 8px">
+              </div>
+              ${isAdmin ? `
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                  <input type="checkbox" id="dl_custom_save" ${guardarEnCatalogo ? 'checked' : ''}>
+                  Guardar como nueva plantilla en el catálogo global de áreas
+                </label>
+              ` : ''}
+            </div>
+          ` : ''}
+
+          ${!isSinFirmas ? `
+            <div class="downloadModalSection">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <label class="secLabel">Firmantes (${firmantesList.length}/6)</label>
+                ${firmantesList.length < 6 ? `
+                  <button type="button" class="btn secondary small" id="dl_add_firmante_btn" style="padding:2px 8px;font-size:11px">＋ Agregar firmante</button>
+                ` : ''}
+              </div>
+
+              <div class="downloadFirmantesList" id="dl_firmantes_container">
+                ${firmantesList.map((sig, idx) => `
+                  <div class="downloadFirmanteItem" data-idx="${idx}">
+                    <div class="reorderBtns">
+                      <button type="button" class="btnUp" data-up="${idx}" ${idx === 0 ? 'disabled' : ''} title="Subir">▲</button>
+                      <button type="button" class="btnDown" data-down="${idx}" ${idx === firmantesList.length - 1 ? 'disabled' : ''} title="Bajar">▼</button>
+                    </div>
+                    <div class="fieldsWrap">
+                      <div>
+                        <input type="text" class="fCargo" data-idx="${idx}" placeholder="Cargo *" value="${esc(sig.cargo)}" required title="Cargo (obligatorio)">
+                      </div>
+                      <div>
+                        <input type="text" class="fNombre" data-idx="${idx}" placeholder="Nombre (opcional)" value="${esc(sig.nombre || '')}" title="Nombre">
+                      </div>
+                      <div>
+                        <input type="text" class="fEntidad" data-idx="${idx}" placeholder="Entidad / Área" value="${esc(sig.entidad || '')}" title="Entidad / Área">
+                      </div>
+                      <div>
+                        <select class="fLeyenda" data-idx="${idx}" title="Leyenda">
+                          <option value="Firma y Sello" ${sig.leyenda === 'Firma y Sello' ? 'selected' : ''}>Firma y Sello</option>
+                          <option value="V.° B.° y Sello" ${sig.leyenda === 'V.° B.° y Sello' ? 'selected' : ''}>V.° B.° y Sello</option>
+                          <option value="Sello Institucional" ${sig.leyenda === 'Sello Institucional' ? 'selected' : ''}>Sello Institucional</option>
+                          <option value="V.° B.°" ${sig.leyenda === 'V.° B.°' ? 'selected' : ''}>V.° B.°</option>
+                          <option value="" ${!sig.leyenda ? 'selected' : ''}>Ninguna</option>
+                        </select>
+                      </div>
+                    </div>
+                    <button type="button" class="delFirmanteBtn" data-del="${idx}" title="Eliminar firmante">✕</button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${!isSinFirmas ? `
+            <div class="downloadModalSection">
+              <label class="secLabel">Lugar y Fecha</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <input type="text" id="dl_lugar" placeholder="Ciudad (Ej: Lima)" value="${esc(lugar)}" style="padding:6px 8px">
+                <input type="text" id="dl_fecha" placeholder="Fecha (Ej: 19/09/2026)" value="${esc(fecha)}" style="padding:6px 8px">
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="downloadModalSection">
+            <label class="secLabel">Opciones</label>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                <input type="checkbox" id="dl_opt_encabezado" ${mostrarEncabezadoArea ? 'checked' : ''}>
+                Mostrar logo y nombre del área en el encabezado (4.° recuadro)
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                <input type="checkbox" id="dl_opt_qr" ${incluirQr ? 'checked' : ''}>
+                Incluir código y QR oficial de verificación
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                <input type="checkbox" id="dl_opt_sin_firmas" ${isSinFirmas ? 'checked' : ''}>
+                Sin bloque de firmas
+              </label>
+
+              <div style="display:flex;align-items:center;gap:14px;margin-top:4px">
+                <span style="font-size:12px;font-weight:600;color:var(--ink-soft)">Orientación:</span>
+                <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="dl_orientation" value="auto" ${orientationChoice === 'auto' ? 'checked' : ''}> Automática
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="dl_orientation" value="portrait" ${orientationChoice === 'portrait' ? 'checked' : ''}> Vertical
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="dl_orientation" value="landscape" ${orientationChoice === 'landscape' ? 'checked' : ''}> Horizontal
+                </label>
+              </div>
+
+              ${tipoReporte === 'concursos' ? `
+                <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:8px 10px;margin-top:6px">
+                  <div style="font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:4px">Formato del documento:</div>
+                  <div style="display:flex;gap:16px">
+                    <label style="display:flex;align-items:center;gap:4px;font-size:12.5px;cursor:pointer">
+                      <input type="radio" name="dl_formato_concurso" value="completo" ${formatoConcurso === 'completo' ? 'checked' : ''}>
+                      Listado completo (agrupado por disciplina/categoría)
+                    </label>
+                    <label style="display:flex;align-items:center;gap:4px;font-size:12.5px;cursor:pointer">
+                      <input type="radio" name="dl_formato_concurso" value="orden_merito" ${formatoConcurso === 'orden_merito' ? 'checked' : ''}>
+                      Acta de orden de mérito (solo 1.° a 3.° puesto)
+                    </label>
+                  </div>
+                </div>
+              ` : ''}
+
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:4px">
+                <input type="checkbox" id="dl_opt_recordar" ${recordarEleccion ? 'checked' : ''}>
+                Recordar mi elección para este tipo de reporte
+              </label>
+            </div>
+          </div>
+
+          ${!isSinFirmas && firmantesList.length > 0 ? `
+            <div class="downloadModalSection">
+              <label class="secLabel">Vista previa de firmas</label>
+              <div class="downloadSigPreview">
+                <div class="previewDate">${esc(lugar)}, ${esc(fecha)}</div>
+                <div class="downloadSigPreviewGrid" style="grid-template-columns:repeat(${Math.min(firmantesList.length, 3)}, 1fr)">
+                  ${firmantesList.map(sig => `
+                    <div class="downloadSigPreviewBox">
+                      ${sig.nombre ? `<div class="pNom">${esc(formatPersonName(sig.nombre))}</div>` : ''}
+                      <div class="pCargo">${esc(sig.cargo || 'Cargo')}</div>
+                      ${sig.entidad ? `<div class="pEnt">${esc(sig.entidad)}</div>` : ''}
+                      ${sig.leyenda ? `<div class="pLey">${esc(sig.leyenda)}</div>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="downloadModalFooter">
+          <button type="button" class="btn secondary" id="dl_cancel_btn">Cancelar</button>
+          <button type="button" class="btn" id="dl_confirm_btn" style="display:flex;align-items:center;gap:6px">
+            <span>⬇</span> Generar PDF
+          </button>
+        </div>
+      </div>
+    `;
+
+    attachModalEvents();
+  }
+
+  function attachModalEvents() {
+    const close = () => { overlay.remove(); };
+    document.getElementById('dl_close_btn').onclick = close;
+    document.getElementById('dl_cancel_btn').onclick = close;
+
+    document.getElementById('dl_area_select').onchange = (e) => {
+      currentAreaId = e.target.value;
+      if (currentAreaId === 'sin_firmas') {
+        sinFirmas = true;
+      } else {
+        sinFirmas = false;
+        firmantesList = getSignersForArea(currentAreaId);
+      }
+      renderModalContent();
+    };
+
+    const customNom = document.getElementById('dl_custom_nombre');
+    if (customNom) customNom.oninput = (e) => { customAreaNombre = e.target.value; };
+    const customSig = document.getElementById('dl_custom_sigla');
+    if (customSig) {
+      customSig.oninput = (e) => {
+        customAreaSigla = e.target.value;
+        firmantesList = getSignersForArea('personalizado');
+      };
+    }
+    const customDesc = document.getElementById('dl_custom_desc');
+    if (customDesc) customDesc.oninput = (e) => { customAreaDesc = e.target.value; };
+    const customSave = document.getElementById('dl_custom_save');
+    if (customSave) customSave.onchange = (e) => { guardarEnCatalogo = e.target.checked; };
+
+    const sinFirmasCb = document.getElementById('dl_opt_sin_firmas');
+    if (sinFirmasCb) {
+      sinFirmasCb.onchange = (e) => {
+        sinFirmas = e.target.checked;
+        if (sinFirmas) currentAreaId = 'sin_firmas';
+        else if (currentAreaId === 'sin_firmas') currentAreaId = 'agebre';
+        renderModalContent();
+      };
+    }
+
+    const lugarInp = document.getElementById('dl_lugar');
+    if (lugarInp) {
+      lugarInp.oninput = (e) => {
+        lugar = e.target.value;
+        const pDate = overlay.querySelector('.previewDate');
+        if (pDate) pDate.textContent = `${lugar}, ${fecha}`;
+      };
+    }
+    const fechaInp = document.getElementById('dl_fecha');
+    if (fechaInp) {
+      fechaInp.oninput = (e) => {
+        fecha = e.target.value;
+        const pDate = overlay.querySelector('.previewDate');
+        if (pDate) pDate.textContent = `${lugar}, ${fecha}`;
+      };
+    }
+
+    overlay.querySelectorAll('.fCargo').forEach(inp => {
+      inp.oninput = (e) => {
+        firmantesList[parseInt(e.target.dataset.idx, 10)].cargo = e.target.value;
+        updatePreviewBox(parseInt(e.target.dataset.idx, 10));
+      };
+    });
+    overlay.querySelectorAll('.fNombre').forEach(inp => {
+      inp.oninput = (e) => {
+        firmantesList[parseInt(e.target.dataset.idx, 10)].nombre = e.target.value;
+        updatePreviewBox(parseInt(e.target.dataset.idx, 10));
+      };
+    });
+    overlay.querySelectorAll('.fEntidad').forEach(inp => {
+      inp.oninput = (e) => {
+        firmantesList[parseInt(e.target.dataset.idx, 10)].entidad = e.target.value;
+        updatePreviewBox(parseInt(e.target.dataset.idx, 10));
+      };
+    });
+    overlay.querySelectorAll('.fLeyenda').forEach(sel => {
+      sel.onchange = (e) => {
+        firmantesList[parseInt(e.target.dataset.idx, 10)].leyenda = e.target.value;
+        updatePreviewBox(parseInt(e.target.dataset.idx, 10));
+      };
+    });
+
+    function updatePreviewBox(idx) {
+      const boxes = overlay.querySelectorAll('.downloadSigPreviewBox');
+      if (boxes[idx] && firmantesList[idx]) {
+        const sig = firmantesList[idx];
+        boxes[idx].innerHTML = `
+          ${sig.nombre ? `<div class="pNom">${esc(formatPersonName(sig.nombre))}</div>` : ''}
+          <div class="pCargo">${esc(sig.cargo || 'Cargo')}</div>
+          ${sig.entidad ? `<div class="pEnt">${esc(sig.entidad)}</div>` : ''}
+          ${sig.leyenda ? `<div class="pLey">${esc(sig.leyenda)}</div>` : ''}
+        `;
+      }
+    }
+
+    overlay.querySelectorAll('.btnUp').forEach(b => {
+      b.onclick = () => {
+        const idx = parseInt(b.dataset.up, 10);
+        if (idx > 0) {
+          const temp = firmantesList[idx - 1];
+          firmantesList[idx - 1] = firmantesList[idx];
+          firmantesList[idx] = temp;
+          renderModalContent();
+        }
+      };
+    });
+    overlay.querySelectorAll('.btnDown').forEach(b => {
+      b.onclick = () => {
+        const idx = parseInt(b.dataset.down, 10);
+        if (idx < firmantesList.length - 1) {
+          const temp = firmantesList[idx + 1];
+          firmantesList[idx + 1] = firmantesList[idx];
+          firmantesList[idx] = temp;
+          renderModalContent();
+        }
+      };
+    });
+    overlay.querySelectorAll('.delFirmanteBtn').forEach(b => {
+      b.onclick = () => {
+        const idx = parseInt(b.dataset.del, 10);
+        firmantesList.splice(idx, 1);
+        renderModalContent();
+      };
+    });
+
+    const addBtn = document.getElementById('dl_add_firmante_btn');
+    if (addBtn) {
+      addBtn.onclick = () => {
+        if (firmantesList.length < 6) {
+          firmantesList.push({
+            cargo: 'Especialista',
+            nombre: '',
+            entidad: 'UGEL 03 – DRELM',
+            leyenda: 'Firma y Sello'
+          });
+          renderModalContent();
+        }
+      };
+    }
+
+    const encCb = document.getElementById('dl_opt_encabezado');
+    if (encCb) encCb.onchange = (e) => { mostrarEncabezadoArea = e.target.checked; };
+    const qrCb = document.getElementById('dl_opt_qr');
+    if (qrCb) qrCb.onchange = (e) => { incluirQr = e.target.checked; };
+    const recCb = document.getElementById('dl_opt_recordar');
+    if (recCb) recCb.onchange = (e) => { recordarEleccion = e.target.checked; };
+
+    overlay.querySelectorAll('input[name="dl_orientation"]').forEach(r => {
+      r.onchange = (e) => { orientationChoice = e.target.value; };
+    });
+    overlay.querySelectorAll('input[name="dl_formato_concurso"]').forEach(r => {
+      r.onchange = (e) => { formatoConcurso = e.target.value; };
+    });
+
+    const fixBtn = document.getElementById('dl_btn_fix');
+    if (fixBtn) {
+      fixBtn.onclick = () => {
+        close();
+        if (anomalies.posiblesDuplicados > 0 && typeof openDuplicateDetectorModal === 'function') {
+          openDuplicateDetectorModal(dbNs, state, document.getElementById('main'), isAdmin, currentUser, null);
+        } else {
+          showToast('Revisa los registros señalados en la tabla para completar los datos faltantes.');
+        }
+      };
+    }
+
+    const anywayBtn = document.getElementById('dl_btn_anyway');
+    if (anywayBtn) {
+      anywayBtn.onclick = () => { triggerGenerate(true); };
+    }
+
+    const confirmBtn = document.getElementById('dl_confirm_btn');
+    confirmBtn.onclick = () => { triggerGenerate(false); };
+
+    async function triggerGenerate(forceWithIncomplete = false) {
+      if (!sinFirmas) {
+        const invalidSig = firmantesList.find(s => !(s.cargo || '').trim());
+        if (invalidSig) {
+          showToast('Cada firmante debe tener un cargo especificado.');
+          return;
+        }
+      }
+
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<span>⏳</span> Generando PDF...';
+
+      let areaFinal = null;
+      if (currentAreaId === 'personalizado') {
+        areaFinal = {
+          id: 'custom_' + Date.now(),
+          nombre: customAreaNombre || 'Área Personalizada',
+          sigla: customAreaSigla || 'ÁREA',
+          descripcionEncabezado: customAreaDesc || customAreaNombre
+        };
+        if (isAdmin && guardarEnCatalogo && dbNs) {
+          try {
+            await dbNs.collection('areasFirma').doc(areaFinal.id).set({
+              ...areaFinal,
+              activa: true,
+              esPredeterminada: false,
+              createdAt: Date.now()
+            });
+          } catch (e) {
+            console.warn('No se pudo guardar área en catálogo:', e);
+          }
+        }
+      } else if (currentAreaId !== 'sin_firmas') {
+        areaFinal = areasList.find(a => a.id === currentAreaId) || null;
+      }
+
+      if (recordarEleccion) {
+        try {
+          const prefData = {
+            areaId: currentAreaId,
+            sinFirmas,
+            mostrarEncabezadoArea,
+            incluirQr,
+            orientation: orientationChoice,
+            formatoConcurso,
+            lugar,
+            fecha,
+            firmantes: firmantesList,
+            customAreaNombre,
+            customAreaSigla,
+            customAreaDesc
+          };
+          localStorage.setItem('download_pref_' + tipoReporte, JSON.stringify(prefData));
+          if (currentUser && dbNs) {
+            dbNs.collection('preferenciasDescarga').doc(`${currentUser.uid}_${tipoReporte}`).set({
+              usuarioId: currentUser.uid,
+              tipoReporte,
+              prefData,
+              updatedAt: Date.now()
+            }, { merge: true }).catch(() => {});
+          }
+        } catch (e) {}
+      }
+
+      const downloadConfig = {
+        areaConfig: mostrarEncabezadoArea ? areaFinal : null,
+        signatures: sinFirmas ? [] : firmantesList,
+        lugarFecha: sinFirmas ? '' : `${lugar}, ${fecha}`,
+        sinFirmas,
+        incluirQr,
+        orientation: orientationChoice === 'auto' ? null : orientationChoice,
+        formatoConcurso,
+        datosIncompletos: forceWithIncomplete || (totalAnomalies > 0),
+        marcaBorrador: forceWithIncomplete && (anomalies.sinPuesto > 0 || anomalies.sinAsesor > 0)
+      };
+
+      try {
+        await onConfirm(downloadConfig);
+        showToast('✓ Documento PDF generado exitosamente.');
+        close();
+      } catch (err) {
+        console.error('Error generando PDF con configuración:', err);
+        showToast('Error al generar PDF: ' + (err.message || 'Error desconocido'));
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<span>⬇</span> Generar PDF';
+      }
+    }
+
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        close();
+        window.removeEventListener('keydown', onKey);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+  }
+
+  document.body.appendChild(overlay);
+  renderModalContent();
+
+  setTimeout(() => {
+    const sel = document.getElementById('dl_area_select');
+    if (sel) sel.focus();
+  }, 50);
 }
 
 /* ============================= NAVEGACIÓN ============================= */
@@ -279,10 +966,59 @@ export function setupNavigation(state, renderFn) {
       renderFn();
     });
   });
+
+  // Botón superior "Registrar ficha"
+  const topRegBtn = document.getElementById('topRegistrarBtn');
+  if (topRegBtn) {
+    topRegBtn.addEventListener('click', () => {
+      state.activeTab = 'registrar';
+      document.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
+      const btn = document.querySelector('.navbtn[data-tab="registrar"]');
+      if (btn) btn.classList.add('active');
+      renderFn();
+    });
+  }
+
+  // Campana de alertas en la cabecera
+  const topBellBtn = document.getElementById('topBellBtn');
+  if (topBellBtn) {
+    topBellBtn.addEventListener('click', () => {
+      state.activeTab = 'alertas';
+      document.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
+      const btn = document.querySelector('.navbtn[data-tab="alertas"]');
+      if (btn) btn.classList.add('active');
+      renderFn();
+    });
+  }
+
+  // Botón superior "Exportar"
+  const topExportBtn = document.getElementById('topExportBtn');
+  if (topExportBtn) {
+    topExportBtn.addEventListener('click', () => {
+      // Abre el diálogo modal universal para exportar el consolidado general
+      openDownloadConfigModal({
+        documentTitle: 'REPORTE CONSOLIDADO GENERAL DE MONITOREO',
+        tipoReporte: 'consolidado',
+        dataRows: state.submissions || [],
+        currentUser: _currentSessionUser || (state && state.currentUser) || null,
+        state,
+        dbNs: null,
+        isAdmin: false,
+        onConfirm: async (cfg) => {
+          const statsList = (state.submissions || []).map(s => {
+            const ft = (state.fichaTypes || []).find(f => f.id === s.fichaTypeId);
+            const st = ft ? computeStats(s, ft) : { pct: null };
+            return { s, st };
+          });
+          await exportConsolidadoReportPdf(statsList, null, {}, true, cfg);
+        }
+      });
+    });
+  }
 }
 
-/* ============================= DASHBOARD ============================= */
-export function viewDashboard(state, getFichaType) {
+/* ============================= DASHBOARD (RESUMEN GENERAL) ============================= */
+export function viewDashboard(state, getFichaType, renderFn) {
   const totalTipos  = state.fichaTypes.length;
   const totalFichas = state.submissions.length;
   const instSet = new Set(state.submissions.map(s => (s.institucion || '') + '|' + (s.ugel || '')));
@@ -299,8 +1035,9 @@ export function viewDashboard(state, getFichaType) {
     const status = statusFromPct(st.pct).label;
     if (status === 'Logrado') dist.logrado++;
     else if (status === 'En proceso') dist.proceso++;
-    else if (status === 'Inicio') dist.inicio++;
+    else if (status === 'Por mejorar') dist.inicio++;
     else dist.none++;
+
     if (perTipo[s.fichaTypeId]) {
       const p = perTipo[s.fichaTypeId];
       p.count++;
@@ -309,43 +1046,125 @@ export function viewDashboard(state, getFichaType) {
     }
   });
   const avgPct = cntPct ? Math.round(sumPct / cntPct) : null;
+  const totalConDatos = dist.logrado + dist.proceso + dist.inicio + dist.none;
 
-  const tipoRows = Object.values(perTipo).sort((a, b) => b.count - a.count).map(p => {
+  // Ordenamiento de tipos de ficha: urgente primero por defecto
+  const sortedTipos = Object.values(perTipo).sort((a, b) => {
+    const avgA = a.cnt ? (a.sum / a.cnt) : (dashboardSortAsc ? -1 : 101);
+    const avgB = b.cnt ? (b.sum / b.cnt) : (dashboardSortAsc ? -1 : 101);
+    return dashboardSortAsc ? avgA - avgB : avgB - avgA;
+  });
+
+  const tipoTableRows = sortedTipos.map(p => {
     const avg = p.cnt ? Math.round(p.sum / p.cnt) : null;
-    return '<div class="barRow"><div class="name">' + esc(p.ft.nombre) + ' <span style="color:var(--ink-soft);font-weight:400">(' + p.count + ')</span></div>' + bar(avg) + '<div class="val">' + (avg === null ? '—' : avg + '%') + '</div></div>';
-  }).join('') || '<p class="helpText">Aún no hay tipos de ficha registrados.</p>';
+    const status = statusFromPct(avg);
+    const fullNombre = esc(p.ft.nombre);
+    const icono = p.ft.icono || '📋';
+    return '<tr>' +
+      '<td class="tipoNombreCol" title="' + fullNombre + '">' +
+        '<div style="display:flex;align-items:flex-start;gap:9px">' +
+          '<span style="font-size:16px;line-height:1.2">' + icono + '</span>' +
+          '<div>' +
+            '<div style="font-weight:600;line-height:1.35;color:var(--text-900)">' + fullNombre + '</div>' +
+            (p.ft.descripcion ? '<small style="color:var(--text-600);display:block;margin-top:2px">' + esc(p.ft.descripcion) + '</small>' : '') +
+          '</div>' +
+        '</div>' +
+      '</td>' +
+      '<td style="text-align:center;font-weight:600;color:var(--text-900)">' + p.count + '</td>' +
+      '<td>' + bar(avg) + '</td>' +
+      '<td style="text-align:right;font-weight:700;color:var(--text-900)">' + (avg === null ? '—' : avg + '%') + '</td>' +
+      '<td style="text-align:center"><span class="badge ' + status.cls + '">' + status.label + '</span></td>' +
+    '</tr>';
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-600);padding:24px">Aún no hay tipos de ficha registrados.</td></tr>';
+
+  // Porcentajes de la distribución
+  const pctLogrado = totalConDatos ? Math.round((dist.logrado / totalConDatos) * 100) : 0;
+  const pctProceso = totalConDatos ? Math.round((dist.proceso / totalConDatos) * 100) : 0;
+  const pctInicio  = totalConDatos ? Math.round((dist.inicio  / totalConDatos) * 100) : 0;
+  const pctNone    = totalConDatos ? Math.round((dist.none    / totalConDatos) * 100) : 0;
 
   const seg = '<div class="distWrap">' +
     donutChart([
-      { value: dist.logrado, color: 'var(--primary)', label: 'Logrado' },
-      { value: dist.proceso, color: 'var(--accent)', label: 'En proceso' },
-      { value: dist.inicio, color: 'var(--danger)', label: 'Inicio' },
-      { value: dist.none, color: 'var(--line-strong)', label: 'Sin datos' },
-    ], { centerLabel: (dist.logrado + dist.proceso + dist.inicio + dist.none), centerSub: 'fichas' }) +
-    '<div class="seglegend" style="flex-direction:column;gap:8px;align-items:flex-start">' +
-      '<span><span class="dot" style="background:var(--primary)"></span>Logrado (' + dist.logrado + ')</span>' +
-      '<span><span class="dot" style="background:var(--accent)"></span>En proceso (' + dist.proceso + ')</span>' +
-      '<span><span class="dot" style="background:var(--danger)"></span>Inicio (' + dist.inicio + ')</span>' +
-      (dist.none ? '<span><span class="dot" style="background:var(--line-strong)"></span>Sin datos (' + dist.none + ')</span>' : '') +
+      { value: dist.logrado, color: 'var(--ok)', label: 'Logrado' },
+      { value: dist.proceso, color: 'var(--warn)', label: 'En proceso' },
+      { value: dist.inicio,  color: 'var(--danger)', label: 'Por mejorar' },
+      { value: dist.none,    color: 'var(--neutral)', label: 'Sin datos' },
+    ], { centerLabel: totalFichas, centerSub: 'fichas' }) +
+    '<div class="seglegend">' +
+      '<span><span class="dot" style="background:var(--ok)"></span><strong>Logrado:</strong> ' + dist.logrado + ' (' + pctLogrado + '%)</span>' +
+      '<span><span class="dot" style="background:var(--warn)"></span><strong>En proceso:</strong> ' + dist.proceso + ' (' + pctProceso + '%)</span>' +
+      '<span><span class="dot" style="background:var(--danger)"></span><strong>Por mejorar:</strong> ' + dist.inicio + ' (' + pctInicio + '%)</span>' +
+      (dist.none ? '<span><span class="dot" style="background:var(--neutral)"></span><strong>Sin datos:</strong> ' + dist.none + ' (' + pctNone + '%)</span>' : '') +
     '</div></div>';
 
+  // Alertas Recientes
+  const alertsList = computeAlerts(state, getFichaType).slice(0, 5);
+  const alertsHtml = alertsList.length > 0 ? alertsList.map(a => {
+    const isDanger = a.status === 'Por mejorar' || a.trend === 'retroceso';
+    const cls = isDanger ? 'danger' : 'warn';
+    const icon = isDanger ? '🚨' : '⚠️';
+    return '<div class="alertCard ' + cls + '">' +
+      '<div class="alertIcon">' + icon + '</div>' +
+      '<div class="alertBody">' +
+        '<div class="alertTitle">' + esc(a.institucion) + ' · <span style="font-weight:500;color:var(--text-600)">' + esc(a.fichaTypeNombre) + '</span></div>' +
+        '<div class="alertDetail"><strong>' + esc(a.seccion) + ':</strong> ' + esc(a.item) + ' — Nivel: <strong>' + a.pct + '% (' + a.status + ')</strong>' +
+        (a.trend === 'retroceso' ? ' · <span style="color:var(--danger);font-weight:700">⚠ Retroceso respecto a visita anterior</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<button class="actBtn" data-gotoalert="' + esc(a.institucion) + '" type="button">Ver alerta</button>' +
+    '</div>';
+  }).join('') : '<p class="helpText" style="margin:0;color:var(--ok);font-weight:600">✓ No se registran alertas críticas ni retrocesos en las visitas recientes.</p>';
+
+  // Actividad Reciente
   const recent = [...state.submissions].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 8).map(s => {
     const ft = getFichaType(s.fichaTypeId);
     const st = ft ? computeStats(s, ft) : { pct: null };
     const status = statusFromPct(st.pct);
-    return '<tr><td>' + fmtDate(s.fecha) + '</td><td>' + esc(s.institucion) + '</td><td>' + esc(s.fichaTypeNombre || (ft ? ft.nombre : '—')) + '</td><td>' + (s.visita || '—') + '</td><td>' + (st.pct === null ? '—' : st.pct + '%') + '</td><td><span class="badge ' + status.cls + '">' + status.label + '</span></td></tr>';
-  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:22px">Aún no se han registrado fichas.</td></tr>';
+    return '<tr><td>' + fmtDate(s.fecha) + '</td><td>' + esc(s.institucion) + '</td><td>' + esc(s.fichaTypeNombre || (ft ? ft.nombre : '—')) + '</td><td>' + (s.visita ? 'V' + s.visita : '—') + '</td><td>' + (st.pct === null ? '—' : st.pct + '%') + '</td><td><span class="badge ' + status.cls + '">' + status.label + '</span></td></tr>';
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-600);padding:24px">Aún no se han registrado fichas.</td></tr>';
+
+  // Configurar listeners una vez renderizado en el DOM
+  setTimeout(() => {
+    const sortBtn = document.getElementById('toggleDashSortBtn');
+    if (sortBtn && renderFn) {
+      sortBtn.addEventListener('click', () => {
+        dashboardSortAsc = !dashboardSortAsc;
+        renderFn();
+      });
+    }
+    document.querySelectorAll('[data-gotoalert]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.activeTab = 'alertas';
+        document.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
+        const navBtn = document.querySelector('.navbtn[data-tab="alertas"]');
+        if (navBtn) navBtn.classList.add('active');
+        if (renderFn) renderFn();
+      });
+    });
+  }, 0);
 
   return '' +
-    '<div class="pageHead"><h2>Resumen general</h2><p>Vista consolidada de todos los tipos de ficha registrados por el equipo de especialistas.</p></div>' +
+    '<div class="pageHead">' +
+      '<h2>Resumen general</h2>' +
+      '<p>Vista consolidada de monitoreo, niveles de avance institucional y alertas prioritarias.</p>' +
+    '</div>' +
     '<div class="cards">' +
       '<div class="card"><div class="num">' + totalTipos + '</div><div class="lbl">Tipos de ficha</div></div>' +
       '<div class="card"><div class="num">' + totalFichas + '</div><div class="lbl">Fichas registradas</div></div>' +
       '<div class="card"><div class="num">' + instSet.size + '</div><div class="lbl">Instituciones monitoreadas</div></div>' +
       '<div class="card"><div class="num">' + (avgPct === null ? '—' : avgPct + '%') + '</div><div class="lbl">Cumplimiento promedio</div></div>' +
     '</div>' +
-    '<div class="panel"><h3>Avance por tipo de ficha</h3>' + tipoRows + '</div>' +
+    '<div class="panel">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">' +
+        '<h3 style="margin:0">Avance por tipo de ficha <small>cumplimiento institucional</small></h3>' +
+        '<button class="btn secondary small" id="toggleDashSortBtn" type="button">' +
+          (dashboardSortAsc ? '▲ Orden: Urgentes primero' : '▼ Orden: Mayor avance primero') +
+        '</button>' +
+      '</div>' +
+      '<div class="tblWrap"><table class="tipoAvanceTable"><thead><tr><th>Tipo de ficha</th><th style="width:80px;text-align:center">Fichas</th><th style="min-width:180px">Avance</th><th style="width:70px;text-align:right">%</th><th style="width:110px;text-align:center">Estado</th></tr></thead><tbody>' + tipoTableRows + '</tbody></table></div>' +
+    '</div>' +
     '<div class="panel"><h3>Distribución general de resultados</h3>' + seg + '</div>' +
+    '<div class="panel"><h3>Alertas de seguimiento recientes</h3>' + alertsHtml + '</div>' +
     '<div class="panel"><h3>Actividad reciente</h3><div class="tblWrap"><table><thead><tr><th>Fecha</th><th>Institución</th><th>Tipo de ficha</th><th>Visita</th><th>%</th><th>Estado</th></tr></thead><tbody>' + recent + '</tbody></table></div></div>';
 }
 
@@ -488,13 +1307,12 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
   ) : '';
 
   const submitLabel = editingSubmissionId ? 'Actualizar ficha' : 'Guardar ficha';
-  const cancelBtn   = editingSubmissionId ? '<button type="button" class="btn secondary" id="cancelEditBtn">Cancelar</button>' : '';
 
   host.innerHTML = '' +
     '<form id="regForm">' +
       uploadPanel +
       '<div class="panel">' +
-        '<h3>Datos de la visita</h3>' +
+        '<div class="sectionHeaderTitle">DATOS DE LA VISITA</div>' +
         '<div class="fieldGrid">' +
           '<div class="field" style="grid-column:span 2">' +
             '<label>Institución educativa / CEBE / PRITE *</label>' +
@@ -507,16 +1325,26 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
           '<div class="field"><label>Fecha *</label><input type="date" id="f_fecha" value="' + todayStr() + '" required></div>' +
           '<div class="field"><label>N° de visita *</label><input type="number" id="f_visita" min="1" value="1" required></div>' +
         '</div>' +
-        (extrasHtml ? '<div class="sectionTitle" style="margin-top:18px">Datos generales de la ficha</div><div class="fieldGrid">' + extrasHtml + '</div>' : '') +
+        (extrasHtml ? '<div class="sectionHeaderTitle" style="margin-top:20px">DATOS GENERALES DE LA FICHA</div><div class="fieldGrid">' + extrasHtml + '</div>' : '') +
         '<datalist id="dl_ugel">' + seedSuggestions('ugel', state.submissions).map(v => '<option value="' + esc(v) + '">').join('') + '</datalist>' +
         '<datalist id="dl_red">'  + seedSuggestions('red', state.submissions).map(v => '<option value="' + esc(v) + '">').join('') + '</datalist>' +
       '</div>' +
-      '<div class="panel"><h3>Aspectos a monitorear <small>' + RESPONSE_LABELS[ft.tipoRespuesta] + '</small></h3>' + seccionesHtml + '</div>' +
-      '<div class="panel"><h3>Observaciones generales</h3><textarea id="f_observaciones" placeholder="Hallazgos, evidencias, notas de la visita..."></textarea></div>' +
-      '<div class="panel"><h3>Compromisos de mejora</h3><div id="compList"></div><button type="button" class="linklike" id="addCompBtn">+ Agregar compromiso</button></div>' +
-      '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
-        '<button type="submit" class="btn">' + submitLabel + '</button>' +
-        cancelBtn +
+      '<div class="panel">' +
+        '<div class="sectionHeaderTitle">ASPECTOS A MONITOREAR <small style="font-weight:400;color:var(--text-600);text-transform:none;margin-left:8px">' + RESPONSE_LABELS[ft.tipoRespuesta] + '</small></div>' +
+        seccionesHtml +
+      '</div>' +
+      '<div class="panel">' +
+        '<div class="sectionHeaderTitle">OBSERVACIONES GENERALES</div>' +
+        '<textarea id="f_observaciones" placeholder="Hallazgos, evidencias, notas de la visita..."></textarea>' +
+      '</div>' +
+      '<div class="panel">' +
+        '<div class="sectionHeaderTitle">COMPROMISOS DE MEJORA</div>' +
+        '<div id="compList"></div>' +
+        '<button type="button" class="btn secondary small" id="addCompBtn" style="margin-top:10px">+ Agregar compromiso</button>' +
+      '</div>' +
+      '<div class="formBottomBar">' +
+        '<button type="button" class="btn secondary" id="cancelFormBtn">Cancelar</button>' +
+        '<button type="submit" class="btn" id="saveFormBtn">' + submitLabel + '</button>' +
       '</div>' +
     '</form>';
 
@@ -566,7 +1394,7 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
       } else if (lower.includes('director')) {
         matchVal = c.director && c.director.nombre ? c.director.nombre : '';
       } else if (lower.includes('ugel')) {
-        matchVal = 'UGEL 03';
+        matchVal = c.dependencia || 'UGEL 03';
       } else if (lower.includes('modalidad')) {
         matchVal = c.modalidad;
       } else if (lower.includes('distrito')) {
@@ -605,6 +1433,8 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
       hint.style.display = 'block';
       hint.textContent = '✓ Vinculada al padrón' +
         (c.rei ? ' · ' + c.rei : '') +
+        (c.dependencia ? ' · ' + c.dependencia : ' · UGEL 03') +
+        (c.distrito ? ' · ' + c.distrito : '') +
         (c.director && c.director.nombre ? ' · Dir: ' + c.director.nombre : '') + '.';
     }
   };
@@ -763,13 +1593,23 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
   });
   renderCompList();
 
-  if (editingSubmissionId) {
-    document.getElementById('cancelEditBtn').addEventListener('click', () => {
-      editingSubmissionId   = null;
-      editingSubmissionData = null;
-      regBuiltFor = null;
-      regSelectedTypeId = null;
-      if (navigate) navigate('consolidado');
+  const cancelFormBtn = document.getElementById('cancelFormBtn');
+  if (cancelFormBtn) {
+    cancelFormBtn.addEventListener('click', () => {
+      if (editingSubmissionId) {
+        editingSubmissionId   = null;
+        editingSubmissionData = null;
+        regBuiltFor = null;
+        regSelectedTypeId = null;
+        if (navigate) navigate('consolidado');
+      } else {
+        if (confirm('¿Deseas cancelar el registro? Se descartarán los cambios ingresados.')) {
+          regBuiltFor = null;
+          regCompromisos = [];
+          regSelectedColegioId = null;
+          if (navigate) navigate('resumen');
+        }
+      }
     });
   }
 
@@ -850,12 +1690,31 @@ async function onSubmitRegistro(e, ft, dbNs, navigate) {
     if (l.includes('director') && !directorVal) directorVal = ex.value;
   });
 
+  const instVal = document.getElementById('f_institucion').value.trim();
+  let matchedCol = null;
+  if (regSelectedColegioId) {
+    matchedCol = (state.colegios || []).find(c => c.id === regSelectedColegioId);
+  }
+  if (!matchedCol && instVal) {
+    const instNorm = normalizeText(instVal);
+    matchedCol = (state.colegios || []).find(c => normalizeText(c.ie) === instNorm);
+  }
+
+  if (matchedCol) {
+    if (!ugelVal) ugelVal = matchedCol.dependencia || 'UGEL 03';
+    if (!redVal) redVal = matchedCol.rei || '';
+    if (!codigoVal) codigoVal = matchedCol.codigoLocal || matchedCol.codigoModular || '';
+    if (!directorVal && matchedCol.director && matchedCol.director.nombre) directorVal = matchedCol.director.nombre;
+  }
+  if (!ugelVal) ugelVal = 'UGEL 03';
+  if (!redVal) redVal = 'No aplica';
+
   const docData = {
     fichaTypeId:     ft.id,
     fichaTypeNombre: ft.nombre,
     tipoRespuesta:   ft.tipoRespuesta,
-    institucion:     document.getElementById('f_institucion').value.trim(),
-    colegioId:       regSelectedColegioId || null,
+    institucion:     instVal,
+    colegioId:       (matchedCol && matchedCol.id) || regSelectedColegioId || null,
     fecha:           document.getElementById('f_fecha').value,
     visita:          Number(document.getElementById('f_visita').value) || 1,
     ugel:            ugelVal,
@@ -1056,7 +1915,10 @@ let consSelectedTypeId = null;
 let consFilters = { institucion: '', ugel: '', red: '', estado: '', visita: '', responsable: '', desde: '', hasta: '', distrito: '', tipoGestion: '' };
 let consExpanded = null;
 
-export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdmin, navigate) {
+export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdmin, navigate, currentUser = null) {
+  if (currentUser) _currentSessionUser = currentUser;
+  const user = currentUser || _currentSessionUser || (state && state.currentUser) || null;
+
   if (state.fichaTypes.length === 0) {
     container.innerHTML = '<div class="pageHead"><h2>Reportes</h2></div>' +
       '<div class="empty"><h4>Aún no hay tipos de ficha</h4><p>Crea un tipo de ficha y registra visitas para ver reportes de avance aquí.</p></div>';
@@ -1125,15 +1987,15 @@ export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdm
   document.getElementById('consSelect').addEventListener('change', e => {
     consSelectedTypeId = e.target.value || null;
     consExpanded = null;
-    renderConsolidadoTab(container, state, getFichaType, dbNs, isAdmin, navigate);
+    renderConsolidadoTab(container, state, getFichaType, dbNs, isAdmin, navigate, user);
   });
   document.getElementById('top_fil_estado').addEventListener('change', e => {
     consFilters.estado = e.target.value;
-    renderConsBody(state, getFichaType, dbNs, isAdmin, navigate);
+    renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
   });
   document.getElementById('top_fil_visita').addEventListener('change', e => {
     consFilters.visita = e.target.value;
-    renderConsBody(state, getFichaType, dbNs, isAdmin, navigate);
+    renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
   });
   const respInput = document.getElementById('top_fil_responsable');
   let respDebounce = null;
@@ -1141,7 +2003,7 @@ export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdm
     clearTimeout(respDebounce);
     respDebounce = setTimeout(() => {
       consFilters.responsable = e.target.value;
-      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate);
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
     }, 300);
   });
   const topClear = document.getElementById('top_fil_clear');
@@ -1150,14 +2012,16 @@ export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdm
       consFilters.estado = '';
       consFilters.visita = '';
       consFilters.responsable = '';
-      renderConsolidadoTab(container, state, getFichaType, dbNs, isAdmin, navigate);
+      renderConsolidadoTab(container, state, getFichaType, dbNs, isAdmin, navigate, user);
     });
   }
 
-  renderConsBody(state, getFichaType, dbNs, isAdmin, navigate);
+  renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
 }
 
-function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate) {
+function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUser = null) {
+  if (currentUser) _currentSessionUser = currentUser;
+  const user = currentUser || _currentSessionUser || (state && state.currentUser) || null;
   const host = document.getElementById('consHost');
   if (!host) return;
   if (!consSelectedTypeId) { host.innerHTML = ''; return; }
@@ -1270,13 +2134,15 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate) {
     const s = x.s; const st = x.st; const status = statusFromPct(st.pct);
     const isOpen = consExpanded === s.id;
     const detailContent = isOpen ? buildDetail(s) : '';
-    const editBtn = '<button class="btn secondary small" data-edit="' + s.id + '" style="margin-left:4px" title="Corregir ficha">✏️ Editar</button>';
-    const delBtn  = isAdmin ? '<button class="iconBtn" data-del="' + s.id + '" title="Eliminar">✕</button>' : '';
+    const pdfBtn  = '<button class="actBtn pdfBtn" data-pdfsub="' + s.id + '" title="Descargar Ficha Oficial en PDF (A4)">📄 PDF</button>';
+    const editBtn = '<button class="actBtn" data-edit="' + s.id + '" title="Corregir ficha">✏️ Editar</button>';
+    const delBtn  = isAdmin ? '<button class="actBtn delBtn" data-del="' + s.id + '" title="Eliminar">✕</button>' : '';
     const typeName = s.fichaTypeNombre || (getFichaType(s.fichaTypeId) || {}).nombre || '—';
     const typeCol = isAllMode ? '<td><span class="badge st-none" style="font-size:10.5px">' + esc(typeName) + '</span></td>' : '';
-    return '<tr class="clickable" data-row="' + s.id + '"><td>' + fmtDate(s.fecha) + '</td><td>' + esc(s.institucion) + '</td>' + typeCol + '<td>' + esc(s.ugel || '—') + '</td><td>' + (s.visita || '—') + '</td><td>' + esc(s.responsable || '—') + '</td><td>' + (st.pct === null ? '—' : st.pct + '%') + '</td><td><span class="badge ' + status.cls + '">' + status.label + '</span></td><td style="white-space:nowrap">' + editBtn + delBtn + '</td></tr>' +
+    const ugelRedCol = '<td>' + esc(s.ugel || 'UGEL 03') + '<br><small style="color:var(--text-muted);font-weight:600;">' + esc(s.red || 'No aplica') + '</small></td>';
+    return '<tr class="clickable" data-row="' + s.id + '"><td>' + fmtDate(s.fecha) + '</td><td>' + esc(s.institucion) + '</td>' + typeCol + ugelRedCol + '<td>' + (s.visita ? 'V' + s.visita : '—') + '</td><td>' + esc(s.responsable || '—') + '</td><td>' + (st.pct === null ? '—' : st.pct + '%') + '</td><td><span class="badge ' + status.cls + '">' + status.label + '</span></td><td style="white-space:nowrap"><div class="rowActions">' + pdfBtn + editBtn + delBtn + '</div></td></tr>' +
       (isOpen ? '<tr class="detailRow"><td colspan="' + (isAllMode ? 9 : 8) + '">' + detailContent + '</td></tr>' : '');
-  }).join('') || '<tr><td colspan="' + (isAllMode ? 9 : 8) + '" style="text-align:center;color:var(--ink-soft);padding:22px">No hay fichas que coincidan con los filtros.</td></tr>';
+  }).join('') || '<tr><td colspan="' + (isAllMode ? 9 : 8) + '" style="text-align:center;color:var(--text-600);padding:22px">No hay fichas que coincidan con los filtros.</td></tr>';
 
   const byInst = {};
   statsList.forEach(x => {
@@ -1294,7 +2160,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate) {
     return '<tr><td>' + esc(g.institucion) + '</td><td>' + esc(g.red || '—') + '</td><td>' + esc(g.ugel || '—') + '</td>' +
       '<td>' + g.visitas.length + '</td><td>' + fmtDate(last.s.fecha) + '</td>' +
       '<td>' + (avg === null ? '—' : avg + '%') + ' <span class="badge ' + gst.cls + '">' + gst.label + '</span></td></tr>';
-  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:20px">Sin instituciones con los filtros actuales.</td></tr>';
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-600);padding:20px">Sin instituciones con los filtros actuales.</td></tr>';
 
   const subsForRed = isAllMode ? state.submissions : state.submissions.filter(s => s.fichaTypeId === ft.id);
   const redOptions = Array.from(new Set(subsForRed.filter(s => s.red).map(s => s.red))).sort();
@@ -1333,30 +2199,62 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate) {
         '<div class="field"><label>Desde</label><input type="date" id="fil_desde" value="' + esc(consFilters.desde) + '"></div>' +
         '<div class="field"><label>Hasta</label><input type="date" id="fil_hasta" value="' + esc(consFilters.hasta) + '"></div>' +
         '<button class="btn secondary small" id="fil_clear" type="button">Limpiar</button>' +
+        (isAdmin ? '<button class="btn secondary small" id="btnBackfillUgel" type="button" title="Completar UGEL y RED en fichas antiguas desde el padrón">🔄 Sincronizar UGEL/RED</button>' : '') +
         '<button class="btn secondary small" id="exportCsv" type="button" style="margin-left:auto">Exportar CSV</button>' +
-        '<button class="btn small" id="exportPdf" type="button">⬇ Descargar reporte (PDF)</button>' +
+        '<button class="btn small" id="exportPdf" type="button">⬇ Descargar reporte oficial (PDF)</button>' +
       '</div>' +
-      '<div class="tblWrap"><table><thead><tr><th>Fecha</th><th>Institución</th>' + tblTypeHeader + '<th>UGEL</th><th>Visita</th><th>Responsable</th><th>%</th><th>Estado</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="tblWrap"><table><thead><tr><th>Fecha</th><th>Institución</th>' + tblTypeHeader + '<th>UGEL / RED</th><th>Visita</th><th>Responsable</th><th>%</th><th>Estado</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
     '</div>';
 
   ['inst', 'ugel', 'desde', 'hasta', 'distrito'].forEach(k => {
     const el = document.getElementById('fil_' + k);
     if (!el) return;
-    el.addEventListener('input', () => { consFilters[k === 'inst' ? 'institucion' : k] = el.value; renderConsBody(state, getFichaType, dbNs, isAdmin, navigate); });
+    el.addEventListener('input', () => { consFilters[k === 'inst' ? 'institucion' : k] = el.value; renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user); });
   });
-  document.getElementById('fil_red').addEventListener('change', e => { consFilters.red = e.target.value; renderConsBody(state, getFichaType, dbNs, isAdmin, navigate); });
+  document.getElementById('fil_red').addEventListener('change', e => { consFilters.red = e.target.value; renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user); });
   const filTipoGestion = document.getElementById('fil_tipogestion');
-  if (filTipoGestion) filTipoGestion.addEventListener('change', e => { consFilters.tipoGestion = e.target.value; renderConsBody(state, getFichaType, dbNs, isAdmin, navigate); });
+  if (filTipoGestion) filTipoGestion.addEventListener('change', e => { consFilters.tipoGestion = e.target.value; renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user); });
   document.getElementById('fil_clear').addEventListener('click', () => {
     consFilters = { institucion: '', ugel: '', red: '', estado: '', visita: '', responsable: '', desde: '', hasta: '', distrito: '', tipoGestion: '' };
     const topEst = document.getElementById('top_fil_estado'); if (topEst) topEst.value = '';
     const topVis = document.getElementById('top_fil_visita'); if (topVis) topVis.value = '';
     const topResp = document.getElementById('top_fil_responsable'); if (topResp) topResp.value = '';
-    renderConsBody(state, getFichaType, dbNs, isAdmin, navigate);
+    renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
   });
+
+  // Expandir / Contraer todo en Reporte por Ítem
+  const toggleAllBtn = document.getElementById('toggleAllItemsBtn');
+  if (toggleAllBtn) {
+    toggleAllBtn.addEventListener('click', () => {
+      const detailsList = host.querySelectorAll('.secDetails');
+      const anyClosed = Array.from(detailsList).some(d => !d.open);
+      detailsList.forEach(d => { d.open = anyClosed; });
+      toggleAllBtn.textContent = anyClosed ? 'Contraer todo' : 'Expandir todo';
+    });
+  }
+
+  // Sincronizar UGEL / RED en fichas antiguas desde el padrón
+  const btnBackfill = document.getElementById('btnBackfillUgel');
+  if (btnBackfill) {
+    btnBackfill.addEventListener('click', async () => {
+      if (!confirm('¿Deseas buscar en el padrón de colegios y actualizar la UGEL y RED/REI de las fichas registradas que no los tengan?')) return;
+      btnBackfill.disabled = true;
+      btnBackfill.textContent = 'Sincronizando...';
+      try {
+        const count = await backfillSubmissionsUgelRed(dbNs, state);
+        showToast(`Se sincronizaron ${count} fichas con éxito.`);
+        renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+      } catch (err) {
+        console.error('Error sincronizando UGEL/RED', err);
+        showToast('Error al sincronizar UGEL/RED.');
+      } finally {
+        btnBackfill.disabled = false;
+        btnBackfill.textContent = '🔄 Sincronizar UGEL/RED';
+      }
+    });
+  }
   document.getElementById('exportCsv').addEventListener('click', () => {
     if (isAllMode) {
-      // In all mode, export each submission using its own ficha type
       const allStatsList = statsList.map(x => {
         const xFt = getFichaType(x.s.fichaTypeId);
         return { ...x, _ft: xFt };
@@ -1366,11 +2264,53 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate) {
       exportCsv(ft, statsList);
     }
   });
-  document.getElementById('exportPdf').addEventListener('click', (e) => exportReportPdf(document.getElementById('reportCapture'), isAllMode ? 'Todas las fichas' : ft.nombre, e.target));
+
+  // Exportar PDF oficial consolidado
+  document.getElementById('exportPdf').addEventListener('click', () => {
+    openDownloadConfigModal({
+      documentTitle: isAllMode ? 'REPORTE CONSOLIDADO GENERAL DE MONITOREO' : `REPORTE CONSOLIDADO — ${(ft ? ft.nombre : 'MONITOREO').toUpperCase()}`,
+      tipoReporte: 'consolidado',
+      dataRows: statsList,
+      currentUser: user,
+      state,
+      dbNs,
+      isAdmin,
+      onConfirm: async (cfg) => {
+        await exportConsolidadoReportPdf(statsList, ft, consFilters, isAllMode, cfg);
+      }
+    });
+  });
+
+  // Descargar ficha individual oficial en PDF
+  host.querySelectorAll('[data-pdfsub]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const subId = btn.dataset.pdfsub;
+      const sub = state.submissions.find(s => s.id === subId);
+      if (!sub) return;
+      const subFt = getFichaType(sub.fichaTypeId);
+      if (!subFt) {
+        showToast('Tipo de ficha no encontrado.');
+        return;
+      }
+      openDownloadConfigModal({
+        documentTitle: `FICHA DE MONITOREO — ${(subFt.nombre || 'EVALUACIÓN').toUpperCase()}`,
+        tipoReporte: 'individual',
+        dataRows: [sub],
+        currentUser: user,
+        state,
+        dbNs,
+        isAdmin,
+        onConfirm: async (cfg) => {
+          await exportFichaIndividualPdf(sub, subFt, null, cfg);
+        }
+      });
+    });
+  });
 
   host.querySelectorAll('tr[data-row]').forEach(tr => {
     tr.addEventListener('click', (e) => {
-      if (e.target.closest('[data-del],[data-edit]')) return;
+      if (e.target.closest('[data-del],[data-edit],[data-pdfsub]')) return;
       const id = tr.dataset.row;
       consExpanded = consExpanded === id ? null : id;
       renderConsBody(state, getFichaType, dbNs, isAdmin, navigate);
@@ -1783,6 +2723,7 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
           '<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:0;white-space:nowrap"><input type="checkbox" id="col_fil_pend" ' + (colFilters.pendientes ? 'checked' : '') + '> Solo pendientes</label>' +
           '<button class="btn secondary small" id="col_fil_clear" type="button">Limpiar</button>' +
           '<button class="btn secondary small" id="col_export" type="button" style="margin-left:auto">Exportar CSV</button>' +
+          '<button class="btn small" id="col_export_pdf" type="button">⬇ Descargar padrón oficial (PDF)</button>' +
         '</div>' +
         '<div class="tblWrap"><table><thead><tr><th>REI</th><th>Código local</th><th>I.E.</th><th>Distrito</th><th>Tipo de gestión</th><th>N° monitoreos</th><th>Tipos de ficha aplicados</th><th>Última visita</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
       '</div>'
@@ -1805,6 +2746,34 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
     });
     downloadCsv('colegios' + (colFilters.pendientes ? '_pendientes' : '') + '.csv', header, dataRows);
   });
+
+  const fExportPdf = document.getElementById('col_export_pdf');
+  if (fExportPdf) {
+    fExportPdf.addEventListener('click', () => {
+      const enhancedColegios = filtered.map(c => {
+        const subs = bySchool[c.id] || [];
+        const last = subs.reduce((max, s) => (!max || s.fecha > max) ? s.fecha : max, null);
+        return { ...c, _subsCount: subs.length, _lastVisit: last };
+      });
+
+      openDownloadConfigModal({
+        documentTitle: 'PADRÓN OFICIAL DE INSTITUCIONES EDUCATIVAS',
+        tipoReporte: 'colegios',
+        dataRows: enhancedColegios,
+        currentUser: cachedCurrentUser,
+        state,
+        dbNs,
+        isAdmin,
+        onConfirm: async (cfg) => {
+          await exportColegiosReportPdf(enhancedColegios, {
+            totalReis: reiList.length,
+            monitoreados: totalColegios - sinMonitoreo,
+            cobertura: coberturaPct
+          }, cfg);
+        }
+      });
+    });
+  }
 
   container.querySelectorAll('tr[data-colrow]').forEach(tr => {
     tr.addEventListener('click', (e) => {
@@ -2403,7 +3372,14 @@ function syncBuilderFromDom(container, bs) {
   });
 }
 
-export function renderTiposTab(container, state, getFichaType, dbNs) {
+let tiposSubTab = 'fichas'; // 'fichas' | 'areas'
+
+export function renderTiposTab(container, state, getFichaType, dbNs, isAdmin = true, currentUser = null) {
+  if (tiposSubTab === 'areas') {
+    renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser, getFichaType);
+    return;
+  }
+
   if (tiposView === 'list') {
     const cards = state.fichaTypes.map(ft => {
       const count = state.submissions.filter(s => s.fichaTypeId === ft.id).length;
@@ -2416,18 +3392,31 @@ export function renderTiposTab(container, state, getFichaType, dbNs) {
     }).join('') || '<div class="empty"><h4>Aún no has creado tipos de ficha</h4><p>Crea el primero para empezar a registrar visitas de monitoreo.</p></div>';
 
     container.innerHTML = '' +
-      '<div class="pageHead"><h2>Tipos de ficha</h2><p>Define la estructura de cada ficha (secciones, ítems y escala de respuesta).</p></div>' +
+      '<div class="pageHead"><h2>Tipos de ficha y Catálogos</h2><p>Define la estructura de cada ficha y las áreas oficiales que firman los documentos.</p></div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:18px;border-bottom:2px solid var(--line);padding-bottom:10px">' +
+        '<button type="button" class="btn small" id="subTabFichas">📋 Plantillas de Ficha</button>' +
+        '<button type="button" class="btn secondary small" id="subTabAreas">✍️ Áreas y Firmantes</button>' +
+      '</div>' +
       '<button class="btn" id="newTipoBtn" style="margin-bottom:16px">+ Nuevo tipo de ficha</button>' +
       cards;
 
+    document.getElementById('subTabFichas').onclick = () => {
+      tiposSubTab = 'fichas';
+      renderTiposTab(container, state, getFichaType, dbNs, isAdmin, currentUser);
+    };
+    document.getElementById('subTabAreas').onclick = () => {
+      tiposSubTab = 'areas';
+      renderTiposTab(container, state, getFichaType, dbNs, isAdmin, currentUser);
+    };
+
     document.getElementById('newTipoBtn').addEventListener('click', () => {
-      builderState = blankBuilder(); builderEditingId = null; tiposView = 'builder'; renderTiposTab(container, state, getFichaType, dbNs);
+      builderState = blankBuilder(); builderEditingId = null; tiposView = 'builder'; renderTiposTab(container, state, getFichaType, dbNs, isAdmin, currentUser);
     });
     container.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => {
       const ft = getFichaType(b.dataset.edit);
       builderState = JSON.parse(JSON.stringify(ft));
       builderState.extras = normalizeExtras(builderState.extras);
-      builderEditingId = ft.id; tiposView = 'builder'; renderTiposTab(container, state, getFichaType, dbNs);
+      builderEditingId = ft.id; tiposView = 'builder'; renderTiposTab(container, state, getFichaType, dbNs, isAdmin, currentUser);
     }));
     container.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
       const count = state.submissions.filter(s => s.fichaTypeId === b.dataset.del).length;
@@ -2441,6 +3430,516 @@ export function renderTiposTab(container, state, getFichaType, dbNs) {
     return;
   }
   renderBuilder(container, state, getFichaType, dbNs);
+}
+
+let currentAreaReportTab = 'concursos'; // 'concursos' | 'consolidado' | 'individual' | 'avance'
+
+function renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser, getFichaType) {
+  const areas = (state.areasFirma && state.areasFirma.length > 0)
+    ? state.areasFirma
+    : DEFAULT_AREAS;
+
+  const REPORT_TYPES = [
+    { id: 'concursos', label: '🏆 Concursos Escolares' },
+    { id: 'consolidado', label: '▤ Reporte Consolidado' },
+    { id: 'individual', label: '📄 Ficha Individual' },
+    { id: 'avance', label: '📊 Avance / Por Ítem' }
+  ];
+
+  const cardsHtml = areas.map(area => {
+    const plantillasDb = (state.plantillasFirmantes || []).filter(p => p.areaId === area.id && p.tipoReporte === currentAreaReportTab);
+    let firmantesList = [];
+    if (plantillasDb.length > 0) {
+      firmantesList = plantillasDb.sort((a, b) => (a.orden || 99) - (b.orden || 99));
+    } else {
+      const defaults = DEFAULT_PLANTILLAS.filter(p => p.tipoReporte === currentAreaReportTab);
+      firmantesList = defaults.map(p => ({
+        cargo: p.cargo.replace(/\[ÁREA\]/g, area.sigla),
+        nombreOpcional: p.nombreOpcional || '',
+        entidad: p.entidad.replace(/\[ÁREA\]/g, area.sigla),
+        leyenda: p.leyenda
+      }));
+    }
+
+    return `
+      <div class="tipoCard" style="margin-bottom:16px;border-left:4px solid var(--primary)">
+        <div class="ti" style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+            <h4 style="margin:0">${esc(area.sigla)} — ${esc(area.nombre)}</h4>
+            ${area.esPredeterminada ? '<span class="badge" style="background:#FEF3C7;color:#92400E;font-size:11px">⭐ Predeterminada</span>' : ''}
+            <span class="badge" style="background:${area.activa !== false ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${area.activa !== false ? '#15803D' : '#B91C1C'};font-size:11px">
+              ${area.activa !== false ? 'Activa' : 'Inactiva'}
+            </span>
+          </div>
+          <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">
+            <strong>Descripción membrete:</strong> ${esc((area.descripcionEncabezado || '').replace(/\n/g, ' · '))}
+          </p>
+
+          <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:10px 12px;margin-top:6px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-size:11.5px;font-weight:700;color:var(--navy-900);text-transform:uppercase">
+                Firmantes para: ${REPORT_TYPES.find(t => t.id === currentAreaReportTab)?.label || currentAreaReportTab} (${firmantesList.length})
+              </span>
+              <button type="button" class="btn secondary small" data-edit-firmantes="${esc(area.id)}" style="padding:2px 8px;font-size:11px">
+                ✎ Editar firmantes
+              </button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              ${firmantesList.map((f, fi) => `
+                <div style="font-size:11.5px;display:flex;align-items:center;gap:6px;color:#334155">
+                  <span style="font-weight:700;color:var(--primary);min-width:18px">${fi + 1}.</span>
+                  <strong>${esc(f.cargo)}</strong>
+                  ${f.nombreOpcional ? `<span style="color:#64748B">(${esc(f.nombreOpcional)})</span>` : ''}
+                  <span style="color:#94A3B8">· ${esc(f.entidad || '')}</span>
+                  ${f.leyenda ? `<span class="badge" style="font-size:10px;padding:1px 5px">${esc(f.leyenda)}</span>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="acts" style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <button type="button" class="btn secondary small" data-edit-area="${esc(area.id)}">✎ Editar Área</button>
+          ${!area.esPredeterminada ? `
+            <button type="button" class="btn secondary small" data-set-default="${esc(area.id)}" style="font-size:11px">⭐ Hacer predeterminada</button>
+            <button type="button" class="btn danger small" data-del-area="${esc(area.id)}" style="font-size:11px">✕ Eliminar</button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="pageHead">
+      <h2>Catálogo de Áreas y Firmantes Oficiales</h2>
+      <p>Administra las áreas de la UGEL 03, sus descripciones para membrete y las plantillas de firmantes por tipo de reporte.</p>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:18px;border-bottom:2px solid var(--line);padding-bottom:10px">
+      <button type="button" class="btn secondary small" id="subTabFichas">📋 Plantillas de Ficha</button>
+      <button type="button" class="btn small" id="subTabAreas">✍️ Áreas y Firmantes</button>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${REPORT_TYPES.map(t => `
+          <button type="button" class="btn ${currentAreaReportTab === t.id ? '' : 'secondary'} small" data-rtab="${t.id}">
+            ${t.label}
+          </button>
+        `).join('')}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn secondary" id="btnSeedAreas">🌱 Sembrar áreas oficiales (UGEL 03)</button>
+        <button type="button" class="btn" id="btnNewArea">＋ Nueva Área</button>
+      </div>
+    </div>
+    <div id="areasCardsContainer">${cardsHtml}</div>
+    <div id="modalAreaHost"></div>
+  `;
+
+  document.getElementById('subTabFichas').onclick = () => {
+    tiposSubTab = 'fichas';
+    renderTiposTab(container, state, getFichaType, dbNs, isAdmin, currentUser);
+  };
+  document.getElementById('subTabAreas').onclick = () => {
+    tiposSubTab = 'areas';
+    renderTiposTab(container, state, getFichaType, dbNs, isAdmin, currentUser);
+  };
+
+  container.querySelectorAll('[data-rtab]').forEach(b => {
+    b.onclick = () => {
+      currentAreaReportTab = b.dataset.rtab;
+      renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser, getFichaType);
+    };
+  });
+
+  document.getElementById('btnSeedAreas').onclick = async () => {
+    if (!confirm('¿Sembrar o restaurar las áreas oficiales de la UGEL 03 (AGEBRE, AGEBATP, AGP, AGI, DIRECCIÓN) y sus plantillas de firmantes por defecto?')) return;
+    const btn = document.getElementById('btnSeedAreas');
+    btn.disabled = true;
+    btn.textContent = 'Sembrando...';
+    try {
+      for (const area of DEFAULT_AREAS) {
+        await dbNs.collection('areasFirma').doc(area.id).set({
+          ...area,
+          updatedAt: Date.now()
+        }, { merge: true });
+      }
+      for (const area of DEFAULT_AREAS) {
+        for (const p of DEFAULT_PLANTILLAS) {
+          const pid = `${area.id}_${p.tipoReporte}_${p.orden}`;
+          const cargoFinal = p.cargo.replace(/\[ÁREA\]/g, area.sigla);
+          await dbNs.collection('plantillasFirmantes').doc(pid).set({
+            id: pid,
+            areaId: area.id,
+            tipoReporte: p.tipoReporte,
+            orden: p.orden,
+            cargo: cargoFinal,
+            nombreOpcional: p.nombreOpcional || '',
+            entidad: p.entidad.replace(/\[ÁREA\]/g, area.sigla),
+            leyenda: p.leyenda,
+            updatedAt: Date.now()
+          }, { merge: true });
+        }
+      }
+      showToast('✓ Áreas y plantillas oficiales sembradas exitosamente.');
+      renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser, getFichaType);
+    } catch (e) {
+      console.error('Error sembrando áreas:', e);
+      showToast('Error sembrando áreas: ' + e.message);
+    }
+  };
+
+  document.getElementById('btnNewArea').onclick = () => {
+    openAreaModal(null, dbNs, state, container, isAdmin, currentUser, getFichaType);
+  };
+
+  container.querySelectorAll('[data-edit-area]').forEach(b => {
+    b.onclick = () => {
+      const area = areas.find(a => a.id === b.dataset.editArea);
+      if (area) openAreaModal(area, dbNs, state, container, isAdmin, currentUser, getFichaType);
+    };
+  });
+
+  container.querySelectorAll('[data-set-default]').forEach(b => {
+    b.onclick = async () => {
+      const targetId = b.dataset.setDefault;
+      try {
+        for (const a of areas) {
+          await dbNs.collection('areasFirma').doc(a.id).update({
+            esPredeterminada: (a.id === targetId),
+            updatedAt: Date.now()
+          });
+        }
+        showToast('✓ Área predeterminada actualizada.');
+        renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser, getFichaType);
+      } catch (e) {
+        console.error(e);
+        showToast('Error al actualizar predeterminada.');
+      }
+    };
+  });
+
+  container.querySelectorAll('[data-del-area]').forEach(b => {
+    b.onclick = async () => {
+      const area = areas.find(a => a.id === b.dataset.delArea);
+      if (!area) return;
+      if (area.esPredeterminada) {
+        showToast('No se puede eliminar el área predeterminada.');
+        return;
+      }
+      if (!confirm(`¿Eliminar el área "${area.sigla} — ${area.nombre}"?`)) return;
+      try {
+        await dbNs.collection('areasFirma').doc(area.id).delete();
+        showToast('✓ Área eliminada.');
+        renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser, getFichaType);
+      } catch (e) {
+        console.error(e);
+        showToast('Error al eliminar área.');
+      }
+    };
+  });
+
+  container.querySelectorAll('[data-edit-firmantes]').forEach(b => {
+    b.onclick = () => {
+      const area = areas.find(a => a.id === b.dataset.editFirmantes);
+      if (area) openFirmantesEditorModal(area, currentAreaReportTab, dbNs, state, container, isAdmin, currentUser, getFichaType);
+    };
+  });
+}
+
+function openAreaModal(area, dbNs, state, container, isAdmin, currentUser, getFichaType) {
+  const host = document.getElementById('modalAreaHost');
+  if (!host) return;
+
+  const isEdit = !!area;
+  const modalWrap = document.createElement('div');
+  modalWrap.className = 'downloadModalOverlay';
+
+  modalWrap.innerHTML = `
+    <div class="downloadModalCard" style="max-width:520px">
+      <div class="downloadModalHeader">
+        <div>
+          <h3>${isEdit ? 'Editar Área Institucional' : 'Nueva Área Institucional'}</h3>
+          <div class="sub">Catálogo de Áreas de Firma · UGEL 03</div>
+        </div>
+        <button type="button" class="downloadModalClose" id="m_area_close">✕</button>
+      </div>
+      <form id="areaForm" class="downloadModalBody">
+        <div class="downloadModalSection">
+          <label class="secLabel" for="a_nombre">Nombre completo del Área *</label>
+          <input type="text" id="a_nombre" required placeholder="Ej: Área de Gestión de la Educación Básica Regular y Especial" value="${esc(isEdit ? area.nombre : '')}">
+        </div>
+        <div class="downloadModalSection">
+          <label class="secLabel" for="a_sigla">Sigla Oficial *</label>
+          <input type="text" id="a_sigla" required placeholder="Ej: AGEBRE" value="${esc(isEdit ? area.sigla : '')}">
+        </div>
+        <div class="downloadModalSection">
+          <label class="secLabel" for="a_desc">Descripción para el membrete oficial</label>
+          <textarea id="a_desc" rows="2" placeholder="Ej: Área de Gestión de la\nEducación Básica (2026)">${esc(isEdit ? (area.descripcionEncabezado || '') : '')}</textarea>
+        </div>
+        <div class="downloadModalSection" style="display:flex;flex-direction:row;gap:18px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer">
+            <input type="checkbox" id="a_activa" ${!isEdit || area.activa !== false ? 'checked' : ''}> Activa
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer">
+            <input type="checkbox" id="a_predet" ${isEdit && area.esPredeterminada ? 'checked' : ''}> Predeterminada
+          </label>
+        </div>
+        <div class="downloadModalFooter" style="margin:10px -22px -20px;border-top:1px solid var(--line)">
+          <button type="button" class="btn secondary" id="m_area_cancel">Cancelar</button>
+          <button type="submit" class="btn" id="m_area_save">Guardar Área</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  host.appendChild(modalWrap);
+
+  const close = () => modalWrap.remove();
+  modalWrap.querySelector('#m_area_close').onclick = close;
+  modalWrap.querySelector('#m_area_cancel').onclick = close;
+
+  modalWrap.querySelector('#areaForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const nombre = document.getElementById('a_nombre').value.trim();
+    const sigla = document.getElementById('a_sigla').value.trim().toUpperCase();
+    const desc = document.getElementById('a_desc').value.trim();
+    const activa = document.getElementById('a_activa').checked;
+    const esPredet = document.getElementById('a_predet').checked;
+
+    const areaId = isEdit ? area.id : sigla.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+    const btn = document.getElementById('m_area_save');
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    try {
+      // Si se marca predeterminada, desmarcar las otras
+      if (esPredet) {
+        const otherAreas = (state.areasFirma || DEFAULT_AREAS);
+        for (const a of otherAreas) {
+          if (a.id !== areaId) {
+            await dbNs.collection('areasFirma').doc(a.id).update({ esPredeterminada: false }).catch(() => {});
+          }
+        }
+      }
+
+      await dbNs.collection('areasFirma').doc(areaId).set({
+        id: areaId,
+        nombre,
+        sigla,
+        descripcionEncabezado: desc || `${nombre} (2026)`,
+        activa,
+        esPredeterminada: esPredet,
+        updatedAt: Date.now()
+      }, { merge: true });
+
+      showToast('✓ Área guardada exitosamente.');
+      close();
+      renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser, getFichaType);
+    } catch (err) {
+      console.error(err);
+      showToast('Error al guardar área: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Guardar Área';
+    }
+  };
+}
+
+function openFirmantesEditorModal(area, tipoReporte, dbNs, state, container, isAdmin, currentUser, getFichaType) {
+  const host = document.getElementById('modalAreaHost');
+  if (!host) return;
+
+  const REPORT_NAMES = {
+    concursos: 'Acta de Resultados de Concursos',
+    consolidado: 'Reporte Consolidado de Monitoreo',
+    individual: 'Ficha Individual de Monitoreo',
+    avance: 'Reporte por Ítem / de Avance'
+  };
+
+  const plantillasDb = (state.plantillasFirmantes || []).filter(p => p.areaId === area.id && p.tipoReporte === tipoReporte);
+  let list = [];
+  if (plantillasDb.length > 0) {
+    list = JSON.parse(JSON.stringify(plantillasDb.sort((a, b) => (a.orden || 99) - (b.orden || 99))));
+  } else {
+    const defaults = DEFAULT_PLANTILLAS.filter(p => p.tipoReporte === tipoReporte);
+    list = defaults.map((p, idx) => ({
+      id: `${area.id}_${tipoReporte}_${idx + 1}`,
+      areaId: area.id,
+      tipoReporte: tipoReporte,
+      orden: idx + 1,
+      cargo: p.cargo.replace(/\[ÁREA\]/g, area.sigla),
+      nombreOpcional: p.nombreOpcional || '',
+      entidad: p.entidad.replace(/\[ÁREA\]/g, area.sigla),
+      leyenda: p.leyenda
+    }));
+  }
+
+  const modalWrap = document.createElement('div');
+  modalWrap.className = 'downloadModalOverlay';
+
+  function renderInner() {
+    modalWrap.innerHTML = `
+      <div class="downloadModalCard" style="max-width:640px">
+        <div class="downloadModalHeader">
+          <div>
+            <h3>Plantilla de Firmantes</h3>
+            <div class="sub">${esc(area.sigla)} · ${esc(REPORT_NAMES[tipoReporte] || tipoReporte)}</div>
+          </div>
+          <button type="button" class="downloadModalClose" id="m_f_close">✕</button>
+        </div>
+        <div class="downloadModalBody">
+          <p style="font-size:12.5px;color:var(--ink-soft);margin-top:0">
+            Configura los cargos predeterminados que firman este tipo de documento. Puedes agregar hasta 6 firmantes.
+          </p>
+          <div class="downloadFirmantesList">
+            ${list.map((sig, idx) => `
+              <div class="downloadFirmanteItem">
+                <div class="reorderBtns">
+                  <button type="button" class="fUp" data-up="${idx}" ${idx === 0 ? 'disabled' : ''}>▲</button>
+                  <button type="button" class="fDown" data-down="${idx}" ${idx === list.length - 1 ? 'disabled' : ''}>▼</button>
+                </div>
+                <div class="fieldsWrap">
+                  <input type="text" class="inpCargo" data-idx="${idx}" placeholder="Cargo *" value="${esc(sig.cargo)}" required>
+                  <input type="text" class="inpNombre" data-idx="${idx}" placeholder="Nombre (opcional)" value="${esc(sig.nombreOpcional || '')}">
+                  <input type="text" class="inpEntidad" data-idx="${idx}" placeholder="Entidad" value="${esc(sig.entidad || '')}">
+                  <select class="selLeyenda" data-idx="${idx}">
+                    <option value="Firma y Sello" ${sig.leyenda === 'Firma y Sello' ? 'selected' : ''}>Firma y Sello</option>
+                    <option value="V.° B.° y Sello" ${sig.leyenda === 'V.° B.° y Sello' ? 'selected' : ''}>V.° B.° y Sello</option>
+                    <option value="Sello Institucional" ${sig.leyenda === 'Sello Institucional' ? 'selected' : ''}>Sello Institucional</option>
+                    <option value="V.° B.°" ${sig.leyenda === 'V.° B.°' ? 'selected' : ''}>V.° B.°</option>
+                    <option value="" ${!sig.leyenda ? 'selected' : ''}>Ninguna</option>
+                  </select>
+                </div>
+                <button type="button" class="delFirmanteBtn" data-del="${idx}">✕</button>
+              </div>
+            `).join('')}
+          </div>
+
+          ${list.length < 6 ? `
+            <button type="button" class="btn secondary small" id="m_f_add" style="align-self:flex-start;margin-top:6px">
+              ＋ Agregar firmante
+            </button>
+          ` : ''}
+        </div>
+        <div class="downloadModalFooter">
+          <button type="button" class="btn secondary" id="m_f_cancel">Cancelar</button>
+          <button type="button" class="btn" id="m_f_save">Guardar Plantilla</button>
+        </div>
+      </div>
+    `;
+
+    attachInnerEvents();
+  }
+
+  function attachInnerEvents() {
+    const close = () => modalWrap.remove();
+    modalWrap.querySelector('#m_f_close').onclick = close;
+    modalWrap.querySelector('#m_f_cancel').onclick = close;
+
+    modalWrap.querySelectorAll('.inpCargo').forEach(inp => {
+      inp.oninput = (e) => { list[parseInt(e.target.dataset.idx, 10)].cargo = e.target.value; };
+    });
+    modalWrap.querySelectorAll('.inpNombre').forEach(inp => {
+      inp.oninput = (e) => { list[parseInt(e.target.dataset.idx, 10)].nombreOpcional = e.target.value; };
+    });
+    modalWrap.querySelectorAll('.inpEntidad').forEach(inp => {
+      inp.oninput = (e) => { list[parseInt(e.target.dataset.idx, 10)].entidad = e.target.value; };
+    });
+    modalWrap.querySelectorAll('.selLeyenda').forEach(sel => {
+      sel.onchange = (e) => { list[parseInt(e.target.dataset.idx, 10)].leyenda = e.target.value; };
+    });
+
+    modalWrap.querySelectorAll('.fUp').forEach(b => {
+      b.onclick = () => {
+        const idx = parseInt(b.dataset.up, 10);
+        if (idx > 0) {
+          const temp = list[idx - 1];
+          list[idx - 1] = list[idx];
+          list[idx] = temp;
+          renderInner();
+        }
+      };
+    });
+    modalWrap.querySelectorAll('.fDown').forEach(b => {
+      b.onclick = () => {
+        const idx = parseInt(b.dataset.down, 10);
+        if (idx < list.length - 1) {
+          const temp = list[idx + 1];
+          list[idx + 1] = list[idx];
+          list[idx] = temp;
+          renderInner();
+        }
+      };
+    });
+    modalWrap.querySelectorAll('.delFirmanteBtn').forEach(b => {
+      b.onclick = () => {
+        const idx = parseInt(b.dataset.del, 10);
+        list.splice(idx, 1);
+        renderInner();
+      };
+    });
+
+    const addBtn = modalWrap.querySelector('#m_f_add');
+    if (addBtn) {
+      addBtn.onclick = () => {
+        if (list.length < 6) {
+          list.push({
+            id: `${area.id}_${tipoReporte}_${list.length + 1}`,
+            areaId: area.id,
+            tipoReporte: tipoReporte,
+            orden: list.length + 1,
+            cargo: `Especialista de ${area.sigla}`,
+            nombreOpcional: '',
+            entidad: 'UGEL 03 – DRELM',
+            leyenda: 'Firma y Sello'
+          });
+          renderInner();
+        }
+      };
+    }
+
+    modalWrap.querySelector('#m_f_save').onclick = async () => {
+      const btn = modalWrap.querySelector('#m_f_save');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        // Eliminar plantillas anteriores de este tipo y área
+        const prev = (state.plantillasFirmantes || []).filter(p => p.areaId === area.id && p.tipoReporte === tipoReporte);
+        for (const p of prev) {
+          await dbNs.collection('plantillasFirmantes').doc(p.id).delete().catch(() => {});
+        }
+
+        // Insertar la nueva lista ordenada
+        for (let i = 0; i < list.length; i++) {
+          const item = list[i];
+          const pid = `${area.id}_${tipoReporte}_${i + 1}`;
+          await dbNs.collection('plantillasFirmantes').doc(pid).set({
+            id: pid,
+            areaId: area.id,
+            tipoReporte,
+            orden: i + 1,
+            cargo: item.cargo,
+            nombreOpcional: item.nombreOpcional || '',
+            entidad: item.entidad || '',
+            leyenda: item.leyenda || 'Firma y Sello',
+            updatedAt: Date.now()
+          });
+        }
+
+        showToast('✓ Plantilla de firmantes guardada exitosamente.');
+        close();
+        renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser, getFichaType);
+      } catch (err) {
+        console.error(err);
+        showToast('Error al guardar firmantes: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Guardar Plantilla';
+      }
+    };
+  }
+
+  host.appendChild(modalWrap);
+  renderInner();
 }
 
 function renderBuilder(container, state, getFichaType, dbNs) {
@@ -3459,12 +4958,13 @@ export const SEED_CONCURSOS_DEFAULTS = [
     nombre: 'Concurso Nacional de Comprensión Lectora El Perú Lee',
     tipoParticipacion: 'grupal',
     tieneGenero: false,
-    tieneDisciplina: false,
+    tieneDisciplina: true,
+    etiquetaDisciplina: 'Área / Modalidad',
     tieneTituloTrabajo: false,
     categorias: ['A', 'B', 'C', 'D', 'E'],
     rolesParticipante: ['Estudiante'],
     rolesAsesor: ['Docente Asesor'],
-    disciplinasSugeridas: [],
+    disciplinasSugeridas: ['Comprensión Lectora', 'Lectura Crítica', 'Creación Literaria'],
   },
   {
     id: 'eureka',
@@ -3605,6 +5105,37 @@ export function renderConcursosTab(container, state, dbNs, isAdmin, currentUser,
   }
 }
 
+function normalizePuestoValue(val) {
+  if (!val) return '';
+  const s = String(val).trim().toLowerCase();
+  if (s.includes('1') || s.startsWith('primer')) return '1.er puesto';
+  if (s.includes('2') || s.startsWith('segundo')) return '2.° puesto';
+  if (s.includes('3') || s.startsWith('tercer')) return '3.er puesto';
+  if (s.includes('menci') || s.includes('honrosa') || s.includes('mh')) return 'Mención honrosa';
+  if (s.includes('final')) return 'Finalista';
+  if (s.includes('clasif')) return 'Clasificado';
+  if (s.includes('partic')) return 'Participante';
+  return String(val).trim();
+}
+
+function formatPuestoBadge(puesto) {
+  if (!puesto) return '<span class="badge badge-puesto">—</span>';
+  const norm = normalizePuestoValue(puesto);
+  if (norm === '1.er puesto') {
+    return '<span class="badge badge-puesto puesto-1">🥇 1.er puesto</span>';
+  }
+  if (norm === '2.° puesto') {
+    return '<span class="badge badge-puesto puesto-2">🥈 2.° puesto</span>';
+  }
+  if (norm === '3.er puesto') {
+    return '<span class="badge badge-puesto puesto-3">🥉 3.er puesto</span>';
+  }
+  if (norm === 'Mención honrosa') {
+    return '<span class="badge badge-puesto puesto-mh">🎖️ Mención honrosa</span>';
+  }
+  return '<span class="badge badge-puesto puesto-part">' + esc(puesto) + '</span>';
+}
+
 /* -------------------------------------------------------------
    SUB-PESTAÑA 1: REGISTRAR PARTICIPANTE / PROYECTO
    ------------------------------------------------------------- */
@@ -3647,9 +5178,13 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
     '<option value="' + esc(c) + '">' + esc(c) + '</option>'
   ).join('');
 
-  // Sugerencias de disciplinas si el tipo las tiene
-  const discDatalistHtml = (tipo.disciplinasSugeridas && tipo.disciplinasSugeridas.length)
-    ? '<datalist id="dl_concurso_disc">' + tipo.disciplinasSugeridas.map(d => '<option value="' + esc(d) + '">').join('') + '</datalist>'
+  // Sugerencias de disciplinas si el tipo las tiene o es El Perú Lee
+  let discSuggestions = tipo.disciplinasSugeridas || [];
+  if (tipo.id === 'peru_lee' && (!discSuggestions || discSuggestions.length === 0)) {
+    discSuggestions = ['Comprensión Lectora', 'Lectura Crítica', 'Creación Literaria'];
+  }
+  const discDatalistHtml = (discSuggestions && discSuggestions.length)
+    ? '<datalist id="dl_concurso_disc">' + discSuggestions.map(d => '<option value="' + esc(d) + '">').join('') + '</datalist>'
     : '';
 
   // Determinar roles para participantes y asesores
@@ -3666,6 +5201,9 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
 
   const isEditing = !!concursoEditingId;
   const submitLabel = isEditing ? 'Actualizar registro' : 'Guardar registro';
+
+  const hasDisciplina = tipo.tieneDisciplina || tipo.id === 'peru_lee';
+  const discLabel = tipo.etiquetaDisciplina || (tipo.id === 'peru_lee' ? 'Área / Modalidad' : 'Disciplina / Área');
 
   host.innerHTML = '' +
     '<form id="concursoRegForm">' +
@@ -3684,10 +5222,16 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
           '</div>' +
           '<div class="field">' +
             '<label for="c_puesto">Puesto obtenido *</label>' +
-            '<input type="text" id="c_puesto" list="dl_puestos" placeholder="Ej: 1°, 2°, 3°, Mención Honrosa..." required>' +
-            '<datalist id="dl_puestos">' +
-              ['1° Puesto', '2° Puesto', '3° Puesto', 'Mención Honrosa', 'Clasificado', 'Participante'].map(p => '<option value="' + p + '">').join('') +
-            '</datalist>' +
+            '<select id="c_puesto" required>' +
+              '<option value="">-- Seleccionar puesto --</option>' +
+              '<option value="1.er puesto">🥇 1.er puesto</option>' +
+              '<option value="2.° puesto">🥈 2.° puesto</option>' +
+              '<option value="3.er puesto">🥉 3.er puesto</option>' +
+              '<option value="Mención honrosa">🎖️ Mención honrosa</option>' +
+              '<option value="Finalista">⭐ Finalista</option>' +
+              '<option value="Clasificado">✓ Clasificado</option>' +
+              '<option value="Participante">👤 Participante</option>' +
+            '</select>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -3708,13 +5252,18 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
               '</select>' +
             '</div>'
           ) : '') +
-          (tipo.tieneDisciplina ? (
+          (hasDisciplina ? (
             '<div class="field" style="' + (tipo.tieneGenero ? '' : 'grid-column:span 2') + '">' +
-              '<label for="c_disciplina">' + esc(tipo.etiquetaDisciplina || 'Disciplina / Área') + ' *</label>' +
-              '<input type="text" id="c_disciplina" list="dl_concurso_disc" placeholder="Ej: Ajedrez, Danza tradicional, Indagación..." required>' +
+              '<label for="c_disciplina">' + esc(discLabel) + ' *</label>' +
+              '<input type="text" id="c_disciplina" list="dl_concurso_disc" placeholder="Ej: Comprensión Lectora, Danza tradicional, Indagación..." required>' +
               discDatalistHtml +
             '</div>'
-          ) : '') +
+          ) : (
+            '<div class="field" style="' + (tipo.tieneGenero ? '' : 'grid-column:span 2') + '">' +
+              '<label for="c_disciplina">Área / Disciplina (opcional)</label>' +
+              '<input type="text" id="c_disciplina" placeholder="Opcional: área o especialidad...">' +
+            '</div>'
+          )) +
         '</div>' +
 
         '<div class="fieldGrid" style="margin-top:10px">' +
@@ -3927,7 +5476,18 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
   // ---- Precargar datos si estamos en modo edición ----
   if (concursoEditingId && concursoEditingData) {
     const d = concursoEditingData;
-    document.getElementById('c_puesto').value = d.puesto || '';
+    const normPuesto = normalizePuestoValue(d.puesto);
+    const puestoSelect = document.getElementById('c_puesto');
+    if (puestoSelect) {
+      let exists = Array.from(puestoSelect.options).some(o => o.value === normPuesto);
+      if (!exists && normPuesto) {
+        const opt = document.createElement('option');
+        opt.value = normPuesto;
+        opt.textContent = normPuesto;
+        puestoSelect.appendChild(opt);
+      }
+      puestoSelect.value = normPuesto || '';
+    }
     document.getElementById('c_etapa').value  = d.etapa || 'UGEL';
     document.getElementById('c_fecha').value  = d.fecha || todayStr();
     document.getElementById('c_institucion').value = d.institucion || '';
@@ -3967,7 +5527,17 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
         return;
       }
 
+      const puestoVal = normalizePuestoValue(document.getElementById('c_puesto').value.trim());
+      if (!puestoVal) {
+        showToast('Selecciona el puesto obtenido.');
+        btn.disabled = false;
+        btn.textContent = submitLabel;
+        return;
+      }
+
       const aRows = concursoAsesores.filter(a => (a.nombres || '').trim() || (a.apellidos || '').trim());
+      const discInp = document.getElementById('c_disciplina');
+      const discVal = discInp ? discInp.value.trim() : null;
 
       const regData = {
         tipoConcursoId:     tipo.id,
@@ -3975,12 +5545,12 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
         etapa:              document.getElementById('c_etapa').value,
         categoria:          document.getElementById('c_categoria') ? document.getElementById('c_categoria').value : '',
         genero:             tipo.tieneGenero ? (document.getElementById('c_genero') ? document.getElementById('c_genero').value : null) : null,
-        disciplina:         tipo.tieneDisciplina ? (document.getElementById('c_disciplina') ? document.getElementById('c_disciplina').value.trim() : null) : null,
+        disciplina:         discVal || null,
         institucion:        document.getElementById('c_institucion').value.trim(),
         codigoModular:      codModInp ? codModInp.value.trim() : '',
         tituloTrabajo:      tipo.tieneTituloTrabajo ? (document.getElementById('c_tituloTrabajo') ? document.getElementById('c_tituloTrabajo').value.trim() : null) : null,
         seudonimo:          tipo.tieneTituloTrabajo ? (document.getElementById('c_seudonimo') ? document.getElementById('c_seudonimo').value.trim() : null) : null,
-        puesto:             document.getElementById('c_puesto').value.trim(),
+        puesto:             puestoVal,
         participantes:      pRows,
         asesores:           aRows,
         resolucionRef:      document.getElementById('c_resolucionRef') ? document.getElementById('c_resolucionRef').value.trim() : null,
@@ -3989,6 +5559,47 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
         createdAt:          isEditing ? (concursoEditingData.createdAt || Date.now()) : Date.now(),
         updatedAt:          Date.now(),
       };
+
+      // Validar puesto duplicado (1.er puesto, 2.° puesto, 3.er puesto deben ser únicos por Concurso + Etapa + Categoría + Disciplina)
+      const isTopPuesto = ['1.er puesto', '2.° puesto', '3.er puesto'].includes(puestoVal);
+      const existingRegs = state.concursoRegistros || [];
+      if (isTopPuesto) {
+        const conflict = existingRegs.find(r => {
+          if (isEditing && r.id === concursoEditingId) return false;
+          const sameTipo = (r.tipoConcursoId === tipo.id || r.tipoConcursoNombre === tipo.nombre);
+          const sameEtapa = (r.etapa || '').toUpperCase() === (regData.etapa || '').toUpperCase();
+          const sameCat = normalizeText(r.categoria) === normalizeText(regData.categoria);
+          const sameDisc = normalizeText(r.disciplina) === normalizeText(regData.disciplina);
+          const samePuesto = normalizePuestoValue(r.puesto) === puestoVal;
+          return sameTipo && sameEtapa && sameCat && sameDisc && samePuesto;
+        });
+        if (conflict) {
+          showToast(`Ya existe un registro con el ${puestoVal} para la categoría "${regData.categoria}"${regData.disciplina ? ' y área "' + regData.disciplina + '"' : ''} (I.E. ${conflict.institucion}). No puede haber dos mismos puestos en la misma categoría.`);
+          btn.disabled = false;
+          btn.textContent = submitLabel;
+          return;
+        }
+      }
+
+      // Validar duplicado exacto
+      const exactDuplicate = existingRegs.find(r => {
+        if (isEditing && r.id === concursoEditingId) return false;
+        const sameTipo = (r.tipoConcursoId === tipo.id || r.tipoConcursoNombre === tipo.nombre);
+        const sameInst = normalizeText(r.institucion) === normalizeText(regData.institucion);
+        const sameCat = normalizeText(r.categoria) === normalizeText(regData.categoria);
+        const sameDisc = normalizeText(r.disciplina) === normalizeText(regData.disciplina);
+        const pDnis = pRows.map(p => (p.dni || '').trim()).filter(Boolean);
+        const rDnis = (r.participantes || []).map(p => (p.dni || '').trim()).filter(Boolean);
+        const sharesDni = pDnis.length > 0 && pDnis.some(d => rDnis.includes(d));
+        return sameTipo && sameInst && sameCat && (sharesDni || (sameDisc && normalizePuestoValue(r.puesto) === puestoVal));
+      });
+      if (exactDuplicate) {
+        if (!confirm('Advertencia: Parece haber un registro idéntico o con los mismos participantes para esta I.E. en el sistema. ¿Deseas guardarlo de todas formas?')) {
+          btn.disabled = false;
+          btn.textContent = submitLabel;
+          return;
+        }
+      }
 
       if (isEditing) {
         await dbNs.collection('concursoRegistros').doc(concursoEditingId).set(regData);
@@ -4019,7 +5630,150 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
 
 /* -------------------------------------------------------------
    SUB-PESTAÑA 2: VER CONSOLIDADO (REPORTES / RESULTADOS)
+   SISTEMA DE FILTROS EN CASCADA PARA JEDPA:
+   Etapa -> Disciplina -> Categoría -> Género -> Buscar
    ------------------------------------------------------------- */
+
+function normalizeFilterValue(val) {
+  if (val === null || val === undefined) return '';
+  return String(val).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/**
+ * Calcula las opciones facetadas en memoria agrupando variantes equivalentes (mayúsculas, tildes, espacios)
+ * y conservando la forma más frecuente como etiqueta visual.
+ */
+function getFacetOptions(rows, field, allLabel = 'Todas', emptyLabel = null) {
+  const map = new Map();
+  let emptyCount = 0;
+
+  rows.forEach(r => {
+    const raw = r[field];
+    if (raw === null || raw === undefined || String(raw).trim() === '' || String(raw).trim() === '—') {
+      emptyCount++;
+      return;
+    }
+    const str = String(raw).trim();
+    const norm = normalizeFilterValue(str);
+    if (!map.has(norm)) {
+      map.set(norm, { label: str, count: 1, rawCounts: new Map([[str, 1]]) });
+    } else {
+      const entry = map.get(norm);
+      entry.count++;
+      entry.rawCounts.set(str, (entry.rawCounts.get(str) || 0) + 1);
+      let maxCount = 0;
+      for (const [rStr, rCount] of entry.rawCounts) {
+        if (rCount > maxCount) {
+          maxCount = rCount;
+          entry.label = rStr;
+        }
+      }
+    }
+  });
+
+  const options = [];
+  options.push({ value: '', label: `${allLabel} (${rows.length})`, rawLabel: allLabel, count: rows.length, isAll: true });
+
+  const items = Array.from(map.entries()).map(([norm, data]) => ({
+    value: norm,
+    label: `${data.label} (${data.count})`,
+    rawLabel: data.label,
+    count: data.count
+  }));
+
+  if (field === 'etapa') {
+    const order = ['ugel', 'drelm', 'dre', 'macroregional', 'nacional'];
+    items.sort((a, b) => {
+      const idxA = order.indexOf(a.value);
+      const idxB = order.indexOf(b.value);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.rawLabel.localeCompare(b.rawLabel);
+    });
+  } else if (field === 'categoria') {
+    items.sort((a, b) => a.rawLabel.localeCompare(b.rawLabel, undefined, { numeric: true }));
+  } else if (field === 'genero') {
+    const order = ['damas', 'varones', 'mixto'];
+    items.sort((a, b) => {
+      const idxA = order.indexOf(a.value);
+      const idxB = order.indexOf(b.value);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.rawLabel.localeCompare(b.rawLabel);
+    });
+  } else {
+    items.sort((a, b) => a.rawLabel.localeCompare(b.rawLabel));
+  }
+
+  options.push(...items);
+
+  if (emptyCount > 0 && emptyLabel) {
+    options.push({
+      value: '__empty__',
+      label: `${emptyLabel} (${emptyCount})`,
+      rawLabel: emptyLabel,
+      count: emptyCount,
+      isEmpty: true
+    });
+  }
+
+  return options;
+}
+
+function syncConcursoFiltersToUrl(filters, isJedpa) {
+  try {
+    const url = new URL(window.location.href);
+    if (filters.tipoId) url.searchParams.set('concurso', filters.tipoId);
+    else url.searchParams.delete('concurso');
+
+    if (isJedpa) {
+      if (filters.etapa) url.searchParams.set('etapa', filters.etapa);
+      else url.searchParams.delete('etapa');
+
+      if (filters.disciplina) url.searchParams.set('disciplina', filters.disciplina);
+      else url.searchParams.delete('disciplina');
+
+      if (filters.categoria) url.searchParams.set('categoria', filters.categoria);
+      else url.searchParams.delete('categoria');
+
+      if (filters.genero) url.searchParams.set('genero', filters.genero);
+      else url.searchParams.delete('genero');
+    } else {
+      if (filters.etapa) url.searchParams.set('etapa', filters.etapa);
+      else url.searchParams.delete('etapa');
+      if (filters.categoria) url.searchParams.set('categoria', filters.categoria);
+      else url.searchParams.delete('categoria');
+      if (filters.genero) url.searchParams.set('genero', filters.genero);
+      else url.searchParams.delete('genero');
+      if (filters.disciplina) url.searchParams.set('disciplina', filters.disciplina);
+      else url.searchParams.delete('disciplina');
+    }
+
+    if (filters.query) url.searchParams.set('q', filters.query);
+    else url.searchParams.delete('q');
+
+    window.history.replaceState(null, '', url.toString());
+  } catch (e) {}
+}
+
+function restoreConcursoFiltersFromUrl(tipos) {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const cParam = params.get('concurso');
+    if (cParam) {
+      const matchTipo = tipos.find(t => t.id === cParam || normalizeFilterValue(t.nombre).includes(cParam));
+      if (matchTipo) concursoFilters.tipoId = matchTipo.id;
+    }
+    if (params.has('etapa')) concursoFilters.etapa = params.get('etapa');
+    if (params.has('disciplina')) concursoFilters.disciplina = params.get('disciplina');
+    if (params.has('categoria')) concursoFilters.categoria = params.get('categoria');
+    if (params.has('genero')) concursoFilters.genero = params.get('genero');
+    if (params.has('q')) concursoFilters.query = params.get('q');
+  } catch (e) {}
+}
+
 function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate) {
   const tipos = state.tiposConcurso || [];
   const regs = state.concursoRegistros || [];
@@ -4029,52 +5783,183 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     return;
   }
 
-  // Si tipoId no está definido (primera carga), podemos dejarlo en '' para ver todos o preseleccionar
-  const tipo = tipos.find(t => t.id === concursoFilters.tipoId) || null;
+  // Restaurar de URL una sola vez al cargar si aún no se inicializó
+  if (!concursoFilters._urlInitialized) {
+    concursoFilters._urlInitialized = true;
+    restoreConcursoFiltersFromUrl(tipos);
+  }
 
-  // Filtrado de registros resiliente (por ID o por nombre del concurso)
-  let filtered = regs.slice();
-  if (concursoFilters.tipoId) {
-    const tSel = tipos.find(t => t.id === concursoFilters.tipoId);
-    filtered = filtered.filter(r => {
-      if (r.tipoConcursoId === concursoFilters.tipoId) return true;
-      if (tSel && (r.tipoConcursoNombre === tSel.nombre || r.tipoConcurso === tSel.nombre)) return true;
+  const tipo = tipos.find(t => t.id === concursoFilters.tipoId) || null;
+  const isJedpa = tipo && (
+    tipo.id === 'jedpa' ||
+    (tipo.nombre || '').toLowerCase().includes('jedpa') ||
+    (tipo.nombre || '').toLowerCase().includes('juegos escolares')
+  );
+
+  let filtered = [];
+  let baseRows = [];
+  let etapaOptions = [];
+  let disciplinaOptions = [];
+  let categoriaOptions = [];
+  let generoOptions = [];
+  let etapaRows = [];
+
+  if (isJedpa) {
+    baseRows = regs.filter(r => {
+      if (r.tipoConcursoId === tipo.id) return true;
+      if (tipo && (r.tipoConcursoNombre === tipo.nombre || r.tipoConcurso === tipo.nombre)) return true;
       return false;
     });
+
+    // 1. ETAPA
+    etapaOptions = getFacetOptions(baseRows, 'etapa', 'Todas', 'Sin etapa');
+    if (concursoFilters.etapa && !etapaOptions.some(o => o.value === concursoFilters.etapa)) {
+      concursoFilters.etapa = '';
+    }
+    etapaRows = baseRows;
+    if (concursoFilters.etapa) {
+      if (concursoFilters.etapa === '__empty__') {
+        etapaRows = baseRows.filter(r => !r.etapa || r.etapa.trim() === '' || r.etapa.trim() === '—');
+      } else {
+        etapaRows = baseRows.filter(r => normalizeFilterValue(r.etapa) === concursoFilters.etapa);
+      }
+    }
+
+    // 2. DISCIPLINA
+    disciplinaOptions = getFacetOptions(etapaRows, 'disciplina', 'Todas', 'Sin disciplina');
+    if (concursoFilters.disciplina && !disciplinaOptions.some(o => o.value === concursoFilters.disciplina)) {
+      concursoFilters.disciplina = '';
+      showToast('Disciplina reiniciada: no hay registros con esa combinación.');
+    }
+    let disciplinaRows = etapaRows;
+    if (concursoFilters.disciplina) {
+      if (concursoFilters.disciplina === '__empty__') {
+        disciplinaRows = etapaRows.filter(r => !r.disciplina || r.disciplina.trim() === '' || r.disciplina.trim() === '—');
+      } else {
+        disciplinaRows = etapaRows.filter(r => normalizeFilterValue(r.disciplina) === concursoFilters.disciplina);
+      }
+    }
+
+    // 3. CATEGORÍA
+    categoriaOptions = getFacetOptions(disciplinaRows, 'categoria', 'Todas', 'Sin categoría');
+    if (concursoFilters.categoria && !categoriaOptions.some(o => o.value === concursoFilters.categoria)) {
+      concursoFilters.categoria = '';
+      showToast('Categoría reiniciada: no hay registros con esa combinación.');
+    }
+    let categoriaRows = disciplinaRows;
+    if (concursoFilters.categoria) {
+      if (concursoFilters.categoria === '__empty__') {
+        categoriaRows = disciplinaRows.filter(r => !r.categoria || r.categoria.trim() === '' || r.categoria.trim() === '—');
+      } else {
+        categoriaRows = disciplinaRows.filter(r => normalizeFilterValue(r.categoria) === concursoFilters.categoria);
+      }
+    }
+
+    // 4. GÉNERO
+    generoOptions = getFacetOptions(categoriaRows, 'genero', 'Todos', 'Sin género');
+    if (concursoFilters.genero && !generoOptions.some(o => o.value === concursoFilters.genero)) {
+      concursoFilters.genero = '';
+      showToast('Género reiniciado: no hay registros con esa combinación.');
+    }
+    let generoRows = categoriaRows;
+    if (concursoFilters.genero) {
+      if (concursoFilters.genero === '__empty__') {
+        generoRows = categoriaRows.filter(r => !r.genero || r.genero.trim() === '' || r.genero.trim() === '—');
+      } else {
+        generoRows = categoriaRows.filter(r => normalizeFilterValue(r.genero) === concursoFilters.genero);
+      }
+    }
+
+    // 5. BUSCAR
+    filtered = generoRows;
+    if (concursoFilters.query) {
+      const q = normalizeText(concursoFilters.query);
+      filtered = filtered.filter(r => {
+        if (normalizeText(r.institucion).includes(q)) return true;
+        if (normalizeText(r.tituloTrabajo).includes(q)) return true;
+        if (normalizeText(r.disciplina).includes(q)) return true;
+        if (normalizeText(r.resolucionRef).includes(q)) return true;
+        if (normalizeText(r.codigoModular).includes(q)) return true;
+        if (normalizeText(r.tipoConcursoNombre || r.tipoConcurso).includes(q)) return true;
+        if ((r.participantes || []).some(p => normalizeText([p.nombres, p.apellidos, p.dni].filter(Boolean).join(' ')).includes(q))) return true;
+        if ((r.asesores || []).some(a => normalizeText([a.nombres, a.apellidos, a.dni].filter(Boolean).join(' ')).includes(q))) return true;
+        return false;
+      });
+    }
+
+  } else {
+    // Otros concursos (comportamiento estándar conservado)
+    baseRows = regs.slice();
+    filtered = regs.slice();
+    if (concursoFilters.tipoId) {
+      const tSel = tipos.find(t => t.id === concursoFilters.tipoId);
+      filtered = filtered.filter(r => {
+        if (r.tipoConcursoId === concursoFilters.tipoId) return true;
+        if (tSel && (r.tipoConcursoNombre === tSel.nombre || r.tipoConcurso === tSel.nombre)) return true;
+        return false;
+      });
+      baseRows = filtered.slice();
+    }
+    if (concursoFilters.etapa) {
+      filtered = filtered.filter(r => (r.etapa || '').toUpperCase() === concursoFilters.etapa.toUpperCase());
+    }
+    if (concursoFilters.categoria) {
+      const catFilt = concursoFilters.categoria.trim().toLowerCase();
+      filtered = filtered.filter(r => (r.categoria || '').trim().toLowerCase() === catFilt);
+    }
+    if (concursoFilters.genero) {
+      const genFilt = concursoFilters.genero.trim().toLowerCase();
+      filtered = filtered.filter(r => (r.genero || '').trim().toLowerCase() === genFilt);
+    }
+    if (concursoFilters.disciplina) {
+      const discFilt = concursoFilters.disciplina.toLowerCase();
+      filtered = filtered.filter(r => (r.disciplina || '').toLowerCase().includes(discFilt));
+    }
+    if (concursoFilters.query) {
+      const q = normalizeText(concursoFilters.query);
+      filtered = filtered.filter(r => {
+        if (normalizeText(r.institucion).includes(q)) return true;
+        if (normalizeText(r.tituloTrabajo).includes(q)) return true;
+        if (normalizeText(r.disciplina).includes(q)) return true;
+        if (normalizeText(r.resolucionRef).includes(q)) return true;
+        if (normalizeText(r.codigoModular).includes(q)) return true;
+        if (normalizeText(r.tipoConcursoNombre || r.tipoConcurso).includes(q)) return true;
+        if ((r.participantes || []).some(p => normalizeText([p.nombres, p.apellidos, p.dni].filter(Boolean).join(' ')).includes(q))) return true;
+        if ((r.asesores || []).some(a => normalizeText([a.nombres, a.apellidos, a.dni].filter(Boolean).join(' ')).includes(q))) return true;
+        return false;
+      });
+    }
   }
-  if (concursoFilters.etapa) {
-    filtered = filtered.filter(r => (r.etapa || '').toUpperCase() === concursoFilters.etapa.toUpperCase());
-  }
-  if (concursoFilters.categoria) {
-    const catFilt = concursoFilters.categoria.trim().toLowerCase();
-    filtered = filtered.filter(r => (r.categoria || '').trim().toLowerCase() === catFilt);
-  }
-  if (concursoFilters.genero) {
-    const genFilt = concursoFilters.genero.trim().toLowerCase();
-    filtered = filtered.filter(r => (r.genero || '').trim().toLowerCase() === genFilt);
-  }
-  if (concursoFilters.disciplina) {
-    const discFilt = concursoFilters.disciplina.toLowerCase();
-    filtered = filtered.filter(r => (r.disciplina || '').toLowerCase().includes(discFilt));
-  }
-  if (concursoFilters.query) {
-    const q = normalizeText(concursoFilters.query);
-    filtered = filtered.filter(r => {
-      if (normalizeText(r.institucion).includes(q)) return true;
-      if (normalizeText(r.tituloTrabajo).includes(q)) return true;
-      if (normalizeText(r.disciplina).includes(q)) return true;
-      if (normalizeText(r.resolucionRef).includes(q)) return true;
-      if (normalizeText(r.codigoModular).includes(q)) return true;
-      if (normalizeText(r.tipoConcursoNombre || r.tipoConcurso).includes(q)) return true;
-      if ((r.participantes || []).some(p => normalizeText([p.nombres, p.apellidos, p.dni].filter(Boolean).join(' ')).includes(q))) return true;
-      if ((r.asesores || []).some(a => normalizeText([a.nombres, a.apellidos, a.dni].filter(Boolean).join(' ')).includes(q))) return true;
-      return false;
-    });
-  }
+
+  syncConcursoFiltersToUrl(concursoFilters, isJedpa);
+
+  // Ordenamiento predeterminado: Categoría -> Área / Disciplina -> Puesto (1.er, 2.°, 3.er, MH...) -> Institución
+  const puestoWeight = (p) => {
+    const s = String(p || '').toLowerCase();
+    if (s.includes('1') || s.startsWith('primer')) return 1;
+    if (s.includes('2') || s.startsWith('segundo')) return 2;
+    if (s.includes('3') || s.startsWith('tercer')) return 3;
+    if (s.includes('menci') || s.includes('honrosa') || s.includes('mh')) return 4;
+    if (s.includes('final')) return 5;
+    if (s.includes('clasif')) return 6;
+    if (s.includes('partic')) return 7;
+    return 8;
+  };
+
+  filtered.sort((a, b) => {
+    const catComp = (a.categoria || '').localeCompare(b.categoria || '');
+    if (catComp !== 0) return catComp;
+    const discComp = (a.disciplina || '').localeCompare(b.disciplina || '');
+    if (discComp !== 0) return discComp;
+    const pA = puestoWeight(a.puesto);
+    const pB = puestoWeight(b.puesto);
+    if (pA !== pB) return pA - pB;
+    return (a.institucion || '').localeCompare(b.institucion || '');
+  });
 
   // Métricas calculadas
   const totalRegs = filtered.length;
-  const uniqueColegios = new Set(filtered.map(r => r.institucion).filter(Boolean)).size;
+  const uniqueColegios = new Set(filtered.map(r => r.codigoModular || r.institucion).filter(Boolean)).size;
   const partSet = new Set();
   filtered.forEach(r => {
     (r.participantes || []).forEach(p => {
@@ -4093,31 +5978,81 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
   });
   const totalAsesUnicos = asesSet.size;
 
-  // Opciones de categorías (del tipo seleccionado o de todos los registros)
-  const availableCats = tipo
-    ? (tipo.categorias || [])
-    : Array.from(new Set(regs.map(r => r.categoria).filter(Boolean))).sort();
+  // Chips de filtros activos
+  const chips = [];
+  if (isJedpa) {
+    if (concursoFilters.etapa) {
+      const opt = etapaOptions.find(o => o.value === concursoFilters.etapa);
+      chips.push({ key: 'etapa', label: `Etapa: ${opt ? opt.rawLabel : concursoFilters.etapa}` });
+    }
+    if (concursoFilters.disciplina) {
+      const opt = disciplinaOptions.find(o => o.value === concursoFilters.disciplina);
+      chips.push({ key: 'disciplina', label: `Disciplina: ${opt ? opt.rawLabel : concursoFilters.disciplina}` });
+    }
+    if (concursoFilters.categoria) {
+      const opt = categoriaOptions.find(o => o.value === concursoFilters.categoria);
+      chips.push({ key: 'categoria', label: `Categoría: ${opt ? opt.rawLabel : concursoFilters.categoria}` });
+    }
+    if (concursoFilters.genero) {
+      const opt = generoOptions.find(o => o.value === concursoFilters.genero);
+      chips.push({ key: 'genero', label: `Género: ${opt ? opt.rawLabel : concursoFilters.genero}` });
+    }
+  } else {
+    if (concursoFilters.etapa) chips.push({ key: 'etapa', label: `Etapa: ${concursoFilters.etapa}` });
+    if (concursoFilters.categoria) chips.push({ key: 'categoria', label: `Categoría: ${concursoFilters.categoria}` });
+    if (concursoFilters.genero) chips.push({ key: 'genero', label: `Género: ${concursoFilters.genero}` });
+    if (concursoFilters.disciplina) chips.push({ key: 'disciplina', label: `Disciplina: ${concursoFilters.disciplina}` });
+  }
+  if (concursoFilters.query) {
+    chips.push({ key: 'query', label: `Buscar: "${concursoFilters.query}"` });
+  }
 
-  const catOpts = availableCats.map(c =>
-    '<option value="' + esc(c) + '"' + ((concursoFilters.categoria || '').toLowerCase() === c.toLowerCase() ? ' selected' : '') + '>' + esc(c) + '</option>'
-  ).join('');
+  const hasActiveFilters = chips.length > 0;
+  const activeChipsHtml = chips.map(c => `
+    <span class="filterChip">
+      ${esc(c.label)}
+      <button type="button" data-chip-clear="${c.key}" aria-label="Quitar filtro ${esc(c.label)}">✕</button>
+    </span>
+  `).join('');
+
+  // Título dinámico de la tabla
+  let tableTitleParts = [tipo ? tipo.nombre : 'Todos los concursos escolares'];
+  if (isJedpa) {
+    if (concursoFilters.etapa) {
+      const eOpt = etapaOptions.find(o => o.value === concursoFilters.etapa);
+      tableTitleParts.push(`Etapa ${eOpt ? eOpt.rawLabel : concursoFilters.etapa}`);
+    }
+    if (concursoFilters.disciplina) {
+      const dOpt = disciplinaOptions.find(o => o.value === concursoFilters.disciplina);
+      tableTitleParts.push(dOpt ? dOpt.rawLabel : concursoFilters.disciplina);
+    }
+    if (concursoFilters.categoria) {
+      const cOpt = categoriaOptions.find(o => o.value === concursoFilters.categoria);
+      tableTitleParts.push(`Categoría ${cOpt ? cOpt.rawLabel : concursoFilters.categoria}`);
+    }
+    if (concursoFilters.genero) {
+      const gOpt = generoOptions.find(o => o.value === concursoFilters.genero);
+      tableTitleParts.push(gOpt ? gOpt.rawLabel : concursoFilters.genero);
+    }
+  }
+  const dynamicTableTitle = 'Resultados consolidados: ' + tableTitleParts.join(' · ');
 
   // Filas de la tabla de resultados
   const rowsHtml = filtered.map(r => {
     const isExpanded = concursoExpandedId === r.id;
     const partSummary = (r.participantes || []).map(p => {
-      const nom = [p.nombres, p.apellidos].filter(Boolean).join(' ').trim();
+      const nom = formatPersonName(p);
       const dni = p.dni ? ' <small style="color:var(--ink-soft)">(' + esc(p.dni) + ')</small>' : '';
       const rol = (p.rol && p.rol !== 'Estudiante' && p.rol !== 'Deportista') ? ' <small style="color:var(--ink-soft)">[' + esc(p.rol) + ']</small>' : '';
       return esc(nom) + dni + rol;
-    }).join('<br>') || '—';
+    }).join('<br>') || '<span style="color:var(--ink-soft);font-style:italic">Sin participante registrado</span>';
 
     const asesSummary = (r.asesores || []).map(a => {
-      const nom = [a.nombres, a.apellidos].filter(Boolean).join(' ').trim();
+      const nom = formatPersonName(a);
       const dni = a.dni ? ' <small style="color:var(--ink-soft)">(' + esc(a.dni) + ')</small>' : '';
       const rol = a.rol ? ' <small style="color:var(--ink-soft)">[' + esc(a.rol) + ']</small>' : '';
       return esc(nom) + dni + rol;
-    }).join('<br>') || '—';
+    }).join('<br>') || '<span style="color:var(--ink-soft);font-style:italic">Sin docente asesor registrado</span>';
 
     let detExtra = [];
     if (!concursoFilters.tipoId) {
@@ -4131,7 +6066,6 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     const editBtn = '<button class="btn secondary small" data-cedit="' + r.id + '" title="Editar registro">✏️</button>';
     const delBtn  = isAdmin ? '<button class="iconBtn" data-cdel="' + r.id + '" title="Eliminar registro">✕</button>' : '';
 
-    // Vista detallada al expandir fila
     let detailContent = '';
     if (isExpanded) {
       const partListDetailed = (r.participantes || []).map(p => {
@@ -4168,7 +6102,7 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     }
 
     return '<tr class="clickable" data-crow="' + r.id + '">' +
-      '<td><span class="badge badge-puesto">' + esc(r.puesto || '—') + '</span></td>' +
+      '<td>' + formatPuestoBadge(r.puesto) + '</td>' +
       '<td><strong>' + esc(r.institucion) + '</strong>' + (r.codigoModular ? '<br><small style="color:var(--ink-soft)">' + esc(r.codigoModular) + '</small>' : '') + '</td>' +
       '<td><span class="badge" style="background:var(--surface-2)">' + esc(r.categoria || '—') + '</span></td>' +
       '<td>' + detHtml + '</td>' +
@@ -4184,55 +6118,192 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     '</td></tr>'
   );
 
-  host.innerHTML = '' +
-    '<div class="panel">' +
-      '<div class="filterBar" style="margin-bottom:0">' +
-        '<div class="field" style="flex:2;min-width:240px">' +
-          '<label for="cf_tipo">Tipo de concurso</label>' +
-          '<select id="cf_tipo">' +
-            '<option value="">Todos los concursos (' + regs.length + ')</option>' +
-            tipos.map(t => '<option value="' + t.id + '"' + (t.id === concursoFilters.tipoId ? ' selected' : '') + '>' + esc(t.nombre) + '</option>').join('') +
-          '</select>' +
-        '</div>' +
-        '<div class="field" style="flex:1;min-width:130px">' +
-          '<label for="cf_etapa">Etapa</label>' +
-          '<select id="cf_etapa">' +
-            '<option value="">Todas</option>' +
-            ['UGEL', 'DRELM', 'MACROREGIONAL', 'NACIONAL'].map(e => '<option value="' + e + '"' + (e === concursoFilters.etapa ? ' selected' : '') + '>' + e + '</option>').join('') +
-          '</select>' +
-        '</div>' +
-        '<div class="field" style="flex:1;min-width:140px">' +
-          '<label for="cf_categoria">Categoría</label>' +
-          '<select id="cf_categoria">' +
-            '<option value="">Todas</option>' + catOpts +
-          '</select>' +
-        '</div>' +
-        (tipo && tipo.tieneGenero ? (
-          '<div class="field" style="flex:1;min-width:120px">' +
-            '<label for="cf_genero">Género</label>' +
-            '<select id="cf_genero">' +
-              '<option value="">Todos</option>' +
-              ['Damas', 'Varones'].map(g => '<option value="' + g + '"' + (g.toLowerCase() === (concursoFilters.genero || '').toLowerCase() ? ' selected' : '') + '>' + g + '</option>').join('') +
-            '</select>' +
-          '</div>'
-        ) : '') +
-        (tipo && tipo.tieneDisciplina ? (
-          '<div class="field" style="flex:1.5;min-width:160px">' +
-            '<label for="cf_disciplina">' + esc(tipo.etiquetaDisciplina || 'Disciplina') + '</label>' +
-            '<input type="search" id="cf_disciplina" value="' + esc(concursoFilters.disciplina) + '" placeholder="Buscar disciplina...">' +
-          '</div>'
-        ) : '') +
-        '<div class="field" style="flex:1.5;min-width:180px">' +
-          '<label for="cf_query">Buscar</label>' +
-          '<input type="search" id="cf_query" value="' + esc(concursoFilters.query) + '" placeholder="I.E., estudiante, DNI, RD...">' +
-        '</div>' +
-        '<button type="button" class="btn secondary small" id="cf_clear" style="align-self:flex-end;margin-bottom:2px">Limpiar</button>' +
-        (isAdmin ? '<button type="button" class="btn secondary small" id="cf_importRd" style="align-self:flex-end;margin-bottom:2px" title="Importar 83 ganadores de Resoluciones Directorales 2026">📥 Cargar ganadores RD</button>' : '') +
-        '<button type="button" class="btn secondary small" id="cf_exportCsv" style="align-self:flex-end;margin-bottom:2px;margin-left:auto">Exportar CSV</button>' +
-        '<button type="button" class="btn small" id="cf_exportPdf" style="align-self:flex-end;margin-bottom:2px">⬇ Descargar reporte (PDF)</button>' +
-      '</div>' +
-    '</div>' +
+  // Selector de disciplina label para JEDPA
+  let selectedDisciplinaLabel = 'Todas';
+  if (isJedpa) {
+    const curDiscOpt = disciplinaOptions.find(o => o.value === concursoFilters.disciplina);
+    selectedDisciplinaLabel = curDiscOpt ? curDiscOpt.label : `Todas (${etapaRows.length})`;
+  }
 
+  // Renderizado del panel de filtros
+  let filterBarHtml = '';
+  if (isJedpa) {
+    filterBarHtml = `
+      <div class="panel" style="margin-bottom:16px">
+        <div class="jedpaFilterContainer">
+          <!-- Fila 0: Tipo de concurso (ancho completo) -->
+          <div class="jedpaRowTipo">
+            <div class="jedpaFilterField">
+              <label for="cf_tipo">Tipo de concurso</label>
+              <select id="cf_tipo" title="${esc(tipo ? tipo.nombre : 'Todos los concursos')}">
+                <option value="">Todos los concursos (${regs.length})</option>
+                ${tipos.map(t => `<option value="${t.id}" ${t.id === concursoFilters.tipoId ? 'selected' : ''}>${esc(t.nombre)}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <!-- Fila 1: Cascada (1. ETAPA -> 2. DISCIPLINA -> 3. CATEGORÍA -> 4. GÉNERO -> 5. BUSCAR) -->
+          <div class="jedpaFiltersGrid">
+            <!-- 1. ETAPA -->
+            <div class="jedpaFilterField">
+              <label for="cf_etapa">1. Etapa</label>
+              <select id="cf_etapa" ${etapaOptions.length <= 1 ? 'disabled' : ''}>
+                ${etapaOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.etapa ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
+              </select>
+            </div>
+
+            <!-- 2. DISCIPLINA (Searchable Select) -->
+            <div class="jedpaFilterField">
+              <label for="btn_cf_disciplina">2. Disciplina</label>
+              <div class="searchableSelectWrap" id="wrap_cf_disciplina">
+                <button type="button" class="searchableSelectBtn ${disciplinaOptions.length <= 1 ? 'disabled' : ''}" id="btn_cf_disciplina" aria-haspopup="listbox" aria-expanded="false" ${disciplinaOptions.length <= 1 ? 'disabled' : ''}>
+                  <span id="txt_cf_disciplina">${esc(selectedDisciplinaLabel)}</span>
+                  <span style="font-size:11px;color:var(--ink-soft)">▾</span>
+                </button>
+                <div class="searchableSelectDropdown" id="drop_cf_disciplina" style="display:none" role="listbox">
+                  <div class="searchableSelectSearch">
+                    <input type="search" placeholder="Buscar disciplina..." id="input_cf_disciplina_search" autocomplete="off">
+                  </div>
+                  <div class="searchableSelectList" id="list_cf_disciplina">
+                    ${disciplinaOptions.map(o => `
+                      <div class="searchableSelectOption ${o.value === concursoFilters.disciplina ? 'selected' : ''}" data-val="${esc(o.value)}" role="option">
+                        <span>${esc(o.rawLabel || 'Todas')}</span>
+                        <span style="font-size:11.5px;color:var(--ink-soft)">(${o.count})</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+                <select id="cf_disciplina" style="display:none">
+                  ${disciplinaOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.disciplina ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+
+            <!-- 3. CATEGORÍA -->
+            <div class="jedpaFilterField">
+              <label for="cf_categoria">3. Categoría</label>
+              <select id="cf_categoria" ${categoriaOptions.length <= 1 ? 'disabled' : ''}>
+                ${categoriaOptions.length <= 1
+                  ? '<option value="">Sin opciones</option>'
+                  : categoriaOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.categoria ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
+                }
+              </select>
+            </div>
+
+            <!-- 4. GÉNERO -->
+            <div class="jedpaFilterField">
+              <label for="cf_genero">4. Género</label>
+              <select id="cf_genero" ${generoOptions.length <= 1 ? 'disabled' : ''}>
+                ${generoOptions.length <= 1
+                  ? '<option value="">Sin opciones</option>'
+                  : generoOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.genero ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
+                }
+              </select>
+            </div>
+
+            <!-- 5. BUSCAR -->
+            <div class="jedpaFilterField">
+              <label for="cf_query">Buscar</label>
+              <input type="search" id="cf_query" value="${esc(concursoFilters.query)}" placeholder="I.E., estudiante, DNI, RD...">
+            </div>
+          </div>
+
+          <!-- Fila 2: Chips de filtros activos + Contador -->
+          <div class="jedpaActiveFiltersRow">
+            ${hasActiveFilters ? `
+              <span style="font-size:12px;font-weight:700;color:var(--navy-900)">Filtros activos:</span>
+              ${activeChipsHtml}
+            ` : ''}
+            <div class="recordsCounter" aria-live="polite">
+              Mostrando <strong>${filtered.length}</strong> de <strong>${baseRows.length}</strong> registros
+            </div>
+          </div>
+
+          <!-- Fila 3: Botones de acción -->
+          <div class="jedpaActionsRow">
+            <button type="button" class="btn secondary small" id="cf_clear">Limpiar</button>
+            ${isAdmin ? '<button type="button" class="btn secondary small" id="cf_importRd" title="Importar 83 ganadores de Resoluciones Directorales 2026">📥 Cargar ganadores RD</button>' : ''}
+            <button type="button" class="btn secondary small" id="cf_detectDuplicatesBtn" title="Buscar registros duplicados o puestos repetidos">🔍 Detectar duplicados</button>
+            <button type="button" class="btn secondary small" id="cf_exportCsv" style="margin-left:auto">Exportar CSV</button>
+            <button type="button" class="btn small" id="cf_exportPdf">⬇ Descargar reporte (PDF)</button>
+          </div>
+        </div>
+      </div>
+    `;
+  } else {
+    // Barra de filtros estándar para los demás concursos
+    const availableCats = tipo
+      ? (tipo.categorias || [])
+      : Array.from(new Set(regs.map(r => r.categoria).filter(Boolean))).sort();
+
+    const catOpts = availableCats.map(c =>
+      '<option value="' + esc(c) + '"' + ((concursoFilters.categoria || '').toLowerCase() === c.toLowerCase() ? ' selected' : '') + '>' + esc(c) + '</option>'
+    ).join('');
+
+    filterBarHtml = `
+      <div class="panel">
+        <div class="filterBar" style="margin-bottom:0">
+          <div class="field" style="flex:2;min-width:240px">
+            <label for="cf_tipo">Tipo de concurso</label>
+            <select id="cf_tipo">
+              <option value="">Todos los concursos (${regs.length})</option>
+              ${tipos.map(t => `<option value="${t.id}" ${t.id === concursoFilters.tipoId ? 'selected' : ''}>${esc(t.nombre)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field" style="flex:1;min-width:130px">
+            <label for="cf_etapa">Etapa</label>
+            <select id="cf_etapa">
+              <option value="">Todas</option>
+              ${['UGEL', 'DRELM', 'MACROREGIONAL', 'NACIONAL'].map(e => `<option value="${e}" ${e === concursoFilters.etapa ? 'selected' : ''}>${e}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field" style="flex:1;min-width:140px">
+            <label for="cf_categoria">Categoría</label>
+            <select id="cf_categoria">
+              <option value="">Todas</option>
+              ${catOpts}
+            </select>
+          </div>
+          ${(tipo && tipo.tieneGenero) ? `
+            <div class="field" style="flex:1;min-width:120px">
+              <label for="cf_genero">Género</label>
+              <select id="cf_genero">
+                <option value="">Todos</option>
+                ${['Damas', 'Varones'].map(g => `<option value="${g}" ${g.toLowerCase() === (concursoFilters.genero || '').toLowerCase() ? 'selected' : ''}>${g}</option>`).join('')}
+              </select>
+            </div>
+          ` : ''}
+          ${(tipo && tipo.tieneDisciplina) ? `
+            <div class="field" style="flex:1.5;min-width:160px">
+              <label for="cf_disciplina">${esc(tipo.etiquetaDisciplina || 'Disciplina')}</label>
+              <input type="search" id="cf_disciplina" value="${esc(concursoFilters.disciplina)}" placeholder="Buscar disciplina...">
+            </div>
+          ` : ''}
+          <div class="field" style="flex:1.5;min-width:180px">
+            <label for="cf_query">Buscar</label>
+            <input type="search" id="cf_query" value="${esc(concursoFilters.query)}" placeholder="I.E., estudiante, DNI, RD...">
+          </div>
+          <button type="button" class="btn secondary small" id="cf_clear" style="align-self:flex-end;margin-bottom:2px">Limpiar</button>
+          ${isAdmin ? '<button type="button" class="btn secondary small" id="cf_importRd" style="align-self:flex-end;margin-bottom:2px" title="Importar 83 ganadores de Resoluciones Directorales 2026">📥 Cargar ganadores RD</button>' : ''}
+          <button type="button" class="btn secondary small" id="cf_detectDuplicatesBtn" style="align-self:flex-end;margin-bottom:2px" title="Buscar registros duplicados o puestos repetidos">🔍 Detectar duplicados</button>
+          <button type="button" class="btn secondary small" id="cf_exportCsv" style="align-self:flex-end;margin-bottom:2px;margin-left:auto">Exportar CSV</button>
+          <button type="button" class="btn small" id="cf_exportPdf" style="align-self:flex-end;margin-bottom:2px">⬇ Descargar reporte (PDF)</button>
+        </div>
+        ${hasActiveFilters ? `
+          <div class="jedpaActiveFiltersRow" style="margin-top:10px">
+            <span style="font-size:12px;font-weight:700;color:var(--navy-900)">Filtros activos:</span>
+            ${activeChipsHtml}
+            <div class="recordsCounter" aria-live="polite">
+              Mostrando <strong>${filtered.length}</strong> de <strong>${baseRows.length}</strong> registros
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  host.innerHTML = '' +
+    filterBarHtml +
     '<div id="concursoReportCapture">' +
       '<div class="cards">' +
         '<div class="card"><div class="num">' + totalRegs + '</div><div class="lbl">Registros / Premiaciones</div></div>' +
@@ -4242,7 +6313,7 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       '</div>' +
 
       '<div class="panel">' +
-        '<h3>Resultados consolidados: ' + esc(tipo ? tipo.nombre : 'Todos los concursos escolares') + '</h3>' +
+        '<h3>' + esc(dynamicTableTitle) + '</h3>' +
         '<div class="tblWrap"><table><thead><tr>' +
           '<th style="width:70px">Puesto</th>' +
           '<th>Institución</th>' +
@@ -4259,17 +6330,30 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
   // Event listeners de filtros
   document.getElementById('cf_tipo').addEventListener('change', (e) => {
     concursoFilters.tipoId = e.target.value;
+    concursoFilters.etapa = '';
+    concursoFilters.disciplina = '';
     concursoFilters.categoria = '';
+    concursoFilters.genero = '';
+    concursoFilters.query = '';
     renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
   });
-  document.getElementById('cf_etapa').addEventListener('change', (e) => {
-    concursoFilters.etapa = e.target.value;
-    renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
-  });
-  document.getElementById('cf_categoria').addEventListener('change', (e) => {
-    concursoFilters.categoria = e.target.value;
-    renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
-  });
+
+  const fEtapa = document.getElementById('cf_etapa');
+  if (fEtapa) {
+    fEtapa.addEventListener('change', (e) => {
+      concursoFilters.etapa = e.target.value;
+      renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    });
+  }
+
+  const fCategoria = document.getElementById('cf_categoria');
+  if (fCategoria) {
+    fCategoria.addEventListener('change', (e) => {
+      concursoFilters.categoria = e.target.value;
+      renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    });
+  }
+
   const filGen = document.getElementById('cf_genero');
   if (filGen) {
     filGen.addEventListener('change', (e) => {
@@ -4277,29 +6361,126 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
     });
   }
-  const filDisc = document.getElementById('cf_disciplina');
-  if (filDisc) {
-    let discDebounce;
-    filDisc.addEventListener('input', (e) => {
-      clearTimeout(discDebounce);
-      discDebounce = setTimeout(() => {
-        concursoFilters.disciplina = e.target.value;
+
+  // Disciplina interactiva
+  if (isJedpa) {
+    const btnDisc = document.getElementById('btn_cf_disciplina');
+    const dropDisc = document.getElementById('drop_cf_disciplina');
+    const inputSearchDisc = document.getElementById('input_cf_disciplina_search');
+    const listDisc = document.getElementById('list_cf_disciplina');
+
+    if (btnDisc && dropDisc) {
+      btnDisc.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = dropDisc.style.display !== 'none';
+        if (isOpen) {
+          dropDisc.style.display = 'none';
+          btnDisc.setAttribute('aria-expanded', 'false');
+        } else {
+          dropDisc.style.display = 'flex';
+          btnDisc.setAttribute('aria-expanded', 'true');
+          if (inputSearchDisc) {
+            inputSearchDisc.value = '';
+            filterDiscOptions('');
+            inputSearchDisc.focus();
+          }
+        }
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#wrap_cf_disciplina')) {
+          dropDisc.style.display = 'none';
+          btnDisc.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      btnDisc.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          dropDisc.style.display = 'flex';
+          btnDisc.setAttribute('aria-expanded', 'true');
+          inputSearchDisc?.focus();
+        }
+      });
+
+      function filterDiscOptions(q) {
+        const normQ = normalizeFilterValue(q);
+        const opts = listDisc.querySelectorAll('.searchableSelectOption');
+        opts.forEach(opt => {
+          const text = normalizeFilterValue(opt.textContent);
+          const match = text.includes(normQ);
+          opt.style.display = match ? 'flex' : 'none';
+        });
+      }
+
+      if (inputSearchDisc) {
+        inputSearchDisc.addEventListener('input', (e) => {
+          filterDiscOptions(e.target.value);
+        });
+        inputSearchDisc.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            dropDisc.style.display = 'none';
+            btnDisc.setAttribute('aria-expanded', 'false');
+            btnDisc.focus();
+          }
+        });
+      }
+
+      listDisc.querySelectorAll('.searchableSelectOption').forEach(opt => {
+        opt.addEventListener('click', () => {
+          concursoFilters.disciplina = opt.dataset.val;
+          dropDisc.style.display = 'none';
+          btnDisc.setAttribute('aria-expanded', 'false');
+          renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+        });
+      });
+    }
+  } else {
+    const filDisc = document.getElementById('cf_disciplina');
+    if (filDisc) {
+      let discDebounce;
+      filDisc.addEventListener('input', (e) => {
+        clearTimeout(discDebounce);
+        discDebounce = setTimeout(() => {
+          concursoFilters.disciplina = e.target.value;
+          renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+        }, 300);
+      });
+    }
+  }
+
+  // Chips click para limpiar filtro individual
+  host.querySelectorAll('[data-chip-clear]').forEach(b => {
+    b.addEventListener('click', () => {
+      const field = b.dataset.chipClear;
+      if (field && concursoFilters[field] !== undefined) {
+        concursoFilters[field] = '';
+        renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+      }
+    });
+  });
+
+  const filQuery = document.getElementById('cf_query');
+  if (filQuery) {
+    let qDebounce;
+    filQuery.addEventListener('input', (e) => {
+      clearTimeout(qDebounce);
+      qDebounce = setTimeout(() => {
+        concursoFilters.query = e.target.value;
         renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
       }, 300);
     });
   }
-  const filQuery = document.getElementById('cf_query');
-  let qDebounce;
-  filQuery.addEventListener('input', (e) => {
-    clearTimeout(qDebounce);
-    qDebounce = setTimeout(() => {
-      concursoFilters.query = e.target.value;
-      renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
-    }, 300);
-  });
 
   document.getElementById('cf_clear').addEventListener('click', () => {
-    concursoFilters = { tipoId: '', etapa: '', categoria: '', genero: '', disciplina: '', query: '' };
+    concursoFilters = {
+      tipoId: concursoFilters.tipoId, // Conserva el tipo de concurso
+      etapa: '',
+      disciplina: '',
+      categoria: '',
+      genero: '',
+      query: ''
+    };
     renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
   });
 
@@ -4311,6 +6492,14 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     });
   }
 
+  // Botón Detectar Duplicados
+  const dupBtn = document.getElementById('cf_detectDuplicatesBtn');
+  if (dupBtn) {
+    dupBtn.addEventListener('click', () => {
+      openDuplicateDetectorModal(dbNs, state, container, isAdmin, currentUser, navigate);
+    });
+  }
+
   // Botón Cargar Ganadores RD (en estado vacío)
   const importEmptyBtn = document.getElementById('btnImportGanadoresConsolidadoEmpty');
   if (importEmptyBtn) {
@@ -4319,10 +6508,24 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     });
   }
 
-  // Exportar PDF
-  document.getElementById('cf_exportPdf').addEventListener('click', (e) => {
-    const title = (tipo ? tipo.nombre : 'Consolidado_General_Concursos_UGEL03') + (concursoFilters.etapa ? '_' + concursoFilters.etapa : '');
-    exportReportPdf(document.getElementById('concursoReportCapture'), title, e.target);
+  // Exportar PDF oficial de concursos (Acta de Resultados A4 Landscape)
+  document.getElementById('cf_exportPdf').addEventListener('click', () => {
+    openDownloadConfigModal({
+      documentTitle: `ACTA OFICIAL DE RESULTADOS — ${(tipo ? tipo.nombre : 'CONCURSOS EDUCATIVOS ESCOLARES').toUpperCase()}`,
+      tipoReporte: 'concursos',
+      dataRows: filtered,
+      currentUser,
+      state,
+      dbNs,
+      isAdmin,
+      onConfirm: async (cfg) => {
+        if (cfg.formatoConcurso === 'orden_merito') {
+          await exportActaOrdenMeritoPdf(filtered, tipo, concursoFilters, cfg);
+        } else {
+          await exportConcursosReportPdf(filtered, tipo, concursoFilters, cfg);
+        }
+      }
+    });
   });
 
   // Exportar CSV
@@ -4633,7 +6836,7 @@ export const CONCURSO_TIPO_ID_MAP = {
 
 // Función para importar los 83 ganadores oficiales desde el archivo JSON empaquetado en public/data/
 async function ejecutarImportacionGanadores(dbNs, state, container, isAdmin, currentUser, navigate) {
-  if (!confirm('¿Deseas importar los 83 registros oficiales de ganadores de concursos escolares (Resoluciones Directorales UGEL 03 - 2026)?\n\nLos registros se cargarán a la base de datos Firestore vinculando colegios y participantes.')) {
+  if (!confirm('¿Deseas importar los 83 registros oficiales de ganadores de concursos escolares (Resoluciones Directorales UGEL 03 - 2026)?\n\nLos registros se cargarán a la base de datos Firestore vinculando colegios y participantes evitando duplicados.')) {
     return;
   }
 
@@ -4660,16 +6863,54 @@ async function ejecutarImportacionGanadores(dbNs, state, container, isAdmin, cur
       if (name) colMap.set(name.trim().toLowerCase(), c.codigoLocal || c.codigoModular || '');
     });
 
+    // Deduplicación contra registros existentes en state.concursoRegistros
+    const existingRegs = state.concursoRegistros || [];
+    const isDuplicate = (item, tipoId, tipoNombre) => {
+      const pDnis = (Array.isArray(item.participantes) ? item.participantes : []).map(p => (p.dni || '').trim()).filter(Boolean);
+      return existingRegs.some(r => {
+        const sameTipo = (r.tipoConcursoId === tipoId || r.tipoConcursoNombre === tipoNombre);
+        const sameInst = normalizeText(r.institucion) === normalizeText(item.institucion);
+        const sameCat = normalizeText(r.categoria) === normalizeText(item.categoria);
+        const sameDisc = normalizeText(r.disciplina) === normalizeText(item.disciplina);
+        const samePuesto = normalizePuestoValue(r.puesto) === normalizePuestoValue(item.puesto);
+        
+        // Si coinciden tipo, institución, categoría, puesto y disciplina -> es duplicado
+        if (sameTipo && sameInst && sameCat && sameDisc && samePuesto) return true;
+
+        // O si comparten algún DNI de participante en el mismo concurso y categoría
+        if (sameTipo && sameCat && pDnis.length > 0) {
+          const rDnis = (r.participantes || []).map(p => (p.dni || '').trim()).filter(Boolean);
+          if (pDnis.some(d => rDnis.includes(d))) return true;
+        }
+        return false;
+      });
+    };
+
+    let skipped = 0;
+    const toInsert = [];
+    for (const item of rawData) {
+      const tipoNombre = item.tipoConcurso || item.tipoConcursoNombre || '';
+      const tipoId = CONCURSO_TIPO_ID_MAP[tipoNombre] || (tipoNombre ? tipoNombre.toLowerCase().replace(/[^a-z0-9]+/g, '_') : 'otro');
+      if (isDuplicate(item, tipoId, tipoNombre)) {
+        skipped++;
+      } else {
+        toInsert.push({ item, tipoId, tipoNombre });
+      }
+    }
+
+    if (toInsert.length === 0) {
+      showToast('Todos los ganadores oficiales ya se encuentran registrados en el sistema (0 duplicados insertados).');
+      return;
+    }
+
     let total = 0;
     const batchSize = 100;
-    for (let i = 0; i < rawData.length; i += batchSize) {
-      const chunk = rawData.slice(i, i + batchSize);
+    for (let i = 0; i < toInsert.length; i += batchSize) {
+      const chunk = toInsert.slice(i, i + batchSize);
       const batch = dbNs.batch();
 
-      for (const item of chunk) {
-        const tipoNombre = item.tipoConcurso || item.tipoConcursoNombre || '';
-        const tipoId = CONCURSO_TIPO_ID_MAP[tipoNombre] || (tipoNombre ? tipoNombre.toLowerCase().replace(/[^a-z0-9]+/g, '_') : 'otro');
-
+      for (const entry of chunk) {
+        const { item, tipoId, tipoNombre } = entry;
         let codMod = item.codigoModular || '';
         if (!codMod && item.institucion) {
           const match = colMap.get(item.institucion.trim().toLowerCase());
@@ -4688,7 +6929,7 @@ async function ejecutarImportacionGanadores(dbNs, state, container, isAdmin, cur
           codigoModular:      codMod,
           tituloTrabajo:      item.tituloTrabajo || null,
           seudonimo:          item.seudonimo || null,
-          puesto:             item.puesto || '',
+          puesto:             normalizePuestoValue(item.puesto) || item.puesto || '',
           participantes:      Array.isArray(item.participantes) ? item.participantes : [],
           asesores:           Array.isArray(item.asesores) ? item.asesores : [],
           resolucionRef:      item.resolucionRef || '',
@@ -4704,7 +6945,7 @@ async function ejecutarImportacionGanadores(dbNs, state, container, isAdmin, cur
       total += chunk.length;
     }
 
-    showToast('✓ ' + total + ' ganadores oficiales importados exitosamente a Firestore.');
+    showToast('✓ ' + total + ' nuevos ganadores importados' + (skipped > 0 ? ' (' + skipped + ' omitidos por ya existir)' : '') + '.');
     concursoSubTab = 'consolidado';
     concursoFilters.tipoId = ''; // Ver todos los concursos
     renderConcursosTab(container, state, dbNs, isAdmin, currentUser, navigate);
@@ -4712,6 +6953,292 @@ async function ejecutarImportacionGanadores(dbNs, state, container, isAdmin, cur
     console.error('Error importando ganadores oficiales:', err);
     showToast('Error en importación: [' + (err.code || 'error') + '] ' + err.message);
   }
+}
+
+// Función para sincronizar / retroalimentar UGEL y RED/REI en fichas que no los tengan
+async function backfillSubmissionsUgelRed(dbNs, state) {
+  const colegios = state.colegios || [];
+  const submissions = state.submissions || [];
+  if (!submissions.length) return 0;
+
+  const colMap = new Map();
+  colegios.forEach(c => {
+    if (c.ie) colMap.set(normalizeText(c.ie), c);
+    if (c.nombre) colMap.set(normalizeText(c.nombre), c);
+  });
+
+  const batchSize = 100;
+  let updatedCount = 0;
+  let currentBatch = dbNs.batch();
+  let opsInBatch = 0;
+
+  for (const sub of submissions) {
+    let needUpdate = false;
+    let newUgel = sub.ugel;
+    let newRed = sub.red;
+    let newCod = sub.codigoModular;
+
+    if (!newUgel || newUgel === '—') {
+      newUgel = 'UGEL 03';
+      needUpdate = true;
+    }
+
+    if (!newRed || newRed === '—') {
+      let matched = null;
+      if (sub.colegioId) {
+        matched = colegios.find(c => c.id === sub.colegioId);
+      }
+      if (!matched && sub.institucion) {
+        matched = colMap.get(normalizeText(sub.institucion));
+      }
+      if (matched && matched.rei) {
+        newRed = matched.rei;
+        needUpdate = true;
+      } else if (!newRed) {
+        newRed = 'No aplica';
+        needUpdate = true;
+      }
+    }
+
+    if (!newCod) {
+      let matched = null;
+      if (sub.colegioId) {
+        matched = colegios.find(c => c.id === sub.colegioId);
+      }
+      if (!matched && sub.institucion) {
+        matched = colMap.get(normalizeText(sub.institucion));
+      }
+      if (matched && (matched.codigoLocal || matched.codigoModular)) {
+        newCod = matched.codigoLocal || matched.codigoModular;
+        needUpdate = true;
+      }
+    }
+
+    if (needUpdate) {
+      const docRef = dbNs.collection('submissions').doc(sub.id);
+      currentBatch.update(docRef, {
+        ugel: newUgel,
+        red: newRed,
+        codigoModular: newCod || '',
+        updatedAt: Date.now()
+      });
+      opsInBatch++;
+      updatedCount++;
+
+      if (opsInBatch >= batchSize) {
+        await currentBatch.commit();
+        currentBatch = dbNs.batch();
+        opsInBatch = 0;
+      }
+    }
+  }
+
+  if (opsInBatch > 0) {
+    await currentBatch.commit();
+  }
+
+  return updatedCount;
+}
+
+// Modal para detectar y limpiar duplicados en concursos escolares
+function openDuplicateDetectorModal(dbNs, state, container, isAdmin, currentUser, navigate) {
+  const regs = state.concursoRegistros || [];
+
+  // 1. Detectar duplicados exactos
+  const exactGroups = [];
+  const visitedExact = new Set();
+
+  for (let i = 0; i < regs.length; i++) {
+    if (visitedExact.has(regs[i].id)) continue;
+    const r1 = regs[i];
+    const group = [r1];
+    const pDnis1 = (r1.participantes || []).map(p => (p.dni || '').trim()).filter(Boolean);
+
+    for (let j = i + 1; j < regs.length; j++) {
+      if (visitedExact.has(regs[j].id)) continue;
+      const r2 = regs[j];
+      const sameTipo = (r1.tipoConcursoId === r2.tipoConcursoId || (r1.tipoConcursoNombre && r1.tipoConcursoNombre === r2.tipoConcursoNombre));
+      const sameEtapa = (r1.etapa || '').toUpperCase() === (r2.etapa || '').toUpperCase();
+      const sameCat = normalizeText(r1.categoria) === normalizeText(r2.categoria);
+      const sameInst = normalizeText(r1.institucion) === normalizeText(r2.institucion);
+      const sameDisc = normalizeText(r1.disciplina) === normalizeText(r2.disciplina);
+      const samePuesto = normalizePuestoValue(r1.puesto) === normalizePuestoValue(r2.puesto);
+
+      const pDnis2 = (r2.participantes || []).map(p => (p.dni || '').trim()).filter(Boolean);
+      const sharesDni = pDnis1.length > 0 && pDnis2.length > 0 && pDnis1.some(d => pDnis2.includes(d));
+
+      if (sameTipo && sameEtapa && sameCat && sameInst && (sharesDni || (sameDisc && samePuesto))) {
+        group.push(r2);
+        visitedExact.add(r2.id);
+      }
+    }
+
+    if (group.length > 1) {
+      visitedExact.add(r1.id);
+      exactGroups.push(group);
+    }
+  }
+
+  // 2. Detectar conflictos de puesto
+  const puestoConflicts = [];
+  const topPuestos = ['1.er puesto', '2.° puesto', '3.er puesto'];
+  const pMap = new Map();
+
+  regs.forEach(r => {
+    const normP = normalizePuestoValue(r.puesto);
+    if (!topPuestos.includes(normP)) return;
+    const key = [
+      r.tipoConcursoId || r.tipoConcursoNombre,
+      (r.etapa || '').toUpperCase(),
+      normalizeText(r.categoria),
+      normalizeText(r.disciplina),
+      normP
+    ].join('|');
+
+    if (!pMap.has(key)) pMap.set(key, []);
+    pMap.get(key).push(r);
+  });
+
+  pMap.forEach((group, key) => {
+    if (group.length > 1) {
+      puestoConflicts.push({ key, records: group });
+    }
+  });
+
+  // Modal HTML
+  const modalWrap = document.createElement('div');
+  modalWrap.id = 'duplicateDetectorModal';
+  modalWrap.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px">
+      <div style="background:var(--surface);border:1.5px solid var(--line-strong);border-radius:14px;max-width:850px;width:100%;max-height:90vh;overflow-y:auto;padding:26px;box-shadow:var(--shadow-lg)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+          <h3 style="margin:0;display:flex;align-items:center;gap:8px">🔍 Detector de Duplicados en Concursos</h3>
+          <button type="button" class="iconBtn" id="m_dup_close">✕</button>
+        </div>
+
+        <div class="cards" style="margin-bottom:18px">
+          <div class="card"><div class="num">${exactGroups.length}</div><div class="lbl">Grupos duplicados exactos</div></div>
+          <div class="card"><div class="num">${puestoConflicts.length}</div><div class="lbl">Conflictos de puestos (1°, 2°, 3°)</div></div>
+        </div>
+
+        ${exactGroups.length === 0 && puestoConflicts.length === 0 ? `
+          <div style="text-align:center;padding:30px;color:var(--ink-soft)">
+            <p style="font-size:18px;margin-bottom:6px">✓ ¡Excelente!</p>
+            <p>No se detectaron registros duplicados ni puestos en conflicto en los concursos registrados.</p>
+          </div>
+        ` : ''}
+
+        ${exactGroups.length > 0 ? `
+          <div class="panel" style="margin-bottom:18px">
+            <h4 style="color:var(--danger);margin-top:0">⚠️ Duplicados Exactos Detectados (${exactGroups.length})</h4>
+            <p style="font-size:12.5px;color:var(--ink-soft)">Los siguientes registros coinciden en I.E., categoría, participantes y etapa:</p>
+            ${exactGroups.map((grp, gIdx) => `
+              <div style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px;background:var(--surface-2)">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                  <strong>Grupo ${gIdx + 1}: ${esc(grp[0].institucion)} · ${esc(grp[0].tipoConcursoNombre || grp[0].tipoConcurso)} (${esc(grp[0].categoria)})</strong>
+                  ${isAdmin ? `<button class="btn danger small" data-keep-first="${gIdx}">Conservar 1 y eliminar duplicados</button>` : ''}
+                </div>
+                <div class="tblWrap"><table style="font-size:12px">
+                  <thead><tr><th>ID</th><th>Puesto</th><th>Área</th><th>Participantes</th><th>Fecha</th><th></th></tr></thead>
+                  <tbody>
+                    ${grp.map((r, rIdx) => `
+                      <tr>
+                        <td><small style="color:var(--ink-soft)">${esc(r.id)}</small></td>
+                        <td>${formatPuestoBadge(r.puesto)}</td>
+                        <td>${esc(r.disciplina || '—')}</td>
+                        <td>${(r.participantes || []).map(p => esc([p.nombres, p.apellidos].filter(Boolean).join(' ')) + (p.dni ? ` (${esc(p.dni)})` : '')).join('<br>') || '—'}</td>
+                        <td>${fmtDate(r.fecha)}</td>
+                        <td>${isAdmin ? `<button class="actBtn delBtn" data-del-dup="${esc(r.id)}">✕</button>` : ''}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table></div>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+
+        ${puestoConflicts.length > 0 ? `
+          <div class="panel" style="margin-bottom:18px">
+            <h4 style="color:var(--warn);margin-top:0">⚠️ Conflictos de Puesto (Mismo puesto registrado más de una vez)</h4>
+            <p style="font-size:12.5px;color:var(--ink-soft)">Existen dos o más instituciones con el mismo puesto en la misma categoría y disciplina:</p>
+            ${puestoConflicts.map((conf, cIdx) => `
+              <div style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px;background:var(--surface-2)">
+                <div style="margin-bottom:8px">
+                  <strong>Conflicto ${cIdx + 1}: ${esc(conf.records[0].tipoConcursoNombre || conf.records[0].tipoConcurso)} · Cat: ${esc(conf.records[0].categoria)} ${conf.records[0].disciplina ? '· ' + esc(conf.records[0].disciplina) : ''} · Puesto: ${formatPuestoBadge(conf.records[0].puesto)}</strong>
+                </div>
+                <div class="tblWrap"><table style="font-size:12px">
+                  <thead><tr><th>Institución</th><th>Participantes</th><th>Etapa</th><th>Fecha</th><th></th></tr></thead>
+                  <tbody>
+                    ${conf.records.map(r => `
+                      <tr>
+                        <td><strong>${esc(r.institucion)}</strong></td>
+                        <td>${(r.participantes || []).map(p => esc([p.nombres, p.apellidos].filter(Boolean).join(' '))).join(', ') || '—'}</td>
+                        <td><span class="badge badge-etapa">${esc(r.etapa)}</span></td>
+                        <td>${fmtDate(r.fecha)}</td>
+                        <td>${isAdmin ? `<button class="actBtn delBtn" data-del-dup="${esc(r.id)}">✕</button>` : ''}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table></div>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+
+        <div style="display:flex;justify-content:flex-end;margin-top:16px">
+          <button type="button" class="btn secondary" id="m_dup_cancel">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modalWrap);
+  const closeModal = () => { modalWrap.remove(); };
+  modalWrap.querySelector('#m_dup_close').addEventListener('click', closeModal);
+  modalWrap.querySelector('#m_dup_cancel').addEventListener('click', closeModal);
+
+  modalWrap.querySelectorAll('[data-del-dup]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('¿Eliminar este registro de concurso duplicado?')) return;
+      btn.disabled = true;
+      try {
+        await dbNs.collection('concursoRegistros').doc(btn.dataset.delDup).delete();
+        showToast('Registro duplicado eliminado.');
+        closeModal();
+        renderConcursosTab(container, state, dbNs, isAdmin, currentUser, navigate);
+      } catch (err) {
+        console.error('Error eliminando duplicado', err);
+        showToast('No se pudo eliminar el registro.');
+        btn.disabled = false;
+      }
+    });
+  });
+
+  modalWrap.querySelectorAll('[data-keep-first]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const gIdx = Number(btn.dataset.keepFirst);
+      const grp = exactGroups[gIdx];
+      if (!grp || grp.length < 2) return;
+      if (!confirm(`¿Deseas conservar el primer registro y eliminar los ${grp.length - 1} registros duplicados de este grupo?`)) return;
+      btn.disabled = true;
+      btn.textContent = 'Eliminando...';
+      try {
+        const batch = dbNs.batch();
+        for (let k = 1; k < grp.length; k++) {
+          batch.delete(dbNs.collection('concursoRegistros').doc(grp[k].id));
+        }
+        await batch.commit();
+        showToast(`✓ Se eliminaron ${grp.length - 1} duplicados correctamente.`);
+        closeModal();
+        renderConcursosTab(container, state, dbNs, isAdmin, currentUser, navigate);
+      } catch (err) {
+        console.error('Error eliminando lote de duplicados', err);
+        showToast('Error al eliminar los duplicados.');
+        btn.disabled = false;
+      }
+    });
+  });
 }
 
 

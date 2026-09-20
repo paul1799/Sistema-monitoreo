@@ -73,5 +73,22 @@ service cloud.firestore {
       allow create, update: if signedIn();
       allow delete: if isAdmin();
     }
+
+    // --- Catálogo de áreas de firma: cualquiera con sesión lee, solo admin administra ---
+    match /areasFirma/{docId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- Plantillas de firmantes por área y tipo de reporte: cualquiera con sesión lee, solo admin administra ---
+    match /plantillasFirmantes/{docId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- Preferencias de descarga por usuario: cualquier usuario con sesión puede leer y guardar sus preferencias ---
+    match /preferenciasDescarga/{docId} {
+      allow read, write: if signedIn();
+    }
   }
 }

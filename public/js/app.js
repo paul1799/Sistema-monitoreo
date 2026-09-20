@@ -22,7 +22,8 @@ import {
   renderConcursosTab,
   renderForbidden,
   setEditMode,
-} from './ui.js?v=20260918_v10';
+  computeStats,
+} from './ui.js?v=20260919_v1';
 
 /* ============================= ESTADO GLOBAL ============================= */
 let firebaseApp = null;
@@ -42,6 +43,9 @@ const state = {
   responsables:      [],  // {id, red, distrito, especialista, nombresApellidos, cargo, modalidad, celular, correo}
   tiposConcurso:     [],  // {id, nombre, tipoParticipacion, tieneGenero, tieneDisciplina, tieneTituloTrabajo, categorias, ...}
   concursoRegistros: [],  // {id, tipoConcursoId, etapa, categoria, institucion, participantes, asesores, ...}
+  areasFirma:        [],  // {id, nombre, sigla, descripcionEncabezado, logo, activa, esPredeterminada}
+  plantillasFirmantes: [], // {id, areaId, tipoReporte, orden, cargo, nombreOpcional, entidad, leyenda}
+  preferenciasDescarga: [], // {usuarioId, tipoReporte, areaId, firmantesJson, opcionesJson}
 };
 
 function isAdmin() { return currentRole === 'admin'; }
@@ -63,15 +67,35 @@ function navigate(tab) {
 /* ============================= RENDER DISPATCH ============================= */
 function render() {
   const c = document.getElementById('tabContent');
+
+  // Actualizar contador de alertas en la campana
+  const bellBadge = document.getElementById('topBellBadge');
+  if (bellBadge && state.submissions) {
+    let alertCount = 0;
+    state.submissions.forEach(s => {
+      const ft = getFichaType(s.fichaTypeId);
+      if (ft) {
+        const st = computeStats(s, ft);
+        if (st.pct !== null && st.pct < 70) alertCount++;
+      }
+    });
+    if (alertCount > 0) {
+      bellBadge.textContent = alertCount > 99 ? '99+' : alertCount;
+      bellBadge.style.display = 'inline-block';
+    } else {
+      bellBadge.style.display = 'none';
+    }
+  }
+
   switch (state.activeTab) {
     case 'dashboard':
-      c.innerHTML = viewDashboard(state, getFichaType);
+      c.innerHTML = viewDashboard(state, getFichaType, render);
       break;
     case 'registrar':
       renderRegistrarTab(c, state, getFichaType, dbNs, currentUser, navigate);
       break;
     case 'consolidado':
-      renderConsolidadoTab(c, state, getFichaType, dbNs, isAdmin(), navigate);
+      renderConsolidadoTab(c, state, getFichaType, dbNs, isAdmin(), navigate, currentUser);
       break;
     case 'concursos':
       renderConcursosTab(c, state, dbNs, isAdmin(), currentUser, navigate);
@@ -83,7 +107,7 @@ function render() {
       renderAlertasTab(c, state, getFichaType);
       break;
     case 'tipos':
-      isAdmin() ? renderTiposTab(c, state, getFichaType, dbNs) : renderForbidden(c);
+      isAdmin() ? renderTiposTab(c, state, getFichaType, dbNs, isAdmin(), currentUser) : renderForbidden(c);
       break;
     case 'usuarios':
       isAdmin() ? renderUsuariosTab(c, state, dbNs, currentUser) : renderForbidden(c);
@@ -161,6 +185,28 @@ function startListeners() {
     console.error('concursoRegistros snapshot error', err);
   });
 
+  // Catálogo administrable de áreas de firma
+  dbNs.collection('areasFirma').onSnapshot(snap => {
+    state.areasFirma = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    state.areasFirma.sort((a, b) => (a.orden || 99) - (b.orden || 99));
+    if (state.activeTab === 'tipos') {
+      render();
+    }
+  }, err => {
+    console.error('areasFirma snapshot error', err);
+  });
+
+  // Plantillas de firmantes por área y tipo de reporte
+  dbNs.collection('plantillasFirmantes').onSnapshot(snap => {
+    state.plantillasFirmantes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    state.plantillasFirmantes.sort((a, b) => (a.orden || 99) - (b.orden || 99));
+    if (state.activeTab === 'tipos') {
+      render();
+    }
+  }, err => {
+    console.error('plantillasFirmantes snapshot error', err);
+  });
+
   if (isAdmin()) {
     dbNs.collection('roles').onSnapshot(snap => {
       state.roles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -187,16 +233,32 @@ function onLogin(user, role) {
     b.style.display = isAdmin() ? '' : 'none';
   });
 
-  // Actualizar pie del sidebar
-  const foot = document.getElementById('sidebarFoot');
-  const roleLabel = isAdmin() ? 'Administrador' : 'General';
-  foot.innerHTML =
-    'Conectado como <strong>' + esc(user.email || user.displayName || 'usuario') + '</strong>' +
-    ' · <span class="badge ' + (isAdmin() ? 'st-logrado' : 'st-none') + '">' + roleLabel + '</span><br>' +
-    'Todos los especialistas con acceso ven la misma información.<br>' +
-    '<button class="linklike" id="logoutBtn" style="margin-top:6px">Cerrar sesión</button>';
+  // 1. Actualizar barra superior de usuario
+  const emailStr = user.email || user.displayName || 'usuario';
+  const roleLabel = isAdmin() ? 'ADMIN' : 'GENERAL';
+  const initials = (emailStr.slice(0, 2) || 'US').toUpperCase();
 
-  document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+  const elAvatar = document.getElementById('topUserAvatar');
+  const elName = document.getElementById('topUserName');
+  const elBadge = document.getElementById('topUserBadge');
+  if (elAvatar) elAvatar.textContent = initials;
+  if (elName) elName.textContent = emailStr;
+  if (elBadge) elBadge.textContent = roleLabel;
+
+  // 2. Actualizar banner de bienvenida institucional
+  const bannerInfo = document.getElementById('bannerUserInfo');
+  if (bannerInfo) {
+    bannerInfo.innerHTML =
+      'Conectado como: <strong>' + esc(emailStr) + '</strong>' +
+      ' · <span class="badge ' + (isAdmin() ? 'st-logrado' : 'st-none') + '">' + (isAdmin() ? 'Administrador' : 'Especialista General') + '</span>' +
+      ' · Todos los especialistas con acceso ven la misma información consolidada.';
+  }
+
+  // 3. Listener del botón Cerrar Sesión en la barra superior
+  const logoutBtn = document.getElementById('topLogoutBtn');
+  if (logoutBtn) {
+    logoutBtn.onclick = () => signOut(auth);
+  }
 
   startListeners();
 }
