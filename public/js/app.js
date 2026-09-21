@@ -23,7 +23,23 @@ import {
   renderForbidden,
   setEditMode,
   computeStats,
-} from './ui.js?v=20260919_v1';
+  forceResetBodyScroll,
+  setAppState,
+} from './ui.js?v=20260921_v2';
+
+/* ============================= MANEJADORES GLOBALES DE ERROR ============================= */
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    console.error('Error no controlado en la aplicación:', event.error || event.message);
+    showToast('Aviso del sistema: ' + (event.message || 'Ocurrió un error inesperado en la interfaz.'));
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('Promesa rechazada no controlada:', event.reason);
+    const msg = event.reason ? (event.reason.message || String(event.reason)) : 'Operación asíncrona interrumpida';
+    showToast('Aviso del sistema: ' + msg);
+  });
+}
 
 /* ============================= ESTADO GLOBAL ============================= */
 let firebaseApp = null;
@@ -33,6 +49,7 @@ let dbNs         = null;
 
 let currentUser = null;
 let currentRole = null; // 'admin' | 'general'
+let connectionTimer = null;
 
 const state = {
   activeTab:         'dashboard',
@@ -48,6 +65,11 @@ const state = {
   preferenciasDescarga: [], // {usuarioId, tipoReporte, areaId, firmantesJson, opcionesJson}
 };
 
+// Exponer state globalmente para depuración y resiliencia de módulos
+if (typeof window !== 'undefined') {
+  window.state = state;
+}
+
 function isAdmin() { return currentRole === 'admin'; }
 
 function getFichaType(id) {
@@ -58,14 +80,33 @@ function getFichaType(id) {
 /** Cambia de pestaña programáticamente (usado desde botones "Editar" en Consolidado) */
 function navigate(tab) {
   state.activeTab = tab;
+  forceResetBodyScroll();
+  window.scrollTo({ top: 0, behavior: 'instant' });
   document.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
   const btn = document.querySelector('.navbtn[data-tab="' + tab + '"]');
   if (btn) btn.classList.add('active');
+
+  // Si se navega a una pestaña distinta de 'concursos', limpiar parámetros de URL de concursos
+  if (tab !== 'concursos' && typeof window !== 'undefined' && window.location) {
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('concurso') || url.searchParams.has('etapa') || url.searchParams.has('categoria')) {
+        url.searchParams.delete('concurso');
+        url.searchParams.delete('etapa');
+        url.searchParams.delete('categoria');
+        window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+      }
+    } catch (e) {
+      console.warn('Error limpiando parámetros de URL:', e);
+    }
+  }
+
   render();
 }
 
 /* ============================= RENDER DISPATCH ============================= */
 function render() {
+  setAppState(state);
   const c = document.getElementById('tabContent');
 
   // Actualizar contador de alertas en la campana
@@ -89,7 +130,21 @@ function render() {
 
   switch (state.activeTab) {
     case 'dashboard':
-      c.innerHTML = viewDashboard(state, getFichaType, render);
+      if (state.fichaTypes.length === 0) {
+        c.innerHTML = '<div class="pageHead"><h2>Resumen general</h2><p>Vista consolidada de monitoreo, niveles de avance institucional y alertas prioritarias.</p></div>' +
+          '<div class="cards" style="margin-bottom:24px">' +
+          '<div class="card skeletonCard"><div class="skeletonPulse" style="height:34px;width:70px;margin-bottom:8px"></div><div class="skeletonPulse" style="height:14px;width:130px"></div></div>' +
+          '<div class="card skeletonCard"><div class="skeletonPulse" style="height:34px;width:70px;margin-bottom:8px"></div><div class="skeletonPulse" style="height:14px;width:130px"></div></div>' +
+          '<div class="card skeletonCard"><div class="skeletonPulse" style="height:34px;width:70px;margin-bottom:8px"></div><div class="skeletonPulse" style="height:14px;width:130px"></div></div>' +
+          '<div class="card skeletonCard"><div class="skeletonPulse" style="height:34px;width:70px;margin-bottom:8px"></div><div class="skeletonPulse" style="height:14px;width:130px"></div></div>' +
+          '</div>' +
+          '<div class="panel" style="padding:22px">' +
+          '<div class="skeletonPulse" style="height:22px;width:240px;margin-bottom:16px"></div>' +
+          '<div class="skeletonPulse" style="height:160px;width:100%"></div>' +
+          '</div>';
+      } else {
+        c.innerHTML = viewDashboard(state, getFichaType, render);
+      }
       break;
     case 'registrar':
       renderRegistrarTab(c, state, getFichaType, dbNs, currentUser, navigate);
@@ -220,8 +275,43 @@ function startListeners() {
   render();
 }
 
+/* ============================= ESTADO DE CONEXIÓN ============================= */
+function setConnectionState(status) { // 'connecting' | 'online' | 'offline' | 'slow'
+  const pill = document.getElementById('connectionStatusPill');
+  const alertEl = document.getElementById('connectionAlert');
+  if (!pill) return;
+
+  const label = pill.querySelector('.connLabel');
+  if (status === 'online') {
+    pill.className = 'connPill online';
+    if (label) label.textContent = 'En línea';
+    pill.title = 'Conectado a Firebase Firestore en tiempo real';
+    if (alertEl) alertEl.style.display = 'none';
+  } else if (status === 'connecting') {
+    pill.className = 'connPill connecting';
+    if (label) label.textContent = 'Conectando…';
+    pill.title = 'Estableciendo conexión con el servidor...';
+  } else if (status === 'slow') {
+    pill.className = 'connPill offline';
+    if (label) label.textContent = 'Conexión lenta';
+    pill.title = 'La conexión está tardando más de lo habitual';
+    if (alertEl) alertEl.style.display = 'block';
+  } else if (status === 'offline') {
+    pill.className = 'connPill offline';
+    if (label) label.textContent = 'Sin conexión';
+    pill.title = 'Sin conexión a internet';
+    if (alertEl) alertEl.style.display = 'block';
+  }
+}
+
 /* ============================= AUTH CALLBACKS ============================= */
 function onLogin(user, role) {
+  if (connectionTimer) {
+    clearTimeout(connectionTimer);
+    connectionTimer = null;
+  }
+  setConnectionState('online');
+
   currentUser = user;
   currentRole = role;
 
@@ -264,6 +354,12 @@ function onLogin(user, role) {
 }
 
 function onLogout() {
+  if (connectionTimer) {
+    clearTimeout(connectionTimer);
+    connectionTimer = null;
+  }
+  setConnectionState('offline');
+
   currentUser = null;
   currentRole = null;
   document.getElementById('loginScreen').style.display = 'flex';
@@ -272,6 +368,32 @@ function onLogout() {
 
 /* ============================= INICIALIZACIÓN ============================= */
 async function initApp() {
+  setConnectionState('connecting');
+
+  // Si tras 8.5s no se ha conectado, alertar y dar opción de reintentar
+  connectionTimer = setTimeout(() => {
+    if (!currentUser) {
+      setConnectionState('slow');
+    }
+  }, 8500);
+
+  const retryBtn = document.getElementById('retryConnectionBtn');
+  if (retryBtn) {
+    retryBtn.onclick = () => {
+      retryBtn.textContent = 'Reconectando...';
+      location.reload();
+    };
+  }
+
+  window.addEventListener('online', () => {
+    if (currentUser) setConnectionState('online');
+    else setConnectionState('connecting');
+  });
+
+  window.addEventListener('offline', () => {
+    setConnectionState('offline');
+  });
+
   try {
     firebaseApp = initializeApp(FIREBASE_CONFIG);
     firestoreDb  = getFirestore(firebaseApp);
@@ -279,6 +401,7 @@ async function initApp() {
     auth         = getAuth(firebaseApp);
   } catch (e) {
     console.error('No se pudo inicializar Firebase. Revisa FIREBASE_CONFIG.', e);
+    setConnectionState('offline');
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('loginError').textContent =
       'No se pudo inicializar Firebase. Revisa la configuración (firebase-config.js).';

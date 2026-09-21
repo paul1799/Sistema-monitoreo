@@ -314,4 +314,34 @@ Cualquier cambio futuro a `public/index.html` se publica con:
 ```bash
 firebase deploy --only hosting
 ```
-No hay build ni compilación — es un solo archivo HTML autocontenido.
+
+---
+
+## 🏛️ Arquitectura Front-End y Especificación de Scroll (Versión Aprobada)
+
+### 1. Estructura de Layout (Top Navigation)
+La aplicación utiliza un layout institucional de flujo vertical sin menú lateral:
+- `<header id="mainHeader" class="app-header">`: cabecera superior sticky (`position: sticky; top: 0; z-index: 60`), fondo azul marino (`#0B1B36`), logotipo vectorial UGEL 03, título serif *"Fichas de Monitoreo"*, subtítulo *"UGEL 03 · Sistematización y reportes de avance"*, botones de acción rápida (*Exportar*, *+ Registrar ficha*), campana de alertas, perfil de usuario con rol y botón de cerrar sesión.
+- `<span id="connectionStatusPill" class="connPill">`: pastilla discreta de estado de conexión integrada en la cabecera (*Conectando…* / *En línea* / *Sin conexión*).
+- `<nav id="subNavBar" class="app-tabs">`: barra de 9 pestañas con íconos vectoriales, pestaña activa subrayada en dorado (`#E0A526`) y línea dorada inferior (`.goldDivider`).
+- `<div class="appBody app-main">`: contenedor principal de ancho completo con márgenes homogéneos (`padding: 18px 28px 60px;`).
+- `<aside id="welcomeBanner" class="welcomeBanner">`: banner institucional con borde izquierdo verde (`var(--ok)`) e información dinámica de sesión.
+- `<main id="main">`: contenedor centrado con ancho máximo (`max-width: 1540px`).
+
+### 2. Reglas de Scroll y Diálogos Modales
+- **Scroll único de la ventana (`window`):** se eliminó `height: 100vh; overflow: hidden;` de `#app` y `overflow-y: auto;` de `.appBody`. El único contenedor de desplazamiento vertical es la ventana del navegador.
+- **Cabecera fija:** permanece visible arriba mediante `position: sticky; top: 0;` soportada de manera nativa por el scroll de ventana.
+- **Sin scroll horizontal:** `body { overflow-x: clip; }` previene desbordes horizontales de la página sin romper `position: sticky`. Las tablas anchas tienen scroll horizontal interno dentro de su propia tarjeta (`.tblWrap { overflow-x: auto; }`).
+- **Control de Scroll en Modales:**
+  - `lockBodyScroll()` añade la clase `modal-open` a `body` cuando se abre cualquier modal (*Configurar descarga*, *Detector de duplicados*, *Áreas de firma*, *Plantillas*, etc.).
+  - `unlockBodyScroll()` restablece el scroll solo cuando todos los modales se han cerrado (soporta modales anidados).
+  - Al cambiar de pestaña mediante `setupNavigation` o `navigate(tab)`, se invoca `forceResetBodyScroll()` y `window.scrollTo({ top: 0, behavior: 'instant' })` para garantizar que la vista vuelva al inicio sin bloqueos residuales.
+- **Scrollbar consistente:** `html { scrollbar-gutter: stable; scroll-padding-top: 115px; scrollbar-width: thin; }` evita saltos de layout al aparecer la barra y asegura que los títulos de sección no queden ocultos bajo la cabecera fija.
+
+### 3. Prueba de Humo y Verificación Front-End
+Para validar la integridad de la CSS, el DOM del layout y las reglas de scroll, ejecuta en PowerShell:
+```powershell
+.\scripts\smoke-test.ps1
+```
+El script realiza 25 comprobaciones automatizadas y reporta cualquier discrepancia antes de un despliegue.
+

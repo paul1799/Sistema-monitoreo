@@ -55,16 +55,45 @@
 }
 
 * { box-sizing: border-box; }
-html, body {
+html {
+  scrollbar-gutter: stable;
+  scroll-padding-top: 115px;
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 transparent;
+  min-height: 100%;
+}
+
+body {
   margin: 0;
   padding: 0;
-  height: 100%;
+  min-height: 100%;
   background-color: var(--bg-app);
   color: var(--text-900);
   font-family: var(--sans);
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+/* Scrollbars discretos y consistentes */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
 }
 
 h1, h2, h3, h4 {
@@ -87,9 +116,9 @@ button, input, select, textarea { font-family: var(--sans); font-size: 14px; col
 #app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
-  overflow: hidden;
   background-color: var(--bg-app);
 }
 
@@ -334,6 +363,56 @@ button, input, select, textarea { font-family: var(--sans); font-size: 14px; col
   width: 100%;
 }
 
+/* ---------- Pastilla de Estado de Conexión ---------- */
+.connPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.connPill.connecting {
+  background: rgba(224, 165, 38, 0.15);
+  color: #F8D886;
+  border: 1px solid rgba(224, 165, 38, 0.35);
+}
+.connPill.online {
+  background: rgba(22, 128, 60, 0.18);
+  color: #8CE8AB;
+  border: 1px solid rgba(22, 128, 60, 0.35);
+}
+.connPill.offline {
+  background: rgba(192, 57, 43, 0.2);
+  color: #FFB0B0;
+  border: 1px solid rgba(192, 57, 43, 0.4);
+}
+.connDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.connPill.connecting .connDot {
+  background: var(--gold-500);
+  animation: connPulse 1.2s infinite ease-in-out;
+}
+.connPill.online .connDot {
+  background: #2ECC71;
+  box-shadow: 0 0 5px rgba(46, 204, 113, 0.7);
+}
+.connPill.offline .connDot {
+  background: var(--danger);
+}
+@keyframes connPulse {
+  0%, 100% { transform: scale(0.85); opacity: 0.5; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+
 /* =========================================================================
    CUERPO Y ÁREA DE CONTENIDO
    ========================================================================= */
@@ -341,8 +420,57 @@ button, input, select, textarea { font-family: var(--sans); font-size: 14px; col
   display: flex;
   flex-direction: column;
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  width: 100%;
+}
+
+/* ---------- Alerta de Conexión Lenta / Caída ---------- */
+.connectionRetryAlert {
+  background: #FFFBEB;
+  border-left: 5px solid var(--warn);
+  border-radius: var(--radius);
+  padding: 12px 20px;
+  margin: 18px 28px 0 28px;
+  box-shadow: var(--shadow-sm);
+  border-top: 1px solid #FDE68A;
+  border-right: 1px solid #FDE68A;
+  border-bottom: 1px solid #FDE68A;
+}
+.alertInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.alertIco {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.alertMsg {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  color: #92400E;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.alertMsg strong {
+  font-size: 13.5px;
+  color: #78350F;
+}
+.btnRetry {
+  background: var(--navy-900);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+.btnRetry:hover {
+  background: var(--navy-700);
 }
 
 /* ---------- Banner de Bienvenida Institucional ---------- */
@@ -351,7 +479,10 @@ button, input, select, textarea { font-family: var(--sans); font-size: 14px; col
   border-left: 5px solid var(--ok);
   border-radius: var(--radius);
   padding: 14px 22px;
-  margin: 18px 28px 0 28px;
+  margin: 18px auto 0 auto;
+  max-width: 1540px;
+  width: calc(100% - 56px);
+  box-sizing: border-box;
   box-shadow: var(--shadow-sm);
   color: #FFFFFF;
   flex-shrink: 0;
@@ -1484,7 +1615,8 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
     padding: 0 18px;
   }
   .welcomeBanner {
-    margin: 14px 18px 0 18px;
+    margin: 14px auto 0 auto;
+    width: calc(100% - 36px);
   }
   #main {
     padding: 14px 18px 50px;
@@ -1982,4 +2114,544 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
     text-align: right;
   }
 }
+
+/* ==========================================================================
+   PARTE 3 — Tarjetas numeradas de personas (Participantes / Asesores)
+   ========================================================================== */
+
+/* Tarjeta de persona (reemplaza .personRow) */
+.personCard {
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.personCard:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-tint);
+}
+
+.personCardHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--navy-900);
+  color: #fff;
+  padding: 8px 14px;
+}
+.personCardNum {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.92;
+}
+.personCardDel {
+  margin-left: auto;
+  background: transparent !important;
+  color: rgba(255,255,255,0.7) !important;
+  border: none !important;
+  font-size: 14px;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.personCardDel:hover:not(:disabled) {
+  color: #fff !important;
+}
+.personCardDel:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.personCardBody {
+  padding: 14px 16px 12px;
+}
+
+/* Grid de 2 columnas para Nombres y Apellidos */
+.personNameGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+@media (max-width: 600px) {
+  .personNameGrid { grid-template-columns: 1fr; }
+}
+
+/* Grid de 2 columnas para DNI y Rol */
+.personDniRolGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 600px) {
+  .personDniRolGrid { grid-template-columns: 1fr; }
+}
+
+/* Texto de ayuda bajo los campos */
+.fieldHelp {
+  display: block;
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  margin-top: 3px;
+  line-height: 1.3;
+}
+
+/* Advertencia suave (no bloqueante) */
+.fieldWarn {
+  display: block;
+  font-size: 11px;
+  color: var(--warn);
+  background: var(--warn-bg);
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   ASISTENTE DE SEPARACIÓN DE NOMBRES HEREDADOS
+   ========================================================================== */
+
+.sepItem {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.sep-alta  { border-left: 4px solid var(--ok); }
+.sep-baja  { border-left: 4px solid var(--warn); }
+
+.sepItemHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.sep-alta-badge { background: var(--ok-bg)   !important; color: var(--ok)   !important; }
+.sep-baja-badge { background: var(--warn-bg)  !important; color: var(--warn) !important; }
+
+.sepItemBody {
+  padding: 14px 16px 12px;
+}
+
+.sepOriginal {
+  margin-bottom: 12px;
+}
+.sepOriginal label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sepOriginalText {
+  display: inline-block;
+  font-family: 'Courier New', monospace;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--navy-900);
+  background: var(--accent-tint);
+  border: 1px solid var(--accent);
+  padding: 3px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+.sepActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.sepBulkBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--info-bg);
+  border: 1px solid var(--primary-tint);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  margin-bottom: 18px;
+  font-size: 13.5px;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* =========================================================================
+   VISTA FICHAS Y FILTROS EN CASCADA JFEN (JUEGOS FLORALES ESCOLARES NACIONALES)
+   ========================================================================= */
+
+.concursoActionsRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.concursoActionsLeft {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.concursoActionsRight {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.jfenFilterContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jfenRowTipo {
+  width: 100%;
+}
+
+.jfenFiltersGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.jfenActiveFiltersRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.concursoViewSwitcher {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 3px;
+}
+.concursoViewSwitcher .btnViewTab {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.concursoViewSwitcher .btnViewTab:hover {
+  color: var(--navy-900);
+}
+.concursoViewSwitcher .btnViewTab.active {
+  background: #FFFFFF;
+  color: #7030A0; /* Morado JFEN */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Tarjetas de Ficha por Categoría y Disciplina */
+.jfenFichasContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 14px;
+}
+
+.jfenFichaCard {
+  background: #FFFFFF;
+  border: 1px solid #D1C7D9; /* Borde fino lila/gris */
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.jfenFichaCard:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.jfenCategoryBar {
+  background: #7030A0; /* Morado oficial JFEN */
+  color: #FFFFFF;
+  font-weight: 700;
+  text-align: center;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.jfenMetaTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  border-bottom: 2px solid #D1C7D9;
+}
+.jfenMetaTable th.metaLabel {
+  background: #EFE9F5; /* Lila muy claro */
+  color: #0B1B36;
+  font-weight: 700;
+  width: 190px;
+  padding: 7px 14px;
+  text-align: left;
+  border: 1px solid #E2D9EA;
+}
+.jfenMetaTable td.metaVal {
+  padding: 7px 14px;
+  color: #0F1B2D;
+  border: 1px solid #E2D9EA;
+}
+
+.jfenParticipantsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.jfenParticipantsTable thead th {
+  background: #A6A6A6; /* Gris institucional */
+  color: #FFFFFF;
+  font-weight: 700;
+  padding: 7px 12px;
+  border: 1px solid #949494;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+.jfenParticipantsTable td {
+  padding: 6px 12px;
+  border: 1px solid #E2D9EA;
+}
+.jfenParticipantsTable tr.rowAlt td {
+  background: #EFE9F5; /* Filas alternadas en lila claro */
+}
+.jfenParticipantsTable td.rowHeaderPart {
+  background: #F4F0F8;
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+  color: #0B1B36;
+  border: 1px solid #E2D9EA;
+  width: 140px;
+}
+.jfenParticipantsTable tr.rowDocente td {
+  background: #FFFFFF;
+  border-top: 2px solid #D1C7D9;
+}
+.jfenParticipantsTable td.rowHeaderDoc {
+  background: #EFE9F5;
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+  color: #0B1B36;
+  border: 1px solid #E2D9EA;
+  width: 140px;
+}
+.jfenParticipantsTable td.partNameCell {
+  font-weight: 500;
+  color: #0B1B36;
+  text-transform: uppercase;
+}
+.jfenParticipantsTable td.partDniCell {
+  text-align: center;
+  font-family: monospace;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.jfenCardFooter {
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  background: #FBF9FD;
+  border-top: 1px solid #E2D9EA;
+}
+
+/* =========================================================================
+   ESTILOS DE VALIDACIÓN, RÚBRICA Y SÍNTESIS DE FICHA DIRECTIVO
+   ========================================================================= */
+
+.fieldError {
+  border-color: #DC2626 !important;
+  background-color: #FEF2F2 !important;
+  box-shadow: 0 0 0 1px #DC2626 !important;
+}
+
+.fieldErrorText {
+  color: #DC2626;
+  font-size: 11.5px;
+  font-weight: 600;
+  margin-top: 4px;
+  display: block;
+  animation: fadeInErr 0.2s ease;
+}
+
+@keyframes fadeInErr {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rubricaDescriptivaPanel {
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #FFFFFF;
+  overflow: hidden;
+}
+
+.rubricaDescriptivaPanel summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--navy-900);
+  padding: 10px 14px;
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+
+.rubricaDescriptivaPanel[open] summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.rubricaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+.rubricaCard {
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.rubricaCardIV {
+  border: 1.5px solid var(--ok);
+  background: #F0FDF4;
+}
+
+.rubricaCardIII {
+  border: 1.5px solid #10B981;
+  background: #ECFDF5;
+}
+
+.rubricaCardII {
+  border: 1.5px solid var(--warn);
+  background: #FFFBEB;
+}
+
+.rubricaCardI {
+  border: 1.5px solid var(--danger);
+  background: #FEF2F2;
+}
+
+.rubricaCardHeader {
+  font-weight: 800;
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rubricaCardDesc {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-800);
+}
+
+.itemEvidencia {
+  margin-top: 8px;
+}
+
+.itemEvidencia input.evidenciaInput {
+  width: 100%;
+  font-size: 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #FBFBFC;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.itemEvidencia input.evidenciaInput:focus {
+  border-color: var(--primary);
+  background: #FFFFFF;
+}
+
+.sintesisTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 12.5px;
+}
+
+.sintesisTable th {
+  background: var(--navy-900);
+  color: #FFFFFF;
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.sintesisTable td {
+  padding: 8px;
+  border: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.sintesisTable td.dimCol {
+  background: var(--surface-2);
+  font-weight: 600;
+  color: var(--navy-900);
+  font-size: 12px;
+  width: 25%;
+}
+
+.sintesisTable textarea {
+  width: 100%;
+  min-height: 64px;
+  font-size: 12px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+  background: #FFFFFF;
+  font-family: inherit;
+}
+
+.formBottomBar .regProgressBadge {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--primary-dark);
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 

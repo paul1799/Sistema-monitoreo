@@ -20,9 +20,10 @@ import {
   orderBy as fbOrderBy,
   limit as fbLimit,
   writeBatch,
+  runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-export { getFirestore };
+export { getFirestore, runTransaction };
 
 /**
  * Thin adapter que permite usar dbNs.collection(...).doc(...).set()/add()/
@@ -98,6 +99,33 @@ export function makeDbAdapter(firestoreDb) {
           return b.commit();
         }
       };
+    },
+    runTransaction(fn) {
+      return runTransaction(firestoreDb, async (fbTx) => {
+        const txAdapter = {
+          async get(docWrapper) {
+            const r = docWrapper._ref || (typeof docWrapper === 'string' ? doc(firestoreDb, docWrapper) : docWrapper);
+            const snap = await fbTx.get(r);
+            return { id: snap.id, exists: snap.exists(), data: () => snap.data() };
+          },
+          set(docWrapper, data, opts) {
+            const r = docWrapper._ref || (typeof docWrapper === 'string' ? doc(firestoreDb, docWrapper) : docWrapper);
+            opts ? fbTx.set(r, data, opts) : fbTx.set(r, data);
+            return this;
+          },
+          update(docWrapper, data) {
+            const r = docWrapper._ref || (typeof docWrapper === 'string' ? doc(firestoreDb, docWrapper) : docWrapper);
+            fbTx.update(r, data);
+            return this;
+          },
+          delete(docWrapper) {
+            const r = docWrapper._ref || (typeof docWrapper === 'string' ? doc(firestoreDb, docWrapper) : docWrapper);
+            fbTx.delete(r);
+            return this;
+          }
+        };
+        return fn(txAdapter);
+      });
     }
   };
 }

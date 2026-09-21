@@ -748,5 +748,142 @@
       }
     ],
     "tipoRespuesta": "ips"
+  },
+  "ft_directivo": {
+    "nombre": "Ficha de monitoreo al directivo de IE",
+    "descripcion": "Monitoreo y acompañamiento pedagógico e institucional al directivo de Instituciones Educativas de Educación Básica (EBR/EBE).",
+    "icono": "👔",
+    "tipoRespuesta": "nivel_1_4",
+    "extras": [
+      { "id": "ex_ugel", "label": "UGEL", "tipo": "texto", "required": false },
+      { "id": "ex_codigo", "label": "Código modular / Local", "tipo": "texto", "required": false },
+      { "id": "ex_rei", "label": "RED / REI", "tipo": "texto", "required": false },
+      { "id": "ex_director_nombre", "label": "Nombre del directivo", "tipo": "texto", "required": false },
+      { "id": "ex_director_dni", "label": "DNI del directivo", "tipo": "texto", "required": false },
+      { "id": "ex_condicion", "label": "Condición del directivo", "tipo": "texto", "required": false },
+      { "id": "ex_nivel_atencion", "label": "Nivel educativo que atiende", "tipo": "texto", "required": false },
+      { "id": "ex_turno_atencion", "label": "Turno de atención de la IE", "tipo": "texto", "required": false },
+      { "id": "ex_turno_visitado", "label": "Turno visitado", "tipo": "texto", "required": false },
+      { "id": "ex_responsable", "label": "Responsable / Especialista (Monitor)", "tipo": "texto", "required": false },
+      { "id": "ex_monitor_dni", "label": "DNI del monitor", "tipo": "texto", "required": false },
+      { "id": "ex_hora_inicio", "label": "Hora de inicio", "tipo": "texto", "required": false },
+      { "id": "ex_hora_termino", "label": "Hora de término", "tipo": "texto", "required": false }
+    ],
+    "secciones": [
+      {
+        "nombre": "A. DIMENSIÓN ESTRATÉGICA",
+        "items": [
+          {
+            "id": "dir_a_1",
+            "texto": "La IE cuenta con instrumentos de gestión aprobados mediante RD y evidencia la articulación entre el PEI y el PAT, de modo que el diagnóstico, los objetivos y las metas institucionales se traducen en acciones planificadas para el año escolar."
+          },
+          {
+            "id": "dir_a_2",
+            "texto": "El PCI de la IE se encuentra actualizado y contiene el Plan de Estudios y orientaciones para la planificación, mediación y evaluación formativa, en correspondencia con las características y necesidades de los estudiantes."
+          },
+          {
+            "id": "dir_a_3",
+            "texto": "El PAT de la IE articula los objetivos y metas del PEI con la programación de actividades para cada compromiso de gestión escolar y la calendarización de las horas lectivas."
+          },
+          {
+            "id": "dir_a_4",
+            "texto": "En la IE se cuenta con evidencia de seguimiento periódico a las actividades planificadas en el PAT y se registra su avance."
+          },
+          {
+            "id": "dir_a_5",
+            "texto": "En la IE se evalúa y se toman decisiones para mejorar o reajustar las actividades del PAT a partir de un proceso de evaluación continua."
+          }
+        ]
+      },
+      {
+        "nombre": "B. DIMENSIÓN PEDAGÓGICA: ESTRATEGIAS PRIORIZADAS",
+        "items": [
+          {
+            "id": "dir_b_1",
+            "texto": "El directivo realiza seguimiento periódico a la estrategia de Refuerzo Escolar y verifica la implementación de las acciones previstas."
+          },
+          {
+            "id": "dir_b_2",
+            "texto": "El directivo implementa, realiza seguimiento y fortalece el uso de los materiales educativos (textos y cuadernos de trabajo entregados en el año en curso)."
+          },
+          {
+            "id": "dir_b_3",
+            "texto": "El directivo planifica, da seguimiento y evalúa la implementación del Plan Lector de la IE."
+          },
+          {
+            "id": "dir_b_4",
+            "texto": "El directivo planifica, da seguimiento y evalúa la implementación del Proyecto Educativo Ambiental Integrado (PEAI) de la IE."
+          },
+          {
+            "id": "dir_b_5",
+            "texto": "El directivo planifica, implementa y evalúa la Gestión del Riesgo de Desastres (GRD) en la IE, incluyendo acciones de prevención, mitigación y preparación para la respuesta."
+          }
+        ]
+      },
+      {
+        "nombre": "C. PLANIFICACIÓN CURRICULAR",
+        "items": [
+          {
+            "id": "dir_c_1",
+            "texto": "Los docentes de la IE cuentan con la planificación de la unidad didáctica correspondiente al grado y sección a su cargo, vigente para el periodo en curso."
+          },
+          {
+            "id": "dir_c_2",
+            "texto": "Los docentes de la IE cuentan con la planificación de sus sesiones o actividades de aprendizaje correspondientes al grado y sección a su cargo, vigente para el periodo en curso y articulada con la unidad didáctica correspondiente."
+          },
+          {
+            "id": "dir_c_3",
+            "texto": "El directivo brinda asesoría pedagógica a los docentes para mejorar la planificación curricular, orientándola hacia el desarrollo de las competencias de los estudiantes."
+          },
+          {
+            "id": "dir_c_4",
+            "texto": "En la IE se promueve que los docentes realicen la planificación curricular de manera colegiada (programación anual y unidades didácticas) evidenciando acuerdos pedagógicos."
+          }
+        ]
+      },
+      {
+        "nombre": "D. MONITOREO DE LA PRÁCTICA PEDAGÓGICA EN AULA",
+        "items": [
+          {
+            "id": "dir_d_1",
+            "texto": "En la IE se cuenta con un cronograma de monitoreo de la práctica pedagógica en el aula del presente año y se han ejecutado las visitas programadas."
+          },
+          {
+            "id": "dir_d_2",
+            "texto": "En la IE se organiza e interpreta la información obtenida a partir del monitoreo, identificando logros y oportunidades de mejora de la práctica pedagógica docente."
+          },
+          {
+            "id": "dir_d_3",
+            "texto": "En la IE se identifican, plantean e implementan propuestas de mejora que atienden las dificultades identificadas en la práctica pedagógica a partir del monitoreo."
+          }
+        ]
+      },
+      {
+        "nombre": "E. FORTALECIMIENTO DE LAS COMPETENCIAS DOCENTES",
+        "items": [
+          {
+            "id": "dir_e_1",
+            "texto": "En la IE se realiza un diagnóstico de necesidades formativas docentes y se implementa al menos una acción de fortalecimiento que responde a una necesidad identificada en el diagnóstico."
+          },
+          {
+            "id": "dir_e_2",
+            "texto": "La IE planifica e implementa (o viene implementando) al menos un proyecto de innovación pedagógica formulado, cuyos resultados son verificables y se difunden a la comunidad educativa."
+          }
+        ]
+      },
+      {
+        "nombre": "F. SEGUIMIENTO AL PROGRESO DE LOS APRENDIZAJES",
+        "items": [
+          {
+            "id": "dir_f_1",
+            "texto": "El directivo gestiona la entrega oportuna de los informes de progreso de las competencias de los estudiantes que contienen el nivel de logro alcanzado en cada competencia y, cuando corresponde, las conclusiones descriptivas de los aprendizajes."
+          },
+          {
+            "id": "dir_f_2",
+            "texto": "En la IE se analizan los resultados de aprendizaje y, a partir de ellos, se implementan estrategias pedagógicas para la mejora de los aprendizajes."
+          }
+        ]
+      }
+    ]
   }
 }

@@ -29,7 +29,7 @@
     rel="stylesheet">
 
   <!-- Hoja de estilos de la aplicación -->
-  <link rel="stylesheet" href="./css/style.css?v=20260919_v1">
+  <link rel="stylesheet" href="./css/style.css?v=20260921_v2">
 </head>
 
 <body>
@@ -73,8 +73,8 @@
 
   <!-- ===== APLICACIÓN PRINCIPAL (TOP NAVIGATION LAYOUT) ===== -->
   <div id="app" style="display:none;">
-    <!-- Barra Superior Principal Institucional -->
-    <header id="mainHeader">
+    <!-- Barra Superior Principal Institucional (Cabecera fija) -->
+    <header id="mainHeader" class="app-header">
       <div class="topBar">
         <div class="topBrand">
           <div class="topLogo">
@@ -93,6 +93,12 @@
         </div>
 
         <div class="topActions">
+          <!-- Pastilla de estado de conexión -->
+          <span id="connectionStatusPill" class="connPill connecting" title="Estado de la conexión">
+            <span class="connDot"></span>
+            <span class="connLabel">Conectando…</span>
+          </span>
+
           <!-- Botones de acción rápida -->
           <button type="button" class="btnTopQuick" id="topExportBtn" title="Opciones de exportación rápida">
             <span class="btnIcon">⬇</span> Exportar
@@ -127,7 +133,7 @@
       </div>
 
       <!-- Barra de Sub-Navegación (Tabs Horizontales) -->
-      <nav class="subNavBar" id="subNavBar">
+      <nav class="subNavBar app-tabs" id="subNavBar">
         <button class="navbtn active" data-tab="dashboard"><span class="ic">📊</span> Resumen</button>
         <button class="navbtn" data-tab="registrar"><span class="ic">＋</span> Registrar ficha</button>
         <button class="navbtn" data-tab="consolidado"><span class="ic">▤</span> Reportes</button>
@@ -142,8 +148,20 @@
       <div class="goldDivider"></div>
     </header>
 
-    <!-- Contenedor Principal -->
-    <div class="appBody">
+    <!-- Contenedor Principal de la Aplicación -->
+    <div class="appBody app-main">
+      <!-- Alerta de Conexión Lenta / Caída (oculta por defecto) -->
+      <div id="connectionAlert" class="connectionRetryAlert" style="display:none;">
+        <div class="alertInner">
+          <span class="alertIco">⚠️</span>
+          <div class="alertMsg">
+            <strong>La conexión con el servidor está tardando más de lo esperado.</strong>
+            <span>Verifica tu acceso a internet o reintenta la sincronización con el servidor.</span>
+          </div>
+          <button type="button" id="retryConnectionBtn" class="btnRetry">Reintentar</button>
+        </div>
+      </div>
+
       <!-- Banner de Bienvenida Institucional -->
       <aside class="welcomeBanner" id="welcomeBanner">
         <div class="welcomeContent">
@@ -155,7 +173,7 @@
         </div>
       </aside>
 
-      <!-- Área de Contenido de Pestañas -->
+      <!-- Área de Contenido de Pestañas (Scroll natural de ventana) -->
       <main id="main">
         <div id="tabContent"></div>
       </main>
@@ -166,7 +184,7 @@
   <div id="toast" class="toast"></div>
 
   <!-- ===== MÓDULO PRINCIPAL (ES6 Modules) ===== -->
-  <script type="module" src="./js/app.js?v=20260919_v1"></script>
+  <script type="module" src="./js/app.js?v=20260921_v2"></script>
 
 </body>
 

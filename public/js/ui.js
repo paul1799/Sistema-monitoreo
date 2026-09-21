@@ -8,23 +8,26 @@ import {
   exportFichaIndividualPdf,
   exportConsolidadoReportPdf,
   exportConcursosReportPdf,
+  exportJfenFichasPdf,
   exportActaOrdenMeritoPdf,
   exportColegiosReportPdf,
   formatDate,
   formatPersonName,
+  formatearNombre,
+  parseArteDisciplina,
   formatResolucionRef,
   formatPuestoLabel,
   puestoRank,
   generateVerificationCode,
   getLimaDateStr
-} from './pdf-template.js?v=20260919_v1';
+} from './pdf-template.js?v=20260921_v2';
 
 /* ============================= CONSTANTES COMPARTIDAS ============================= */
 export const RESPONSE_OPTIONS = {
-  si_no:     [{ v: 'si', l: 'Sí' }, { v: 'no', l: 'No' }, { v: 'na', l: 'N/A' }],
-  escala_1_3:[{ v: '1', l: '1' }, { v: '2', l: '2' }, { v: '3', l: '3' }, { v: 'na', l: 'N/A' }],
+  si_no: [{ v: 'si', l: 'Sí' }, { v: 'no', l: 'No' }, { v: 'na', l: 'N/A' }],
+  escala_1_3: [{ v: '1', l: '1' }, { v: '2', l: '2' }, { v: '3', l: '3' }, { v: 'na', l: 'N/A' }],
   nivel_1_4: [{ v: '1', l: 'I' }, { v: '2', l: 'II' }, { v: '3', l: 'III' }, { v: '4', l: 'IV' }, { v: 'na', l: 'N/A' }],
-  ips:       [{ v: 'inicio', l: 'Inicio' }, { v: 'proceso', l: 'Proceso' }, { v: 'logrado', l: 'Logrado' }, { v: 'na', l: 'N/A' }],
+  ips: [{ v: 'inicio', l: 'Inicio' }, { v: 'proceso', l: 'Proceso' }, { v: 'logrado', l: 'Logrado' }, { v: 'na', l: 'N/A' }],
 };
 export const RESPONSE_LABELS = {
   si_no: 'Sí / No',
@@ -33,26 +36,61 @@ export const RESPONSE_LABELS = {
   ips: 'Inicio / Proceso / Logrado',
 };
 export const OPTION_COLORS = {
-  si_no:     { si: 'var(--ok)', no: 'var(--danger)', na: 'var(--neutral)' },
-  escala_1_3:{ '1': 'var(--danger)', '2': 'var(--warn)', '3': 'var(--ok)', na: 'var(--neutral)' },
+  si_no: { si: 'var(--ok)', no: 'var(--danger)', na: 'var(--neutral)' },
+  escala_1_3: { '1': 'var(--danger)', '2': 'var(--warn)', '3': 'var(--ok)', na: 'var(--neutral)' },
   nivel_1_4: { '1': 'var(--danger)', '2': 'var(--warn)', '3': '#34D399', '4': 'var(--ok)', na: 'var(--neutral)' },
-  ips:       { inicio: 'var(--danger)', proceso: 'var(--warn)', logrado: 'var(--ok)', na: 'var(--neutral)' },
+  ips: { inicio: 'var(--danger)', proceso: 'var(--warn)', logrado: 'var(--ok)', na: 'var(--neutral)' },
 };
 
-/* ============================= USUARIO DE SESIÓN ============================= */
+export const DESCRIPTORES_NIVEL_1_4 = {
+  '4': {
+    romano: 'IV',
+    pct: 100,
+    titulo: 'Cumplimiento integral',
+    descripcion: 'Evidencia el cumplimiento integral de los criterios establecidos para el aspecto evaluado. Las acciones desarrolladas son consistentes, sistemáticas y se encuentran debidamente sustentadas con evidencias verificables, contribuyendo al logro de los resultados previstos.'
+  },
+  '3': {
+    romano: 'III',
+    pct: 75,
+    titulo: 'Cumplimiento de la mayoría',
+    descripcion: 'Evidencia el cumplimiento de la mayoría de los criterios establecidos para el aspecto evaluado. Si bien se observan avances significativos y acciones orientadas al logro de resultados, aún existen aspectos que requieren fortalecimiento para asegurar un desempeño plenamente satisfactorio.'
+  },
+  '2': {
+    romano: 'II',
+    pct: 50,
+    titulo: 'Cumplimiento parcial',
+    descripcion: 'Evidencia el cumplimiento parcial de los criterios establecidos para el aspecto evaluado. Las acciones desarrolladas muestran avances incipientes o poco sistemáticos, requiriendo asistencia técnica y seguimiento para consolidar su implementación.'
+  },
+  '1': {
+    romano: 'I',
+    pct: 25,
+    titulo: 'No evidencia cumplimiento mínimo',
+    descripcion: 'No evidencia el cumplimiento de los criterios mínimos establecidos para el aspecto evaluado. Las acciones desarrolladas resultan insuficientes para garantizar el logro de los resultados esperados, refiriéndose acciones prioritarias de fortalecimiento y acompañamiento.'
+  }
+};
+
+/* ============================= ESTADO DE APLICACIÓN Y SESIÓN ============================= */
+let _appState = null;
+export function setAppState(s) {
+  if (s) _appState = s;
+}
+export function getAppState() {
+  return _appState || (typeof window !== 'undefined' ? window.state : null) || {};
+}
+
 let _currentSessionUser = null;
 export function setSessionUser(user) {
   if (user) _currentSessionUser = user;
 }
 
 /* ============================= ESTADO DE EDICIÓN Y ORDEN ============================= */
-let editingSubmissionId   = null;
+let editingSubmissionId = null;
 let editingSubmissionData = null;
-let dashboardSortAsc      = true; // Por defecto: urgente (menor avance) arriba
+let dashboardSortAsc = true; // Por defecto: urgente (menor avance) arriba
 
 /** Activa el modo edición de una ficha ya registrada. Llamar antes de navegar a 'registrar'. */
 export function setEditMode(id, data) {
-  editingSubmissionId   = id;
+  editingSubmissionId = id;
   editingSubmissionData = data ? JSON.parse(JSON.stringify(data)) : null;
 }
 
@@ -83,10 +121,10 @@ export function showToast(msg) {
 }
 export function scoreValue(tipo, v) {
   if (v === undefined || v === null || v === '' || v === 'na') return null;
-  if (tipo === 'si_no')     return v === 'si' ? 1 : (v === 'no' ? 0 : null);
+  if (tipo === 'si_no') return v === 'si' ? 1 : (v === 'no' ? 0 : null);
   if (tipo === 'escala_1_3') return Math.max(0, Math.min(1, (Number(v)) / 3));
   if (tipo === 'nivel_1_4') return Math.max(0, Math.min(1, (Number(v)) / 4));
-  if (tipo === 'ips')       return v === 'logrado' ? 1 : (v === 'proceso' ? 0.5 : (v === 'inicio' ? 0 : null));
+  if (tipo === 'ips') return v === 'logrado' ? 1 : (v === 'proceso' ? 0.5 : (v === 'inicio' ? 0 : null));
   return null;
 }
 export function statusFromPct(pct) {
@@ -132,7 +170,7 @@ export function donutChart(parts, opts) {
       return html;
     }).join('')
     : '<circle cx="' + cx + '" cy="' + cy + '" r="' + r +
-      '" fill="none" stroke="var(--border)" stroke-width="' + stroke + '"></circle>';
+    '" fill="none" stroke="var(--border)" stroke-width="' + stroke + '"></circle>';
 
   const centerLabel = opts.centerLabel !== undefined ? opts.centerLabel : (total || '');
   const centerSub = opts.centerSub || '';
@@ -143,8 +181,8 @@ export function donutChart(parts, opts) {
     esc(String(centerLabel)) + '</text>' +
     (centerSub
       ? '<text x="' + cx + '" y="' + (cy + 17) +
-        '" text-anchor="middle" font-family="var(--sans)" font-size="11" font-weight="600" fill="var(--text-600)">' +
-        esc(centerSub) + '</text>'
+      '" text-anchor="middle" font-family="var(--sans)" font-size="11" font-weight="600" fill="var(--text-600)">' +
+      esc(centerSub) + '</text>'
       : '') +
     '</svg>';
 }
@@ -200,7 +238,13 @@ export function computeItemAgg(subs, ft) {
 }
 
 export function renderItemReportHtml(itemAgg, tipoRespuesta) {
-  const legendMap = {
+  const legendMap = tipoRespuesta === 'nivel_1_4' ? {
+    '1': 'I = No evidencia cumplimiento mínimo (25%)',
+    '2': 'II = Cumplimiento parcial (50%)',
+    '3': 'III = Cumplimiento de la mayoría (75%)',
+    '4': 'IV = Cumplimiento integral (100%)',
+    'na': 'N/A = No aplica'
+  } : {
     '1': '1 = No logrado / Inicio',
     '2': '2 = En proceso',
     '3': '3 = Logrado',
@@ -212,7 +256,11 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta) {
     'logrado': 'Logrado = Cumplido'
   };
 
-  const legend = (RESPONSE_OPTIONS[tipoRespuesta] || []).map(o => {
+  const activeOpts = tipoRespuesta === 'nivel_1_4'
+    ? (RESPONSE_OPTIONS.nivel_1_4 || []).filter(o => o.v !== 'na')
+    : (RESPONSE_OPTIONS[tipoRespuesta] || []);
+
+  const legend = activeOpts.map(o => {
     const text = legendMap[o.v] || o.l;
     const col = (OPTION_COLORS[tipoRespuesta] && OPTION_COLORS[tipoRespuesta][o.v]) || 'var(--neutral)';
     return '<span><span class="dot" style="background:' + col + '"></span>' + esc(text) + '</span>';
@@ -235,38 +283,38 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta) {
         '<td style="text-align:center"><span class="badge ' + itStatus.cls + '">' + itStatus.label + '</span></td>' +
         '<td><div style="margin-bottom:3px">' + stackedBar(it.counts, it.total, tipoRespuesta) + '</div>' + respPills + '</td>' +
         '<td style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums">' + (it.pct === null ? '—' : it.pct + '%') + '</td>' +
-      '</tr>';
+        '</tr>';
     }).join('');
 
     return '<details class="secDetails"' + (si === 0 ? ' open' : '') + ' data-secitem="' + si + '">' +
       '<summary>' +
-        '<div class="secSummaryLeft">' +
-          '<span class="secChevron">▶</span>' +
-          '<strong>' + esc(sec.nombre) + '</strong>' +
-          '<span style="font-size:12px;color:var(--text-600);font-weight:400">(' + sec.items.length + ' indicadores)</span>' +
-        '</div>' +
-        '<div class="secSummaryRight">' +
-          bar(sec.avg) +
-          '<span style="font-weight:700;font-size:13px;min-width:42px;text-align:right">' + (sec.avg === null ? '—' : sec.avg + '%') + '</span>' +
-          '<span class="badge ' + secStatus.cls + '">' + secStatus.label + '</span>' +
-        '</div>' +
+      '<div class="secSummaryLeft">' +
+      '<span class="secChevron">▶</span>' +
+      '<strong>' + esc(sec.nombre) + '</strong>' +
+      '<span style="font-size:12px;color:var(--text-600);font-weight:400">(' + sec.items.length + ' indicadores)</span>' +
+      '</div>' +
+      '<div class="secSummaryRight">' +
+      bar(sec.avg) +
+      '<span style="font-weight:700;font-size:13px;min-width:42px;text-align:right">' + (sec.avg === null ? '—' : sec.avg + '%') + '</span>' +
+      '<span class="badge ' + secStatus.cls + '">' + secStatus.label + '</span>' +
+      '</div>' +
       '</summary>' +
       '<div class="secDetailsBody">' +
-        '<div class="tblWrap"><table class="itemTable"><thead><tr>' +
-          '<th style="width:40px;text-align:center">N.°</th>' +
-          '<th>Indicador / Ítem</th>' +
-          '<th style="width:110px;text-align:center">Resultado</th>' +
-          '<th style="min-width:180px">Distribución (n=' + (sec.items[0] ? sec.items[0].total : 0) + ')</th>' +
-          '<th style="width:60px;text-align:right">%</th>' +
-        '</tr></thead><tbody>' + tableRows + '</tbody></table></div>' +
+      '<div class="tblWrap"><table class="itemTable"><thead><tr>' +
+      '<th style="width:40px;text-align:center">N.°</th>' +
+      '<th>Indicador / Ítem</th>' +
+      '<th style="width:110px;text-align:center">Resultado</th>' +
+      '<th style="min-width:180px">Distribución (n=' + (sec.items[0] ? sec.items[0].total : 0) + ')</th>' +
+      '<th style="width:60px;text-align:right">%</th>' +
+      '</tr></thead><tbody>' + tableRows + '</tbody></table></div>' +
       '</div>' +
-    '</details>';
+      '</details>';
   }).join('');
 
   return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">' +
     '<div class="itemReportLegend" style="margin-bottom:0">' + legend + '</div>' +
     '<button type="button" class="btn secondary small" id="toggleAllItemsBtn">⊞ Expandir / Contraer todo</button>' +
-  '</div>' + sections;
+    '</div>' + sections;
 }
 
 export function seedSuggestions(field, submissions) {
@@ -333,6 +381,28 @@ export const DEFAULT_PLANTILLAS = [
   { tipoReporte: 'avance', orden: 2, cargo: 'Jefatura de [ÁREA]', nombreOpcional: '', entidad: 'UGEL 03', leyenda: 'V.° B.°' }
 ];
 
+/* ============================= CONTROL DE SCROLL Y MODALES ============================= */
+let _activeModalCount = 0;
+
+export function lockBodyScroll() {
+  _activeModalCount++;
+  if (_activeModalCount === 1) {
+    document.body.classList.add('modal-open');
+  }
+}
+
+export function unlockBodyScroll() {
+  _activeModalCount = Math.max(0, _activeModalCount - 1);
+  if (_activeModalCount === 0) {
+    document.body.classList.remove('modal-open');
+  }
+}
+
+export function forceResetBodyScroll() {
+  _activeModalCount = 0;
+  document.body.classList.remove('modal-open');
+}
+
 /**
  * Abre el diálogo modal universal "Configurar descarga" con selección de área de firmas,
  * firmantes reordenables, revisión previa de datos (Parte D), opciones y vista previa en vivo.
@@ -345,10 +415,16 @@ export function openDownloadConfigModal({
   state = {},
   dbNs = null,
   isAdmin = false,
-  onConfirm = async (downloadConfig) => {}
+  isJfen = false,
+  onConfirm = async (downloadConfig) => { }
 }) {
+  const isJfenReport = isJfen || (tipoReporte === 'concursos' && (documentTitle.toUpperCase().includes('JFEN') || documentTitle.toUpperCase().includes('FLORALES')));
+
   const oldModal = document.getElementById('downloadConfigModal');
-  if (oldModal) oldModal.remove();
+  if (oldModal) {
+    oldModal.remove();
+    unlockBodyScroll();
+  }
 
   const areasList = (state.areasFirma && state.areasFirma.length > 0)
     ? state.areasFirma.filter(a => a.activa !== false)
@@ -358,7 +434,7 @@ export function openDownloadConfigModal({
   try {
     const raw = localStorage.getItem('download_pref_' + tipoReporte);
     if (raw) savedPref = JSON.parse(raw);
-  } catch (e) {}
+  } catch (e) { }
 
   let currentAreaId = (savedPref && savedPref.areaId) ? savedPref.areaId : 'agebre';
   if (!areasList.some(a => a.id === currentAreaId) && currentAreaId !== 'personalizado' && currentAreaId !== 'sin_firmas') {
@@ -370,7 +446,26 @@ export function openDownloadConfigModal({
   let mostrarEncabezadoArea = savedPref ? (savedPref.mostrarEncabezadoArea !== false) : true;
   let incluirQr = savedPref ? (savedPref.incluirQr !== false) : true;
   let orientationChoice = savedPref ? (savedPref.orientation || 'auto') : 'auto';
-  let formatoConcurso = savedPref ? (savedPref.formatoConcurso || 'completo') : 'completo';
+  let formatoConcurso = savedPref ? (savedPref.formatoConcurso || (isJfenReport ? 'fichas' : 'completo')) : (isJfenReport ? 'fichas' : 'completo');
+  let jfenOrden = (savedPref && savedPref.ordenParticipantes) ? savedPref.ordenParticipantes : 'alfabetico';
+  let jfenRepetirBarra = savedPref ? (savedPref.repetirBarraCategoria !== false) : true;
+  let jfenPuestoRes = savedPref ? (savedPref.mostrarPuesto !== false) : true;
+  let jfenModalidad = savedPref ? (savedPref.mostrarModalidad !== false) : true;
+  let jfenResumen = savedPref ? (savedPref.incluirResumen !== false) : true;
+  let jfenCuadro = savedPref ? (savedPref.incluirCuadroResumen !== false) : true;
+  let jfenIntro = savedPref ? (savedPref.incluirIntro === true) : false;
+
+  let indivIntro = savedPref ? (savedPref.incluirIntro !== false) : true;
+  let indivResumen = savedPref ? (savedPref.incluirResumen !== false) : true;
+  let indivCasillas = savedPref ? (savedPref.dibujarCasillas !== false) : true;
+  let indivLineas = savedPref ? (savedPref.imprimirLineas !== false) : true;
+
+  let consResumen = savedPref ? (savedPref.incluirResumenEjecutivo !== false) : true;
+  let consMatriz = savedPref ? (savedPref.incluirMatriz !== false) : true;
+  let consCriticos = savedPref ? (savedPref.incluirCriticos !== false) : true;
+  let consItems = savedPref ? (savedPref.incluirReporteItem !== false) : true;
+  let consOrden = (savedPref && savedPref.ordenDetalle) ? savedPref.ordenDetalle : 'menor_cumplimiento';
+
   let recordarEleccion = true;
 
   let lugar = (savedPref && savedPref.lugar) ? savedPref.lugar : 'Lima';
@@ -399,6 +494,25 @@ export function openDownloadConfigModal({
       }));
     }
 
+    if (tipoReporte === 'individual') {
+      const sub0 = (dataRows && dataRows[0]) ? dataRows[0] : null;
+      const dirName = sub0 ? (sub0.director && sub0.director !== '—' ? sub0.director : '') : '';
+      const monName = sub0 ? (sub0.responsable && sub0.responsable !== '—' ? sub0.responsable : '') : '';
+      const ieName = sub0 ? (sub0.institucion || 'Institución Educativa') : 'Institución Educativa';
+      return [
+        { cargo: 'Director(a) de la I.E.', nombre: dirName, entidad: ieName, leyenda: 'Firma y Sello' },
+        { cargo: `Monitor(a) — ${sigla}`, nombre: monName, entidad: 'UGEL 03 – DRELM', leyenda: 'Firma y Sello' },
+        { cargo: `V.° B.° Jefatura de ${sigla}`, nombre: '', entidad: 'UGEL 03', leyenda: 'V.° B.°' }
+      ];
+    }
+
+    if (tipoReporte === 'consolidado') {
+      return [
+        { cargo: `Especialista Responsable de Monitoreo — ${sigla}`, nombre: '', entidad: 'UGEL 03 – DRELM', leyenda: 'Firma y Sello' },
+        { cargo: `Jefatura de ${sigla} — UGEL 03 – DRELM`, nombre: '', entidad: 'UGEL 03 – DRELM', leyenda: 'V.° B.° y Sello' }
+      ];
+    }
+
     const defaults = DEFAULT_PLANTILLAS.filter(p => p.tipoReporte === tipoReporte);
     if (defaults.length > 0) {
       return defaults.map(p => ({
@@ -417,7 +531,7 @@ export function openDownloadConfigModal({
 
   let firmantesList = getSignersForArea(currentAreaId);
 
-  // PARTE D: Análisis de datos
+  // PARTE D: Análisis de datos y revisión de completitud
   const anomalies = {
     sinPuesto: 0,
     sinAsesor: 0,
@@ -425,7 +539,12 @@ export function openDownloadConfigModal({
     sinResolucion: 0,
     posiblesDuplicados: 0,
     dniInvalido: 0,
-    sinUgelRed: 0
+    sinUgelRed: 0,
+    sinTurnoVisitado: 0,
+    sinMonitorDni: 0,
+    sinCompromisos: 0,
+    sinEvidencias: 0,
+    sinRespuestas: 0
   };
 
   if (tipoReporte === 'concursos' && Array.isArray(dataRows)) {
@@ -450,10 +569,29 @@ export function openDownloadConfigModal({
         seenDup.add(dupKey);
       }
     });
+  } else if (tipoReporte === 'individual' && Array.isArray(dataRows)) {
+    dataRows.forEach(s => {
+      const subExtras = s.extras || [];
+      const getExtraVal = (pattern) => {
+        const found = subExtras.find(x => x && x.label && x.label.toLowerCase().includes(pattern.toLowerCase()));
+        return found ? found.value : '';
+      };
+      const turnoVisitado = s.turnoVisitado || getExtraVal('turno visitado');
+      if (!turnoVisitado || turnoVisitado === '—' || turnoVisitado.trim() === '') anomalies.sinTurnoVisitado++;
+      const monitorDni = s.monitorDni || getExtraVal('dni del monitor');
+      if (!monitorDni || monitorDni === '—' || monitorDni.trim() === '') anomalies.sinMonitorDni++;
+      if (!s.compromisoDirector && !s.compromisoMonitor && (!s.compromisos || s.compromisos.length === 0)) anomalies.sinCompromisos++;
+      const resps = s.respuestas || [];
+      if (resps.length === 0) anomalies.sinRespuestas++;
+      const hasEvid = resps.some(r => r.evidencia && r.evidencia !== '—' && r.evidencia.trim() !== '');
+      if (!hasEvid && resps.length > 0) anomalies.sinEvidencias++;
+    });
   } else if (tipoReporte === 'consolidado' && Array.isArray(dataRows)) {
     dataRows.forEach(x => {
       const s = x.s || x;
       if (!s.ugel || s.ugel === '—' || !s.red || s.red === '—') anomalies.sinUgelRed++;
+      const resps = s.respuestas || [];
+      if (resps.length === 0) anomalies.sinRespuestas++;
     });
   }
 
@@ -480,7 +618,7 @@ export function openDownloadConfigModal({
         <div class="downloadModalBody">
           ${totalAnomalies > 0 ? `
             <div class="downloadReviewAlert">
-              <h5>⚠️ Revisión previa de datos: Se detectaron observaciones en los registros a exportar:</h5>
+              <h5>⚠️ Revisión previa de datos: Se detectaron campos pendientes o no registrados:</h5>
               <ul>
                 ${anomalies.sinPuesto > 0 ? `<li><strong>${anomalies.sinPuesto}</strong> registro(s) sin puesto asignado (se mostrará como "—")</li>` : ''}
                 ${anomalies.sinAsesor > 0 ? `<li><strong>${anomalies.sinAsesor}</strong> registro(s) sin docente asesor (se mostrará "Sin docente asesor registrado")</li>` : ''}
@@ -489,6 +627,11 @@ export function openDownloadConfigModal({
                 ${anomalies.posiblesDuplicados > 0 ? `<li><strong>${anomalies.posiblesDuplicados}</strong> posible(s) registro(s) duplicado(s) detectado(s)</li>` : ''}
                 ${anomalies.dniInvalido > 0 ? `<li><strong>${anomalies.dniInvalido}</strong> DNI(s) con formato no estándar (diferente de 8 dígitos numéricos)</li>` : ''}
                 ${anomalies.sinUgelRed > 0 ? `<li><strong>${anomalies.sinUgelRed}</strong> ficha(s) sin UGEL o RED asignada</li>` : ''}
+                ${anomalies.sinTurnoVisitado > 0 ? `<li><strong>${anomalies.sinTurnoVisitado}</strong> ficha(s) sin "Turno visitado" registrado (se mostrarán casillas en blanco)</li>` : ''}
+                ${anomalies.sinMonitorDni > 0 ? `<li><strong>${anomalies.sinMonitorDni}</strong> ficha(s) sin DNI del monitor(a) (se mostrará como "No registrado")</li>` : ''}
+                ${anomalies.sinCompromisos > 0 ? `<li><strong>${anomalies.sinCompromisos}</strong> ficha(s) sin compromisos registrados (se imprimirán líneas para llenado manual)</li>` : ''}
+                ${anomalies.sinEvidencias > 0 ? `<li><strong>${anomalies.sinEvidencias}</strong> ficha(s) sin evidencias redactadas (las celdas quedarán en blanco)</li>` : ''}
+                ${anomalies.sinRespuestas > 0 ? `<li><strong>${anomalies.sinRespuestas}</strong> ficha(s) sin respuestas registradas</li>` : ''}
               </ul>
               <div class="downloadReviewActions">
                 <button type="button" class="btn secondary small" id="dl_btn_fix">🔍 Ver y corregir</button>
@@ -620,15 +763,99 @@ export function openDownloadConfigModal({
               ${tipoReporte === 'concursos' ? `
                 <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:8px 10px;margin-top:6px">
                   <div style="font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:4px">Formato del documento:</div>
-                  <div style="display:flex;gap:16px">
+                  <div style="display:flex;gap:16px;flex-wrap:wrap">
+                    ${isJfenReport ? `
+                      <label style="display:flex;align-items:center;gap:4px;font-size:12.5px;cursor:pointer">
+                        <input type="radio" name="dl_formato_concurso" value="fichas" ${formatoConcurso === 'fichas' ? 'checked' : ''}>
+                        <strong>Fichas por categoría (oficial)</strong>
+                      </label>
+                    ` : ''}
                     <label style="display:flex;align-items:center;gap:4px;font-size:12.5px;cursor:pointer">
                       <input type="radio" name="dl_formato_concurso" value="completo" ${formatoConcurso === 'completo' ? 'checked' : ''}>
-                      Listado completo (agrupado por disciplina/categoría)
+                      Listado tabular (anterior)
                     </label>
                     <label style="display:flex;align-items:center;gap:4px;font-size:12.5px;cursor:pointer">
                       <input type="radio" name="dl_formato_concurso" value="orden_merito" ${formatoConcurso === 'orden_merito' ? 'checked' : ''}>
                       Acta de orden de mérito (solo 1.° a 3.° puesto)
                     </label>
+                  </div>
+
+                  ${isJfenReport && formatoConcurso === 'fichas' ? `
+                    <div style="margin-top:10px;padding:10px;background:#FBF9FD;border:1px solid #E9E1F0;border-radius:6px;display:flex;flex-direction:column;gap:6px">
+                      <div style="font-size:12px;font-weight:700;color:#7030A0;margin-bottom:2px">Opciones de formato JFEN:</div>
+                      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                        <span style="font-size:12px;color:var(--ink-soft);font-weight:600">Orden participantes:</span>
+                        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
+                          <input type="radio" name="dl_jfen_orden" value="alfabetico" ${jfenOrden === 'alfabetico' ? 'checked' : ''}> Alfabético por apellidos
+                        </label>
+                        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
+                          <input type="radio" name="dl_jfen_orden" value="registro" ${jfenOrden === 'registro' ? 'checked' : ''}> Orden de registro
+                        </label>
+                      </div>
+                      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <input type="checkbox" id="dl_jfen_repetir_barra" ${jfenRepetirBarra ? 'checked' : ''}> Repetir barra de categoría en cada ficha
+                      </label>
+                      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <input type="checkbox" id="dl_jfen_puesto_res" ${jfenPuestoRes ? 'checked' : ''}> Mostrar filas Puesto y Resolución
+                      </label>
+                      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <input type="checkbox" id="dl_jfen_modalidad" ${jfenModalidad ? 'checked' : ''}> Mostrar fila Modalidad (Individual / Grupal)
+                      </label>
+                      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <input type="checkbox" id="dl_jfen_resumen" ${jfenResumen ? 'checked' : ''}> Incluir línea de resumen
+                      </label>
+                      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <input type="checkbox" id="dl_jfen_cuadro" ${jfenCuadro ? 'checked' : ''}> Incluir cuadro "Inscripciones por categoría y Arte/Disciplina"
+                      </label>
+                      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <input type="checkbox" id="dl_jfen_intro" ${jfenIntro ? 'checked' : ''}> Incluir párrafo introductorio ("En el marco de las bases…")
+                      </label>
+                    </div>
+                  ` : ''}
+                </div>
+              ` : ''}
+
+              ${tipoReporte === 'individual' ? `
+                <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:8px 10px;margin-top:6px;display:flex;flex-direction:column;gap:6px">
+                  <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:2px">Opciones de Ficha Individual:</div>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="dl_indiv_intro" ${indivIntro ? 'checked' : ''}> Incluir párrafo introductorio ("En el marco del monitoreo...")
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="dl_indiv_resumen" ${indivResumen ? 'checked' : ''}> Incluir resumen de resultados (cumplimiento por dimensión y global)
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="dl_indiv_casillas" ${indivCasillas ? 'checked' : ''}> Dibujar casillas para Condición, Nivel y Turno
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="dl_indiv_lineas" ${indivLineas ? 'checked' : ''}> Imprimir líneas para llenado a mano si Compromisos/Observaciones están vacíos
+                  </label>
+                </div>
+              ` : ''}
+
+              ${tipoReporte === 'consolidado' ? `
+                <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:8px 10px;margin-top:6px;display:flex;flex-direction:column;gap:6px">
+                  <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:2px">Opciones de Reporte Consolidado:</div>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="dl_cons_resumen" ${consResumen ? 'checked' : ''}> Incluir resumen ejecutivo (puntos destacados y por fortalecer)
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="dl_cons_matriz" ${consMatriz ? 'checked' : ''}> Incluir matriz por institución y dimensión (2 o más fichas)
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="dl_cons_criticos" ${consCriticos ? 'checked' : ''}> Incluir sección de ítems críticos / prioridades de atención
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="dl_cons_items" ${consItems ? 'checked' : ''}> Incluir reporte detallado por ítem con barras de nivel
+                  </label>
+                  <div style="display:flex;align-items:center;gap:8px;font-size:12px;margin-top:2px">
+                    <span style="font-weight:600;color:var(--ink-soft)">Orden del detalle de fichas:</span>
+                    <select id="dl_cons_orden" class="input" style="padding:2px 8px;font-size:12px;width:auto">
+                      <option value="menor_cumplimiento" ${consOrden === 'menor_cumplimiento' ? 'selected' : ''}>Menor cumplimiento primero (urgente)</option>
+                      <option value="mayor_cumplimiento" ${consOrden === 'mayor_cumplimiento' ? 'selected' : ''}>Mayor cumplimiento primero</option>
+                      <option value="fecha" ${consOrden === 'fecha' ? 'selected' : ''}>Por fecha de visita (más reciente primero)</option>
+                      <option value="institucion" ${consOrden === 'institucion' ? 'selected' : ''}>Alfabético por Institución Educativa</option>
+                    </select>
                   </div>
                 </div>
               ` : ''}
@@ -673,7 +900,12 @@ export function openDownloadConfigModal({
   }
 
   function attachModalEvents() {
-    const close = () => { overlay.remove(); };
+    let onKey = null;
+    const close = () => {
+      if (onKey) window.removeEventListener('keydown', onKey);
+      overlay.remove();
+      unlockBodyScroll();
+    };
     document.getElementById('dl_close_btn').onclick = close;
     document.getElementById('dl_cancel_btn').onclick = close;
 
@@ -823,8 +1055,46 @@ export function openDownloadConfigModal({
       r.onchange = (e) => { orientationChoice = e.target.value; };
     });
     overlay.querySelectorAll('input[name="dl_formato_concurso"]').forEach(r => {
-      r.onchange = (e) => { formatoConcurso = e.target.value; };
+      r.onchange = (e) => {
+        formatoConcurso = e.target.value;
+        renderModalContent();
+      };
     });
+    overlay.querySelectorAll('input[name="dl_jfen_orden"]').forEach(r => {
+      r.onchange = (e) => { jfenOrden = e.target.value; };
+    });
+    const repBarCb = document.getElementById('dl_jfen_repetir_barra');
+    if (repBarCb) repBarCb.onchange = (e) => { jfenRepetirBarra = e.target.checked; };
+    const pResCb = document.getElementById('dl_jfen_puesto_res');
+    if (pResCb) pResCb.onchange = (e) => { jfenPuestoRes = e.target.checked; };
+    const modCb = document.getElementById('dl_jfen_modalidad');
+    if (modCb) modCb.onchange = (e) => { jfenModalidad = e.target.checked; };
+    const resCb = document.getElementById('dl_jfen_resumen');
+    if (resCb) resCb.onchange = (e) => { jfenResumen = e.target.checked; };
+    const cuadCb = document.getElementById('dl_jfen_cuadro');
+    if (cuadCb) cuadCb.onchange = (e) => { jfenCuadro = e.target.checked; };
+    const introCb = document.getElementById('dl_jfen_intro');
+    if (introCb) introCb.onchange = (e) => { jfenIntro = e.target.checked; };
+
+    const indivIntroCb = document.getElementById('dl_indiv_intro');
+    if (indivIntroCb) indivIntroCb.onchange = (e) => { indivIntro = e.target.checked; };
+    const indivResCb = document.getElementById('dl_indiv_resumen');
+    if (indivResCb) indivResCb.onchange = (e) => { indivResumen = e.target.checked; };
+    const indivCasCb = document.getElementById('dl_indiv_casillas');
+    if (indivCasCb) indivCasCb.onchange = (e) => { indivCasillas = e.target.checked; };
+    const indivLinCb = document.getElementById('dl_indiv_lineas');
+    if (indivLinCb) indivLinCb.onchange = (e) => { indivLineas = e.target.checked; };
+
+    const consResCb = document.getElementById('dl_cons_resumen');
+    if (consResCb) consResCb.onchange = (e) => { consResumen = e.target.checked; };
+    const consMatCb = document.getElementById('dl_cons_matriz');
+    if (consMatCb) consMatCb.onchange = (e) => { consMatriz = e.target.checked; };
+    const consCritCb = document.getElementById('dl_cons_criticos');
+    if (consCritCb) consCritCb.onchange = (e) => { consCriticos = e.target.checked; };
+    const consItCb = document.getElementById('dl_cons_items');
+    if (consItCb) consItCb.onchange = (e) => { consItems = e.target.checked; };
+    const consOrdSel = document.getElementById('dl_cons_orden');
+    if (consOrdSel) consOrdSel.onchange = (e) => { consOrden = e.target.value; };
 
     const fixBtn = document.getElementById('dl_btn_fix');
     if (fixBtn) {
@@ -896,7 +1166,16 @@ export function openDownloadConfigModal({
             firmantes: firmantesList,
             customAreaNombre,
             customAreaSigla,
-            customAreaDesc
+            customAreaDesc,
+            indivIntro,
+            indivResumen,
+            indivCasillas,
+            indivLineas,
+            consResumen,
+            consMatriz,
+            consCriticos,
+            consItems,
+            consOrden
           };
           localStorage.setItem('download_pref_' + tipoReporte, JSON.stringify(prefData));
           if (currentUser && dbNs) {
@@ -905,9 +1184,9 @@ export function openDownloadConfigModal({
               tipoReporte,
               prefData,
               updatedAt: Date.now()
-            }, { merge: true }).catch(() => {});
+            }, { merge: true }).catch(() => { });
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       const downloadConfig = {
@@ -918,6 +1197,22 @@ export function openDownloadConfigModal({
         incluirQr,
         orientation: orientationChoice === 'auto' ? null : orientationChoice,
         formatoConcurso,
+        ordenParticipantes: jfenOrden,
+        repetirBarraCategoria: jfenRepetirBarra,
+        mostrarPuesto: jfenPuestoRes,
+        mostrarResolucion: jfenPuestoRes,
+        mostrarModalidad: jfenModalidad,
+        incluirResumen: jfenResumen,
+        incluirCuadroResumen: jfenCuadro,
+        incluirIntro: tipoReporte === 'individual' ? indivIntro : jfenIntro,
+        incluirResumen: tipoReporte === 'individual' ? indivResumen : jfenResumen,
+        dibujarCasillas: indivCasillas,
+        imprimirLineas: indivLineas,
+        incluirResumenEjecutivo: consResumen,
+        incluirMatriz: consMatriz,
+        incluirCriticos: consCriticos,
+        incluirReporteItem: consItems,
+        ordenDetalle: consOrden,
         datosIncompletos: forceWithIncomplete || (totalAnomalies > 0),
         marcaBorrador: forceWithIncomplete && (anomalies.sinPuesto > 0 || anomalies.sinAsesor > 0)
       };
@@ -934,15 +1229,15 @@ export function openDownloadConfigModal({
       }
     }
 
-    const onKey = (e) => {
+    onKey = (e) => {
       if (e.key === 'Escape') {
         close();
-        window.removeEventListener('keydown', onKey);
       }
     };
     window.addEventListener('keydown', onKey);
   }
 
+  lockBodyScroll();
   document.body.appendChild(overlay);
   renderModalContent();
 
@@ -958,11 +1253,32 @@ export function renderForbidden(c) {
 }
 
 export function setupNavigation(state, renderFn) {
+  if (state) _appState = state;
+
+  const cleanConcursoParams = (tab) => {
+    if (tab !== 'concursos' && typeof window !== 'undefined' && window.location) {
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('concurso') || url.searchParams.has('etapa') || url.searchParams.has('categoria')) {
+          url.searchParams.delete('concurso');
+          url.searchParams.delete('etapa');
+          url.searchParams.delete('categoria');
+          window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+        }
+      } catch (e) {
+        console.warn('Error limpiando parámetros de URL:', e);
+      }
+    }
+  };
+
   document.querySelectorAll('.navbtn').forEach(b => {
     b.addEventListener('click', () => {
+      forceResetBodyScroll();
+      window.scrollTo({ top: 0, behavior: 'instant' });
       document.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
       b.classList.add('active');
       state.activeTab = b.dataset.tab;
+      cleanConcursoParams(state.activeTab);
       renderFn();
     });
   });
@@ -971,7 +1287,10 @@ export function setupNavigation(state, renderFn) {
   const topRegBtn = document.getElementById('topRegistrarBtn');
   if (topRegBtn) {
     topRegBtn.addEventListener('click', () => {
+      forceResetBodyScroll();
+      window.scrollTo({ top: 0, behavior: 'instant' });
       state.activeTab = 'registrar';
+      cleanConcursoParams('registrar');
       document.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
       const btn = document.querySelector('.navbtn[data-tab="registrar"]');
       if (btn) btn.classList.add('active');
@@ -983,7 +1302,10 @@ export function setupNavigation(state, renderFn) {
   const topBellBtn = document.getElementById('topBellBtn');
   if (topBellBtn) {
     topBellBtn.addEventListener('click', () => {
+      forceResetBodyScroll();
+      window.scrollTo({ top: 0, behavior: 'instant' });
       state.activeTab = 'alertas';
+      cleanConcursoParams('alertas');
       document.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
       const btn = document.querySelector('.navbtn[data-tab="alertas"]');
       if (btn) btn.classList.add('active');
@@ -1019,7 +1341,7 @@ export function setupNavigation(state, renderFn) {
 
 /* ============================= DASHBOARD (RESUMEN GENERAL) ============================= */
 export function viewDashboard(state, getFichaType, renderFn) {
-  const totalTipos  = state.fichaTypes.length;
+  const totalTipos = state.fichaTypes.length;
   const totalFichas = state.submissions.length;
   const instSet = new Set(state.submissions.map(s => (s.institucion || '') + '|' + (s.ugel || '')));
 
@@ -1062,39 +1384,39 @@ export function viewDashboard(state, getFichaType, renderFn) {
     const icono = p.ft.icono || '📋';
     return '<tr>' +
       '<td class="tipoNombreCol" title="' + fullNombre + '">' +
-        '<div style="display:flex;align-items:flex-start;gap:9px">' +
-          '<span style="font-size:16px;line-height:1.2">' + icono + '</span>' +
-          '<div>' +
-            '<div style="font-weight:600;line-height:1.35;color:var(--text-900)">' + fullNombre + '</div>' +
-            (p.ft.descripcion ? '<small style="color:var(--text-600);display:block;margin-top:2px">' + esc(p.ft.descripcion) + '</small>' : '') +
-          '</div>' +
-        '</div>' +
+      '<div style="display:flex;align-items:flex-start;gap:9px">' +
+      '<span style="font-size:16px;line-height:1.2">' + icono + '</span>' +
+      '<div>' +
+      '<div style="font-weight:600;line-height:1.35;color:var(--text-900)">' + fullNombre + '</div>' +
+      (p.ft.descripcion ? '<small style="color:var(--text-600);display:block;margin-top:2px">' + esc(p.ft.descripcion) + '</small>' : '') +
+      '</div>' +
+      '</div>' +
       '</td>' +
       '<td style="text-align:center;font-weight:600;color:var(--text-900)">' + p.count + '</td>' +
       '<td>' + bar(avg) + '</td>' +
       '<td style="text-align:right;font-weight:700;color:var(--text-900)">' + (avg === null ? '—' : avg + '%') + '</td>' +
       '<td style="text-align:center"><span class="badge ' + status.cls + '">' + status.label + '</span></td>' +
-    '</tr>';
+      '</tr>';
   }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-600);padding:24px">Aún no hay tipos de ficha registrados.</td></tr>';
 
   // Porcentajes de la distribución
   const pctLogrado = totalConDatos ? Math.round((dist.logrado / totalConDatos) * 100) : 0;
   const pctProceso = totalConDatos ? Math.round((dist.proceso / totalConDatos) * 100) : 0;
-  const pctInicio  = totalConDatos ? Math.round((dist.inicio  / totalConDatos) * 100) : 0;
-  const pctNone    = totalConDatos ? Math.round((dist.none    / totalConDatos) * 100) : 0;
+  const pctInicio = totalConDatos ? Math.round((dist.inicio / totalConDatos) * 100) : 0;
+  const pctNone = totalConDatos ? Math.round((dist.none / totalConDatos) * 100) : 0;
 
   const seg = '<div class="distWrap">' +
     donutChart([
       { value: dist.logrado, color: 'var(--ok)', label: 'Logrado' },
       { value: dist.proceso, color: 'var(--warn)', label: 'En proceso' },
-      { value: dist.inicio,  color: 'var(--danger)', label: 'Por mejorar' },
-      { value: dist.none,    color: 'var(--neutral)', label: 'Sin datos' },
+      { value: dist.inicio, color: 'var(--danger)', label: 'Por mejorar' },
+      { value: dist.none, color: 'var(--neutral)', label: 'Sin datos' },
     ], { centerLabel: totalFichas, centerSub: 'fichas' }) +
     '<div class="seglegend">' +
-      '<span><span class="dot" style="background:var(--ok)"></span><strong>Logrado:</strong> ' + dist.logrado + ' (' + pctLogrado + '%)</span>' +
-      '<span><span class="dot" style="background:var(--warn)"></span><strong>En proceso:</strong> ' + dist.proceso + ' (' + pctProceso + '%)</span>' +
-      '<span><span class="dot" style="background:var(--danger)"></span><strong>Por mejorar:</strong> ' + dist.inicio + ' (' + pctInicio + '%)</span>' +
-      (dist.none ? '<span><span class="dot" style="background:var(--neutral)"></span><strong>Sin datos:</strong> ' + dist.none + ' (' + pctNone + '%)</span>' : '') +
+    '<span><span class="dot" style="background:var(--ok)"></span><strong>Logrado:</strong> ' + dist.logrado + ' (' + pctLogrado + '%)</span>' +
+    '<span><span class="dot" style="background:var(--warn)"></span><strong>En proceso:</strong> ' + dist.proceso + ' (' + pctProceso + '%)</span>' +
+    '<span><span class="dot" style="background:var(--danger)"></span><strong>Por mejorar:</strong> ' + dist.inicio + ' (' + pctInicio + '%)</span>' +
+    (dist.none ? '<span><span class="dot" style="background:var(--neutral)"></span><strong>Sin datos:</strong> ' + dist.none + ' (' + pctNone + '%)</span>' : '') +
     '</div></div>';
 
   // Alertas Recientes
@@ -1106,13 +1428,13 @@ export function viewDashboard(state, getFichaType, renderFn) {
     return '<div class="alertCard ' + cls + '">' +
       '<div class="alertIcon">' + icon + '</div>' +
       '<div class="alertBody">' +
-        '<div class="alertTitle">' + esc(a.institucion) + ' · <span style="font-weight:500;color:var(--text-600)">' + esc(a.fichaTypeNombre) + '</span></div>' +
-        '<div class="alertDetail"><strong>' + esc(a.seccion) + ':</strong> ' + esc(a.item) + ' — Nivel: <strong>' + a.pct + '% (' + a.status + ')</strong>' +
-        (a.trend === 'retroceso' ? ' · <span style="color:var(--danger);font-weight:700">⚠ Retroceso respecto a visita anterior</span>' : '') +
-        '</div>' +
+      '<div class="alertTitle">' + esc(a.institucion) + ' · <span style="font-weight:500;color:var(--text-600)">' + esc(a.fichaTypeNombre) + '</span></div>' +
+      '<div class="alertDetail"><strong>' + esc(a.seccion) + ':</strong> ' + esc(a.item) + ' — Nivel: <strong>' + a.pct + '% (' + a.status + ')</strong>' +
+      (a.trend === 'retroceso' ? ' · <span style="color:var(--danger);font-weight:700">⚠ Retroceso respecto a visita anterior</span>' : '') +
+      '</div>' +
       '</div>' +
       '<button class="actBtn" data-gotoalert="' + esc(a.institucion) + '" type="button">Ver alerta</button>' +
-    '</div>';
+      '</div>';
   }).join('') : '<p class="helpText" style="margin:0;color:var(--ok);font-weight:600">✓ No se registran alertas críticas ni retrocesos en las visitas recientes.</p>';
 
   // Actividad Reciente
@@ -1145,23 +1467,23 @@ export function viewDashboard(state, getFichaType, renderFn) {
 
   return '' +
     '<div class="pageHead">' +
-      '<h2>Resumen general</h2>' +
-      '<p>Vista consolidada de monitoreo, niveles de avance institucional y alertas prioritarias.</p>' +
+    '<h2>Resumen general</h2>' +
+    '<p>Vista consolidada de monitoreo, niveles de avance institucional y alertas prioritarias.</p>' +
     '</div>' +
     '<div class="cards">' +
-      '<div class="card"><div class="num">' + totalTipos + '</div><div class="lbl">Tipos de ficha</div></div>' +
-      '<div class="card"><div class="num">' + totalFichas + '</div><div class="lbl">Fichas registradas</div></div>' +
-      '<div class="card"><div class="num">' + instSet.size + '</div><div class="lbl">Instituciones monitoreadas</div></div>' +
-      '<div class="card"><div class="num">' + (avgPct === null ? '—' : avgPct + '%') + '</div><div class="lbl">Cumplimiento promedio</div></div>' +
+    '<div class="card"><div class="num">' + totalTipos + '</div><div class="lbl">Tipos de ficha</div></div>' +
+    '<div class="card"><div class="num">' + totalFichas + '</div><div class="lbl">Fichas registradas</div></div>' +
+    '<div class="card"><div class="num">' + instSet.size + '</div><div class="lbl">Instituciones monitoreadas</div></div>' +
+    '<div class="card"><div class="num">' + (avgPct === null ? '—' : avgPct + '%') + '</div><div class="lbl">Cumplimiento promedio</div></div>' +
     '</div>' +
     '<div class="panel">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">' +
-        '<h3 style="margin:0">Avance por tipo de ficha <small>cumplimiento institucional</small></h3>' +
-        '<button class="btn secondary small" id="toggleDashSortBtn" type="button">' +
-          (dashboardSortAsc ? '▲ Orden: Urgentes primero' : '▼ Orden: Mayor avance primero') +
-        '</button>' +
-      '</div>' +
-      '<div class="tblWrap"><table class="tipoAvanceTable"><thead><tr><th>Tipo de ficha</th><th style="width:80px;text-align:center">Fichas</th><th style="min-width:180px">Avance</th><th style="width:70px;text-align:right">%</th><th style="width:110px;text-align:center">Estado</th></tr></thead><tbody>' + tipoTableRows + '</tbody></table></div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">' +
+    '<h3 style="margin:0">Avance por tipo de ficha <small>cumplimiento institucional</small></h3>' +
+    '<button class="btn secondary small" id="toggleDashSortBtn" type="button">' +
+    (dashboardSortAsc ? '▲ Orden: Urgentes primero' : '▼ Orden: Mayor avance primero') +
+    '</button>' +
+    '</div>' +
+    '<div class="tblWrap"><table class="tipoAvanceTable"><thead><tr><th>Tipo de ficha</th><th style="width:80px;text-align:center">Fichas</th><th style="min-width:180px">Avance</th><th style="width:70px;text-align:right">%</th><th style="width:110px;text-align:center">Estado</th></tr></thead><tbody>' + tipoTableRows + '</tbody></table></div>' +
     '</div>' +
     '<div class="panel"><h3>Distribución general de resultados</h3>' + seg + '</div>' +
     '<div class="panel"><h3>Alertas de seguimiento recientes</h3>' + alertsHtml + '</div>' +
@@ -1169,9 +1491,9 @@ export function viewDashboard(state, getFichaType, renderFn) {
 }
 
 /* ============================= REGISTRAR TAB ============================= */
-let regSelectedTypeId   = null;
-let regCompromisos      = [];
-let regBuiltFor         = null;
+let regSelectedTypeId = null;
+let regCompromisos = [];
+let regBuiltFor = null;
 let regSelectedColegioId = null;
 
 export function renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate) {
@@ -1197,13 +1519,13 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
 
   container.innerHTML = '' +
     '<div class="pageHead">' +
-      '<h2>' + (editingSubmissionId ? 'Corregir ficha registrada' : 'Registrar ficha') + '</h2>' +
-      '<p>' + (editingSubmissionId ? 'Modifica los datos y guarda para actualizar la ficha en la base de datos.' : 'Selecciona el tipo de ficha y completa los datos de la visita de monitoreo.') + '</p>' +
+    '<h2>' + (editingSubmissionId ? 'Corregir ficha registrada' : 'Registrar ficha') + '</h2>' +
+    '<p>' + (editingSubmissionId ? 'Modifica los datos y guarda para actualizar la ficha en la base de datos.' : 'Selecciona el tipo de ficha y completa los datos de la visita de monitoreo.') + '</p>' +
     '</div>' +
     editBanner +
     '<div class="panel"><div class="field" style="max-width:420px;">' +
-      '<label for="ftSelect">Tipo de ficha</label>' +
-      '<select id="ftSelect"><option value="">— Selecciona un tipo —</option>' + opts + '</select>' +
+    '<label for="ftSelect">Tipo de ficha</label>' +
+    '<select id="ftSelect"><option value="">— Selecciona un tipo —</option>' + opts + '</select>' +
     '</div></div>' +
     '<div id="regFormHost"></div>';
 
@@ -1216,6 +1538,7 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
 }
 
 function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
+  if (state) _appState = state;
   const host = document.getElementById('regFormHost');
   if (!host) return;
   if (!regSelectedTypeId) { host.innerHTML = ''; return; }
@@ -1230,149 +1553,378 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     regSelectedColegioId = null;
   }
 
+  const isDirectivo = (ft.tipoRespuesta === 'nivel_1_4') || (ft.id === 'ft_directivo') || (ft.nombre || '').toLowerCase().includes('directivo');
   const normExtras = normalizeExtras(ft.extras);
 
   const extrasHtml = normExtras.map((ex, i) => {
     const reqAttr = ex.required ? ' required' : '';
     const lower = (ex.label || '').toLowerCase();
     const dListAttr = lower.includes('ugel') ? ' list="dl_ugel"' : ((lower.includes('red') || lower.includes('rei')) ? ' list="dl_red"' : '');
+    const inputId = 'extra_inp_' + ex.id;
 
     if (ex.tipo === 'numero') {
       return '<div class="field">' +
-        '<label>' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
-        '<input type="number" data-extra-id="' + esc(ex.id) + '" data-extra-idx="' + i + '" placeholder="0"' + reqAttr + '>' +
-      '</div>';
+        '<label for="' + inputId + '">' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
+        '<input type="number" id="' + inputId + '" name="extra_' + esc(ex.id) + '" data-extra-id="' + esc(ex.id) + '" data-extra-idx="' + i + '" placeholder="0"' + reqAttr + '>' +
+        '</div>';
     }
 
     if (ex.tipo === 'fecha') {
       return '<div class="field">' +
-        '<label>' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
-        '<input type="date" data-extra-id="' + esc(ex.id) + '" data-extra-idx="' + i + '"' + reqAttr + '>' +
-      '</div>';
+        '<label for="' + inputId + '">' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
+        '<input type="date" id="' + inputId + '" name="extra_' + esc(ex.id) + '" data-extra-id="' + esc(ex.id) + '" data-extra-idx="' + i + '"' + reqAttr + '>' +
+        '</div>';
     }
 
     if (ex.tipo === 'si_no') {
       return '<div class="field">' +
         '<label>' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
         '<div class="optGroup" style="padding-top:4px">' +
-          '<label class="optBtn"><input type="radio" name="extra_' + esc(ex.id) + '" value="Sí"' + reqAttr + '><span>Sí</span></label>' +
-          '<label class="optBtn"><input type="radio" name="extra_' + esc(ex.id) + '" value="No"><span>No</span></label>' +
-          '<label class="optBtn"><input type="radio" name="extra_' + esc(ex.id) + '" value="N/A"><span>N/A</span></label>' +
+        '<label class="optBtn"><input type="radio" name="extra_' + esc(ex.id) + '" value="Sí"' + reqAttr + '><span>Sí</span></label>' +
+        '<label class="optBtn"><input type="radio" name="extra_' + esc(ex.id) + '" value="No"><span>No</span></label>' +
+        '<label class="optBtn"><input type="radio" name="extra_' + esc(ex.id) + '" value="N/A"><span>N/A</span></label>' +
         '</div>' +
-      '</div>';
+        '</div>';
     }
 
-    const isResp = lower.includes('responsable') || lower.includes('especialista');
+    if (lower.includes('condici')) {
+      return '<div class="field">' +
+        '<label for="' + inputId + '">' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
+        '<select id="' + inputId + '" name="extra_' + esc(ex.id) + '" data-extra-id="' + esc(ex.id) + '" data-extra-idx="' + i + '"' + reqAttr + '>' +
+        '<option value="">— Seleccionar condición —</option>' +
+        '<option value="Designado">Designado</option>' +
+        '<option value="Encargado">Encargado</option>' +
+        '<option value="Nombrado">Nombrado</option>' +
+        '<option value="Otro">Otro (especificar)</option>' +
+        '</select>' +
+        '<input type="text" id="' + inputId + '_otro" placeholder="Especificar condición..." style="display:none;margin-top:6px">' +
+        '</div>';
+    }
+
+    if (lower.includes('nivel') && (lower.includes('atiende') || lower.includes('educativo'))) {
+      return '<div class="field" style="grid-column:span 2">' +
+        '<label>' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
+        '<div class="optGroup" style="padding-top:4px" id="' + inputId + '_grp">' +
+        '<label class="optBtn"><input type="checkbox" name="extra_' + esc(ex.id) + '_chk" value="Inicial"><span>Inicial</span></label>' +
+        '<label class="optBtn"><input type="checkbox" name="extra_' + esc(ex.id) + '_chk" value="Primaria"><span>Primaria</span></label>' +
+        '<label class="optBtn"><input type="checkbox" name="extra_' + esc(ex.id) + '_chk" value="Secundaria"><span>Secundaria</span></label>' +
+        '<label class="optBtn"><input type="checkbox" name="extra_' + esc(ex.id) + '_chk" value="EBE"><span>EBE</span></label>' +
+        '<input type="hidden" id="' + inputId + '" name="extra_' + esc(ex.id) + '" data-extra-id="' + esc(ex.id) + '" data-extra-idx="' + i + '" value="">' +
+        '</div>' +
+        '</div>';
+    }
+
+    if (lower.includes('turno') && lower.includes('atenci')) {
+      return '<div class="field">' +
+        '<label>' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
+        '<div class="optGroup" style="padding-top:4px" id="' + inputId + '_grp">' +
+        '<label class="optBtn"><input type="checkbox" name="extra_' + esc(ex.id) + '_chk" value="Mañana"><span>Mañana</span></label>' +
+        '<label class="optBtn"><input type="checkbox" name="extra_' + esc(ex.id) + '_chk" value="Tarde"><span>Tarde</span></label>' +
+        '<input type="hidden" id="' + inputId + '" name="extra_' + esc(ex.id) + '" data-extra-id="' + esc(ex.id) + '" data-extra-idx="' + i + '" value="">' +
+        '</div>' +
+        '</div>';
+    }
+
+    if (lower.includes('turno') && lower.includes('visit')) {
+      return '<div class="field">' +
+        '<label>' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
+        '<div class="optGroup" style="padding-top:4px" id="' + inputId + '_grp">' +
+        '<label class="optBtn"><input type="radio" name="extra_' + esc(ex.id) + '_rad" value="Mañana"><span>Mañana</span></label>' +
+        '<label class="optBtn"><input type="radio" name="extra_' + esc(ex.id) + '_rad" value="Tarde"><span>Tarde</span></label>' +
+        '<input type="hidden" id="' + inputId + '" name="extra_' + esc(ex.id) + '" data-extra-id="' + esc(ex.id) + '" data-extra-idx="' + i + '" value="">' +
+        '</div>' +
+        '</div>';
+    }
+
+    if (lower.includes('hora')) {
+      return '<div class="field">' +
+        '<label for="' + inputId + '">' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
+        '<input type="time" id="' + inputId + '" name="extra_' + esc(ex.id) + '" data-extra-id="' + esc(ex.id) + '" data-extra-idx="' + i + '"' + reqAttr + '>' +
+        '</div>';
+    }
+
+    if (lower.includes('dni')) {
+      return '<div class="field">' +
+        '<label for="' + inputId + '">' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
+        '<input type="text" id="' + inputId + '" name="extra_' + esc(ex.id) + '" data-extra-id="' + esc(ex.id) + '" data-extra-idx="' + i + '" maxlength="8" pattern="[0-9]{8}" placeholder="8 dígitos"' + reqAttr + '>' +
+        '</div>';
+    }
+
+    const isResp = lower.includes('responsable') || lower.includes('especialista') || lower.includes('monitor');
     if (isResp) {
       return '<div class="field" style="position:relative">' +
-        '<label>' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
+        '<label for="' + inputId + '">' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
         '<div class="ieSearchWrap">' +
-          '<input type="text" class="respAutocompleteInp" data-extra-id="' + esc(ex.id) + '" data-extra-idx="' + i + '" placeholder="Buscar especialista por nombre, cargo o RED..." autocomplete="off"' + reqAttr + '>' +
-          '<div class="ieDropdown respDropdown"></div>' +
+        '<input type="text" id="' + inputId + '" name="extra_' + esc(ex.id) + '" class="respAutocompleteInp" data-extra-id="' + esc(ex.id) + '" data-extra-idx="' + i + '" placeholder="Buscar especialista por nombre, cargo o RED..." autocomplete="off"' + reqAttr + '>' +
+        '<div class="ieDropdown respDropdown"></div>' +
         '</div>' +
         '<span class="respHint" style="display:none;font-size:11.5px;color:var(--primary-dark);margin-top:4px"></span>' +
-      '</div>';
+        '</div>';
     }
 
     return '<div class="field">' +
-      '<label>' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
-      '<input type="text" data-extra-id="' + esc(ex.id) + '" data-extra-idx="' + i + '" placeholder="' + esc(ex.label) + '"' + dListAttr + reqAttr + '>' +
-    '</div>';
+      '<label for="' + inputId + '">' + esc(ex.label) + (ex.required ? ' <span style="color:var(--danger)">*</span>' : '') + '</label>' +
+      '<input type="text" id="' + inputId + '" name="extra_' + esc(ex.id) + '" data-extra-id="' + esc(ex.id) + '" data-extra-idx="' + i + '" placeholder="' + esc(ex.label) + '"' + dListAttr + reqAttr + '>' +
+      '</div>';
   }).join('');
+
+  // Rubrica panel plegable para tipo nivel_1_4
+  const rubricaPanelHtml = (ft.tipoRespuesta === 'nivel_1_4') ? `
+    <details class="rubricaDescriptivaPanel" open>
+      <summary>
+        <span>📋 Niveles descriptivos de la escala de valoración (Rúbrica oficial I–IV)</span>
+        <span style="font-size:11px;color:var(--text-600);font-weight:normal">(clic para plegar / desplegar)</span>
+      </summary>
+      <div class="rubricaGrid">
+        <div class="rubricaCard rubricaCardIV">
+          <div class="rubricaCardHeader" style="color:var(--ok)"><span>NIVEL IV</span> <span>100%</span></div>
+          <div class="rubricaCardDesc">${esc(DESCRIPTORES_NIVEL_1_4['4'].descripcion)}</div>
+        </div>
+        <div class="rubricaCard rubricaCardIII">
+          <div class="rubricaCardHeader" style="color:#059669"><span>NIVEL III</span> <span>75%</span></div>
+          <div class="rubricaCardDesc">${esc(DESCRIPTORES_NIVEL_1_4['3'].descripcion)}</div>
+        </div>
+        <div class="rubricaCard rubricaCardII">
+          <div class="rubricaCardHeader" style="color:var(--warn)"><span>NIVEL II</span> <span>50%</span></div>
+          <div class="rubricaCardDesc">${esc(DESCRIPTORES_NIVEL_1_4['2'].descripcion)}</div>
+        </div>
+        <div class="rubricaCard rubricaCardI">
+          <div class="rubricaCardHeader" style="color:var(--danger)"><span>NIVEL I</span> <span>25%</span></div>
+          <div class="rubricaCardDesc">${esc(DESCRIPTORES_NIVEL_1_4['1'].descripcion)}</div>
+        </div>
+      </div>
+    </details>
+  ` : '';
+
+  const activeOptions = ft.tipoRespuesta === 'nivel_1_4'
+    ? (RESPONSE_OPTIONS.nivel_1_4 || []).filter(o => o.v !== 'na')
+    : RESPONSE_OPTIONS[ft.tipoRespuesta];
 
   const seccionesHtml = ft.secciones.map((sec, sIdx) => {
     const items = sec.items.map((it, iIdx) => {
-      const optsHtml = RESPONSE_OPTIONS[ft.tipoRespuesta].map(o =>
-        '<label class="optBtn"><input type="radio" name="item_' + it.id + '" value="' + o.v + '"><span>' + o.l + '</span></label>'
-      ).join('');
-      return '<div class="itemRow"><div class="itxt"><span class="itemNum">' + (iIdx + 1) + '.</span> ' + esc(it.texto) + '</div><div class="optGroup">' + optsHtml + '</div></div>';
+      const optsHtml = activeOptions.map(o => {
+        const descTooltip = (ft.tipoRespuesta === 'nivel_1_4' && DESCRIPTORES_NIVEL_1_4[o.v])
+          ? `title="Nivel ${o.l}: ${esc(DESCRIPTORES_NIVEL_1_4[o.v].descripcion)}"`
+          : '';
+        return '<label class="optBtn" ' + descTooltip + '><input type="radio" name="item_' + it.id + '" value="' + o.v + '"><span>' + o.l + '</span></label>';
+      }).join('');
+
+      const evidenciaHtml = isDirectivo ? (
+        '<div class="itemEvidencia">' +
+        '<input type="text" class="evidenciaInput" name="evidencia_' + it.id + '" id="evid_' + it.id + '" placeholder="Evidencia verificable (RD, actas, planificaciones, fotos, registros, enlaces)..." aria-label="Evidencia para indicador ' + (iIdx + 1) + '">' +
+        '</div>'
+      ) : '';
+
+      return '<div class="itemRow" data-item-id="' + it.id + '">' +
+        '<div class="itxt"><span class="itemNum">' + (iIdx + 1) + '.</span> ' + esc(it.texto) + evidenciaHtml + '</div>' +
+        '<div class="optGroup">' + optsHtml + '</div>' +
+        '</div>';
     }).join('');
+
     return '<div class="formSecCard">' +
       '<div class="formSecHeader">' +
-        '<span class="formSecBadge">Sección ' + (sIdx + 1) + '</span>' +
-        '<h4 class="formSecTitle">' + esc(sec.nombre) + '</h4>' +
-        '<span class="formSecCount">' + sec.items.length + ' indicadores</span>' +
+      '<span class="formSecBadge">Sección ' + (sIdx + 1) + '</span>' +
+      '<h4 class="formSecTitle">' + esc(sec.nombre) + '</h4>' +
+      '<span class="formSecCount">' + sec.items.length + ' indicadores</span>' +
       '</div>' +
       '<div class="formSecBody">' + items + '</div>' +
-    '</div>';
+      '</div>';
   }).join('');
 
+  // Síntesis por dimensión para ficha directivo
+  const sintesisDimensions = [
+    'A. DIMENSIÓN ESTRATÉGICA',
+    'B. DIMENSIÓN PEDAGÓGICA: ESTRATEGIAS PRIORIZADAS',
+    'C. PLANIFICACIÓN CURRICULAR',
+    'D. MONITOREO DE LA PRÁCTICA PEDAGÓGICA EN AULA',
+    'E. FORTALECIMIENTO DE LAS COMPETENCIAS DOCENTES',
+    'F. SEGUIMIENTO AL PROGRESO DE LOS APRENDIZAJES'
+  ];
+
+  const sintesisRowsHtml = sintesisDimensions.map((dim, dIdx) => `
+    <tr>
+      <td class="dimCol"><strong>${esc(dim)}</strong></td>
+      <td><textarea name="sintesis_${dIdx}_logros" placeholder="Logros observados..." aria-label="Logros ${esc(dim)}"></textarea></td>
+      <td><textarea name="sintesis_${dIdx}_dificultades" placeholder="Dificultades encontradas..." aria-label="Dificultades ${esc(dim)}"></textarea></td>
+      <td><textarea name="sintesis_${dIdx}_recomendaciones" placeholder="Recomendaciones / Asistencia técnica..." aria-label="Recomendaciones ${esc(dim)}"></textarea></td>
+    </tr>
+  `).join('');
+
+  const sintesisPanelHtml = isDirectivo ? `
+    <div class="panel">
+      <div class="sectionHeaderTitle">SÍNTESIS POR DIMENSIÓN</div>
+      <p class="helpText" style="margin-top:0">Consigne los principales logros, dificultades encontradas y recomendaciones de asistencia técnica para cada dimensión evaluada.</p>
+      <div class="tblWrap">
+        <table class="sintesisTable">
+          <thead>
+            <tr>
+              <th style="width:25%">Dimensiones</th>
+              <th style="width:25%">Logros</th>
+              <th style="width:25%">Dificultades</th>
+              <th style="width:25%">Recomendaciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sintesisRowsHtml}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  ` : '';
+
+  const directivoCompromisosHtml = isDirectivo ? `
+    <div class="panel">
+      <div class="sectionHeaderTitle">COMPROMISOS ASUMIDOS</div>
+      <div class="field" style="margin-bottom:14px">
+        <label for="f_comp_director"><strong>DEL DIRECTOR(A) DE LA IE:</strong></label>
+        <textarea id="f_comp_director" placeholder="Compromisos y acciones que asume la dirección escolar..." style="min-height:75px"></textarea>
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label for="f_comp_monitor"><strong>DEL MONITOR / ESPECIALISTA:</strong></label>
+        <textarea id="f_comp_monitor" placeholder="Compromisos de asistencia técnica, acompañamiento y soporte..." style="min-height:75px"></textarea>
+      </div>
+      <div class="sectionTitle" style="margin-top:16px">Compromisos específicos adicionales</div>
+      <div id="compList"></div>
+      <button type="button" class="btn secondary small" id="addCompBtn" style="margin-top:10px">+ Agregar compromiso adicional</button>
+    </div>
+  ` : `
+    <div class="panel">
+      <div class="sectionHeaderTitle">COMPROMISOS DE MEJORA</div>
+      <div id="compList"></div>
+      <button type="button" class="btn secondary small" id="addCompBtn" style="margin-top:10px">+ Agregar compromiso</button>
+    </div>
+  `;
+
+  // Campos de horas dedicados para la visita
+  const horasVisitaHtml = isDirectivo ? `
+    <div class="field"><label for="f_hora_inicio">Hora de inicio</label><input type="time" id="f_hora_inicio" value="08:00"></div>
+    <div class="field"><label for="f_hora_termino">Hora de término</label><input type="time" id="f_hora_termino" value="13:00"></div>
+  ` : '';
+
+  const totalItemsCount = ft.secciones.reduce((acc, s) => acc + s.items.length, 0);
   const uploadPanel = AI_SCAN_ENDPOINT ? (
     '<div class="panel" id="uploadPanel">' +
-      '<h3>Cargar ficha escaneada <small>lectura automática con IA — opcional</small></h3>' +
-      '<input type="file" id="scanInput" accept="image/jpeg,image/png,image/webp" style="display:none">' +
-      '<button type="button" class="btn secondary" id="scanBtn">📷 Elegir imagen y leer ficha</button>' +
-      '<span id="scanStatus" class="helpText" style="display:inline;margin-left:10px;"></span>' +
+    '<h3>Cargar ficha escaneada <small>lectura automática con IA — opcional</small></h3>' +
+    '<input type="file" id="scanInput" accept="image/jpeg,image/png,image/webp" style="display:none">' +
+    '<button type="button" class="btn secondary" id="scanBtn">📷 Elegir imagen y leer ficha</button>' +
+    '<span id="scanStatus" class="helpText" style="display:inline;margin-left:10px;"></span>' +
     '</div>'
   ) : '';
 
   const submitLabel = editingSubmissionId ? 'Actualizar ficha' : 'Guardar ficha';
 
   host.innerHTML = '' +
-    '<form id="regForm">' +
-      uploadPanel +
-      '<div class="panel">' +
-        '<div class="sectionHeaderTitle">DATOS DE LA VISITA</div>' +
-        '<div class="fieldGrid">' +
-          '<div class="field" style="grid-column:span 2">' +
-            '<label>Institución educativa / CEBE / PRITE *</label>' +
-            '<div class="ieSearchWrap" id="ieSearchWrap">' +
-              '<input type="text" id="f_institucion" autocomplete="off" placeholder="Buscar por nombre o código..." required>' +
-              '<div class="ieDropdown" id="ieDropdown"></div>' +
-            '</div>' +
-            '<span id="regColegioHint" style="display:none;font-size:11.5px;color:var(--primary-dark);margin-top:4px;display:block"></span>' +
-          '</div>' +
-          '<div class="field"><label>Fecha *</label><input type="date" id="f_fecha" value="' + todayStr() + '" required></div>' +
-          '<div class="field"><label>N° de visita *</label><input type="number" id="f_visita" min="1" value="1" required></div>' +
-        '</div>' +
-        (extrasHtml ? '<div class="sectionHeaderTitle" style="margin-top:20px">DATOS GENERALES DE LA FICHA</div><div class="fieldGrid">' + extrasHtml + '</div>' : '') +
-        '<datalist id="dl_ugel">' + seedSuggestions('ugel', state.submissions).map(v => '<option value="' + esc(v) + '">').join('') + '</datalist>' +
-        '<datalist id="dl_red">'  + seedSuggestions('red', state.submissions).map(v => '<option value="' + esc(v) + '">').join('') + '</datalist>' +
-      '</div>' +
-      '<div class="panel">' +
-        '<div class="sectionHeaderTitle">ASPECTOS A MONITOREAR <small style="font-weight:400;color:var(--text-600);text-transform:none;margin-left:8px">' + RESPONSE_LABELS[ft.tipoRespuesta] + '</small></div>' +
-        seccionesHtml +
-      '</div>' +
-      '<div class="panel">' +
-        '<div class="sectionHeaderTitle">OBSERVACIONES GENERALES</div>' +
-        '<textarea id="f_observaciones" placeholder="Hallazgos, evidencias, notas de la visita..."></textarea>' +
-      '</div>' +
-      '<div class="panel">' +
-        '<div class="sectionHeaderTitle">COMPROMISOS DE MEJORA</div>' +
-        '<div id="compList"></div>' +
-        '<button type="button" class="btn secondary small" id="addCompBtn" style="margin-top:10px">+ Agregar compromiso</button>' +
-      '</div>' +
-      '<div class="formBottomBar">' +
-        '<button type="button" class="btn secondary" id="cancelFormBtn">Cancelar</button>' +
-        '<button type="submit" class="btn" id="saveFormBtn">' + submitLabel + '</button>' +
-      '</div>' +
+    '<form id="regForm" autocomplete="off">' +
+    uploadPanel +
+    '<div class="panel">' +
+    '<div class="sectionHeaderTitle">DATOS DE LA VISITA</div>' +
+    '<div class="fieldGrid">' +
+    '<div class="field" style="grid-column:span 2">' +
+    '<label for="f_institucion">Institución educativa / CEBE / PRITE *</label>' +
+    '<div class="ieSearchWrap" id="ieSearchWrap">' +
+    '<input type="text" id="f_institucion" autocomplete="off" placeholder="Buscar por nombre o código modular..." required>' +
+    '<div class="ieDropdown" id="ieDropdown"></div>' +
+    '</div>' +
+    '<span id="regColegioHint" style="display:none;font-size:11.5px;color:var(--primary-dark);margin-top:4px;display:block"></span>' +
+    '</div>' +
+    '<div class="field"><label for="f_fecha">Fecha *</label><input type="date" id="f_fecha" value="' + todayStr() + '" required></div>' +
+    '<div class="field"><label for="f_visita">N° de visita *</label><input type="number" id="f_visita" min="1" value="1" required></div>' +
+    horasVisitaHtml +
+    '</div>' +
+    (extrasHtml ? '<div class="sectionHeaderTitle" style="margin-top:20px">DATOS GENERALES DE LA FICHA</div><div class="fieldGrid">' + extrasHtml + '</div>' : '') +
+    '<datalist id="dl_ugel">' + seedSuggestions('ugel', state.submissions).map(v => '<option value="' + esc(v) + '">').join('') + '</datalist>' +
+    '<datalist id="dl_red">' + seedSuggestions('red', state.submissions).map(v => '<option value="' + esc(v) + '">').join('') + '</datalist>' +
+    '</div>' +
+    '<div class="panel">' +
+    '<div class="sectionHeaderTitle">ASPECTOS A MONITOREAR <small style="font-weight:400;color:var(--text-600);text-transform:none;margin-left:8px">' + RESPONSE_LABELS[ft.tipoRespuesta] + '</small></div>' +
+    rubricaPanelHtml +
+    seccionesHtml +
+    '</div>' +
+    sintesisPanelHtml +
+    '<div class="panel">' +
+    '<div class="sectionHeaderTitle">OBSERVACIONES GENERALES</div>' +
+    '<textarea id="f_observaciones" placeholder="Hallazgos, evidencias verificables, notas de la visita..."></textarea>' +
+    '</div>' +
+    directivoCompromisosHtml +
+    '<div class="formBottomBar">' +
+    '<div class="regProgressBadge" id="regProgressBadge">Avance: <strong>0 de ' + totalItemsCount + '</strong> ítems (0%)</div>' +
+    '<button type="button" class="btn secondary" id="cancelFormBtn">Cancelar</button>' +
+    '<button type="submit" class="btn" id="saveFormBtn">' + submitLabel + '</button>' +
+    '</div>' +
     '</form>';
+
+  // ---- Actualizador dinámico de avance ----
+  const updateProgressBadge = () => {
+    const badge = document.getElementById('regProgressBadge');
+    if (!badge) return;
+    const checked = host.querySelectorAll('input[name^="item_"]:checked').length;
+    const pct = totalItemsCount ? Math.round((checked / totalItemsCount) * 100) : 0;
+    badge.innerHTML = 'Avance: <strong>' + checked + ' de ' + totalItemsCount + '</strong> ítems respondidos (' + pct + '%)';
+  };
+  host.querySelectorAll('input[name^="item_"]').forEach(r => {
+    r.addEventListener('change', updateProgressBadge);
+  });
+  updateProgressBadge();
+
+  // Control para campos especiales de condición (mostrar input 'Otro')
+  host.querySelectorAll('.extraCondicionSelect').forEach(sel => {
+    const otroInp = document.getElementById(sel.id + '_otro');
+    if (otroInp) {
+      sel.addEventListener('change', () => {
+        otroInp.style.display = sel.value === 'Otro' ? 'block' : 'none';
+        if (sel.value === 'Otro') otroInp.focus();
+      });
+    }
+  });
+
+  // Sincronizador de checkboxes agrupados (Nivel / Turno) a su input hidden
+  host.querySelectorAll('input[name$="_chk"]').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const grp = chk.closest('.optGroup');
+      if (!grp) return;
+      const hidden = grp.querySelector('input[type="hidden"]');
+      if (!hidden) return;
+      const checkedVals = Array.from(grp.querySelectorAll('input[type="checkbox"]:checked')).map(c => c.value);
+      hidden.value = checkedVals.join(', ');
+    });
+  });
+
+  // Sincronizador de radios agrupados (Turno visitado) a su input hidden
+  host.querySelectorAll('input[name$="_rad"]').forEach(rad => {
+    rad.addEventListener('change', () => {
+      const grp = rad.closest('.optGroup');
+      if (!grp) return;
+      const hidden = grp.querySelector('input[type="hidden"]');
+      if (hidden && rad.checked) hidden.value = rad.value;
+    });
+  });
 
   // ---- Buscador IE con dropdown ----
   const instInput = document.getElementById('f_institucion');
-  const dropdown  = document.getElementById('ieDropdown');
-  const hint      = document.getElementById('regColegioHint');
+  const dropdown = document.getElementById('ieDropdown');
+  const hint = document.getElementById('regColegioHint');
 
   const showDropdown = () => {
     const query = normalizeText(instInput.value);
-    const matches = state.colegios
+    const colegios = state.colegios || [];
+    const matches = colegios
       .filter(c => !query || normalizeText(c.ie).includes(query) || normalizeText(c.codigoLocal).includes(query))
       .slice(0, 25);
     if (!matches.length) { dropdown.style.display = 'none'; return; }
     dropdown.innerHTML = matches.map(c =>
       '<div class="ieDropdownItem" data-id="' + c.id + '">' +
-        '<div class="ieDropMain">' + esc(c.ie) + '</div>' +
-        '<div class="ieDropSub">' + esc(c.codigoLocal || '') +
-          (c.rei ? ' · ' + esc(c.rei) : '') +
-          (c.director && c.director.nombre ? ' · Dir: ' + esc(c.director.nombre) : '') +
-        '</div>' +
+      '<div class="ieDropMain">' + esc(c.ie) + '</div>' +
+      '<div class="ieDropSub">' + esc(c.codigoLocal || '') +
+      (c.rei ? ' · ' + esc(c.rei) : '') +
+      (c.director && c.director.nombre ? ' · Dir: ' + esc(c.director.nombre) : '') +
+      '</div>' +
       '</div>'
     ).join('');
     dropdown.style.display = 'block';
     dropdown.querySelectorAll('.ieDropdownItem').forEach(item => {
       item.addEventListener('mousedown', e => {
         e.preventDefault();
-        const c = state.colegios.find(x => x.id === item.dataset.id);
+        const c = (state.colegios || []).find(x => x.id === item.dataset.id);
         if (c) selectColegio(c);
         dropdown.style.display = 'none';
       });
@@ -1388,11 +1940,13 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
       const lower = (ex.label || '').toLowerCase();
       let matchVal = null;
       if (lower.includes('código') || lower.includes('codigo') || lower.includes('local') || lower.includes('modular')) {
-        matchVal = c.codigoLocal;
+        matchVal = c.codigoLocal || c.codigoModular;
       } else if (lower.includes('rei') || lower.includes('red')) {
         matchVal = c.rei;
-      } else if (lower.includes('director')) {
+      } else if (lower.includes('director') && (lower.includes('nombre') || !lower.includes('dni'))) {
         matchVal = c.director && c.director.nombre ? c.director.nombre : '';
+      } else if (lower.includes('director') && lower.includes('dni')) {
+        matchVal = c.director && c.director.dni ? c.director.dni : '';
       } else if (lower.includes('ugel')) {
         matchVal = c.dependencia || 'UGEL 03';
       } else if (lower.includes('modalidad')) {
@@ -1407,6 +1961,45 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
         const inp = document.querySelector('[data-extra-id="' + ex.id + '"]') || document.querySelector('[data-extra-idx="' + i + '"]');
         if (inp && !inp.value) inp.value = matchVal;
       }
+
+      // Mapeo inteligente para Condición de directivo si el padrón indica NOMBRADO / DESIGNADO
+      if (lower.includes('condici')) {
+        const sel = document.querySelector('[data-extra-id="' + ex.id + '"]') || document.querySelector('[data-extra-idx="' + i + '"]');
+        if (sel && !sel.value) {
+          const g = normalizeText(c.tipoGestion || c.gestion || '');
+          if (g.includes('nombrado')) sel.value = 'Nombrado';
+          else if (g.includes('designado')) sel.value = 'Designado';
+          else if (g.includes('encargado')) sel.value = 'Encargado';
+        }
+      }
+
+      // Mapeo inteligente para Nivel educativo (Inicial, Primaria, Secundaria, EBE)
+      if (lower.includes('nivel') && (lower.includes('atiende') || lower.includes('educativo'))) {
+        const grp = document.getElementById('extra_inp_' + ex.id + '_grp');
+        const hidden = document.getElementById('extra_inp_' + ex.id);
+        if (grp && hidden && !hidden.value) {
+          const niv = normalizeText(c.nivelServicio || c.nivel || c.modalidad || '');
+          const checkedVals = [];
+          if (niv.includes('inicial')) { const chk = grp.querySelector('input[value="Inicial"]'); if (chk) { chk.checked = true; checkedVals.push('Inicial'); } }
+          if (niv.includes('primaria')) { const chk = grp.querySelector('input[value="Primaria"]'); if (chk) { chk.checked = true; checkedVals.push('Primaria'); } }
+          if (niv.includes('secundaria')) { const chk = grp.querySelector('input[value="Secundaria"]'); if (chk) { chk.checked = true; checkedVals.push('Secundaria'); } }
+          if (niv.includes('ebe') || niv.includes('cebe') || niv.includes('especial')) { const chk = grp.querySelector('input[value="EBE"]'); if (chk) { chk.checked = true; checkedVals.push('EBE'); } }
+          hidden.value = checkedVals.join(', ');
+        }
+      }
+
+      // Mapeo inteligente para Turnos (Mañana, Tarde)
+      if (lower.includes('turno') && lower.includes('atenci')) {
+        const grp = document.getElementById('extra_inp_' + ex.id + '_grp');
+        const hidden = document.getElementById('extra_inp_' + ex.id);
+        if (grp && hidden && !hidden.value) {
+          const tur = normalizeText(c.turnos || '');
+          const checkedVals = [];
+          if (tur.includes('mañana') || tur.includes('manana')) { const chk = grp.querySelector('input[value="Mañana"]'); if (chk) { chk.checked = true; checkedVals.push('Mañana'); } }
+          if (tur.includes('tarde')) { const chk = grp.querySelector('input[value="Tarde"]'); if (chk) { chk.checked = true; checkedVals.push('Tarde'); } }
+          hidden.value = checkedVals.join(', ');
+        }
+      }
     });
 
     // Auto-sugerir / completar especialista si coincide con la RED del colegio
@@ -1416,7 +2009,7 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
         if (!r.red) return false;
         const rRedNorm = normalizeText(r.red);
         return rRedNorm.includes(cReiNorm) || cReiNorm.includes(rRedNorm) ||
-               (c.rei.match(/\d+/) && r.red.includes(c.rei.match(/\d+/)[0]));
+          (c.rei.match(/\d+/) && r.red.includes(c.rei.match(/\d+/)[0]));
       });
 
       if (matchedResp) {
@@ -1447,7 +2040,7 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
   const respInputs = host.querySelectorAll('.respAutocompleteInp');
 
   function selectResponsable(r, inp, hintEl) {
-    inp.value = r.nombresApellidos || '';
+    inp.value = r.nombresApellidos || r.especialista || '';
     if (hintEl) {
       hintEl.style.display = 'block';
       hintEl.textContent = '✓ ' + (r.cargo || r.especialista || 'Especialista') +
@@ -1456,13 +2049,15 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
         (r.celular ? ' · Cel: ' + r.celular : '');
     }
 
-    // Auto-completar otros campos configurados en la ficha relativos al especialista
+    // Auto-completar otros campos relativos al especialista (DNI, cargo, correo, celular, etc.)
     normExtras.forEach((ex, idx) => {
       const lower = (ex.label || '').toLowerCase();
       const otherInp = host.querySelector('[data-extra-id="' + ex.id + '"]') || host.querySelector('[data-extra-idx="' + idx + '"]');
       if (!otherInp || otherInp === inp) return;
 
-      if (lower.includes('cargo') && r.cargo && !otherInp.value) {
+      if ((lower.includes('monitor') || lower.includes('responsable') || lower.includes('especialista')) && lower.includes('dni') && r.dni && !otherInp.value) {
+        otherInp.value = r.dni;
+      } else if (lower.includes('cargo') && r.cargo && !otherInp.value) {
         otherInp.value = r.cargo;
       } else if ((lower.includes('correo') || lower.includes('email')) && !lower.includes('director') && r.correo && !otherInp.value) {
         otherInp.value = r.correo;
@@ -1489,12 +2084,12 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
       const matches = (state.responsables || []).filter(r => {
         if (!q) return true;
         return normalizeText(r.nombresApellidos).includes(q) ||
-               normalizeText(r.especialista).includes(q) ||
-               normalizeText(r.cargo).includes(q) ||
-               normalizeText(r.red).includes(q) ||
-               normalizeText(r.distrito).includes(q) ||
-               normalizeText(r.modalidad).includes(q) ||
-               normalizeText(r.correo).includes(q);
+          normalizeText(r.especialista).includes(q) ||
+          normalizeText(r.cargo).includes(q) ||
+          normalizeText(r.red).includes(q) ||
+          normalizeText(r.distrito).includes(q) ||
+          normalizeText(r.modalidad).includes(q) ||
+          normalizeText(r.correo).includes(q);
       }).slice(0, 20);
 
       if (!matches.length) {
@@ -1505,14 +2100,14 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
       drop.innerHTML = matches.map(r => {
         const modBadge = r.modalidad ? ' <span class="badge" style="font-size:10px;padding:1px 6px;background:var(--surface-2);margin-left:4px">' + esc(r.modalidad) + '</span>' : '';
         return '<div class="ieDropdownItem" data-respid="' + esc(r.id) + '">' +
-          '<div class="ieDropMain">' + esc(r.nombresApellidos) + modBadge + '</div>' +
+          '<div class="ieDropMain">' + esc(r.nombresApellidos || r.especialista) + modBadge + '</div>' +
           '<div class="ieDropSub">' +
-            (r.cargo ? esc(r.cargo) : (r.especialista ? esc(r.especialista) : '')) +
-            (r.red ? ' · <strong>' + esc(r.red) + '</strong>' : '') +
-            (r.distrito ? ' · ' + esc(r.distrito) : '') +
-            (r.celular ? ' · Cel: ' + esc(r.celular) : '') +
+          (r.cargo ? esc(r.cargo) : (r.especialista ? esc(r.especialista) : '')) +
+          (r.red ? ' · <strong>' + esc(r.red) + '</strong>' : '') +
+          (r.distrito ? ' · ' + esc(r.distrito) : '') +
+          (r.celular ? ' · Cel: ' + esc(r.celular) : '') +
           '</div>' +
-        '</div>';
+          '</div>';
       }).join('');
       drop.style.display = 'block';
 
@@ -1539,18 +2134,37 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     setTimeout(() => {
       if (document.getElementById('f_institucion')) {
         document.getElementById('f_institucion').value = d.institucion || '';
-        document.getElementById('f_fecha').value       = d.fecha || todayStr();
-        document.getElementById('f_visita').value      = d.visita || 1;
+        document.getElementById('f_fecha').value = d.fecha || todayStr();
+        document.getElementById('f_visita').value = d.visita || 1;
         document.getElementById('f_observaciones').value = d.observaciones || '';
+        if (document.getElementById('f_hora_inicio') && d.horaInicio) document.getElementById('f_hora_inicio').value = d.horaInicio;
+        if (document.getElementById('f_hora_termino') && d.horaTermino) document.getElementById('f_hora_termino').value = d.horaTermino;
+        if (document.getElementById('f_comp_director') && d.compromisoDirector) document.getElementById('f_comp_director').value = d.compromisoDirector;
+        if (document.getElementById('f_comp_monitor') && d.compromisoMonitor) document.getElementById('f_comp_monitor').value = d.compromisoMonitor;
+
         regCompromisos = [...(d.compromisos || [])];
         regSelectedColegioId = d.colegioId || null;
         renderCompList();
 
-        // Precargar respuestas
+        // Precargar respuestas y evidencias
         (d.respuestas || []).forEach(r => {
           const radio = document.querySelector('input[name="item_' + r.id + '"][value="' + r.valor + '"]');
           if (radio) radio.checked = true;
+          const evidInp = document.getElementById('evid_' + r.id) || document.querySelector('input[name="evidencia_' + r.id + '"]');
+          if (evidInp && r.evidencia) evidInp.value = r.evidencia;
         });
+
+        // Precargar síntesis por dimensión
+        if (d.sintesis && d.sintesis.length) {
+          d.sintesis.forEach((s, idx) => {
+            const lEl = document.querySelector(`textarea[name="sintesis_${idx}_logros"]`);
+            const dEl = document.querySelector(`textarea[name="sintesis_${idx}_dificultades"]`);
+            const rEl = document.querySelector(`textarea[name="sintesis_${idx}_recomendaciones"]`);
+            if (lEl && s.logros) lEl.value = s.logros;
+            if (dEl && s.dificultades) dEl.value = s.dificultades;
+            if (rEl && s.recomendaciones) rEl.value = s.recomendaciones;
+          });
+        }
 
         // Precargar campos de cabecera configurados
         normExtras.forEach((ex, i) => {
@@ -1564,8 +2178,14 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
             if (l.includes('ugel') && d.ugel) val = d.ugel;
             else if ((l.includes('red') || l.includes('rei')) && d.red) val = d.red;
             else if ((l.includes('código') || l.includes('codigo')) && d.codigoModular) val = d.codigoModular;
-            else if (l.includes('director') && d.director) val = d.director;
-            else if ((l.includes('responsable') || l.includes('especialista')) && d.responsable) val = d.responsable;
+            else if (l.includes('director') && (l.includes('nombre') || !l.includes('dni')) && d.director) val = d.director;
+            else if (l.includes('director') && l.includes('dni') && d.directorDni) val = d.directorDni;
+            else if (l.includes('condici') && d.condicion) val = d.condicion;
+            else if (l.includes('nivel') && d.nivelAtencion) val = d.nivelAtencion;
+            else if (l.includes('turno') && l.includes('atenci') && d.turnoAtencion) val = d.turnoAtencion;
+            else if (l.includes('turno') && l.includes('visit') && d.turnoVisitado) val = d.turnoVisitado;
+            else if ((l.includes('responsable') || l.includes('especialista') || l.includes('monitor')) && !l.includes('dni') && d.responsable) val = d.responsable;
+            else if ((l.includes('responsable') || l.includes('especialista') || l.includes('monitor')) && l.includes('dni') && d.monitorDni) val = d.monitorDni;
           }
 
           if (val !== undefined && val !== '') {
@@ -1574,11 +2194,30 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
               if (rad) rad.checked = true;
             } else {
               const inp = document.querySelector('[data-extra-id="' + ex.id + '"]') || document.querySelector('[data-extra-idx="' + i + '"]');
-              if (inp) inp.value = val;
+              if (inp) {
+                inp.value = val;
+                // Si es select de condición y no está en las opciones, seleccionar 'Otro'
+                if (inp.tagName === 'SELECT' && !Array.from(inp.options).some(o => o.value === val)) {
+                  inp.value = 'Otro';
+                  const otroInp = document.getElementById(inp.id + '_otro');
+                  if (otroInp) { otroInp.style.display = 'block'; otroInp.value = val; }
+                }
+              }
+              // Marcar checkboxes si corresponde
+              const grp = document.getElementById('extra_inp_' + ex.id + '_grp');
+              if (grp) {
+                const parts = val.split(',').map(s => s.trim().toLowerCase());
+                grp.querySelectorAll('input[type="checkbox"]').forEach(c => {
+                  if (parts.includes(c.value.toLowerCase())) c.checked = true;
+                });
+                const rad = grp.querySelector('input[type="radio"][value="' + val + '"]');
+                if (rad) rad.checked = true;
+              }
             }
           }
         });
 
+        updateProgressBadge();
         if (hint && d.institucion) {
           hint.style.display = 'block';
           hint.textContent = '✓ Datos precargados para edición.';
@@ -1597,7 +2236,7 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
   if (cancelFormBtn) {
     cancelFormBtn.addEventListener('click', () => {
       if (editingSubmissionId) {
-        editingSubmissionId   = null;
+        editingSubmissionId = null;
         editingSubmissionData = null;
         regBuiltFor = null;
         regSelectedTypeId = null;
@@ -1607,7 +2246,7 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
           regBuiltFor = null;
           regCompromisos = [];
           regSelectedColegioId = null;
-          if (navigate) navigate('resumen');
+          if (navigate) navigate('dashboard');
         }
       }
     });
@@ -1621,19 +2260,19 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     });
   }
 
-  document.getElementById('regForm').addEventListener('submit', (e) => onSubmitRegistro(e, ft, dbNs, navigate));
+  document.getElementById('regForm').addEventListener('submit', (e) => onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate));
 }
 
 function renderCompList() {
   const el = document.getElementById('compList');
   if (!el) return;
-  if (regCompromisos.length === 0) { el.innerHTML = '<p class="helpText" style="margin-top:0">Sin compromisos agregados aún.</p>'; return; }
+  if (regCompromisos.length === 0) { el.innerHTML = '<p class="helpText" style="margin-top:0">Sin compromisos adicionales agregados aún.</p>'; return; }
   el.innerHTML = regCompromisos.map((c, i) =>
     '<div class="compRow">' +
-      '<input type="text" placeholder="Compromiso" value="' + esc(c.texto) + '" data-comp="' + i + '" data-f="texto">' +
-      '<input type="text" placeholder="Responsable" value="' + esc(c.responsable) + '" data-comp="' + i + '" data-f="responsable">' +
-      '<input type="text" placeholder="Plazo" style="max-width:120px" value="' + esc(c.plazo) + '" data-comp="' + i + '" data-f="plazo">' +
-      '<button type="button" class="iconBtn" data-rmcomp="' + i + '" title="Quitar">✕</button>' +
+    '<input type="text" placeholder="Compromiso" value="' + esc(c.texto) + '" data-comp="' + i + '" data-f="texto">' +
+    '<input type="text" placeholder="Responsable" value="' + esc(c.responsable) + '" data-comp="' + i + '" data-f="responsable">' +
+    '<input type="text" placeholder="Plazo" style="max-width:120px" value="' + esc(c.plazo) + '" data-comp="' + i + '" data-f="plazo">' +
+    '<button type="button" class="iconBtn" data-rmcomp="' + i + '" title="Quitar">✕</button>' +
     '</div>'
   ).join('');
   el.querySelectorAll('input[data-comp]').forEach(inp => {
@@ -1644,152 +2283,342 @@ function renderCompList() {
   });
 }
 
-async function onSubmitRegistro(e, ft, dbNs, navigate) {
+async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
   e.preventDefault();
-  if (!dbNs) { showToast('No hay conexión a la base de datos.'); return; }
-  if (!ft) return;
-
-  const respuestas = [];
-  ft.secciones.forEach(sec => sec.items.forEach(it => {
-    const chk = document.querySelector('input[name="item_' + it.id + '"]:checked');
-    if (chk) respuestas.push({ id: it.id, texto: it.texto, seccion: sec.nombre, valor: chk.value });
-  }));
-
-  const normExtras = normalizeExtras(ft.extras);
-  const extrasCollected = [];
-  for (let i = 0; i < normExtras.length; i++) {
-    const ex = normExtras[i];
-    let val = '';
-    if (ex.tipo === 'si_no') {
-      const chk = document.querySelector('input[name="extra_' + ex.id + '"]:checked');
-      val = chk ? chk.value : '';
-    } else {
-      const inp = document.querySelector('[data-extra-id="' + ex.id + '"]') || document.querySelector('[data-extra-idx="' + i + '"]');
-      val = inp ? inp.value.trim() : '';
-    }
-
-    if (ex.required && !val) {
-      showToast('El campo de cabecera "' + ex.label + '" es obligatorio.');
-      if (ex.tipo !== 'si_no') {
-        const inp = document.querySelector('[data-extra-id="' + ex.id + '"]') || document.querySelector('[data-extra-idx="' + i + '"]');
-        if (inp) inp.focus();
-      }
-      return;
-    }
-    extrasCollected.push({ id: ex.id, label: ex.label, value: val, tipo: ex.tipo });
-  }
-
-  // Extraer valores para compatibilidad con filtros y tablas existentes (UGEL, Código, Director, etc.)
-  let ugelVal = '', redVal = '', codigoVal = '', responsableVal = '', directorVal = '';
-  extrasCollected.forEach(ex => {
-    const l = (ex.label || '').toLowerCase();
-    if (l.includes('ugel') && !ugelVal) ugelVal = ex.value;
-    if ((l.includes('red') || l.includes('rei')) && !redVal) redVal = ex.value;
-    if ((l.includes('código') || l.includes('codigo')) && !codigoVal) codigoVal = ex.value;
-    if ((l.includes('responsable') || l.includes('especialista')) && !responsableVal) responsableVal = ex.value;
-    if (l.includes('director') && !directorVal) directorVal = ex.value;
-  });
-
-  const instVal = document.getElementById('f_institucion').value.trim();
-  let matchedCol = null;
-  if (regSelectedColegioId) {
-    matchedCol = (state.colegios || []).find(c => c.id === regSelectedColegioId);
-  }
-  if (!matchedCol && instVal) {
-    const instNorm = normalizeText(instVal);
-    matchedCol = (state.colegios || []).find(c => normalizeText(c.ie) === instNorm);
-  }
-
-  if (matchedCol) {
-    if (!ugelVal) ugelVal = matchedCol.dependencia || 'UGEL 03';
-    if (!redVal) redVal = matchedCol.rei || '';
-    if (!codigoVal) codigoVal = matchedCol.codigoLocal || matchedCol.codigoModular || '';
-    if (!directorVal && matchedCol.director && matchedCol.director.nombre) directorVal = matchedCol.director.nombre;
-  }
-  if (!ugelVal) ugelVal = 'UGEL 03';
-  if (!redVal) redVal = 'No aplica';
-
-  const docData = {
-    fichaTypeId:     ft.id,
-    fichaTypeNombre: ft.nombre,
-    tipoRespuesta:   ft.tipoRespuesta,
-    institucion:     instVal,
-    colegioId:       (matchedCol && matchedCol.id) || regSelectedColegioId || null,
-    fecha:           document.getElementById('f_fecha').value,
-    visita:          Number(document.getElementById('f_visita').value) || 1,
-    ugel:            ugelVal,
-    red:             redVal,
-    codigoModular:   codigoVal,
-    responsable:     responsableVal,
-    director:        directorVal,
-    extras:          extrasCollected,
-    respuestas,
-    observaciones:   document.getElementById('f_observaciones').value.trim(),
-    compromisos:     regCompromisos.filter(c => c.texto.trim()),
-    createdAt:       editingSubmissionId ? (editingSubmissionData.createdAt || Date.now()) : Date.now(),
-  };
-
-  if (!docData.institucion || !docData.fecha || !docData.visita) {
-    showToast('Completa los campos obligatorios: Institución, Fecha y N° de visita.');
-    return;
-  }
-
+  const activeState = state || _appState || (typeof window !== 'undefined' ? window.state : null) || {};
+  const form = document.getElementById('regForm');
+  const btn = (e.target && e.target.querySelector('button[type=submit]')) || document.getElementById('saveFormBtn');
   const isEdit = !!editingSubmissionId;
-  const btn = e.target.querySelector('button[type=submit]');
-  btn.disabled = true; btn.textContent = isEdit ? 'Actualizando...' : 'Guardando...';
+
+  // Limpiar clases y mensajes de error previos
+  document.querySelectorAll('.fieldError').forEach(el => el.classList.remove('fieldError'));
+  document.querySelectorAll('.fieldErrorText').forEach(el => el.remove());
+  const prevBanner = document.getElementById('regFormErrorBanner');
+  if (prevBanner) prevBanner.remove();
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = isEdit ? '⏳ Actualizando ficha...' : '⏳ Guardando ficha...';
+  }
 
   try {
-    if (isEdit) {
-      await dbNs.collection('submissions').doc(editingSubmissionId).set({ ...docData, updatedAt: Date.now() });
-      showToast('Ficha actualizada correctamente.');
-      editingSubmissionId   = null;
-      editingSubmissionData = null;
-      regBuiltFor = null;
-      regSelectedTypeId = null;
-      if (navigate) navigate('consolidado');
-    } else {
-      await dbNs.collection('submissions').add(docData);
-      showToast('Ficha guardada correctamente.');
-      regBuiltFor = null;
+    if (!dbNs) {
+      throw new Error('No hay conexión activa con la base de datos Firestore. Verifica tu estado de conexión a internet.');
+    }
+    if (!ft) {
+      throw new Error('No se encontró la configuración del tipo de ficha seleccionado.');
+    }
 
-      const instEl = document.getElementById('f_institucion');
-      if (instEl) instEl.value = '';
-      regSelectedColegioId = null;
+    const isDirectivo = (ft.tipoRespuesta === 'nivel_1_4') || (ft.id === 'ft_directivo') || (ft.nombre || '').toLowerCase().includes('directivo');
 
-      const form = document.getElementById('regForm');
-      if (form) {
-        form.querySelectorAll('input:not([type=radio]):not([type=checkbox]), textarea').forEach(i => {
-          if (i.id !== 'f_fecha' && i.id !== 'f_visita') i.value = '';
+    let firstErrorEl = null;
+    const markError = (inputEl, message) => {
+      if (!inputEl) return;
+      inputEl.classList.add('fieldError');
+      const errSpan = document.createElement('span');
+      errSpan.className = 'fieldErrorText';
+      errSpan.textContent = message;
+      if (inputEl.parentElement) {
+        inputEl.parentElement.appendChild(errSpan);
+      }
+      if (!firstErrorEl) firstErrorEl = inputEl;
+    };
+
+    // Validar campos obligatorios generales
+    const instEl = document.getElementById('f_institucion');
+    const fechaEl = document.getElementById('f_fecha');
+    const visitaEl = document.getElementById('f_visita');
+
+    const instVal = instEl ? instEl.value.trim() : '';
+    if (!instVal) {
+      markError(instEl, 'La institución educativa es obligatoria.');
+    }
+
+    const fechaVal = fechaEl ? fechaEl.value : '';
+    if (!fechaVal) {
+      markError(fechaEl, 'La fecha de la visita es obligatoria.');
+    }
+
+    const visitaVal = visitaEl ? Number(visitaEl.value) : 1;
+    if (!visitaVal || visitaVal < 1) {
+      markError(visitaEl, 'Ingresa un número de visita válido (mínimo 1).');
+    }
+
+    // Validar horas si se indicaron
+    const horaInicioEl = document.getElementById('f_hora_inicio');
+    const horaTerminoEl = document.getElementById('f_hora_termino');
+    const horaInicioVal = horaInicioEl ? horaInicioEl.value.trim() : '';
+    const horaTerminoVal = horaTerminoEl ? horaTerminoEl.value.trim() : '';
+
+    if (horaInicioVal && horaTerminoVal && horaTerminoVal <= horaInicioVal) {
+      markError(horaTerminoEl, 'La hora de término debe ser posterior a la hora de inicio.');
+    }
+
+    // Validar campos extra configurados como obligatorios
+    const normExtras = normalizeExtras(ft.extras);
+    const extrasCollected = [];
+
+    for (let i = 0; i < normExtras.length; i++) {
+      const ex = normExtras[i];
+      let val = '';
+      if (ex.tipo === 'si_no') {
+        const chk = document.querySelector('input[name="extra_' + ex.id + '"]:checked');
+        val = chk ? chk.value : '';
+      } else {
+        const inp = document.querySelector('[data-extra-id="' + ex.id + '"]') || document.querySelector('[data-extra-idx="' + i + '"]');
+        if (inp) {
+          if (inp.tagName === 'SELECT' && inp.value === 'Otro') {
+            const otroInp = document.getElementById(inp.id + '_otro');
+            val = otroInp && otroInp.value.trim() ? otroInp.value.trim() : 'Otro';
+          } else {
+            val = inp.value.trim();
+          }
+        }
+      }
+
+      if (ex.required && !val) {
+        const inp = document.querySelector('[data-extra-id="' + ex.id + '"]') || document.querySelector('[data-extra-idx="' + i + '"]');
+        markError(inp, 'El campo "' + ex.label + '" es obligatorio.');
+      }
+      extrasCollected.push({ id: ex.id, label: ex.label, value: val, tipo: ex.tipo });
+    }
+
+    if (firstErrorEl) {
+      firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      firstErrorEl.focus();
+      showToast('Por favor completa o corrige los campos obligatorios.');
+      return;
+    }
+
+    // Recolectar respuestas y verificar completitud de indicadores
+    const respuestas = [];
+    let answeredCount = 0;
+    let totalItems = 0;
+    let firstUnansweredEl = null;
+
+    ft.secciones.forEach(sec => {
+      sec.items.forEach(it => {
+        totalItems++;
+        const chk = document.querySelector('input[name="item_' + it.id + '"]:checked');
+        const evidInp = document.getElementById('evid_' + it.id) || document.querySelector('input[name="evidencia_' + it.id + '"]');
+        const evidencia = evidInp ? evidInp.value.trim() : '';
+
+        if (chk) {
+          answeredCount++;
+          respuestas.push({
+            id: it.id,
+            texto: it.texto,
+            seccion: sec.nombre,
+            valor: chk.value,
+            evidencia: evidencia
+          });
+        } else {
+          if (!firstUnansweredEl) {
+            firstUnansweredEl = document.querySelector('input[name="item_' + it.id + '"]') || evidInp;
+          }
+          if (evidencia) {
+            respuestas.push({
+              id: it.id,
+              texto: it.texto,
+              seccion: sec.nombre,
+              valor: null,
+              evidencia: evidencia
+            });
+          }
+        }
+      });
+    });
+
+    // Control de ficha incompleta / borrador
+    let esBorrador = false;
+    if (answeredCount < totalItems) {
+      const confirmDraft = confirm(
+        'Atención: Hay ' + (totalItems - answeredCount) + ' de ' + totalItems + ' indicadores sin calificar.\n\n' +
+        '¿Deseas guardar la ficha como BORRADOR (incompleta)?\n' +
+        'Se calculará el avance únicamente sobre los indicadores respondidos y podrás completarla luego.'
+      );
+      if (!confirmDraft) {
+        if (firstUnansweredEl) {
+          const itemRow = firstUnansweredEl.closest('.itemRow');
+          if (itemRow) itemRow.classList.add('fieldError');
+          firstUnansweredEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          firstUnansweredEl.focus();
+        }
+        showToast('Completa los indicadores pendientes para registrar la ficha completa.');
+        return;
+      }
+      esBorrador = true;
+    }
+
+    // Extracción de datos para compatibilidad de tablas y reportes
+    let ugelVal = '', redVal = '', codigoVal = '', responsableVal = '', directorVal = '';
+    let directorDniVal = '', condicionVal = '', nivelAtencionVal = '', turnoAtencionVal = '', turnoVisitadoVal = '', monitorDniVal = '';
+
+    extrasCollected.forEach(ex => {
+      const l = (ex.label || '').toLowerCase();
+      if (l.includes('ugel') && !ugelVal) ugelVal = ex.value;
+      if ((l.includes('red') || l.includes('rei')) && !redVal) redVal = ex.value;
+      if ((l.includes('código') || l.includes('codigo')) && !codigoVal) codigoVal = ex.value;
+      if (l.includes('director') && (l.includes('nombre') || !l.includes('dni')) && !directorVal) directorVal = ex.value;
+      if (l.includes('director') && l.includes('dni') && !directorDniVal) directorDniVal = ex.value;
+      if (l.includes('condici') && !condicionVal) condicionVal = ex.value;
+      if (l.includes('nivel') && !nivelAtencionVal) nivelAtencionVal = ex.value;
+      if (l.includes('turno') && l.includes('atenci') && !turnoAtencionVal) turnoAtencionVal = ex.value;
+      if (l.includes('turno') && l.includes('visit') && !turnoVisitadoVal) turnoVisitadoVal = ex.value;
+      if ((l.includes('responsable') || l.includes('especialista') || l.includes('monitor')) && !l.includes('dni') && !responsableVal) responsableVal = ex.value;
+      if ((l.includes('responsable') || l.includes('especialista') || l.includes('monitor')) && l.includes('dni') && !monitorDniVal) monitorDniVal = ex.value;
+    });
+
+    // Vincular con padrón
+    let matchedCol = null;
+    if (regSelectedColegioId) {
+      matchedCol = (activeState.colegios || []).find(c => c.id === regSelectedColegioId);
+    }
+    if (!matchedCol && instVal) {
+      const instNorm = normalizeText(instVal);
+      matchedCol = (activeState.colegios || []).find(c => normalizeText(c.ie) === instNorm);
+    }
+
+    if (matchedCol) {
+      if (!ugelVal) ugelVal = matchedCol.dependencia || 'UGEL 03';
+      if (!redVal) redVal = matchedCol.rei || '';
+      if (!codigoVal) codigoVal = matchedCol.codigoLocal || matchedCol.codigoModular || '';
+      if (!directorVal && matchedCol.director && matchedCol.director.nombre) directorVal = matchedCol.director.nombre;
+      if (!directorDniVal && matchedCol.director && matchedCol.director.dni) directorDniVal = matchedCol.director.dni;
+      if (!condicionVal && matchedCol.tipoGestion) condicionVal = matchedCol.tipoGestion;
+      if (!nivelAtencionVal && matchedCol.nivelServicio) nivelAtencionVal = matchedCol.nivelServicio;
+      if (!turnoAtencionVal && matchedCol.turnos) turnoAtencionVal = matchedCol.turnos;
+    }
+    if (!ugelVal) ugelVal = 'UGEL 03';
+    if (!redVal) redVal = 'No aplica';
+
+    // Recolectar Síntesis por dimensión si es directivo
+    const sintesisCollected = [];
+    if (isDirectivo) {
+      const sintesisDimensions = [
+        'A. DIMENSIÓN ESTRATÉGICA',
+        'B. DIMENSIÓN PEDAGÓGICA: ESTRATEGIAS PRIORIZADAS',
+        'C. PLANIFICACIÓN CURRICULAR',
+        'D. MONITOREO DE LA PRÁCTICA PEDAGÓGICA EN AULA',
+        'E. FORTALECIMIENTO DE LAS COMPETENCIAS DOCENTES',
+        'F. SEGUIMIENTO AL PROGRESO DE LOS APRENDIZAJES'
+      ];
+      sintesisDimensions.forEach((dim, dIdx) => {
+        const logrosEl = document.querySelector(`textarea[name="sintesis_${dIdx}_logros"]`);
+        const difEl = document.querySelector(`textarea[name="sintesis_${dIdx}_dificultades"]`);
+        const recEl = document.querySelector(`textarea[name="sintesis_${dIdx}_recomendaciones"]`);
+        sintesisCollected.push({
+          dimension: dim,
+          logros: logrosEl ? logrosEl.value.trim() : '',
+          dificultades: difEl ? difEl.value.trim() : '',
+          recomendaciones: recEl ? recEl.value.trim() : ''
         });
-        form.querySelectorAll('input[type=radio]').forEach(r => r.checked = false);
-        form.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
-      }
+      });
+    }
 
-      const fechaEl = document.getElementById('f_fecha');
-      if (fechaEl) fechaEl.value = todayStr();
-      const visitaEl = document.getElementById('f_visita');
-      if (visitaEl) visitaEl.value = '1';
+    // Recolectar compromisos del directivo y monitor
+    const compDirectorEl = document.getElementById('f_comp_director');
+    const compMonitorEl = document.getElementById('f_comp_monitor');
+    const compDirectorVal = compDirectorEl ? compDirectorEl.value.trim() : '';
+    const compMonitorVal = compMonitorEl ? compMonitorEl.value.trim() : '';
 
-      const hint = document.getElementById('regColegioHint');
-      if (hint) {
-        hint.style.display = 'none';
-        hint.textContent = '';
-      }
-      regCompromisos = [];
-      renderCompList();
+    const allCompromisos = [...regCompromisos.filter(c => c.texto && c.texto.trim())];
+    if (compDirectorVal) {
+      allCompromisos.unshift({ texto: compDirectorVal, responsable: 'Director(a) de la IE', plazo: 'Año escolar 2026' });
+    }
+    if (compMonitorVal) {
+      allCompromisos.push({ texto: compMonitorVal, responsable: 'Monitor / Especialista', plazo: 'Seguimiento continuo' });
+    }
 
-      const formHost = document.getElementById('regFormHost');
-      if (formHost) {
-        formHost.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Token de idempotencia en cliente para prevenir duplicados en caso de reintento o doble clic
+    let submissionToken = (form && form.dataset.submissionId) || genId();
+    if (form) form.dataset.submissionId = submissionToken;
+
+    const docData = {
+      fichaTypeId: ft.id,
+      fichaTypeNombre: ft.nombre,
+      tipoRespuesta: ft.tipoRespuesta,
+      institucion: instVal,
+      colegioId: (matchedCol && matchedCol.id) || regSelectedColegioId || null,
+      fecha: fechaVal,
+      visita: Number(visitaVal) || 1,
+      ugel: ugelVal,
+      red: redVal,
+      codigoModular: codigoVal,
+      responsable: responsableVal,
+      director: directorVal,
+      directorDni: directorDniVal,
+      condicion: condicionVal,
+      nivelAtencion: nivelAtencionVal,
+      turnoAtencion: turnoAtencionVal,
+      turnoVisitado: turnoVisitadoVal,
+      monitorDni: monitorDniVal,
+      horaInicio: horaInicioVal,
+      horaTermino: horaTerminoVal,
+      extras: extrasCollected,
+      respuestas,
+      sintesis: sintesisCollected,
+      compromisoDirector: compDirectorVal,
+      compromisoMonitor: compMonitorVal,
+      observaciones: document.getElementById('f_observaciones') ? document.getElementById('f_observaciones').value.trim() : '',
+      compromisos: allCompromisos,
+      esBorrador: esBorrador,
+      createdAt: isEdit ? (editingSubmissionData.createdAt || Date.now()) : Date.now(),
+      updatedAt: Date.now()
+    };
+
+    if (isEdit) {
+      await dbNs.collection('submissions').doc(editingSubmissionId).set(docData);
+      showToast('Ficha actualizada correctamente.');
+    } else {
+      await dbNs.collection('submissions').doc(submissionToken).set(docData);
+      showToast('Ficha registrada correctamente.');
+    }
+
+    // Actualizar cache local para respuesta instantánea de KPIs y tablas
+    if (!isEdit && activeState.submissions) {
+      const existingIdx = activeState.submissions.findIndex(s => s.id === submissionToken);
+      if (existingIdx >= 0) {
+        activeState.submissions[existingIdx] = { id: submissionToken, ...docData };
+      } else {
+        activeState.submissions.unshift({ id: submissionToken, ...docData });
       }
+    }
+
+    // Limpiar estado tras guardado exitoso
+    if (form) form.dataset.submissionId = '';
+    editingSubmissionId = null;
+    editingSubmissionData = null;
+    regBuiltFor = null;
+    regSelectedTypeId = null;
+    regCompromisos = [];
+    regSelectedColegioId = null;
+
+    if (navigate) {
+      navigate('consolidado');
     }
   } catch (err) {
     console.error('Error al guardar submission:', err);
-    showToast('No se pudo guardar: [' + (err.code || 'error') + '] ' + err.message);
+    const errDetails = esc(err.stack || err.message || String(err));
+    const errBanner = document.createElement('div');
+    errBanner.id = 'regFormErrorBanner';
+    errBanner.className = 'banner';
+    errBanner.style.cssText = 'background:#FEF2F2;border:1.5px solid #DC2626;color:#991B1B;padding:14px 18px;margin-bottom:18px;border-radius:8px;';
+    errBanner.innerHTML = `
+      <div style="font-weight:700;font-size:14px;margin-bottom:4px">⚠️ No se pudo guardar la ficha</div>
+      <div style="font-size:13px;margin-bottom:8px">Sus datos se conservaron en el formulario; intente nuevamente.</div>
+      <details style="font-size:11.5px;color:#7F1D1D;cursor:pointer">
+        <summary style="font-weight:600">Ver detalle técnico</summary>
+        <pre style="white-space:pre-wrap;background:#FFF;padding:8px;border-radius:4px;margin-top:6px;border:1px solid #FECACA">${errDetails}</pre>
+      </details>
+    `;
+    const formHost = document.getElementById('regFormHost') || form;
+    if (formHost) formHost.insertBefore(errBanner, formHost.firstChild);
+    showToast('No se pudo guardar la ficha. Sus datos se conservaron.');
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = isEdit ? 'Actualizar ficha' : 'Guardar ficha';
+      btn.innerHTML = isEdit ? 'Actualizar ficha' : 'Guardar ficha';
     }
   }
 }
@@ -1799,7 +2628,7 @@ async function extractFichaFromImage(file, ft, currentUser) {
   const btn = document.getElementById('scanBtn');
   if (btn) btn.disabled = true;
   if (statusEl) statusEl.textContent = 'Leyendo la imagen con IA... esto puede tardar hasta un minuto.';
-  const itemsDesc  = ft.secciones.map(sec => 'Sección "' + sec.nombre + '":\n' + sec.items.map(it => '- id:' + it.id + ' | ' + it.texto).join('\n')).join('\n\n');
+  const itemsDesc = ft.secciones.map(sec => 'Sección "' + sec.nombre + '":\n' + sec.items.map(it => '- id:' + it.id + ' | ' + it.texto).join('\n')).join('\n\n');
   const validValues = RESPONSE_OPTIONS[ft.tipoRespuesta].map(o => o.v).join(', ');
   const extrasDesc = (ft.extras || []).map(ex => ex.label).join(' | ') || '(ninguno)';
   const prompt = 'Digitaliza la ficha de monitoreo educativa "' + ft.nombre + '". Responde SOLO con JSON válido:\n' +
@@ -1885,7 +2714,7 @@ export function matchColegio(sub, idx) {
   if (!sub) return null;
   if (sub.colegioId && idx.byId[sub.colegioId]) return idx.byId[sub.colegioId];
   if (sub.codigoModular) { const c = idx.byCode[normalizeText(sub.codigoModular)]; if (c) return c; }
-  if (sub.institucion)   { const c = idx.byIe[normalizeText(sub.institucion)]; if (c) return c; }
+  if (sub.institucion) { const c = idx.byIe[normalizeText(sub.institucion)]; if (c) return c; }
   return null;
 }
 
@@ -1953,34 +2782,34 @@ export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdm
   container.innerHTML = '' +
     '<div class="pageHead"><h2>Reportes</h2><p>Gráficas, avance por sección, resumen por institución y descarga en PDF.</p></div>' +
     '<div class="panel">' +
-      '<div class="filterBar" style="margin-bottom:0">' +
-        '<div class="field" style="flex:2;min-width:240px">' +
-          '<label for="consSelect">Tipo de ficha</label>' +
-          '<select id="consSelect"><option value="">— Selecciona un tipo —</option>' + opts + '</select>' +
-        '</div>' +
-        '<div class="field" style="flex:1;min-width:130px">' +
-          '<label for="top_fil_estado">Estado</label>' +
-          '<select id="top_fil_estado">' +
-            '<option value="">Todos</option>' +
-            ['Logrado', 'En proceso', 'Inicio'].map(v => '<option value="' + v + '"' + (v === consFilters.estado ? ' selected' : '') + '>' + v + '</option>').join('') +
-          '</select>' +
-        '</div>' +
-        '<div class="field" style="flex:1;min-width:120px">' +
-          '<label for="top_fil_visita">Visita</label>' +
-          '<select id="top_fil_visita">' +
-            '<option value="">Todas</option>' +
-            visitaOptions.map(v => '<option value="' + v + '"' + (String(v) === String(consFilters.visita) ? ' selected' : '') + '>Visita ' + v + '</option>').join('') +
-          '</select>' +
-        '</div>' +
-        '<div class="field" style="flex:1.5;min-width:180px">' +
-          '<label for="top_fil_responsable">Responsable</label>' +
-          '<input type="search" id="top_fil_responsable" list="dl_resp_filter" value="' + esc(consFilters.responsable) + '" placeholder="Buscar especialista..." autocomplete="off">' +
-          '<datalist id="dl_resp_filter">' + responsableOptions.map(r => '<option value="' + esc(r) + '">').join('') + '</datalist>' +
-        '</div>' +
-        ((consFilters.estado || consFilters.visita || consFilters.responsable) ? (
-          '<button type="button" class="btn secondary small" id="top_fil_clear" style="align-self:flex-end;margin-bottom:2px" title="Limpiar filtros de tipo de ficha">Limpiar</button>'
-        ) : '') +
-      '</div>' +
+    '<div class="filterBar" style="margin-bottom:0">' +
+    '<div class="field" style="flex:2;min-width:240px">' +
+    '<label for="consSelect">Tipo de ficha</label>' +
+    '<select id="consSelect"><option value="">— Selecciona un tipo —</option>' + opts + '</select>' +
+    '</div>' +
+    '<div class="field" style="flex:1;min-width:130px">' +
+    '<label for="top_fil_estado">Estado</label>' +
+    '<select id="top_fil_estado">' +
+    '<option value="">Todos</option>' +
+    ['Logrado', 'En proceso', 'Inicio'].map(v => '<option value="' + v + '"' + (v === consFilters.estado ? ' selected' : '') + '>' + v + '</option>').join('') +
+    '</select>' +
+    '</div>' +
+    '<div class="field" style="flex:1;min-width:120px">' +
+    '<label for="top_fil_visita">Visita</label>' +
+    '<select id="top_fil_visita">' +
+    '<option value="">Todas</option>' +
+    visitaOptions.map(v => '<option value="' + v + '"' + (String(v) === String(consFilters.visita) ? ' selected' : '') + '>Visita ' + v + '</option>').join('') +
+    '</select>' +
+    '</div>' +
+    '<div class="field" style="flex:1.5;min-width:180px">' +
+    '<label for="top_fil_responsable">Responsable</label>' +
+    '<input type="search" id="top_fil_responsable" list="dl_resp_filter" value="' + esc(consFilters.responsable) + '" placeholder="Buscar especialista..." autocomplete="off">' +
+    '<datalist id="dl_resp_filter">' + responsableOptions.map(r => '<option value="' + esc(r) + '">').join('') + '</datalist>' +
+    '</div>' +
+    ((consFilters.estado || consFilters.visita || consFilters.responsable) ? (
+      '<button type="button" class="btn secondary small" id="top_fil_clear" style="align-self:flex-end;margin-bottom:2px" title="Limpiar filtros de tipo de ficha">Limpiar</button>'
+    ) : '') +
+    '</div>' +
     '</div>' +
     '<div id="consHost"></div>';
 
@@ -2055,7 +2884,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
   });
   if (consFilters.estado) statsList = statsList.filter(x => statusFromPct(x.st.pct).label === consFilters.estado);
   const withPct = statsList.filter(x => x.st.pct !== null);
-  const avgPct  = withPct.length ? Math.round(withPct.reduce((a, x) => a + x.st.pct, 0) / withPct.length) : null;
+  const avgPct = withPct.length ? Math.round(withPct.reduce((a, x) => a + x.st.pct, 0) / withPct.length) : null;
   const instCount = new Set(statsList.map(x => (x.s.institucion || '') + '|' + (x.s.ugel || ''))).size;
 
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
@@ -2114,16 +2943,16 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
         '</div>' + bar(avg) +
         '<div class="val" style="min-width:60px;text-align:right">' + (avg === null ? '—' : avg + '%') + '</div>' +
         '<div style="display:flex;gap:4px;margin-left:8px">' +
-          '<span class="badge st-logrado" style="font-size:10px">' + a.logrado + '</span>' +
-          '<span class="badge st-proceso" style="font-size:10px">' + a.proceso + '</span>' +
-          '<span class="badge st-inicio" style="font-size:10px">' + a.inicio + '</span>' +
+        '<span class="badge st-logrado" style="font-size:10px">' + a.logrado + '</span>' +
+        '<span class="badge st-proceso" style="font-size:10px">' + a.proceso + '</span>' +
+        '<span class="badge st-inicio" style="font-size:10px">' + a.inicio + '</span>' +
         '</div>' +
-      '</div>';
+        '</div>';
     }).join('');
     allTypesSummaryHtml = '<div class="panel"><h3>Avance general por tipo de ficha</h3>' +
       '<p class="helpText" style="margin-top:0">Promedio de cumplimiento de cada tipo de ficha con su distribución de estados.</p>' +
       typeSummaryRows +
-    '</div>';
+      '</div>';
   }
 
   const visAgg = {};
@@ -2134,9 +2963,9 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     const s = x.s; const st = x.st; const status = statusFromPct(st.pct);
     const isOpen = consExpanded === s.id;
     const detailContent = isOpen ? buildDetail(s) : '';
-    const pdfBtn  = '<button class="actBtn pdfBtn" data-pdfsub="' + s.id + '" title="Descargar Ficha Oficial en PDF (A4)">📄 PDF</button>';
+    const pdfBtn = '<button class="actBtn pdfBtn" data-pdfsub="' + s.id + '" title="Descargar Ficha Oficial en PDF (A4)">📄 PDF</button>';
     const editBtn = '<button class="actBtn" data-edit="' + s.id + '" title="Corregir ficha">✏️ Editar</button>';
-    const delBtn  = isAdmin ? '<button class="actBtn delBtn" data-del="' + s.id + '" title="Eliminar">✕</button>' : '';
+    const delBtn = isAdmin ? '<button class="actBtn delBtn" data-del="' + s.id + '" title="Eliminar">✕</button>' : '';
     const typeName = s.fichaTypeNombre || (getFichaType(s.fichaTypeId) || {}).nombre || '—';
     const typeCol = isAllMode ? '<td><span class="badge st-none" style="font-size:10.5px">' + esc(typeName) + '</span></td>' : '';
     const ugelRedCol = '<td>' + esc(s.ugel || 'UGEL 03') + '<br><small style="color:var(--text-muted);font-weight:600;">' + esc(s.red || 'No aplica') + '</small></td>';
@@ -2170,10 +2999,10 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
   host.innerHTML = '' +
     '<div id="reportCapture">' +
     '<div class="cards">' +
-      '<div class="card"><div class="num">' + statsList.length + '</div><div class="lbl">Fichas registradas</div></div>' +
-      '<div class="card"><div class="num">' + instCount + '</div><div class="lbl">Instituciones</div></div>' +
-      (isAllMode ? '<div class="card"><div class="num">' + state.fichaTypes.length + '</div><div class="lbl">Tipos de ficha</div></div>' : '') +
-      '<div class="card"><div class="num">' + (avgPct === null ? '—' : avgPct + '%') + '</div><div class="lbl">Cumplimiento promedio</div></div>' +
+    '<div class="card"><div class="num">' + statsList.length + '</div><div class="lbl">Fichas registradas</div></div>' +
+    '<div class="card"><div class="num">' + instCount + '</div><div class="lbl">Instituciones</div></div>' +
+    (isAllMode ? '<div class="card"><div class="num">' + state.fichaTypes.length + '</div><div class="lbl">Tipos de ficha</div></div>' : '') +
+    '<div class="card"><div class="num">' + (avgPct === null ? '—' : avgPct + '%') + '</div><div class="lbl">Cumplimiento promedio</div></div>' +
     '</div>' +
     '<div class="panel"><h3>Distribución de resultados</h3>' + seg + '</div>' +
     allTypesSummaryHtml +
@@ -2181,29 +3010,29 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     (!isAllMode ? '<div class="panel"><h3>Reporte por ítem <small>resultado de cada indicador</small></h3>' + itemReportHtml + '</div>' : '') +
     '<div class="panel"><h3>Evolución por N° de visita</h3>' + visRows + '</div>' +
     '<div class="panel"><h3>Resumen por institución</h3>' +
-      '<div class="tblWrap"><table><thead><tr><th>Institución</th><th>RED</th><th>UGEL</th><th>N° visitas</th><th>Última visita</th><th>Avance</th></tr></thead><tbody>' + instRows + '</tbody></table></div>' +
+    '<div class="tblWrap"><table><thead><tr><th>Institución</th><th>RED</th><th>UGEL</th><th>N° visitas</th><th>Última visita</th><th>Avance</th></tr></thead><tbody>' + instRows + '</tbody></table></div>' +
     '</div></div>' +
     '<div class="panel">' +
-      '<h3>Fichas registradas</h3>' +
-      '<div class="filterBar">' +
-        '<div class="field"><label>Institución</label><input type="search" id="fil_inst" list="dl_fil_inst" value="' + esc(consFilters.institucion) + '" placeholder="Buscar..."></div>' +
-        '<datalist id="dl_fil_inst">' + seedSuggestions('institucion', state.submissions).map(v => '<option value="' + esc(v) + '">').join('') + '</datalist>' +
-        '<div class="field"><label>RED</label><select id="fil_red"><option value="">Todas</option>' + redOptions.map(r => '<option value="' + esc(r) + '"' + (r === consFilters.red ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></div>' +
-        '<div class="field"><label>UGEL</label><input type="search" id="fil_ugel" value="' + esc(consFilters.ugel) + '" placeholder="Buscar..."></div>' +
-        (state.colegios.length ? (
-          '<div class="field"><label>Distrito</label><input type="search" id="fil_distrito" value="' + esc(consFilters.distrito) + '" placeholder="Buscar..."></div>' +
-          '<div class="field"><label>Tipo de gestión</label><select id="fil_tipogestion"><option value="">Todos</option>' +
-            Array.from(new Set(state.colegios.map(c => c.tipoGestion).filter(Boolean))).sort().map(g => '<option value="' + esc(g) + '"' + (g === consFilters.tipoGestion ? ' selected' : '') + '>' + esc(g) + '</option>').join('') +
-          '</select></div>'
-        ) : '') +
-        '<div class="field"><label>Desde</label><input type="date" id="fil_desde" value="' + esc(consFilters.desde) + '"></div>' +
-        '<div class="field"><label>Hasta</label><input type="date" id="fil_hasta" value="' + esc(consFilters.hasta) + '"></div>' +
-        '<button class="btn secondary small" id="fil_clear" type="button">Limpiar</button>' +
-        (isAdmin ? '<button class="btn secondary small" id="btnBackfillUgel" type="button" title="Completar UGEL y RED en fichas antiguas desde el padrón">🔄 Sincronizar UGEL/RED</button>' : '') +
-        '<button class="btn secondary small" id="exportCsv" type="button" style="margin-left:auto">Exportar CSV</button>' +
-        '<button class="btn small" id="exportPdf" type="button">⬇ Descargar reporte oficial (PDF)</button>' +
-      '</div>' +
-      '<div class="tblWrap"><table><thead><tr><th>Fecha</th><th>Institución</th>' + tblTypeHeader + '<th>UGEL / RED</th><th>Visita</th><th>Responsable</th><th>%</th><th>Estado</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<h3>Fichas registradas</h3>' +
+    '<div class="filterBar">' +
+    '<div class="field"><label>Institución</label><input type="search" id="fil_inst" list="dl_fil_inst" value="' + esc(consFilters.institucion) + '" placeholder="Buscar..."></div>' +
+    '<datalist id="dl_fil_inst">' + seedSuggestions('institucion', state.submissions).map(v => '<option value="' + esc(v) + '">').join('') + '</datalist>' +
+    '<div class="field"><label>RED</label><select id="fil_red"><option value="">Todas</option>' + redOptions.map(r => '<option value="' + esc(r) + '"' + (r === consFilters.red ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></div>' +
+    '<div class="field"><label>UGEL</label><input type="search" id="fil_ugel" value="' + esc(consFilters.ugel) + '" placeholder="Buscar..."></div>' +
+    (state.colegios.length ? (
+      '<div class="field"><label>Distrito</label><input type="search" id="fil_distrito" value="' + esc(consFilters.distrito) + '" placeholder="Buscar..."></div>' +
+      '<div class="field"><label>Tipo de gestión</label><select id="fil_tipogestion"><option value="">Todos</option>' +
+      Array.from(new Set(state.colegios.map(c => c.tipoGestion).filter(Boolean))).sort().map(g => '<option value="' + esc(g) + '"' + (g === consFilters.tipoGestion ? ' selected' : '') + '>' + esc(g) + '</option>').join('') +
+      '</select></div>'
+    ) : '') +
+    '<div class="field"><label>Desde</label><input type="date" id="fil_desde" value="' + esc(consFilters.desde) + '"></div>' +
+    '<div class="field"><label>Hasta</label><input type="date" id="fil_hasta" value="' + esc(consFilters.hasta) + '"></div>' +
+    '<button class="btn secondary small" id="fil_clear" type="button">Limpiar</button>' +
+    (isAdmin ? '<button class="btn secondary small" id="btnBackfillUgel" type="button" title="Completar UGEL y RED en fichas antiguas desde el padrón">🔄 Sincronizar UGEL/RED</button>' : '') +
+    '<button class="btn secondary small" id="exportCsv" type="button" style="margin-left:auto">Exportar CSV</button>' +
+    '<button class="btn small" id="exportPdf" type="button">⬇ Descargar reporte oficial (PDF)</button>' +
+    '</div>' +
+    '<div class="tblWrap"><table><thead><tr><th>Fecha</th><th>Institución</th>' + tblTypeHeader + '<th>UGEL / RED</th><th>Visita</th><th>Responsable</th><th>%</th><th>Estado</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
     '</div>';
 
   ['inst', 'ugel', 'desde', 'hasta', 'distrito'].forEach(k => {
@@ -2293,8 +3122,12 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
         showToast('Tipo de ficha no encontrado.');
         return;
       }
+      const rawFtName = (subFt.nombre || 'EVALUACIÓN').trim();
+      const cleanDocTitle = /^ficha\s+de\s+monitoreo/i.test(rawFtName)
+        ? rawFtName.toUpperCase()
+        : `FICHA DE MONITOREO — ${rawFtName.toUpperCase()}`;
       openDownloadConfigModal({
-        documentTitle: `FICHA DE MONITOREO — ${(subFt.nombre || 'EVALUACIÓN').toUpperCase()}`,
+        documentTitle: cleanDocTitle,
         tipoReporte: 'individual',
         dataRows: [sub],
         currentUser: user,
@@ -2354,7 +3187,7 @@ function buildDetail(s) {
     }
     return '<div style="font-size:12.5px;margin-bottom:4px"><strong>' + esc(x.label) + ':</strong> ' + valHtml + '</div>';
   }).join('');
-  const comps  = (s.compromisos || []).map(c => '<li style="margin-bottom:4px">' + esc(c.texto) + (c.responsable ? ' — <em>' + esc(c.responsable) + '</em>' : '') + (c.plazo ? ' <span style="color:var(--ink-soft)">(' + esc(c.plazo) + ')</span>' : '') + '</li>').join('');
+  const comps = (s.compromisos || []).map(c => '<li style="margin-bottom:4px">' + esc(c.texto) + (c.responsable ? ' — <em>' + esc(c.responsable) + '</em>' : '') + (c.plazo ? ' <span style="color:var(--ink-soft)">(' + esc(c.plazo) + ')</span>' : '') + '</li>').join('');
 
   // Info heredada para fichas anteriores
   const legacyInfo = [];
@@ -2382,7 +3215,7 @@ async function exportCsv(ft, statsList) {
   const rows = statsList.map(x => {
     const s = x.s, st = x.st;
     const extras = (s.extras || []).map(e => e.label + ': ' + e.value).join(' | ');
-    const comps  = (s.compromisos || []).map(c => c.texto).join(' | ');
+    const comps = (s.compromisos || []).map(c => c.texto).join(' | ');
     return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, s.responsable, s.director, (st.pct === null ? '' : st.pct), statusFromPct(st.pct).label, extras, s.observaciones, comps];
   });
   downloadCsv((ft.nombre || 'reporte').replace(/[^a-z0-9]+/gi, '_').toLowerCase() + '.csv', header, rows);
@@ -2397,24 +3230,24 @@ const COLEGIO_FIELD_LABELS = {
 
 /** Aliases para mapeo de columnas Excel → campos del documento */
 const INST_FIELD_ALIASES = {
-  rei:            ['rei', 'red', 'rei / red', 'rei/red', 'red educativa'],
-  codigoLocal:    ['codigo local', 'codigolocal', 'cod local', 'cod. local', 'codigo_local', 'local', 'cod_local'],
-  ie:             ['nombre i.e.', 'nombre ie', 'i.e', 'ie', 'institucion educativa', 'nombre', 'colegio', 'nombre de la i.e.', 'i.e.'],
-  modalidad:      ['modalidad'],
-  nivelServicio:  ['nivel_sevicio', 'nivel_servicio', 'nivel de servicio', 'nivelservicio', 'nivel', 'servicio'],
-  turnos:         ['turnos', 'turno'],
-  tipoGestion:    ['tipo de gestion', 'tipo gestion', 'tipogestion', 'gestion', 'gestión'],
-  dependencia:    ['dependencia'],
-  direccion:      ['direccion', 'dirección'],
-  distrito:       ['distrito'],
-  'director.nombre':     ['director_nombres', 'director - apellidos y nombres', 'dir_nombres', 'dir_nombre', 'director apellidos y nombres', 'director: apellidos y nombres', 'apellidos y nombres director', 'director', 'director(a)'],
-  'director.dni':        ['director_dni', 'director - dni', 'dir_dni', 'director: dni', 'dni director'],
-  'director.telefono':   ['director_telefono', 'director - telefono', 'dir_telefono', 'director - teléfono', 'director: telefono', 'telefono director', 'teléfono director', 'celular director'],
-  'director.correo':     ['director_correo', 'director - correo', 'dir_correo', 'director: correo', 'correo director', 'email director'],
-  'subDirector.nombre':  ['subdir_nombres', 'subdirector_nombres', 'sub_director - apellidos y nombres', 'subdirector - apellidos y nombres', 'subdir_nombre', 'subdirector', 'sub_director', 'sub-director'],
-  'subDirector.dni':     ['subdir_dni', 'subdirector_dni', 'sub_director - dni', 'subdirector - dni', 'dni subdirector'],
-  'subDirector.telefono':['subdir_telefono', 'subdirector_telefono', 'sub_director - telefono', 'subdirector - telefono', 'sub-director - telefono', 'telefono subdirector', 'teléfono subdirector'],
-  'subDirector.correo':  ['subdir_correo', 'subdirector_correo', 'sub_director - correo', 'subdirector - correo', 'sub-director - correo', 'correo subdirector', 'email subdirector'],
+  rei: ['rei', 'red', 'rei / red', 'rei/red', 'red educativa'],
+  codigoLocal: ['codigo local', 'codigolocal', 'cod local', 'cod. local', 'codigo_local', 'local', 'cod_local'],
+  ie: ['nombre i.e.', 'nombre ie', 'i.e', 'ie', 'institucion educativa', 'nombre', 'colegio', 'nombre de la i.e.', 'i.e.'],
+  modalidad: ['modalidad'],
+  nivelServicio: ['nivel_sevicio', 'nivel_servicio', 'nivel de servicio', 'nivelservicio', 'nivel', 'servicio'],
+  turnos: ['turnos', 'turno'],
+  tipoGestion: ['tipo de gestion', 'tipo gestion', 'tipogestion', 'gestion', 'gestión'],
+  dependencia: ['dependencia'],
+  direccion: ['direccion', 'dirección'],
+  distrito: ['distrito'],
+  'director.nombre': ['director_nombres', 'director - apellidos y nombres', 'dir_nombres', 'dir_nombre', 'director apellidos y nombres', 'director: apellidos y nombres', 'apellidos y nombres director', 'director', 'director(a)'],
+  'director.dni': ['director_dni', 'director - dni', 'dir_dni', 'director: dni', 'dni director'],
+  'director.telefono': ['director_telefono', 'director - telefono', 'dir_telefono', 'director - teléfono', 'director: telefono', 'telefono director', 'teléfono director', 'celular director'],
+  'director.correo': ['director_correo', 'director - correo', 'dir_correo', 'director: correo', 'correo director', 'email director'],
+  'subDirector.nombre': ['subdir_nombres', 'subdirector_nombres', 'sub_director - apellidos y nombres', 'subdirector - apellidos y nombres', 'subdir_nombre', 'subdirector', 'sub_director', 'sub-director'],
+  'subDirector.dni': ['subdir_dni', 'subdirector_dni', 'sub_director - dni', 'subdirector - dni', 'dni subdirector'],
+  'subDirector.telefono': ['subdir_telefono', 'subdirector_telefono', 'sub_director - telefono', 'subdirector - telefono', 'sub-director - telefono', 'telefono subdirector', 'teléfono subdirector'],
+  'subDirector.correo': ['subdir_correo', 'subdirector_correo', 'sub_director - correo', 'subdirector - correo', 'sub-director - correo', 'correo subdirector', 'email subdirector'],
 };
 
 /** Descarga una plantilla Excel lista para completar e importar */
@@ -2485,19 +3318,19 @@ export function sanitizeColegioRecord(r, existing, now) {
 
   const dir = r.director || {};
   const director = {
-    nombre:   s(dir.nombre),
-    dni:      s(dir.dni),
+    nombre: s(dir.nombre),
+    dni: s(dir.dni),
     telefono: s(dir.telefono),
-    correo:   s(dir.correo),
+    correo: s(dir.correo),
   };
 
   let subDirector = null;
   if (r.subDirector && typeof r.subDirector === 'object') {
     const sd = {
-      nombre:   s(r.subDirector.nombre),
-      dni:      s(r.subDirector.dni),
+      nombre: s(r.subDirector.nombre),
+      dni: s(r.subDirector.dni),
       telefono: s(r.subDirector.telefono),
-      correo:   s(r.subDirector.correo),
+      correo: s(r.subDirector.correo),
     };
     if (sd.nombre || sd.dni || sd.telefono || sd.correo) {
       subDirector = sd;
@@ -2505,20 +3338,20 @@ export function sanitizeColegioRecord(r, existing, now) {
   }
 
   const docData = {
-    rei:           s(r.rei),
-    codigoLocal:   s(r.codigoLocal),
-    ie:            s(r.ie),
-    modalidad:     s(r.modalidad),
+    rei: s(r.rei),
+    codigoLocal: s(r.codigoLocal),
+    ie: s(r.ie),
+    modalidad: s(r.modalidad),
     nivelServicio: s(r.nivelServicio),
-    turnos:        s(r.turnos),
-    tipoGestion:   s(r.tipoGestion),
-    dependencia:   s(r.dependencia),
-    direccion:     s(r.direccion),
-    distrito:      s(r.distrito),
-    director:      director,
-    subDirector:   subDirector,
-    updatedAt:     now,
-    createdAt:     createdAt,
+    turnos: s(r.turnos),
+    tipoGestion: s(r.tipoGestion),
+    dependencia: s(r.dependencia),
+    direccion: s(r.direccion),
+    distrito: s(r.distrito),
+    director: director,
+    subDirector: subDirector,
+    updatedAt: now,
+    createdAt: createdAt,
   };
 
   return cleanForFirestore(docData);
@@ -2546,8 +3379,8 @@ export async function parseInstitucionesExcel(file) {
       try {
         if (typeof XLSX === 'undefined') { reject(new Error('SheetJS no disponible')); return; }
         const data = new Uint8Array(e.target.result);
-        const wb   = XLSX.read(data, { type: 'array' });
-        const ws   = wb.Sheets[wb.SheetNames[0]];
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
         const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
         if (rawRows.length < 2) { resolve({ rows: [], errors: ['El archivo no tiene datos suficientes.'] }); return; }
@@ -2604,7 +3437,7 @@ export async function parseInstitucionesExcel(file) {
             _rowNum: ri + 1,
             rei: '', codigoLocal: '', ie: '', modalidad: '', nivelServicio: '',
             turnos: '', tipoGestion: '', dependencia: '', direccion: '', distrito: '',
-            director:    { nombre: '', dni: '', telefono: '', correo: '' },
+            director: { nombre: '', dni: '', telefono: '', correo: '' },
             subDirector: null,
           };
           const sd = { nombre: '', dni: '', telefono: '', correo: '' };
@@ -2613,14 +3446,14 @@ export async function parseInstitucionesExcel(file) {
           Object.entries(colMap).forEach(([ci, field]) => {
             const rawVal = vals[+ci];
             const val = (rawVal === undefined || rawVal === null) ? '' : String(rawVal).trim();
-            if (field.startsWith('director.'))    { row.director[field.replace('director.', '')] = val; }
+            if (field.startsWith('director.')) { row.director[field.replace('director.', '')] = val; }
             else if (field.startsWith('subDirector.')) { sd[field.replace('subDirector.', '')] = val; if (val) hasSubDir = true; }
             else { row[field] = val; }
           });
           if (hasSubDir) row.subDirector = sd;
 
           row.codigoLocal = String(row.codigoLocal || '').trim();
-          row.ie          = String(row.ie || '').trim();
+          row.ie = String(row.ie || '').trim();
 
           if (!row.codigoLocal || !row.ie) {
             errors.push('Fila ' + (ri + 1) + ': falta Código local o Nombre I.E. — omitida.');
@@ -2637,7 +3470,7 @@ export async function parseInstitucionesExcel(file) {
 }
 
 let colFilters = { rei: '', distrito: '', tipoGestion: '', q: '', pendientes: false };
-let colExpanded  = null;
+let colExpanded = null;
 let colShowImport = false;
 let colImportPreview = null; // {rows, errors}
 let colImportResults = null; // { total, success, failures, mainErrorCode }
@@ -2647,14 +3480,14 @@ let cachedCurrentUser = null;
 
 export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, currentUser) {
   if (currentUser) cachedCurrentUser = currentUser;
-  const bySchool   = groupSubmissionsByColegio(state);
-  const reiList    = Array.from(new Set(state.colegios.map(c => c.rei).filter(Boolean))).sort();
+  const bySchool = groupSubmissionsByColegio(state);
+  const reiList = Array.from(new Set(state.colegios.map(c => c.rei).filter(Boolean))).sort();
   const distritoList = Array.from(new Set(state.colegios.map(c => c.distrito).filter(Boolean))).sort();
-  const gestionList  = Array.from(new Set(state.colegios.map(c => c.tipoGestion).filter(Boolean))).sort();
+  const gestionList = Array.from(new Set(state.colegios.map(c => c.tipoGestion).filter(Boolean))).sort();
 
   const totalColegios = state.colegios.length;
-  const sinMonitoreo  = state.colegios.filter(c => (bySchool[c.id] || []).length === 0).length;
-  const coberturaPct  = totalColegios ? Math.round((totalColegios - sinMonitoreo) / totalColegios * 100) : null;
+  const sinMonitoreo = state.colegios.filter(c => (bySchool[c.id] || []).length === 0).length;
+  const coberturaPct = totalColegios ? Math.round((totalColegios - sinMonitoreo) / totalColegios * 100) : null;
 
   const reiAgg = {};
   reiList.forEach(r => reiAgg[r] = { rei: r, total: 0, monitoreados: 0, sumPct: 0, cntPct: 0 });
@@ -2672,11 +3505,11 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
   }).join('') || '<p class="helpText">Los colegios del padrón no tienen REI asignado.</p>';
 
   let filtered = state.colegios.slice();
-  if (colFilters.rei)         filtered = filtered.filter(c => c.rei === colFilters.rei);
-  if (colFilters.distrito)    filtered = filtered.filter(c => normalizeText(c.distrito).includes(normalizeText(colFilters.distrito)));
+  if (colFilters.rei) filtered = filtered.filter(c => c.rei === colFilters.rei);
+  if (colFilters.distrito) filtered = filtered.filter(c => normalizeText(c.distrito).includes(normalizeText(colFilters.distrito)));
   if (colFilters.tipoGestion) filtered = filtered.filter(c => c.tipoGestion === colFilters.tipoGestion);
-  if (colFilters.q)           filtered = filtered.filter(c => normalizeText(c.ie).includes(normalizeText(colFilters.q)) || normalizeText(c.codigoLocal).includes(normalizeText(colFilters.q)));
-  if (colFilters.pendientes)  filtered = filtered.filter(c => (bySchool[c.id] || []).length === 0);
+  if (colFilters.q) filtered = filtered.filter(c => normalizeText(c.ie).includes(normalizeText(colFilters.q)) || normalizeText(c.codigoLocal).includes(normalizeText(colFilters.q)));
+  if (colFilters.pendientes) filtered = filtered.filter(c => (bySchool[c.id] || []).length === 0);
   filtered.sort((a, b) => (a.ie || '').localeCompare(b.ie || ''));
 
   const rows = filtered.map(c => {
@@ -2703,39 +3536,39 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
   container.innerHTML = '' +
     '<div class="pageHead"><h2>Colegios</h2><p>Padrón de instituciones educativas por REI, cruzado con las fichas de monitoreo ya registradas.</p></div>' +
     '<div class="cards">' +
-      '<div class="card"><div class="num">' + totalColegios + '</div><div class="lbl">Colegios en el padrón</div></div>' +
-      '<div class="card"><div class="num">' + reiList.length + '</div><div class="lbl">REI / redes</div></div>' +
-      '<div class="card"><div class="num">' + sinMonitoreo + '</div><div class="lbl">Sin ningún monitoreo</div></div>' +
-      '<div class="card"><div class="num">' + (coberturaPct === null ? '—' : coberturaPct + '%') + '</div><div class="lbl">Cobertura de monitoreo</div></div>' +
+    '<div class="card"><div class="num">' + totalColegios + '</div><div class="lbl">Colegios en el padrón</div></div>' +
+    '<div class="card"><div class="num">' + reiList.length + '</div><div class="lbl">REI / redes</div></div>' +
+    '<div class="card"><div class="num">' + sinMonitoreo + '</div><div class="lbl">Sin ningún monitoreo</div></div>' +
+    '<div class="card"><div class="num">' + (coberturaPct === null ? '—' : coberturaPct + '%') + '</div><div class="lbl">Cobertura de monitoreo</div></div>' +
     '</div>' +
     (totalColegios === 0 ? '<div class="empty"><h4>Aún no hay un padrón cargado</h4><p>' + (isAdmin ? 'Importa la lista de instituciones en el panel de abajo.' : 'Pide a un administrador que importe el padrón de instituciones.') + '</p></div>' : '') +
     (isAdmin ? renderColegiosAdminPanel() : '') +
     (totalColegios ? '<div class="panel"><h3>Cobertura por REI</h3>' + reiRows + '</div>' : '') +
     (totalColegios ? (
       '<div class="panel">' +
-        '<h3>Padrón de instituciones</h3>' +
-        '<div class="filterBar">' +
-          '<div class="field"><label>REI</label><select id="col_fil_rei"><option value="">Todas</option>' + reiList.map(r => '<option value="' + esc(r) + '"' + (r === colFilters.rei ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></div>' +
-          '<div class="field"><label>Distrito</label><input type="search" id="col_fil_distrito" list="dl_col_distrito" value="' + esc(colFilters.distrito) + '" placeholder="Buscar..."></div>' +
-          '<datalist id="dl_col_distrito">' + distritoList.map(d => '<option value="' + esc(d) + '">').join('') + '</datalist>' +
-          '<div class="field"><label>Tipo de gestión</label><select id="col_fil_gestion"><option value="">Todas</option>' + gestionList.map(g => '<option value="' + esc(g) + '"' + (g === colFilters.tipoGestion ? ' selected' : '') + '>' + esc(g) + '</option>').join('') + '</select></div>' +
-          '<div class="field"><label>Buscar</label><input type="search" id="col_fil_q" value="' + esc(colFilters.q) + '" placeholder="I.E. o código..."></div>' +
-          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:0;white-space:nowrap"><input type="checkbox" id="col_fil_pend" ' + (colFilters.pendientes ? 'checked' : '') + '> Solo pendientes</label>' +
-          '<button class="btn secondary small" id="col_fil_clear" type="button">Limpiar</button>' +
-          '<button class="btn secondary small" id="col_export" type="button" style="margin-left:auto">Exportar CSV</button>' +
-          '<button class="btn small" id="col_export_pdf" type="button">⬇ Descargar padrón oficial (PDF)</button>' +
-        '</div>' +
-        '<div class="tblWrap"><table><thead><tr><th>REI</th><th>Código local</th><th>I.E.</th><th>Distrito</th><th>Tipo de gestión</th><th>N° monitoreos</th><th>Tipos de ficha aplicados</th><th>Última visita</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<h3>Padrón de instituciones</h3>' +
+      '<div class="filterBar">' +
+      '<div class="field"><label>REI</label><select id="col_fil_rei"><option value="">Todas</option>' + reiList.map(r => '<option value="' + esc(r) + '"' + (r === colFilters.rei ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></div>' +
+      '<div class="field"><label>Distrito</label><input type="search" id="col_fil_distrito" list="dl_col_distrito" value="' + esc(colFilters.distrito) + '" placeholder="Buscar..."></div>' +
+      '<datalist id="dl_col_distrito">' + distritoList.map(d => '<option value="' + esc(d) + '">').join('') + '</datalist>' +
+      '<div class="field"><label>Tipo de gestión</label><select id="col_fil_gestion"><option value="">Todas</option>' + gestionList.map(g => '<option value="' + esc(g) + '"' + (g === colFilters.tipoGestion ? ' selected' : '') + '>' + esc(g) + '</option>').join('') + '</select></div>' +
+      '<div class="field"><label>Buscar</label><input type="search" id="col_fil_q" value="' + esc(colFilters.q) + '" placeholder="I.E. o código..."></div>' +
+      '<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:0;white-space:nowrap"><input type="checkbox" id="col_fil_pend" ' + (colFilters.pendientes ? 'checked' : '') + '> Solo pendientes</label>' +
+      '<button class="btn secondary small" id="col_fil_clear" type="button">Limpiar</button>' +
+      '<button class="btn secondary small" id="col_export" type="button" style="margin-left:auto">Exportar CSV</button>' +
+      '<button class="btn small" id="col_export_pdf" type="button">⬇ Descargar padrón oficial (PDF)</button>' +
+      '</div>' +
+      '<div class="tblWrap"><table><thead><tr><th>REI</th><th>Código local</th><th>I.E.</th><th>Distrito</th><th>Tipo de gestión</th><th>N° monitoreos</th><th>Tipos de ficha aplicados</th><th>Última visita</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
       '</div>'
     ) : '');
 
   const onFilterChange = () => renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser);
-  const fRei  = document.getElementById('col_fil_rei');     if (fRei)  fRei.addEventListener('change', e => { colFilters.rei = e.target.value; onFilterChange(); });
+  const fRei = document.getElementById('col_fil_rei'); if (fRei) fRei.addEventListener('change', e => { colFilters.rei = e.target.value; onFilterChange(); });
   const fDist = document.getElementById('col_fil_distrito'); if (fDist) fDist.addEventListener('input', e => { colFilters.distrito = e.target.value; onFilterChange(); });
-  const fGes  = document.getElementById('col_fil_gestion'); if (fGes)  fGes.addEventListener('change', e => { colFilters.tipoGestion = e.target.value; onFilterChange(); });
-  const fQ    = document.getElementById('col_fil_q');        if (fQ)   fQ.addEventListener('input', e => { colFilters.q = e.target.value; onFilterChange(); });
-  const fPend = document.getElementById('col_fil_pend');     if (fPend) fPend.addEventListener('change', e => { colFilters.pendientes = e.target.checked; onFilterChange(); });
-  const fClear = document.getElementById('col_fil_clear');   if (fClear) fClear.addEventListener('click', () => { colFilters = { rei: '', distrito: '', tipoGestion: '', q: '', pendientes: false }; onFilterChange(); });
+  const fGes = document.getElementById('col_fil_gestion'); if (fGes) fGes.addEventListener('change', e => { colFilters.tipoGestion = e.target.value; onFilterChange(); });
+  const fQ = document.getElementById('col_fil_q'); if (fQ) fQ.addEventListener('input', e => { colFilters.q = e.target.value; onFilterChange(); });
+  const fPend = document.getElementById('col_fil_pend'); if (fPend) fPend.addEventListener('change', e => { colFilters.pendientes = e.target.checked; onFilterChange(); });
+  const fClear = document.getElementById('col_fil_clear'); if (fClear) fClear.addEventListener('click', () => { colFilters = { rei: '', distrito: '', tipoGestion: '', q: '', pendientes: false }; onFilterChange(); });
   const fExport = document.getElementById('col_export');
   if (fExport) fExport.addEventListener('click', () => {
     const header = ['REI', 'Código local', 'I.E.', 'Modalidad', 'Nivel de servicio', 'Turnos', 'Tipo de Gestión', 'Dependencia', 'Dirección', 'Distrito', 'Director', 'N° monitoreos', 'Última visita'];
@@ -2853,15 +3686,15 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
 function renderColegiosAdminPanel() {
   return '' +
     '<div class="panel"><h3>Agregar / editar institución</h3>' +
-      (colEditing ? renderColegioFormPanel() : '<button class="btn secondary small" id="col_new_btn" type="button">+ Agregar institución manualmente</button>') +
+    (colEditing ? renderColegioFormPanel() : '<button class="btn secondary small" id="col_new_btn" type="button">+ Agregar institución manualmente</button>') +
     '</div>' +
     '<div class="panel">' +
-      '<h3>Importar padrón desde Excel <small>archivo .xlsx</small></h3>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
-        '<button class="btn secondary small" id="col_import_toggle" type="button">' + (colShowImport ? 'Ocultar importación' : 'Importar desde Excel') + '</button>' +
-        '<button class="btn secondary small" id="col_download_plantilla" type="button">⬇ Descargar plantilla</button>' +
-      '</div>' +
-      (colShowImport ? renderColegiosImportForm() : '') +
+    '<h3>Importar padrón desde Excel <small>archivo .xlsx</small></h3>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
+    '<button class="btn secondary small" id="col_import_toggle" type="button">' + (colShowImport ? 'Ocultar importación' : 'Importar desde Excel') + '</button>' +
+    '<button class="btn secondary small" id="col_download_plantilla" type="button">⬇ Descargar plantilla</button>' +
+    '</div>' +
+    (colShowImport ? renderColegiosImportForm() : '') +
     '</div>';
 }
 
@@ -2871,12 +3704,12 @@ function renderColegiosImportForm() {
   return '' +
     resultsHtml +
     '<p class="helpText" style="margin-top:0">' +
-      'Descarga la plantilla de arriba, complétala en Excel y súbela aquí. ' +
-      'Si el código local ya existe en el padrón, se actualizará en vez de duplicarse. ' +
-      'Los sub_directores son opcionales (deja las columnas vacías si el colegio no tiene).' +
+    'Descarga la plantilla de arriba, complétala en Excel y súbela aquí. ' +
+    'Si el código local ya existe en el padrón, se actualizará en vez de duplicarse. ' +
+    'Los sub_directores son opcionales (deja las columnas vacías si el colegio no tiene).' +
     '</p>' +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">' +
-      '<input type="file" id="col_import_file" accept=".xlsx,.xls" style="font-size:13px">' +
+    '<input type="file" id="col_import_file" accept=".xlsx,.xls" style="font-size:13px">' +
     '</div>' +
     (colImportPreview && colImportPreview.rows.length
       ? '<button class="btn small" id="col_import_confirm" type="button" style="margin-bottom:10px">✓ Confirmar importación (' + colImportPreview.rows.length + ' instituciones)</button>'
@@ -2887,7 +3720,7 @@ function renderColegiosImportForm() {
 function renderColegiosImportResults(res) {
   if (!res) return '';
   const isAllSuccess = res.failures.length === 0 && res.success > 0;
-  const isPartial    = res.success > 0 && res.failures.length > 0;
+  const isPartial = res.success > 0 && res.failures.length > 0;
 
   const hasPermError = res.failures.some(f =>
     f.code === 'permission-denied' ||
@@ -2896,54 +3729,54 @@ function renderColegiosImportResults(res) {
 
   const permAdviceHtml = hasPermError
     ? '<div style="background:rgba(239,68,68,0.08);border:1px solid var(--danger);border-radius:var(--radius);padding:12px 14px;margin:12px 0;font-size:13px;line-height:1.5">' +
-        '<div style="font-weight:700;color:var(--danger);margin-bottom:6px">⚠ Diagnóstico de permisos (FirebaseError: Missing or insufficient permissions)</div>' +
-        'Firestore rechazó las escrituras por falta de permisos. Verifica y aplica lo siguiente:' +
-        '<ol style="margin:8px 0 0 18px;padding:0">' +
-          '<li><strong>Reglas de Firestore (firestore.rules):</strong> En Firebase Console &gt; Firestore Database &gt; pestaña <em>Reglas</em>, asegúrate de publicar la regla para <code>colegios</code>:<br>' +
-          '<code style="display:block;background:var(--surface);padding:6px 8px;border-radius:4px;margin:5px 0;font-size:12px;border:1px solid var(--line);font-family:monospace">' +
-            'match /colegios/{docId} {<br>' +
-            '&nbsp;&nbsp;allow read: if signedIn();<br>' +
-            '&nbsp;&nbsp;allow create, update, delete: if isAdmin();<br>' +
-            '}' +
-          '</code>' +
-          '<em>(Luego haz clic en <strong>Publicar</strong> en Firebase Console).</em>' +
-          '</li>' +
-          '<li style="margin-top:8px"><strong>Rol de Administrador:</strong> Verifica en la pestaña <em>Usuarios</em> que tu cuenta tenga rol <strong>Administrador</strong> en la colección <code>roles</code> de Firestore.</li>' +
-        '</ol>' +
-      '</div>'
+    '<div style="font-weight:700;color:var(--danger);margin-bottom:6px">⚠ Diagnóstico de permisos (FirebaseError: Missing or insufficient permissions)</div>' +
+    'Firestore rechazó las escrituras por falta de permisos. Verifica y aplica lo siguiente:' +
+    '<ol style="margin:8px 0 0 18px;padding:0">' +
+    '<li><strong>Reglas de Firestore (firestore.rules):</strong> En Firebase Console &gt; Firestore Database &gt; pestaña <em>Reglas</em>, asegúrate de publicar la regla para <code>colegios</code>:<br>' +
+    '<code style="display:block;background:var(--surface);padding:6px 8px;border-radius:4px;margin:5px 0;font-size:12px;border:1px solid var(--line);font-family:monospace">' +
+    'match /colegios/{docId} {<br>' +
+    '&nbsp;&nbsp;allow read: if signedIn();<br>' +
+    '&nbsp;&nbsp;allow create, update, delete: if isAdmin();<br>' +
+    '}' +
+    '</code>' +
+    '<em>(Luego haz clic en <strong>Publicar</strong> en Firebase Console).</em>' +
+    '</li>' +
+    '<li style="margin-top:8px"><strong>Rol de Administrador:</strong> Verifica en la pestaña <em>Usuarios</em> que tu cuenta tenga rol <strong>Administrador</strong> en la colección <code>roles</code> de Firestore.</li>' +
+    '</ol>' +
+    '</div>'
     : '';
 
   const failRowsHtml = res.failures.slice(0, 50).map(f =>
     '<tr>' +
-      '<td><span class="badge st-inicio">Fila ' + f.rowNum + '</span></td>' +
-      '<td>' + esc(f.codigoLocal) + '</td>' +
-      '<td>' + esc(f.ie) + '</td>' +
-      '<td><code style="font-size:11px">' + esc(f.code) + '</code></td>' +
-      '<td style="color:var(--danger);font-size:12px">' + esc(f.message) + '</td>' +
+    '<td><span class="badge st-inicio">Fila ' + f.rowNum + '</span></td>' +
+    '<td>' + esc(f.codigoLocal) + '</td>' +
+    '<td>' + esc(f.ie) + '</td>' +
+    '<td><code style="font-size:11px">' + esc(f.code) + '</code></td>' +
+    '<td style="color:var(--danger);font-size:12px">' + esc(f.message) + '</td>' +
     '</tr>'
   ).join('');
 
   return '' +
     '<div class="panel" style="border-left:4px solid ' + (isAllSuccess ? 'var(--primary)' : isPartial ? 'var(--accent)' : 'var(--danger)') + ';margin-top:12px;margin-bottom:14px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">' +
-        '<h4 style="margin:0;font-size:14.5px">' +
-          (isAllSuccess ? '✓ Importación completada con éxito' : isPartial ? '⚠ Importación parcial con errores' : '✕ Error al importar padrón') +
-        '</h4>' +
-        '<button class="btn secondary small" id="col_import_clear_results" type="button">✕ Cerrar reporte</button>' +
-      '</div>' +
-      '<p style="font-size:13px;margin:8px 0">' +
-        '<strong>Total de registros procesados:</strong> ' + res.total + ' · ' +
-        '<span style="color:var(--primary);font-weight:600">✓ Exitosos: ' + res.success + '</span> · ' +
-        '<span style="color:' + (res.failures.length ? 'var(--danger)' : 'var(--ink-soft)') + ';font-weight:600">✕ Fallidos: ' + res.failures.length + '</span>' +
-      '</p>' +
-      permAdviceHtml +
-      (res.failures.length
-        ? '<div style="margin-top:10px">' +
-            '<div style="font-weight:600;font-size:13px;margin-bottom:6px">Detalle de filas que no se pudieron guardar (' + res.failures.length + '):</div>' +
-            '<div class="tblWrap" style="max-height:260px;overflow-y:auto"><table><thead><tr><th>Fila Excel</th><th>Código local</th><th>Nombre I.E.</th><th>Código Firestore</th><th>Detalle del error</th></tr></thead><tbody>' + failRowsHtml + '</tbody></table></div>' +
-            (res.failures.length > 50 ? '<p class="helpText" style="margin-top:4px">Mostrando las primeras 50 fallas de ' + res.failures.length + '.</p>' : '') +
-          '</div>'
-        : '') +
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">' +
+    '<h4 style="margin:0;font-size:14.5px">' +
+    (isAllSuccess ? '✓ Importación completada con éxito' : isPartial ? '⚠ Importación parcial con errores' : '✕ Error al importar padrón') +
+    '</h4>' +
+    '<button class="btn secondary small" id="col_import_clear_results" type="button">✕ Cerrar reporte</button>' +
+    '</div>' +
+    '<p style="font-size:13px;margin:8px 0">' +
+    '<strong>Total de registros procesados:</strong> ' + res.total + ' · ' +
+    '<span style="color:var(--primary);font-weight:600">✓ Exitosos: ' + res.success + '</span> · ' +
+    '<span style="color:' + (res.failures.length ? 'var(--danger)' : 'var(--ink-soft)') + ';font-weight:600">✕ Fallidos: ' + res.failures.length + '</span>' +
+    '</p>' +
+    permAdviceHtml +
+    (res.failures.length
+      ? '<div style="margin-top:10px">' +
+      '<div style="font-weight:600;font-size:13px;margin-bottom:6px">Detalle de filas que no se pudieron guardar (' + res.failures.length + '):</div>' +
+      '<div class="tblWrap" style="max-height:260px;overflow-y:auto"><table><thead><tr><th>Fila Excel</th><th>Código local</th><th>Nombre I.E.</th><th>Código Firestore</th><th>Detalle del error</th></tr></thead><tbody>' + failRowsHtml + '</tbody></table></div>' +
+      (res.failures.length > 50 ? '<p class="helpText" style="margin-top:4px">Mostrando las primeras 50 fallas de ' + res.failures.length + '.</p>' : '') +
+      '</div>'
+      : '') +
     '</div>';
 }
 
@@ -2976,72 +3809,72 @@ function renderColegioFormPanel() {
   // Nota: state no está en scope directo aquí, se pasa a través del cierre de renderColegiosTab
   return '' +
     '<div class="fieldGrid">' +
-      '<div class="field"><label>REI</label><input type="text" id="col_f_rei"></div>' +
-      '<div class="field"><label>Código local *</label><input type="text" id="col_f_codigo"></div>' +
-      '<div class="field"><label>Nombre I.E. *</label><input type="text" id="col_f_ie"></div>' +
-      '<div class="field"><label>Modalidad</label><input type="text" id="col_f_modalidad"></div>' +
-      '<div class="field"><label>Nivel de servicio</label><input type="text" id="col_f_nivel"></div>' +
-      '<div class="field"><label>Turnos</label><input type="text" id="col_f_turnos"></div>' +
-      '<div class="field"><label>Tipo de Gestión</label><input type="text" id="col_f_gestion"></div>' +
-      '<div class="field"><label>Dependencia</label><input type="text" id="col_f_dependencia"></div>' +
-      '<div class="field" style="grid-column:span 2"><label>Dirección</label><input type="text" id="col_f_direccion"></div>' +
-      '<div class="field"><label>Distrito</label><input type="text" id="col_f_distrito"></div>' +
+    '<div class="field"><label>REI</label><input type="text" id="col_f_rei"></div>' +
+    '<div class="field"><label>Código local *</label><input type="text" id="col_f_codigo"></div>' +
+    '<div class="field"><label>Nombre I.E. *</label><input type="text" id="col_f_ie"></div>' +
+    '<div class="field"><label>Modalidad</label><input type="text" id="col_f_modalidad"></div>' +
+    '<div class="field"><label>Nivel de servicio</label><input type="text" id="col_f_nivel"></div>' +
+    '<div class="field"><label>Turnos</label><input type="text" id="col_f_turnos"></div>' +
+    '<div class="field"><label>Tipo de Gestión</label><input type="text" id="col_f_gestion"></div>' +
+    '<div class="field"><label>Dependencia</label><input type="text" id="col_f_dependencia"></div>' +
+    '<div class="field" style="grid-column:span 2"><label>Dirección</label><input type="text" id="col_f_direccion"></div>' +
+    '<div class="field"><label>Distrito</label><input type="text" id="col_f_distrito"></div>' +
     '</div>' +
     '<div class="sectionTitle">Datos del Director(a)</div>' +
     '<div class="fieldGrid">' +
-      '<div class="field"><label>Apellidos y nombres *</label><input type="text" id="col_f_dir_nombre"></div>' +
-      '<div class="field"><label>DNI</label><input type="text" id="col_f_dir_dni" maxlength="8"></div>' +
-      '<div class="field"><label>Teléfono</label><input type="text" id="col_f_dir_tel"></div>' +
-      '<div class="field"><label>Correo</label><input type="email" id="col_f_dir_correo"></div>' +
+    '<div class="field"><label>Apellidos y nombres *</label><input type="text" id="col_f_dir_nombre"></div>' +
+    '<div class="field"><label>DNI</label><input type="text" id="col_f_dir_dni" maxlength="8"></div>' +
+    '<div class="field"><label>Teléfono</label><input type="text" id="col_f_dir_tel"></div>' +
+    '<div class="field"><label>Correo</label><input type="email" id="col_f_dir_correo"></div>' +
     '</div>' +
     '<div class="sectionTitle">Datos del Sub-director(a) <small style="font-weight:400;color:var(--ink-soft)">(opcional)</small></div>' +
     '<div class="fieldGrid">' +
-      '<div class="field"><label>Apellidos y nombres</label><input type="text" id="col_f_sub_nombre"></div>' +
-      '<div class="field"><label>DNI</label><input type="text" id="col_f_sub_dni" maxlength="8"></div>' +
-      '<div class="field"><label>Teléfono</label><input type="text" id="col_f_sub_tel"></div>' +
-      '<div class="field"><label>Correo</label><input type="email" id="col_f_sub_correo"></div>' +
+    '<div class="field"><label>Apellidos y nombres</label><input type="text" id="col_f_sub_nombre"></div>' +
+    '<div class="field"><label>DNI</label><input type="text" id="col_f_sub_dni" maxlength="8"></div>' +
+    '<div class="field"><label>Teléfono</label><input type="text" id="col_f_sub_tel"></div>' +
+    '<div class="field"><label>Correo</label><input type="email" id="col_f_sub_correo"></div>' +
     '</div>' +
     '<div style="display:flex;gap:8px;margin-top:4px">' +
-      '<button class="btn small" id="col_f_save" type="button">Guardar institución</button>' +
-      '<button class="btn secondary small" id="col_f_cancel" type="button">Cancelar</button>' +
+    '<button class="btn small" id="col_f_save" type="button">Guardar institución</button>' +
+    '<button class="btn secondary small" id="col_f_cancel" type="button">Cancelar</button>' +
     '</div>';
 }
 
 async function saveColegioForm(state, dbNs, container, getFichaType, isAdmin) {
   const codigo = (document.getElementById('col_f_codigo').value || '').trim();
-  const ie     = (document.getElementById('col_f_ie').value || '').trim();
+  const ie = (document.getElementById('col_f_ie').value || '').trim();
   if (!codigo || !ie) { showToast('Completa Código local y Nombre I.E.'); return; }
 
   const id = (colEditing && colEditing !== 'new') ? colEditing : docIdForCodigo(codigo);
   const existing = state.colegios.find(x => x.id === id);
 
   const subNombre = (document.getElementById('col_f_sub_nombre').value || '').trim();
-  const subDni    = (document.getElementById('col_f_sub_dni').value || '').trim();
-  const subTel    = (document.getElementById('col_f_sub_tel').value || '').trim();
+  const subDni = (document.getElementById('col_f_sub_dni').value || '').trim();
+  const subTel = (document.getElementById('col_f_sub_tel').value || '').trim();
   const subCorreo = (document.getElementById('col_f_sub_correo').value || '').trim();
 
   const raw = {
-    rei:          (document.getElementById('col_f_rei').value || '').trim(),
-    codigoLocal:  codigo,
-    ie:           ie,
-    modalidad:    (document.getElementById('col_f_modalidad').value || '').trim(),
-    nivelServicio:(document.getElementById('col_f_nivel').value || '').trim(),
-    turnos:       (document.getElementById('col_f_turnos').value || '').trim(),
-    tipoGestion:  (document.getElementById('col_f_gestion').value || '').trim(),
-    dependencia:  (document.getElementById('col_f_dependencia').value || '').trim(),
-    direccion:    (document.getElementById('col_f_direccion').value || '').trim(),
-    distrito:     (document.getElementById('col_f_distrito').value || '').trim(),
+    rei: (document.getElementById('col_f_rei').value || '').trim(),
+    codigoLocal: codigo,
+    ie: ie,
+    modalidad: (document.getElementById('col_f_modalidad').value || '').trim(),
+    nivelServicio: (document.getElementById('col_f_nivel').value || '').trim(),
+    turnos: (document.getElementById('col_f_turnos').value || '').trim(),
+    tipoGestion: (document.getElementById('col_f_gestion').value || '').trim(),
+    dependencia: (document.getElementById('col_f_dependencia').value || '').trim(),
+    direccion: (document.getElementById('col_f_direccion').value || '').trim(),
+    distrito: (document.getElementById('col_f_distrito').value || '').trim(),
     director: {
-      nombre:   (document.getElementById('col_f_dir_nombre').value || '').trim(),
-      dni:      (document.getElementById('col_f_dir_dni').value || '').trim(),
+      nombre: (document.getElementById('col_f_dir_nombre').value || '').trim(),
+      dni: (document.getElementById('col_f_dir_dni').value || '').trim(),
       telefono: (document.getElementById('col_f_dir_tel').value || '').trim(),
-      correo:   (document.getElementById('col_f_dir_correo').value || '').trim(),
+      correo: (document.getElementById('col_f_dir_correo').value || '').trim(),
     },
     subDirector: {
-      nombre:   subNombre,
-      dni:      subDni,
+      nombre: subNombre,
+      dni: subDni,
       telefono: subTel,
-      correo:   subCorreo,
+      correo: subCorreo,
     },
   };
 
@@ -3061,7 +3894,7 @@ async function saveColegioForm(state, dbNs, container, getFichaType, isAdmin) {
 async function commitColegiosImport(state, dbNs, container, getFichaType, isAdmin, currentUser) {
   if (!colImportPreview || !colImportPreview.rows.length) return;
   const rows = colImportPreview.rows;
-  const now  = Date.now();
+  const now = Date.now();
 
   const user = currentUser || cachedCurrentUser;
   if (!user) {
@@ -3162,21 +3995,21 @@ async function commitColegiosImport(state, dbNs, container, getFichaType, isAdmi
 function renderColegioProfile(c, subs, typeStats) {
   const dirInfo = c.director && c.director.nombre
     ? '<div class="sectionTitle" style="margin-top:8px">Director(a)</div>' +
-      '<div style="font-size:12.5px;margin-bottom:4px">' +
-        '<strong>' + esc(c.director.nombre) + '</strong>' +
-        (c.director.dni    ? ' · DNI: ' + esc(c.director.dni) : '') +
-        (c.director.telefono ? ' · ☎ ' + esc(c.director.telefono) : '') +
-        (c.director.correo   ? ' · ✉ ' + esc(c.director.correo)   : '') +
-      '</div>'
+    '<div style="font-size:12.5px;margin-bottom:4px">' +
+    '<strong>' + esc(c.director.nombre) + '</strong>' +
+    (c.director.dni ? ' · DNI: ' + esc(c.director.dni) : '') +
+    (c.director.telefono ? ' · ☎ ' + esc(c.director.telefono) : '') +
+    (c.director.correo ? ' · ✉ ' + esc(c.director.correo) : '') +
+    '</div>'
     : '';
   const subDirInfo = c.subDirector && c.subDirector.nombre
     ? '<div class="sectionTitle" style="margin-top:8px">Sub-director(a)</div>' +
-      '<div style="font-size:12.5px;margin-bottom:4px">' +
-        '<strong>' + esc(c.subDirector.nombre) + '</strong>' +
-        (c.subDirector.dni    ? ' · DNI: ' + esc(c.subDirector.dni) : '') +
-        (c.subDirector.telefono ? ' · ☎ ' + esc(c.subDirector.telefono) : '') +
-        (c.subDirector.correo   ? ' · ✉ ' + esc(c.subDirector.correo)   : '') +
-      '</div>'
+    '<div style="font-size:12.5px;margin-bottom:4px">' +
+    '<strong>' + esc(c.subDirector.nombre) + '</strong>' +
+    (c.subDirector.dni ? ' · DNI: ' + esc(c.subDirector.dni) : '') +
+    (c.subDirector.telefono ? ' · ☎ ' + esc(c.subDirector.telefono) : '') +
+    (c.subDirector.correo ? ' · ✉ ' + esc(c.subDirector.correo) : '') +
+    '</div>'
     : '';
   const info = ['modalidad', 'nivelServicio', 'turnos', 'dependencia', 'direccion'].map(f =>
     c[f] ? '<div style="font-size:12.5px;margin-bottom:3px"><strong>' + esc(COLEGIO_FIELD_LABELS[f]) + ':</strong> ' + esc(c[f]) + '</div>' : ''
@@ -3214,8 +4047,8 @@ export function renderAlertasTab(container, state, getFichaType) {
       '<td>' + esc(a.fichaTypeNombre) + '<br><span style="color:var(--ink-soft);font-size:11.5px">' + esc(a.seccion) + '</span></td>' +
       '<td style="max-width:340px">' + esc(a.item) + '</td>' +
       '<td>' + a.pct + '% <span class="badge ' + st.cls + '">' + st.label + '</span>' +
-        (a.trend === 'retroceso' ? ' <span class="badge st-inicio" title="Bajó respecto a la visita anterior">▼ retrocedió</span>' : '') +
-        (a.trend === 'mejora'    ? ' <span class="badge st-logrado" title="Mejoró respecto a la visita anterior">▲ mejoró</span>'    : '') +
+      (a.trend === 'retroceso' ? ' <span class="badge st-inicio" title="Bajó respecto a la visita anterior">▼ retrocedió</span>' : '') +
+      (a.trend === 'mejora' ? ' <span class="badge st-logrado" title="Mejoró respecto a la visita anterior">▲ mejoró</span>' : '') +
       '</td>' +
       '<td>' + fmtDate(a.fecha) + (a.visita ? ' · V' + a.visita : '') + '</td>' +
       '</tr>';
@@ -3224,16 +4057,16 @@ export function renderAlertasTab(container, state, getFichaType) {
   container.innerHTML = '' +
     '<div class="pageHead"><h2>Alertas de seguimiento</h2><p>Cruce automático de institución + tipo de ficha + ítem exacto, a partir de la visita más reciente registrada. Prioriza dónde intervenir primero.</p></div>' +
     '<div class="cards">' +
-      '<div class="card"><div class="num">' + alerts.length + '</div><div class="lbl">Alertas activas</div></div>' +
-      '<div class="card"><div class="num">' + instConAlerta + '</div><div class="lbl">Instituciones con alertas</div></div>' +
-      '<div class="card"><div class="num">' + retrocesos + '</div><div class="lbl">Ítems en retroceso</div></div>' +
+    '<div class="card"><div class="num">' + alerts.length + '</div><div class="lbl">Alertas activas</div></div>' +
+    '<div class="card"><div class="num">' + instConAlerta + '</div><div class="lbl">Instituciones con alertas</div></div>' +
+    '<div class="card"><div class="num">' + retrocesos + '</div><div class="lbl">Ítems en retroceso</div></div>' +
     '</div>' +
     '<div class="panel">' +
-      '<div class="filterBar">' +
-        '<div class="field"><label>Tipo de ficha</label><select id="al_ft"><option value="">Todos</option>' + ftOpts + '</select></div>' +
-        '<div class="field"><label>UGEL</label><input type="search" id="al_ugel" value="' + esc(alertFilters.ugel) + '" placeholder="Buscar..."></div>' +
-      '</div>' +
-      '<div class="tblWrap"><table><thead><tr><th>Institución</th><th>Ficha / sección</th><th>Ítem</th><th>Resultado</th><th>Última visita</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<div class="filterBar">' +
+    '<div class="field"><label>Tipo de ficha</label><select id="al_ft"><option value="">Todos</option>' + ftOpts + '</select></div>' +
+    '<div class="field"><label>UGEL</label><input type="search" id="al_ugel" value="' + esc(alertFilters.ugel) + '" placeholder="Buscar..."></div>' +
+    '</div>' +
+    '<div class="tblWrap"><table><thead><tr><th>Institución</th><th>Ficha / sección</th><th>Ítem</th><th>Resultado</th><th>Última visita</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
     '</div>';
 
   document.getElementById('al_ft').addEventListener('change', e => { alertFilters.fichaTypeId = e.target.value; renderAlertasTab(container, state, getFichaType); });
@@ -3250,7 +4083,7 @@ function computeAlerts(state, getFichaType) {
     list.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '') || (b.createdAt || 0) - (a.createdAt || 0));
     const latest = list[0], prev = list[1] || null;
     const latestMap = {}; (latest.respuestas || []).forEach(r => latestMap[r.id] = r.valor);
-    const prevMap   = {}; if (prev) (prev.respuestas || []).forEach(r => prevMap[r.id] = r.valor);
+    const prevMap = {}; if (prev) (prev.respuestas || []).forEach(r => prevMap[r.id] = r.valor);
     ft.secciones.forEach(sec => sec.items.forEach(it => {
       const sc = scoreValue(ft.tipoRespuesta, latestMap[it.id]);
       if (sc === null) return;
@@ -3274,8 +4107,8 @@ export function renderUsuariosTab(container, state, dbNs, currentUser) {
     const isSelf = currentUser && r.id === currentUser.uid;
     return '<tr><td>' + esc(r.email || r.id) + (isSelf ? ' <span class="helpText" style="display:inline">(tú)</span>' : '') + '</td>' +
       '<td><select data-roleuid="' + r.id + '" ' + (isSelf ? 'disabled title="No puedes cambiar tu propio rol desde aquí"' : '') + '>' +
-        '<option value="general"' + (r.role === 'general' ? ' selected' : '') + '>General</option>' +
-        '<option value="admin"'  + (r.role === 'admin'   ? ' selected' : '') + '>Administrador</option>' +
+      '<option value="general"' + (r.role === 'general' ? ' selected' : '') + '>General</option>' +
+      '<option value="admin"' + (r.role === 'admin' ? ' selected' : '') + '>Administrador</option>' +
       '</select></td></tr>';
   }).join('') || '<tr><td colspan="2" style="text-align:center;color:var(--ink-soft);padding:22px">Aún no hay cuentas creadas. Créalas con scripts/create-accounts.js (ver README).</td></tr>';
 
@@ -3293,8 +4126,8 @@ export function renderUsuariosTab(container, state, dbNs, currentUser) {
 }
 
 /* ============================= TIPOS TAB ============================= */
-let tiposView       = 'list';
-let builderState    = null;
+let tiposView = 'list';
+let builderState = null;
 let builderEditingId = null;
 
 export function normalizeExtras(extras) {
@@ -3388,14 +4221,14 @@ export function renderTiposTab(container, state, getFichaType, dbNs, isAdmin = t
         '<div class="ti"><h4>' + (ft.icono || '📋') + ' ' + esc(ft.nombre) + '</h4><p>' + esc(ft.descripcion || 'Sin descripción.') + '</p>' +
         '<div class="meta">' + ft.secciones.length + ' secciones · ' + totalItems + ' ítems · ' + RESPONSE_LABELS[ft.tipoRespuesta] + ' · ' + count + ' fichas registradas</div></div>' +
         '<div class="acts"><button class="btn secondary small" data-edit="' + ft.id + '">Editar</button><button class="btn danger small" data-del="' + ft.id + '">Eliminar</button></div>' +
-      '</div>';
+        '</div>';
     }).join('') || '<div class="empty"><h4>Aún no has creado tipos de ficha</h4><p>Crea el primero para empezar a registrar visitas de monitoreo.</p></div>';
 
     container.innerHTML = '' +
       '<div class="pageHead"><h2>Tipos de ficha y Catálogos</h2><p>Define la estructura de cada ficha y las áreas oficiales que firman los documentos.</p></div>' +
       '<div style="display:flex;gap:8px;margin-bottom:18px;border-bottom:2px solid var(--line);padding-bottom:10px">' +
-        '<button type="button" class="btn small" id="subTabFichas">📋 Plantillas de Ficha</button>' +
-        '<button type="button" class="btn secondary small" id="subTabAreas">✍️ Áreas y Firmantes</button>' +
+      '<button type="button" class="btn small" id="subTabFichas">📋 Plantillas de Ficha</button>' +
+      '<button type="button" class="btn secondary small" id="subTabAreas">✍️ Áreas y Firmantes</button>' +
       '</div>' +
       '<button class="btn" id="newTipoBtn" style="margin-bottom:16px">+ Nuevo tipo de ficha</button>' +
       cards;
@@ -3691,9 +4524,19 @@ function openAreaModal(area, dbNs, state, container, isAdmin, currentUser, getFi
     </div>
   `;
 
+  lockBodyScroll();
   host.appendChild(modalWrap);
 
-  const close = () => modalWrap.remove();
+  const onKey = (e) => {
+    if (e.key === 'Escape') close();
+  };
+  window.addEventListener('keydown', onKey);
+
+  const close = () => {
+    window.removeEventListener('keydown', onKey);
+    modalWrap.remove();
+    unlockBodyScroll();
+  };
   modalWrap.querySelector('#m_area_close').onclick = close;
   modalWrap.querySelector('#m_area_cancel').onclick = close;
 
@@ -3717,7 +4560,7 @@ function openAreaModal(area, dbNs, state, container, isAdmin, currentUser, getFi
         const otherAreas = (state.areasFirma || DEFAULT_AREAS);
         for (const a of otherAreas) {
           if (a.id !== areaId) {
-            await dbNs.collection('areasFirma').doc(a.id).update({ esPredeterminada: false }).catch(() => {});
+            await dbNs.collection('areasFirma').doc(a.id).update({ esPredeterminada: false }).catch(() => { });
           }
         }
       }
@@ -3775,6 +4618,17 @@ function openFirmantesEditorModal(area, tipoReporte, dbNs, state, container, isA
 
   const modalWrap = document.createElement('div');
   modalWrap.className = 'downloadModalOverlay';
+
+  const onKey = (e) => {
+    if (e.key === 'Escape') close();
+  };
+  window.addEventListener('keydown', onKey);
+
+  const close = () => {
+    window.removeEventListener('keydown', onKey);
+    modalWrap.remove();
+    unlockBodyScroll();
+  };
 
   function renderInner() {
     modalWrap.innerHTML = `
@@ -3906,7 +4760,7 @@ function openFirmantesEditorModal(area, tipoReporte, dbNs, state, container, isA
         // Eliminar plantillas anteriores de este tipo y área
         const prev = (state.plantillasFirmantes || []).filter(p => p.areaId === area.id && p.tipoReporte === tipoReporte);
         for (const p of prev) {
-          await dbNs.collection('plantillasFirmantes').doc(p.id).delete().catch(() => {});
+          await dbNs.collection('plantillasFirmantes').doc(p.id).delete().catch(() => { });
         }
 
         // Insertar la nueva lista ordenada
@@ -3938,8 +4792,10 @@ function openFirmantesEditorModal(area, tipoReporte, dbNs, state, container, isA
     };
   }
 
+  lockBodyScroll();
   host.appendChild(modalWrap);
   renderInner();
+  modalWrap.querySelector('#m_f_close').onclick = close;
 }
 
 function renderBuilder(container, state, getFichaType, dbNs) {
@@ -3949,85 +4805,85 @@ function renderBuilder(container, state, getFichaType, dbNs) {
   const seccionesHtml = bs.secciones.map((sec, si) => {
     const itemsHtml = sec.items.map((it, ii) =>
       '<div class="listRow itemDefRow">' +
-        '<input type="text" placeholder="Texto del ítem / indicador" value="' + esc(it.texto) + '" data-sec="' + si + '" data-item="' + ii + '">' +
-        '<button type="button" class="iconBtn" data-rmitem="' + si + '|' + ii + '" title="Quitar ítem">✕</button>' +
+      '<input type="text" placeholder="Texto del ítem / indicador" value="' + esc(it.texto) + '" data-sec="' + si + '" data-item="' + ii + '">' +
+      '<button type="button" class="iconBtn" data-rmitem="' + si + '|' + ii + '" title="Quitar ítem">✕</button>' +
       '</div>'
     ).join('');
 
     const isFirst = si === 0;
-    const isLast  = si === bs.secciones.length - 1;
+    const isLast = si === bs.secciones.length - 1;
 
     return '<fieldset class="secCard" draggable="true" data-sec-idx="' + si + '">' +
       '<legend>' +
-        '<span class="secCardHandle" title="Arrastra para mover la sección">⠿</span> ' +
-        '<span class="secOrderBadge">#' + (si + 1) + '</span> ' +
-        '<input type="text" placeholder="Nombre de la sección / dimensión" value="' + esc(sec.nombre) + '" data-secname="' + si + '" style="font-family:var(--serif);font-weight:600;border:none;border-bottom:1px solid var(--line-strong);padding:2px 4px;width:280px;background:transparent">' +
+      '<span class="secCardHandle" title="Arrastra para mover la sección">⠿</span> ' +
+      '<span class="secOrderBadge">#' + (si + 1) + '</span> ' +
+      '<input type="text" placeholder="Nombre de la sección / dimensión" value="' + esc(sec.nombre) + '" data-secname="' + si + '" style="font-family:var(--serif);font-weight:600;border:none;border-bottom:1px solid var(--line-strong);padding:2px 4px;width:280px;background:transparent">' +
       '</legend>' +
       '<div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px dashed var(--line)">' +
-        '<span style="font-size:12px;color:var(--ink-soft);margin-right:auto">Mover posición de sección:</span>' +
-        '<button type="button" class="btn secondary small" data-movesec="' + si + '|up"' + (isFirst ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección arriba">▲ Subir sección</button>' +
-        '<button type="button" class="btn secondary small" data-movesec="' + si + '|down"' + (isLast ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección abajo">▼ Bajar sección</button>' +
+      '<span style="font-size:12px;color:var(--ink-soft);margin-right:auto">Mover posición de sección:</span>' +
+      '<button type="button" class="btn secondary small" data-movesec="' + si + '|up"' + (isFirst ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección arriba">▲ Subir sección</button>' +
+      '<button type="button" class="btn secondary small" data-movesec="' + si + '|down"' + (isLast ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección abajo">▼ Bajar sección</button>' +
       '</div>' +
       itemsHtml +
       '<div style="margin-top:8px"><button type="button" class="linklike" data-additem="' + si + '">+ Agregar ítem</button></div>' +
       '<div style="margin-top:12px;padding-top:8px;border-top:1px solid var(--line);display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
-        '<button type="button" class="btn secondary small" data-movesec="' + si + '|up"' + (isFirst ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección arriba">▲ Subir sección</button>' +
-        '<button type="button" class="btn secondary small" data-movesec="' + si + '|down"' + (isLast ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección abajo">▼ Bajar sección</button>' +
-        '<button type="button" class="btn danger small" data-rmsec="' + si + '" style="margin-left:auto">Quitar sección</button>' +
+      '<button type="button" class="btn secondary small" data-movesec="' + si + '|up"' + (isFirst ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección arriba">▲ Subir sección</button>' +
+      '<button type="button" class="btn secondary small" data-movesec="' + si + '|down"' + (isLast ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección abajo">▼ Bajar sección</button>' +
+      '<button type="button" class="btn danger small" data-rmsec="' + si + '" style="margin-left:auto">Quitar sección</button>' +
       '</div>' +
-    '</fieldset>';
+      '</fieldset>';
   }).join('');
 
   const extrasHtml = bs.extras.map((ex, i) => {
     const isFirst = i === 0;
-    const isLast  = i === bs.extras.length - 1;
+    const isLast = i === bs.extras.length - 1;
     return '<div class="extraDefRow" data-extra-idx="' + i + '">' +
       '<span class="secOrderBadge" style="margin-right:2px">#' + (i + 1) + '</span>' +
       '<input type="text" class="extraLabelInp" placeholder="Etiqueta del campo (ej: Director(a), N° tutores, ¿Es JEC?)" value="' + esc(ex.label) + '" data-extralabel="' + i + '">' +
       '<select class="extraTipoSel" data-extratipo="' + i + '">' +
-        '<option value="texto"' + (ex.tipo === 'texto' ? ' selected' : '') + '>Texto corto</option>' +
-        '<option value="numero"' + (ex.tipo === 'numero' ? ' selected' : '') + '>Número</option>' +
-        '<option value="fecha"' + (ex.tipo === 'fecha' ? ' selected' : '') + '>Fecha</option>' +
-        '<option value="si_no"' + (ex.tipo === 'si_no' ? ' selected' : '') + '>Sí / No</option>' +
+      '<option value="texto"' + (ex.tipo === 'texto' ? ' selected' : '') + '>Texto corto</option>' +
+      '<option value="numero"' + (ex.tipo === 'numero' ? ' selected' : '') + '>Número</option>' +
+      '<option value="fecha"' + (ex.tipo === 'fecha' ? ' selected' : '') + '>Fecha</option>' +
+      '<option value="si_no"' + (ex.tipo === 'si_no' ? ' selected' : '') + '>Sí / No</option>' +
       '</select>' +
       '<label class="extraReqLabel" title="Marcar si es obligatorio para registrar la ficha">' +
-        '<input type="checkbox" data-extrareq="' + i + '"' + (ex.required ? ' checked' : '') + '> Obligatorio' +
+      '<input type="checkbox" data-extrareq="' + i + '"' + (ex.required ? ' checked' : '') + '> Obligatorio' +
       '</label>' +
       '<div class="extraActs">' +
-        '<button type="button" class="iconBtn small" data-moveextra="' + i + '|up"' + (isFirst ? ' disabled' : '') + ' title="Subir campo">▲</button>' +
-        '<button type="button" class="iconBtn small" data-moveextra="' + i + '|down"' + (isLast ? ' disabled' : '') + ' title="Bajar campo">▼</button>' +
-        '<button type="button" class="iconBtn small" data-rmextra="' + i + '" title="Quitar campo">✕</button>' +
+      '<button type="button" class="iconBtn small" data-moveextra="' + i + '|up"' + (isFirst ? ' disabled' : '') + ' title="Subir campo">▲</button>' +
+      '<button type="button" class="iconBtn small" data-moveextra="' + i + '|down"' + (isLast ? ' disabled' : '') + ' title="Bajar campo">▼</button>' +
+      '<button type="button" class="iconBtn small" data-rmextra="' + i + '" title="Quitar campo">✕</button>' +
       '</div>' +
-    '</div>';
+      '</div>';
   }).join('') || '<p class="helpText" style="margin-top:0">Sin campos personalizados de cabecera.</p>';
 
   container.innerHTML = '' +
     '<div class="pageHead"><h2>' + (builderEditingId ? 'Editar tipo de ficha' : 'Nuevo tipo de ficha') + '</h2></div>' +
     '<div class="panel">' +
-      '<div class="fieldGrid">' +
-        '<div class="field"><label>Icono (emoji)</label><input type="text" id="b_icono" value="' + esc(bs.icono) + '" maxlength="4" style="max-width:80px"></div>' +
-        '<div class="field" style="grid-column:span 2"><label>Nombre de la ficha *</label><input type="text" id="b_nombre" value="' + esc(bs.nombre) + '" placeholder="Ej: Ficha de Monitoreo a la Gestión Escolar"></div>' +
-      '</div>' +
-      '<div class="field"><label>Descripción</label><textarea id="b_desc" placeholder="Breve descripción de para qué se usa esta ficha">' + esc(bs.descripcion) + '</textarea></div>' +
-      '<div class="field" style="max-width:340px"><label>Escala de respuesta de los ítems</label>' +
-        '<select id="b_tipo">' + Object.keys(RESPONSE_LABELS).map(k => '<option value="' + k + '"' + (k === bs.tipoRespuesta ? ' selected' : '') + '>' + RESPONSE_LABELS[k] + '</option>').join('') + '</select>' +
-        '<p class="helpText">Se aplicará a todos los ítems de esta ficha.</p>' +
-      '</div>' +
+    '<div class="fieldGrid">' +
+    '<div class="field"><label>Icono (emoji)</label><input type="text" id="b_icono" value="' + esc(bs.icono) + '" maxlength="4" style="max-width:80px"></div>' +
+    '<div class="field" style="grid-column:span 2"><label>Nombre de la ficha *</label><input type="text" id="b_nombre" value="' + esc(bs.nombre) + '" placeholder="Ej: Ficha de Monitoreo a la Gestión Escolar"></div>' +
+    '</div>' +
+    '<div class="field"><label>Descripción</label><textarea id="b_desc" placeholder="Breve descripción de para qué se usa esta ficha">' + esc(bs.descripcion) + '</textarea></div>' +
+    '<div class="field" style="max-width:340px"><label>Escala de respuesta de los ítems</label>' +
+    '<select id="b_tipo">' + Object.keys(RESPONSE_LABELS).map(k => '<option value="' + k + '"' + (k === bs.tipoRespuesta ? ' selected' : '') + '>' + RESPONSE_LABELS[k] + '</option>').join('') + '</select>' +
+    '<p class="helpText">Se aplicará a todos los ítems de esta ficha.</p>' +
+    '</div>' +
     '</div>' +
     '<div class="panel"><h3>Datos generales de la ficha <small>campos de cabecera configurables</small></h3>' +
-      '<div style="background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--ink-soft);line-height:1.4">' +
-        '<strong>Campos fijos obligatorios:</strong> <em>Institución educativa</em>, <em>Fecha</em> y <em>N° de visita</em> siempre están presentes en todas las fichas.<br>' +
-        'Agrega a continuación los campos de cabecera específicos para este tipo de ficha (UGEL, Código modular, Director, Coordinador, Teléfono, ¿Es JEC?, etc.).' +
-      '</div>' +
-      '<div id="extrasList">' + extrasHtml + '</div>' +
-      '<button type="button" class="btn secondary small" id="addExtraBtn" style="margin-top:4px">+ Agregar campo de cabecera</button>' +
+    '<div style="background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--ink-soft);line-height:1.4">' +
+    '<strong>Campos fijos obligatorios:</strong> <em>Institución educativa</em>, <em>Fecha</em> y <em>N° de visita</em> siempre están presentes en todas las fichas.<br>' +
+    'Agrega a continuación los campos de cabecera específicos para este tipo de ficha (UGEL, Código modular, Director, Coordinador, Teléfono, ¿Es JEC?, etc.).' +
+    '</div>' +
+    '<div id="extrasList">' + extrasHtml + '</div>' +
+    '<button type="button" class="btn secondary small" id="addExtraBtn" style="margin-top:4px">+ Agregar campo de cabecera</button>' +
     '</div>' +
     '<div class="panel"><h3>Secciones e ítems</h3>' + seccionesHtml +
-      '<button type="button" class="btn secondary small" id="addSecBtn">+ Agregar sección</button>' +
+    '<button type="button" class="btn secondary small" id="addSecBtn">+ Agregar sección</button>' +
     '</div>' +
     '<div style="display:flex;gap:10px;margin-top:16px">' +
-      '<button class="btn" id="saveTipoBtn">Guardar tipo de ficha</button>' +
-      '<button class="btn secondary" id="cancelTipoBtn">Cancelar</button>' +
+    '<button class="btn" id="saveTipoBtn">Guardar tipo de ficha</button>' +
+    '<button class="btn secondary" id="cancelTipoBtn">Cancelar</button>' +
     '</div>';
 
   document.getElementById('b_icono').addEventListener('input', e => bs.icono = e.target.value);
@@ -4236,16 +5092,16 @@ export function sanitizeResponsableRecord(r, existing, now) {
   }
 
   const docData = {
-    red:              s(r.red),
-    distrito:         s(r.distrito),
-    especialista:     s(r.especialista),
+    red: s(r.red),
+    distrito: s(r.distrito),
+    especialista: s(r.especialista),
     nombresApellidos: s(r.nombresApellidos),
-    cargo:            s(r.cargo),
-    modalidad:        modalidad,
-    celular:          s(r.celular),
-    correo:           s(r.correo),
-    updatedAt:        now,
-    createdAt:        createdAt,
+    cargo: s(r.cargo),
+    modalidad: modalidad,
+    celular: s(r.celular),
+    correo: s(r.correo),
+    updatedAt: now,
+    createdAt: createdAt,
   };
 
   return cleanForFirestore(docData);
@@ -4294,8 +5150,8 @@ export async function parseResponsablesExcel(file) {
       try {
         if (typeof XLSX === 'undefined') { reject(new Error('SheetJS no disponible')); return; }
         const data = new Uint8Array(e.target.result);
-        const wb   = XLSX.read(data, { type: 'array' });
-        const ws   = wb.Sheets[wb.SheetNames[0]];
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
         const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
         if (rawRows.length < 2) { resolve({ rows: [], errors: ['El archivo no contiene suficientes filas.'] }); return; }
@@ -4407,8 +5263,8 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
   const redList = Array.from(allReds).sort();
 
   const totalResp = (state.responsables || []).length;
-  const ebrCount   = (state.responsables || []).filter(r => (r.modalidad || '').toUpperCase() === 'EBR').length;
-  const ebeCount   = (state.responsables || []).filter(r => (r.modalidad || '').toUpperCase() === 'EBE').length;
+  const ebrCount = (state.responsables || []).filter(r => (r.modalidad || '').toUpperCase() === 'EBR').length;
+  const ebeCount = (state.responsables || []).filter(r => (r.modalidad || '').toUpperCase() === 'EBE').length;
   const ambasCount = (state.responsables || []).filter(r => {
     const m = (r.modalidad || '').toUpperCase();
     return m === 'EBR / EBE' || (m.includes('EBR') && m.includes('EBE'));
@@ -4451,23 +5307,23 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
     const isOpen = respExpanded === r.id;
     const subsCount = (state.submissions || []).filter(s => {
       const respName = (s.responsable || '').trim().toLowerCase();
-      const myName   = (r.nombresApellidos || '').trim().toLowerCase();
+      const myName = (r.nombresApellidos || '').trim().toLowerCase();
       return respName && myName && (respName.includes(myName) || myName.includes(respName));
     }).length;
 
     const detailHtml = isOpen
       ? '<div style="background:var(--surface-2);border-radius:var(--radius);padding:14px;margin:6px 0;font-size:13px;line-height:1.6">' +
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' +
-            '<div><strong>RED(s) asignadas:</strong> ' + esc(r.red || '—') + '</div>' +
-            '<div><strong>Distrito(s):</strong> ' + esc(r.distrito || '—') + '</div>' +
-            '<div><strong>Área / Especialidad:</strong> ' + esc(r.especialista || '—') + '</div>' +
-            '<div><strong>Cargo oficial:</strong> ' + esc(r.cargo || '—') + '</div>' +
-            '<div><strong>Modalidad:</strong> ' + modalidadBadge(r.modalidad) + '</div>' +
-            '<div><strong>N° Celular:</strong> ' + (r.celular ? '<a href="tel:' + esc(r.celular) + '">📞 ' + esc(r.celular) + '</a>' : '—') + '</div>' +
-            '<div><strong>Correo:</strong> ' + (r.correo ? '<a href="mailto:' + esc(r.correo) + '">✉ ' + esc(r.correo) + '</a>' : '—') + '</div>' +
-            '<div><strong>Fichas registradas:</strong> <span class="badge ' + (subsCount ? 'st-logrado' : 'st-none') + '">' + subsCount + ' ficha(s)</span></div>' +
-          '</div>' +
-        '</div>'
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' +
+      '<div><strong>RED(s) asignadas:</strong> ' + esc(r.red || '—') + '</div>' +
+      '<div><strong>Distrito(s):</strong> ' + esc(r.distrito || '—') + '</div>' +
+      '<div><strong>Área / Especialidad:</strong> ' + esc(r.especialista || '—') + '</div>' +
+      '<div><strong>Cargo oficial:</strong> ' + esc(r.cargo || '—') + '</div>' +
+      '<div><strong>Modalidad:</strong> ' + modalidadBadge(r.modalidad) + '</div>' +
+      '<div><strong>N° Celular:</strong> ' + (r.celular ? '<a href="tel:' + esc(r.celular) + '">📞 ' + esc(r.celular) + '</a>' : '—') + '</div>' +
+      '<div><strong>Correo:</strong> ' + (r.correo ? '<a href="mailto:' + esc(r.correo) + '">✉ ' + esc(r.correo) + '</a>' : '—') + '</div>' +
+      '<div><strong>Fichas registradas:</strong> <span class="badge ' + (subsCount ? 'st-logrado' : 'st-none') + '">' + subsCount + ' ficha(s)</span></div>' +
+      '</div>' +
+      '</div>'
       : '';
 
     return '<tr class="clickable" data-resprow="' + esc(r.id) + '">' +
@@ -4480,51 +5336,51 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
       '<td>' + (r.celular ? '<a href="tel:' + esc(r.celular) + '" style="color:inherit;text-decoration:none">📞 ' + esc(r.celular) + '</a>' : '<span style="color:var(--ink-soft)">—</span>') + '</td>' +
       '<td>' + (r.correo ? '<a href="mailto:' + esc(r.correo) + '" style="color:var(--primary);text-decoration:none">✉ ' + esc(r.correo) + '</a>' : '<span style="color:var(--ink-soft)">—</span>') + '</td>' +
       (isAdmin ? '<td><button class="iconBtn" data-respenit="' + esc(r.id) + '" title="Editar">✎</button> <button class="iconBtn" data-respdel="' + esc(r.id) + '" title="Eliminar">✕</button></td>' : '<td></td>') +
-    '</tr>' +
-    (isOpen ? '<tr class="detailRow"><td colspan="' + (isAdmin ? 9 : 8) + '">' + detailHtml + '</td></tr>' : '');
+      '</tr>' +
+      (isOpen ? '<tr class="detailRow"><td colspan="' + (isAdmin ? 9 : 8) + '">' + detailHtml + '</td></tr>' : '');
   }).join('') || '<tr><td colspan="' + (isAdmin ? 9 : 8) + '" style="text-align:center;color:var(--ink-soft);padding:22px">Ningún especialista coincide con los filtros.</td></tr>';
 
   container.innerHTML = '' +
     '<div class="pageHead">' +
-      '<h2>Responsables</h2>' +
-      '<p>Directorio de especialistas responsables de monitoreo por RED, distrito y modalidad (EBR, EBE o ambas).</p>' +
+    '<h2>Responsables</h2>' +
+    '<p>Directorio de especialistas responsables de monitoreo por RED, distrito y modalidad (EBR, EBE o ambas).</p>' +
     '</div>' +
     '<div class="cards">' +
-      '<div class="card"><div class="num">' + totalResp + '</div><div class="lbl">Especialistas registrados</div></div>' +
-      '<div class="card"><div class="num">' + redList.length + '</div><div class="lbl">REDs cubiertas</div></div>' +
-      '<div class="card"><div class="num">' + ebrCount + '</div><div class="lbl">Modalidad EBR</div></div>' +
-      '<div class="card"><div class="num">' + ebeCount + '</div><div class="lbl">Modalidad EBE</div></div>' +
-      '<div class="card"><div class="num">' + ambasCount + '</div><div class="lbl">Ambas (EBR / EBE)</div></div>' +
+    '<div class="card"><div class="num">' + totalResp + '</div><div class="lbl">Especialistas registrados</div></div>' +
+    '<div class="card"><div class="num">' + redList.length + '</div><div class="lbl">REDs cubiertas</div></div>' +
+    '<div class="card"><div class="num">' + ebrCount + '</div><div class="lbl">Modalidad EBR</div></div>' +
+    '<div class="card"><div class="num">' + ebeCount + '</div><div class="lbl">Modalidad EBE</div></div>' +
+    '<div class="card"><div class="num">' + ambasCount + '</div><div class="lbl">Ambas (EBR / EBE)</div></div>' +
     '</div>' +
     (totalResp === 0 ? '<div class="empty"><h4>Aún no hay especialistas registrados</h4><p>' + (isAdmin ? 'Importa la lista de responsables en el panel de abajo o agrégalos manualmente.' : 'Pide a un administrador que importe la nómina de especialistas.') + '</p></div>' : '') +
     (isAdmin ? renderResponsablesAdminPanel(state) : '') +
     '<div class="panel">' +
-      '<h3>Directorio de especialistas</h3>' +
-      '<div class="filterBar">' +
-        '<div class="field">' +
-          '<label>Modalidad</label>' +
-          '<select id="resp_fil_modalidad">' +
-            '<option value="">Todas las modalidades</option>' +
-            '<option value="EBR"' + (respFilters.modalidad === 'EBR' ? ' selected' : '') + '>EBR</option>' +
-            '<option value="EBE"' + (respFilters.modalidad === 'EBE' ? ' selected' : '') + '>EBE</option>' +
-            '<option value="EBR / EBE"' + (respFilters.modalidad === 'EBR / EBE' ? ' selected' : '') + '>EBR / EBE (Ambas)</option>' +
-          '</select>' +
-        '</div>' +
-        '<div class="field">' +
-          '<label>RED</label>' +
-          '<select id="resp_fil_red">' +
-            '<option value="">Todas las REDs</option>' +
-            redList.map(r => '<option value="' + esc(r) + '"' + (r === respFilters.red ? ' selected' : '') + '>' + esc(r) + '</option>').join('') +
-          '</select>' +
-        '</div>' +
-        '<div class="field" style="flex:2;min-width:200px">' +
-          '<label>Buscar</label>' +
-          '<input type="search" id="resp_fil_q" value="' + esc(respFilters.q) + '" placeholder="Nombre, cargo, área, RED o distrito...">' +
-        '</div>' +
-        '<button class="btn secondary small" id="resp_fil_clear" type="button" style="align-self:flex-end;margin-bottom:2px">Limpiar</button>' +
-        '<button class="btn secondary small" id="resp_export" type="button" style="margin-left:auto;align-self:flex-end;margin-bottom:2px">Exportar CSV</button>' +
-      '</div>' +
-      '<div class="tblWrap"><table><thead><tr><th>RED</th><th>Distrito(s)</th><th>Especialista responsable</th><th>Nombres y apellidos</th><th>Cargo</th><th>Modalidad</th><th>N°Celular</th><th>Correo Institucional</th>' + (isAdmin ? '<th></th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<h3>Directorio de especialistas</h3>' +
+    '<div class="filterBar">' +
+    '<div class="field">' +
+    '<label>Modalidad</label>' +
+    '<select id="resp_fil_modalidad">' +
+    '<option value="">Todas las modalidades</option>' +
+    '<option value="EBR"' + (respFilters.modalidad === 'EBR' ? ' selected' : '') + '>EBR</option>' +
+    '<option value="EBE"' + (respFilters.modalidad === 'EBE' ? ' selected' : '') + '>EBE</option>' +
+    '<option value="EBR / EBE"' + (respFilters.modalidad === 'EBR / EBE' ? ' selected' : '') + '>EBR / EBE (Ambas)</option>' +
+    '</select>' +
+    '</div>' +
+    '<div class="field">' +
+    '<label>RED</label>' +
+    '<select id="resp_fil_red">' +
+    '<option value="">Todas las REDs</option>' +
+    redList.map(r => '<option value="' + esc(r) + '"' + (r === respFilters.red ? ' selected' : '') + '>' + esc(r) + '</option>').join('') +
+    '</select>' +
+    '</div>' +
+    '<div class="field" style="flex:2;min-width:200px">' +
+    '<label>Buscar</label>' +
+    '<input type="search" id="resp_fil_q" value="' + esc(respFilters.q) + '" placeholder="Nombre, cargo, área, RED o distrito...">' +
+    '</div>' +
+    '<button class="btn secondary small" id="resp_fil_clear" type="button" style="align-self:flex-end;margin-bottom:2px">Limpiar</button>' +
+    '<button class="btn secondary small" id="resp_export" type="button" style="margin-left:auto;align-self:flex-end;margin-bottom:2px">Exportar CSV</button>' +
+    '</div>' +
+    '<div class="tblWrap"><table><thead><tr><th>RED</th><th>Distrito(s)</th><th>Especialista responsable</th><th>Nombres y apellidos</th><th>Cargo</th><th>Modalidad</th><th>N°Celular</th><th>Correo Institucional</th>' + (isAdmin ? '<th></th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
     '</div>';
 
   // Event handlers
@@ -4646,15 +5502,15 @@ function renderResponsablesAdminPanel(state) {
 
   return '' +
     '<div class="panel"><h3>Agregar / editar especialista</h3>' +
-      (respEditing ? renderResponsableFormPanel(existing, state) : '<button class="btn secondary small" id="resp_new_btn" type="button">+ Agregar especialista manualmente</button>') +
+    (respEditing ? renderResponsableFormPanel(existing, state) : '<button class="btn secondary small" id="resp_new_btn" type="button">+ Agregar especialista manualmente</button>') +
     '</div>' +
     '<div class="panel">' +
-      '<h3>Importar especialistas desde Excel <small>archivo .xlsx</small></h3>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
-        '<button class="btn secondary small" id="resp_import_toggle" type="button">' + (respShowImport ? 'Ocultar importación' : 'Importar desde Excel') + '</button>' +
-        '<button class="btn secondary small" id="resp_download_plantilla" type="button">⬇ Descargar plantilla Excel</button>' +
-      '</div>' +
-      (respShowImport ? renderResponsablesImportForm() : '') +
+    '<h3>Importar especialistas desde Excel <small>archivo .xlsx</small></h3>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
+    '<button class="btn secondary small" id="resp_import_toggle" type="button">' + (respShowImport ? 'Ocultar importación' : 'Importar desde Excel') + '</button>' +
+    '<button class="btn secondary small" id="resp_download_plantilla" type="button">⬇ Descargar plantilla Excel</button>' +
+    '</div>' +
+    (respShowImport ? renderResponsablesImportForm() : '') +
     '</div>';
 }
 
@@ -4670,67 +5526,67 @@ function renderResponsableFormPanel(existing, state) {
 
   return '' +
     '<div class="fieldGrid">' +
-      '<div class="field">' +
-        '<label>RED (o REDs a cargo)</label>' +
-        '<input type="text" id="resp_f_red" list="dl_resp_redes" value="' + esc(existing ? existing.red : '') + '" placeholder="Ej. RED 01 o RED 01, RED 03">' +
-        '<datalist id="dl_resp_redes">' + redOpts + '</datalist>' +
-      '</div>' +
-      '<div class="field">' +
-        '<label>Distrito(s)</label>' +
-        '<input type="text" id="resp_f_distrito" value="' + esc(existing ? existing.distrito : '') + '" placeholder="Ej. Cercado de Lima, Breña">' +
-      '</div>' +
-      '<div class="field">' +
-        '<label>Especialista responsable (Área)</label>' +
-        '<input type="text" id="resp_f_especialista" value="' + esc(existing ? existing.especialista : '') + '" placeholder="Ej. Especialista en Convivencia">' +
-      '</div>' +
-      '<div class="field">' +
-        '<label>Nombres y apellidos *</label>' +
-        '<input type="text" id="resp_f_nombres" value="' + esc(existing ? existing.nombresApellidos : '') + '" placeholder="Apellidos y nombres completos" required>' +
-      '</div>' +
-      '<div class="field">' +
-        '<label>Cargo</label>' +
-        '<input type="text" id="resp_f_cargo" value="' + esc(existing ? existing.cargo : '') + '" placeholder="Ej. Especialista Pedagógico">' +
-      '</div>' +
-      '<div class="field">' +
-        '<label>Modalidad</label>' +
-        '<select id="resp_f_modalidad">' +
-          '<option value="EBR"' + (modVal === 'EBR' ? ' selected' : '') + '>EBR</option>' +
-          '<option value="EBE"' + (modVal === 'EBE' ? ' selected' : '') + '>EBE</option>' +
-          '<option value="EBR / EBE"' + (modVal === 'EBR / EBE' || (modVal.includes('EBR') && modVal.includes('EBE')) ? ' selected' : '') + '>EBR / EBE (Ambas)</option>' +
-        '</select>' +
-      '</div>' +
-      '<div class="field">' +
-        '<label>N° Celular</label>' +
-        '<input type="text" id="resp_f_celular" value="' + esc(existing ? existing.celular : '') + '" placeholder="Ej. 987654321">' +
-      '</div>' +
-      '<div class="field">' +
-        '<label>Correo Institucional</label>' +
-        '<input type="email" id="resp_f_correo" value="' + esc(existing ? existing.correo : '') + '" placeholder="usuario@ugel03.gob.pe">' +
-      '</div>' +
+    '<div class="field">' +
+    '<label>RED (o REDs a cargo)</label>' +
+    '<input type="text" id="resp_f_red" list="dl_resp_redes" value="' + esc(existing ? existing.red : '') + '" placeholder="Ej. RED 01 o RED 01, RED 03">' +
+    '<datalist id="dl_resp_redes">' + redOpts + '</datalist>' +
+    '</div>' +
+    '<div class="field">' +
+    '<label>Distrito(s)</label>' +
+    '<input type="text" id="resp_f_distrito" value="' + esc(existing ? existing.distrito : '') + '" placeholder="Ej. Cercado de Lima, Breña">' +
+    '</div>' +
+    '<div class="field">' +
+    '<label>Especialista responsable (Área)</label>' +
+    '<input type="text" id="resp_f_especialista" value="' + esc(existing ? existing.especialista : '') + '" placeholder="Ej. Especialista en Convivencia">' +
+    '</div>' +
+    '<div class="field">' +
+    '<label>Nombres y apellidos *</label>' +
+    '<input type="text" id="resp_f_nombres" value="' + esc(existing ? existing.nombresApellidos : '') + '" placeholder="Apellidos y nombres completos" required>' +
+    '</div>' +
+    '<div class="field">' +
+    '<label>Cargo</label>' +
+    '<input type="text" id="resp_f_cargo" value="' + esc(existing ? existing.cargo : '') + '" placeholder="Ej. Especialista Pedagógico">' +
+    '</div>' +
+    '<div class="field">' +
+    '<label>Modalidad</label>' +
+    '<select id="resp_f_modalidad">' +
+    '<option value="EBR"' + (modVal === 'EBR' ? ' selected' : '') + '>EBR</option>' +
+    '<option value="EBE"' + (modVal === 'EBE' ? ' selected' : '') + '>EBE</option>' +
+    '<option value="EBR / EBE"' + (modVal === 'EBR / EBE' || (modVal.includes('EBR') && modVal.includes('EBE')) ? ' selected' : '') + '>EBR / EBE (Ambas)</option>' +
+    '</select>' +
+    '</div>' +
+    '<div class="field">' +
+    '<label>N° Celular</label>' +
+    '<input type="text" id="resp_f_celular" value="' + esc(existing ? existing.celular : '') + '" placeholder="Ej. 987654321">' +
+    '</div>' +
+    '<div class="field">' +
+    '<label>Correo Institucional</label>' +
+    '<input type="email" id="resp_f_correo" value="' + esc(existing ? existing.correo : '') + '" placeholder="usuario@ugel03.gob.pe">' +
+    '</div>' +
     '</div>' +
     '<div style="display:flex;gap:8px;margin-top:4px">' +
-      '<button class="btn small" id="resp_f_save" type="button">' + (existing ? 'Actualizar especialista' : 'Guardar especialista') + '</button>' +
-      '<button class="btn secondary small" id="resp_f_cancel" type="button">Cancelar</button>' +
+    '<button class="btn small" id="resp_f_save" type="button">' + (existing ? 'Actualizar especialista' : 'Guardar especialista') + '</button>' +
+    '<button class="btn secondary small" id="resp_f_cancel" type="button">Cancelar</button>' +
     '</div>';
 }
 
 async function saveResponsableForm(state, dbNs, container, isAdmin, currentUser) {
   const nombres = (document.getElementById('resp_f_nombres').value || '').trim();
-  const correo  = (document.getElementById('resp_f_correo').value || '').trim();
+  const correo = (document.getElementById('resp_f_correo').value || '').trim();
   if (!nombres) { showToast('Ingresa los Nombres y apellidos del especialista.'); return; }
 
   const id = (respEditing && respEditing !== 'new') ? respEditing : docIdForResponsable(correo, nombres);
   const existing = (state.responsables || []).find(x => x.id === id);
 
   const raw = {
-    red:              (document.getElementById('resp_f_red').value || '').trim(),
-    distrito:         (document.getElementById('resp_f_distrito').value || '').trim(),
-    especialista:     (document.getElementById('resp_f_especialista').value || '').trim(),
+    red: (document.getElementById('resp_f_red').value || '').trim(),
+    distrito: (document.getElementById('resp_f_distrito').value || '').trim(),
+    especialista: (document.getElementById('resp_f_especialista').value || '').trim(),
     nombresApellidos: nombres,
-    cargo:            (document.getElementById('resp_f_cargo').value || '').trim(),
-    modalidad:        (document.getElementById('resp_f_modalidad').value || '').trim(),
-    celular:          (document.getElementById('resp_f_celular').value || '').trim(),
-    correo:           correo,
+    cargo: (document.getElementById('resp_f_cargo').value || '').trim(),
+    modalidad: (document.getElementById('resp_f_modalidad').value || '').trim(),
+    celular: (document.getElementById('resp_f_celular').value || '').trim(),
+    correo: correo,
   };
 
   const data = sanitizeResponsableRecord(raw, existing, Date.now());
@@ -4751,13 +5607,13 @@ function renderResponsablesImportForm() {
   return '' +
     resultsHtml +
     '<p class="helpText" style="margin-top:0">' +
-      'Descarga la plantilla con el botón de arriba, complétala en Excel y súbela aquí. ' +
-      'Columnas reconocidas: <strong>RED, Distrito(s), Especialista responsable, Nombres y apellidos, Cargo, Modalidad, N°Celular, Correo Institucional</strong>. ' +
-      'En Modalidad puedes indicar <code>EBR</code>, <code>EBE</code> o <code>EBR / EBE</code> si tiene a cargo ambas modalidades. ' +
-      'Si el especialista ya existe en el directorio, se actualizará en vez de duplicarse.' +
+    'Descarga la plantilla con el botón de arriba, complétala en Excel y súbela aquí. ' +
+    'Columnas reconocidas: <strong>RED, Distrito(s), Especialista responsable, Nombres y apellidos, Cargo, Modalidad, N°Celular, Correo Institucional</strong>. ' +
+    'En Modalidad puedes indicar <code>EBR</code>, <code>EBE</code> o <code>EBR / EBE</code> si tiene a cargo ambas modalidades. ' +
+    'Si el especialista ya existe en el directorio, se actualizará en vez de duplicarse.' +
     '</p>' +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">' +
-      '<input type="file" id="resp_import_file" accept=".xlsx,.xls" style="font-size:13px">' +
+    '<input type="file" id="resp_import_file" accept=".xlsx,.xls" style="font-size:13px">' +
     '</div>' +
     (respImportPreview && respImportPreview.rows.length
       ? '<button class="btn small" id="resp_import_confirm" type="button" style="margin-bottom:10px">✓ Confirmar importación (' + respImportPreview.rows.length + ' especialistas)</button>'
@@ -4768,7 +5624,7 @@ function renderResponsablesImportForm() {
 function renderResponsablesImportResults(res) {
   if (!res) return '';
   const isAllSuccess = res.failures.length === 0 && res.success > 0;
-  const isPartial    = res.success > 0 && res.failures.length > 0;
+  const isPartial = res.success > 0 && res.failures.length > 0;
 
   const hasPermError = res.failures.some(f =>
     f.code === 'permission-denied' ||
@@ -4777,46 +5633,46 @@ function renderResponsablesImportResults(res) {
 
   const permAdviceHtml = hasPermError
     ? '<div style="background:rgba(239,68,68,0.08);border:1px solid var(--danger);border-radius:var(--radius);padding:12px 14px;margin:12px 0;font-size:13px;line-height:1.5">' +
-        '<div style="font-weight:700;color:var(--danger);margin-bottom:6px">⚠ Diagnóstico de permisos (FirebaseError: Missing or insufficient permissions)</div>' +
-        'Firestore rechazó las escrituras en la colección <code>responsables</code>. Verifica:' +
-        '<ol style="margin:8px 0 0 18px;padding:0">' +
-          '<li>Que la regla de seguridad para <code>responsables</code> esté publicada en Firebase Console: <code>match /responsables/{docId} { allow read: if signedIn(); allow create, update, delete: if isAdmin(); }</code>.</li>' +
-          '<li>Que tu usuario tenga rol <strong>admin</strong> en la colección <code>roles</code>.</li>' +
-        '</ol>' +
-      '</div>'
+    '<div style="font-weight:700;color:var(--danger);margin-bottom:6px">⚠ Diagnóstico de permisos (FirebaseError: Missing or insufficient permissions)</div>' +
+    'Firestore rechazó las escrituras en la colección <code>responsables</code>. Verifica:' +
+    '<ol style="margin:8px 0 0 18px;padding:0">' +
+    '<li>Que la regla de seguridad para <code>responsables</code> esté publicada en Firebase Console: <code>match /responsables/{docId} { allow read: if signedIn(); allow create, update, delete: if isAdmin(); }</code>.</li>' +
+    '<li>Que tu usuario tenga rol <strong>admin</strong> en la colección <code>roles</code>.</li>' +
+    '</ol>' +
+    '</div>'
     : '';
 
   const failRowsHtml = res.failures.slice(0, 50).map(f =>
     '<tr>' +
-      '<td><span class="badge st-inicio">Fila ' + f.rowNum + '</span></td>' +
-      '<td>' + esc(f.nombre) + '</td>' +
-      '<td>' + esc(f.correo) + '</td>' +
-      '<td><code style="font-size:11px">' + esc(f.code) + '</code></td>' +
-      '<td style="color:var(--danger);font-size:12px">' + esc(f.message) + '</td>' +
+    '<td><span class="badge st-inicio">Fila ' + f.rowNum + '</span></td>' +
+    '<td>' + esc(f.nombre) + '</td>' +
+    '<td>' + esc(f.correo) + '</td>' +
+    '<td><code style="font-size:11px">' + esc(f.code) + '</code></td>' +
+    '<td style="color:var(--danger);font-size:12px">' + esc(f.message) + '</td>' +
     '</tr>'
   ).join('');
 
   return '' +
     '<div class="panel" style="border-left:4px solid ' + (isAllSuccess ? 'var(--primary)' : isPartial ? 'var(--accent)' : 'var(--danger)') + ';margin-top:12px;margin-bottom:14px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">' +
-        '<h4 style="margin:0;font-size:14.5px">' +
-          (isAllSuccess ? '✓ Importación de especialistas completada con éxito' : isPartial ? '⚠ Importación parcial con errores' : '✕ Error al importar especialistas') +
-        '</h4>' +
-        '<button class="btn secondary small" id="resp_import_clear_results" type="button">✕ Cerrar reporte</button>' +
-      '</div>' +
-      '<p style="font-size:13px;margin:8px 0">' +
-        '<strong>Total de registros procesados:</strong> ' + res.total + ' · ' +
-        '<span style="color:var(--primary);font-weight:600">✓ Exitosos: ' + res.success + '</span> · ' +
-        '<span style="color:' + (res.failures.length ? 'var(--danger)' : 'var(--ink-soft)') + ';font-weight:600">✕ Fallidos: ' + res.failures.length + '</span>' +
-      '</p>' +
-      permAdviceHtml +
-      (res.failures.length
-        ? '<div style="margin-top:10px">' +
-            '<div style="font-weight:600;font-size:13px;margin-bottom:6px">Detalle de filas que no se pudieron guardar (' + res.failures.length + '):</div>' +
-            '<div class="tblWrap" style="max-height:240px;overflow-y:auto"><table><thead><tr><th>Fila Excel</th><th>Nombres y apellidos</th><th>Correo</th><th>Código Firestore</th><th>Detalle del error</th></tr></thead><tbody>' + failRowsHtml + '</tbody></table></div>' +
-            (res.failures.length > 50 ? '<p class="helpText" style="margin-top:4px">Mostrando las primeras 50 fallas de ' + res.failures.length + '.</p>' : '') +
-          '</div>'
-        : '') +
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">' +
+    '<h4 style="margin:0;font-size:14.5px">' +
+    (isAllSuccess ? '✓ Importación de especialistas completada con éxito' : isPartial ? '⚠ Importación parcial con errores' : '✕ Error al importar especialistas') +
+    '</h4>' +
+    '<button class="btn secondary small" id="resp_import_clear_results" type="button">✕ Cerrar reporte</button>' +
+    '</div>' +
+    '<p style="font-size:13px;margin:8px 0">' +
+    '<strong>Total de registros procesados:</strong> ' + res.total + ' · ' +
+    '<span style="color:var(--primary);font-weight:600">✓ Exitosos: ' + res.success + '</span> · ' +
+    '<span style="color:' + (res.failures.length ? 'var(--danger)' : 'var(--ink-soft)') + ';font-weight:600">✕ Fallidos: ' + res.failures.length + '</span>' +
+    '</p>' +
+    permAdviceHtml +
+    (res.failures.length
+      ? '<div style="margin-top:10px">' +
+      '<div style="font-weight:600;font-size:13px;margin-bottom:6px">Detalle de filas que no se pudieron guardar (' + res.failures.length + '):</div>' +
+      '<div class="tblWrap" style="max-height:240px;overflow-y:auto"><table><thead><tr><th>Fila Excel</th><th>Nombres y apellidos</th><th>Correo</th><th>Código Firestore</th><th>Detalle del error</th></tr></thead><tbody>' + failRowsHtml + '</tbody></table></div>' +
+      (res.failures.length > 50 ? '<p class="helpText" style="margin-top:4px">Mostrando las primeras 50 fallas de ' + res.failures.length + '.</p>' : '') +
+      '</div>'
+      : '') +
     '</div>';
 }
 
@@ -4827,14 +5683,14 @@ function renderResponsablesImportPreview(preview) {
   if (!preview.rows.length) return errHtml + '<p class="helpText">No hay filas válidas para importar.</p>';
   const rowsHtml = preview.rows.slice(0, 50).map(r =>
     '<tr>' +
-      '<td>' + esc(r.red) + '</td>' +
-      '<td>' + esc(r.distrito) + '</td>' +
-      '<td>' + esc(r.especialista) + '</td>' +
-      '<td>' + esc(r.nombresApellidos) + '</td>' +
-      '<td>' + esc(r.cargo) + '</td>' +
-      '<td>' + modalidadBadge(r.modalidad) + '</td>' +
-      '<td>' + esc(r.celular) + '</td>' +
-      '<td>' + esc(r.correo) + '</td>' +
+    '<td>' + esc(r.red) + '</td>' +
+    '<td>' + esc(r.distrito) + '</td>' +
+    '<td>' + esc(r.especialista) + '</td>' +
+    '<td>' + esc(r.nombresApellidos) + '</td>' +
+    '<td>' + esc(r.cargo) + '</td>' +
+    '<td>' + modalidadBadge(r.modalidad) + '</td>' +
+    '<td>' + esc(r.celular) + '</td>' +
+    '<td>' + esc(r.correo) + '</td>' +
     '</tr>'
   ).join('');
 
@@ -4848,7 +5704,7 @@ function renderResponsablesImportPreview(preview) {
 async function commitResponsablesImport(state, dbNs, container, isAdmin, currentUser) {
   if (!respImportPreview || !respImportPreview.rows.length) return;
   const rows = respImportPreview.rows;
-  const now  = Date.now();
+  const now = Date.now();
 
   if (!currentUser) {
     showToast('Sesión no encontrada. Inicia sesión como Administrador.');
@@ -4933,6 +5789,7 @@ export const SEED_CONCURSOS_DEFAULTS = [
     rolesParticipante: ['Estudiante'],
     rolesAsesor: ['Docente Asesor'],
     disciplinasSugeridas: [],
+    camposPodio: ['categoria'],
   },
   {
     id: 'onem',
@@ -4952,6 +5809,7 @@ export const SEED_CONCURSOS_DEFAULTS = [
     rolesParticipante: ['Estudiante'],
     rolesAsesor: ['Docente Asesor'],
     disciplinasSugeridas: [],
+    camposPodio: ['categoria'],
   },
   {
     id: 'peru_lee',
@@ -4965,6 +5823,7 @@ export const SEED_CONCURSOS_DEFAULTS = [
     rolesParticipante: ['Estudiante'],
     rolesAsesor: ['Docente Asesor'],
     disciplinasSugeridas: ['Comprensión Lectora', 'Lectura Crítica', 'Creación Literaria'],
+    camposPodio: ['categoria', 'disciplina'],
   },
   {
     id: 'eureka',
@@ -4979,6 +5838,7 @@ export const SEED_CONCURSOS_DEFAULTS = [
     disciplinasSugeridas: ['Indagación Científica', 'Soluciones Tecnológicas', 'Indagación Social'],
     rolesParticipante: ['Estudiante'],
     rolesAsesor: ['Docente Asesor(a)'],
+    camposPodio: ['categoria', 'disciplina'],
   },
   {
     id: 'jfen',
@@ -5003,6 +5863,7 @@ export const SEED_CONCURSOS_DEFAULTS = [
     ],
     rolesParticipante: ['Estudiante'],
     rolesAsesor: ['Docente Asesor'],
+    camposPodio: ['categoria', 'disciplina'],
   },
   {
     id: 'jedpa',
@@ -5028,8 +5889,103 @@ export const SEED_CONCURSOS_DEFAULTS = [
     ],
     rolesParticipante: ['Deportista'],
     rolesAsesor: ['Entrenador', 'Delegado'],
+    camposPodio: ['categoria', 'disciplina', 'genero'],
   }
 ];
+
+/* -------------------------------------------------------------
+   HELPERS DE PODIO Y GÉNERO
+   ------------------------------------------------------------- */
+export function normalizeGenero(val) {
+  if (!val) return 'sin_genero';
+  const s = normalizeText(val);
+  if (!s || s === '—' || s === '-' || s === 'sin genero' || s === 'sin_genero') return 'sin_genero';
+  if (['damas', 'dama', 'femenino', 'f', 'd'].includes(s)) return 'damas';
+  if (['varones', 'varon', 'masculino', 'm', 'v'].includes(s)) return 'varones';
+  if (s.includes('mixt')) return 'mixto';
+  return s;
+}
+
+export function formatGeneroDisplay(val) {
+  const norm = normalizeGenero(val);
+  if (norm === 'damas') return 'Damas';
+  if (norm === 'varones') return 'Varones';
+  if (norm === 'mixto') return 'Mixto';
+  if (norm === 'sin_genero') return 'Sin género';
+  return val ? String(val).trim() : 'Sin género';
+}
+
+export function getPodioFields(tipo) {
+  if (tipo && Array.isArray(tipo.camposPodio) && tipo.camposPodio.length > 0) {
+    return tipo.camposPodio;
+  }
+  if (tipo && (tipo.tieneGenero || tipo.id === 'jedpa')) {
+    return ['categoria', 'disciplina', 'genero'];
+  }
+  if (tipo && (tipo.tieneDisciplina || tipo.id === 'peru_lee')) {
+    return ['categoria', 'disciplina'];
+  }
+  return ['categoria'];
+}
+
+export function getPodioKey(reg, tipo) {
+  const tId = tipo ? (tipo.id || tipo.nombre) : (reg.tipoConcursoId || reg.tipoConcursoNombre || 'general');
+  const etapa = (reg.etapa || 'UGEL').trim().toUpperCase();
+  const fields = getPodioFields(tipo);
+
+  const parts = [
+    normalizeText(tId),
+    etapa
+  ];
+
+  if (fields.includes('categoria')) {
+    parts.push(normalizeText(reg.categoria || 'unica'));
+  }
+  if (fields.includes('disciplina')) {
+    parts.push(normalizeText(reg.disciplina || 'general'));
+  }
+  if (fields.includes('genero')) {
+    parts.push(normalizeGenero(reg.genero));
+  }
+  if (fields.includes('modalidad') || reg.modalidad) {
+    parts.push(normalizeText(reg.modalidad || ''));
+  }
+  if (fields.includes('prueba') || reg.prueba || reg.evento) {
+    parts.push(normalizeText(reg.prueba || reg.evento || ''));
+  }
+
+  return parts.join('|');
+}
+
+export function getPodioLabel(reg, tipo) {
+  const fields = getPodioFields(tipo);
+  const parts = [];
+
+  if (fields.includes('disciplina') && reg.disciplina) {
+    parts.push(reg.disciplina.trim().toUpperCase());
+  }
+  if (reg.categoria) {
+    parts.push(`Categoría ${reg.categoria.trim()}`);
+  }
+  if (fields.includes('genero')) {
+    parts.push(formatGeneroDisplay(reg.genero).toUpperCase());
+  }
+  if (reg.modalidad) {
+    parts.push(reg.modalidad.trim());
+  }
+  if (reg.prueba || reg.evento) {
+    parts.push((reg.prueba || reg.evento).trim());
+  }
+  parts.push(`Etapa ${(reg.etapa || 'UGEL').trim().toUpperCase()}`);
+
+  return parts.join(' · ');
+}
+
+export function getPodioLockDocId(podioKey, puestoVal) {
+  const safePodio = podioKey.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+  const safePuesto = normalizePuestoValue(puestoVal).replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+  return `lock_${safePodio}_${safePuesto}`.slice(0, 120);
+}
 
 let concursoSubTab = 'registrar'; // 'registrar' | 'consolidado' | 'tipos'
 let concursoSelectedTipoId = null;
@@ -5046,8 +6002,11 @@ let concursoFilters = {
   categoria: '',
   genero: '',
   disciplina: '',
+  arte: '',
+  modalidad: '',
   query: ''
 };
+let concursoVistaJfen = 'fichas'; // 'fichas' | 'tabla' (predeterminada en 'fichas' para JFEN)
 let concursoExpandedId = null;
 
 export function renderConcursosTab(container, state, dbNs, isAdmin, currentUser, navigate) {
@@ -5062,8 +6021,10 @@ export function renderConcursosTab(container, state, dbNs, isAdmin, currentUser,
 
   // Definir sub-pestañas disponibles
   const subTabs = [
-    { id: 'registrar', label: '➕ Registrar participante' },
-    { id: 'consolidado', label: '📊 Ver consolidado' },
+    { id: 'registrar',      label: '➕ Registrar participante' },
+    { id: 'consolidado',    label: '📊 Ver consolidado' },
+    { id: 'asignar_podios', label: '🏆 Asignar puestos' },
+    { id: 'asistente',      label: '🔤 Revisar nombres' },
   ];
   if (isAdmin) {
     subTabs.push({ id: 'tipos', label: '⚙ Tipos de concurso' });
@@ -5080,8 +6041,8 @@ export function renderConcursosTab(container, state, dbNs, isAdmin, currentUser,
 
   container.innerHTML = '' +
     '<div class="pageHead">' +
-      '<h2>Concursos Escolares</h2>' +
-      '<p>Registro, premiación y consolidado de participantes de concursos oficiales (JMA, ONEM, Eureka, JFEN, JEDPA y más).</p>' +
+    '<h2>Concursos Escolares</h2>' +
+    '<p>Registro, premiación y consolidado de participantes de concursos oficiales (JMA, ONEM, Eureka, JFEN, JEDPA y más).</p>' +
     '</div>' +
     '<div class="subTabBar">' + subTabButtonsHtml + '</div>' +
     '<div id="concursoSubHost"></div>';
@@ -5100,9 +6061,166 @@ export function renderConcursosTab(container, state, dbNs, isAdmin, currentUser,
     renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, container, navigate);
   } else if (concursoSubTab === 'consolidado') {
     renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+  } else if (concursoSubTab === 'asignar_podios') {
+    renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+  } else if (concursoSubTab === 'asistente') {
+    renderAsistenteSeparacionNombres(host, state, dbNs, isAdmin, currentUser, container, navigate);
   } else if (concursoSubTab === 'tipos' && isAdmin) {
     renderConcursoTiposCatalogView(host, state, dbNs, isAdmin, currentUser, container, navigate);
   }
+}
+
+/* ----------------------------------------------------------------
+   ASISTENTE DE SEPARACIÓN DE NOMBRES HEREDADOS
+   Identifica registros con datos en el campo "nombres" que contienen
+   el nombre completo (sin apellidos separados) y permite al usuario
+   revisarlos y guardar la separación manualmente.
+   No modifica datos salvo confirmación explícita por registro.
+   ---------------------------------------------------------------- */
+function renderAsistenteSeparacionNombres(host, state, dbNs, isAdmin, currentUser, container, navigate) {
+  const regs = state.concursoRegistros || [];
+
+  // Recopilar todas las personas con formato heredado (apellidos vacío, nombres con texto)
+  const heredados = [];
+  regs.forEach(reg => {
+    const personas = [
+      ...(reg.participantes || []).map((p, i) => ({ ...p, _regId: reg.id, _tipo: 'participantes', _idx: i, _regInst: reg.institucion || '', _regConc: reg.tipoConcursoNombre || reg.tipoConcurso || '' })),
+      ...(reg.asesores      || []).map((a, i) => ({ ...a, _regId: reg.id, _tipo: 'asesores',      _idx: i, _regInst: reg.institucion || '', _regConc: reg.tipoConcursoNombre || reg.tipoConcurso || '' }))
+    ];
+    personas.forEach(p => {
+      const nombres   = (p.nombres   || '').trim();
+      const apellidos = (p.apellidos || '').trim();
+      if (!apellidos && nombres) {
+        const prop = proponerSeparacionNombre(p);
+        heredados.push({ persona: p, prop });
+      }
+    });
+  });
+
+  if (heredados.length === 0) {
+    host.innerHTML =
+      '<div class="empty">' +
+        '<h4>✅ Sin nombres heredados por revisar</h4>' +
+        '<p>Todos los registros tienen Nombres y Apellidos separados correctamente.</p>' +
+      '</div>';
+    return;
+  }
+
+  const altaConfianza = heredados.filter(h => h.prop.confianza === 'alta');
+
+  const renderItem = (h, idx) => {
+    const p = h.persona;
+    const prop = h.prop;
+    const confianzaClass = prop.confianza === 'alta' ? 'sep-alta' : 'sep-baja';
+    const confianzaLabel = prop.confianza === 'alta' ? '⬆ Confianza alta' : '⚠ Revisar manualmente';
+    return '<div class="sepItem ' + confianzaClass + '" data-sep-idx="' + idx + '">' +
+      '<div class="sepItemHead">' +
+        '<span class="badge" style="background:var(--surface-2);font-size:11px">' + esc(p._regConc) + '</span>' +
+        '<span class="badge" style="background:var(--surface-2);font-size:11px">' + esc(p._regInst) + '</span>' +
+        '<span class="badge ' + confianzaClass + '-badge" style="font-size:11px">' + confianzaLabel + '</span>' +
+        '<span style="margin-left:auto;font-size:11px;color:var(--ink-soft)">' + (p._tipo === 'participantes' ? 'Participante' : 'Asesor') + ' #' + (p._idx + 1) + '</span>' +
+      '</div>' +
+      '<div class="sepItemBody">' +
+        '<div class="sepOriginal">' +
+          '<label>Texto original (campo nombres)</label>' +
+          '<span class="sepOriginalText">' + esc(p.nombres || '') + '</span>' +
+        '</div>' +
+        '<div class="personNameGrid">' +
+          '<div class="field">' +
+            '<label for="sep_nom_' + idx + '">NOMBRES *</label>' +
+            '<input type="text" id="sep_nom_' + idx + '" class="sepInputNom" value="' + esc(prop.nombres) + '" data-sep-idx="' + idx + '" autocapitalize="words">' +
+            '<span class="fieldHelp">Solo los nombres de pila</span>' +
+          '</div>' +
+          '<div class="field">' +
+            '<label for="sep_ap_' + idx + '">APELLIDOS *</label>' +
+            '<input type="text" id="sep_ap_' + idx + '" class="sepInputAp" value="' + esc(prop.apellidos) + '" data-sep-idx="' + idx + '" autocapitalize="words">' +
+            '<span class="fieldHelp">Apellido paterno y materno</span>' +
+          '</div>' +
+        '</div>' +
+        (prop.nota ? '<span class="fieldWarn">' + esc(prop.nota) + '</span>' : '') +
+        '<div class="sepActions">' +
+          '<button type="button" class="btn small sepGuardarBtn" data-sep-idx="' + idx + '">💾 Guardar separación</button>' +
+          '<button type="button" class="btn secondary small sepOmitirBtn" data-sep-idx="' + idx + '">Omitir</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  };
+
+  host.innerHTML =
+    '<div class="panel">' +
+      '<h3>🔤 Asistente de separación de nombres</h3>' +
+      '<p style="color:var(--ink-soft);font-size:13.5px;margin-bottom:16px">' +
+        'Se encontraron <strong>' + heredados.length + '</strong> personas con el nombre completo en un solo campo.<br>' +
+        'Revisa y guarda la separación Nombres / Apellidos registro por registro.<br>' +
+        '<strong>Ningún cambio se aplica automáticamente</strong> — cada uno requiere tu confirmación.' +
+      '</p>' +
+      (altaConfianza.length > 0 && isAdmin
+        ? '<div class="sepBulkBar">' +
+            '<span>' + altaConfianza.length + ' de confianza alta listos para revisar</span>' +
+          '</div>'
+        : '') +
+      '<div id="sepList">' +
+        heredados.map((h, i) => renderItem(h, i)).join('') +
+      '</div>' +
+    '</div>';
+
+  // Guardar separación individual
+  host.querySelectorAll('.sepGuardarBtn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = Number(btn.dataset.sepIdx);
+      const h = heredados[idx];
+      if (!h) return;
+
+      const nomInput = document.getElementById('sep_nom_' + idx);
+      const apInput  = document.getElementById('sep_ap_'  + idx);
+      const nomVal   = (nomInput?.value || '').trim();
+      const apVal    = (apInput?.value  || '').trim();
+
+      if (!nomVal || nomVal.length < 2) { showToast('Ingresa los Nombres (mínimo 2 caracteres).'); return; }
+      if (!apVal  || apVal.length  < 2) { showToast('Ingresa los Apellidos (mínimo 2 caracteres).'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const reg = regs.find(r => r.id === h.persona._regId);
+        if (!reg) throw new Error('Registro no encontrado');
+
+        const lista = JSON.parse(JSON.stringify(reg[h.persona._tipo] || []));
+        lista[h.persona._idx].nombres   = nomVal;
+        lista[h.persona._idx].apellidos = apVal;
+
+        await dbNs.collection('concursoRegistros').doc(h.persona._regId).update({ [h.persona._tipo]: lista });
+        showToast('✓ Separación guardada correctamente.');
+
+        // Ocultar el item guardado con transición suave
+        const sepEl = host.querySelector('[data-sep-idx="' + idx + '"]');
+        if (sepEl) {
+          sepEl.style.transition = 'opacity 0.35s';
+          sepEl.style.opacity = '0';
+          setTimeout(() => sepEl.remove(), 380);
+        }
+      } catch (err) {
+        console.error('Error guardando separación:', err);
+        showToast('Error al guardar: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = '💾 Guardar separación';
+      }
+    });
+  });
+
+  // Omitir item (sin guardar)
+  host.querySelectorAll('.sepOmitirBtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.sepIdx);
+      const sepEl = host.querySelector('[data-sep-idx="' + idx + '"]');
+      if (sepEl) {
+        sepEl.style.transition = 'opacity 0.3s';
+        sepEl.style.opacity = '0';
+        setTimeout(() => sepEl.remove(), 350);
+      }
+    });
+  });
 }
 
 function normalizePuestoValue(val) {
@@ -5207,127 +6325,129 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
 
   host.innerHTML = '' +
     '<form id="concursoRegForm">' +
-      '<div class="panel">' +
-        '<h3>Concurso y Etapa</h3>' +
-        '<div class="fieldGrid">' +
-          '<div class="field" style="grid-column:span 2">' +
-            '<label for="c_tipoSelect">Tipo de concurso *</label>' +
-            '<select id="c_tipoSelect">' + tipoOpts + '</select>' +
-          '</div>' +
-          '<div class="field">' +
-            '<label for="c_etapa">Etapa *</label>' +
-            '<select id="c_etapa" required>' +
-              ['UGEL', 'DRELM', 'MACROREGIONAL', 'NACIONAL'].map(e => '<option value="' + e + '">' + e + '</option>').join('') +
-            '</select>' +
-          '</div>' +
-          '<div class="field">' +
-            '<label for="c_puesto">Puesto obtenido *</label>' +
-            '<select id="c_puesto" required>' +
-              '<option value="">-- Seleccionar puesto --</option>' +
-              '<option value="1.er puesto">🥇 1.er puesto</option>' +
-              '<option value="2.° puesto">🥈 2.° puesto</option>' +
-              '<option value="3.er puesto">🥉 3.er puesto</option>' +
-              '<option value="Mención honrosa">🎖️ Mención honrosa</option>' +
-              '<option value="Finalista">⭐ Finalista</option>' +
-              '<option value="Clasificado">✓ Clasificado</option>' +
-              '<option value="Participante">👤 Participante</option>' +
-            '</select>' +
-          '</div>' +
-        '</div>' +
+    '<div class="panel">' +
+    '<h3>Concurso y Etapa</h3>' +
+    '<div class="fieldGrid">' +
+    '<div class="field" style="grid-column:span 2">' +
+    '<label for="c_tipoSelect">Tipo de concurso *</label>' +
+    '<select id="c_tipoSelect">' + tipoOpts + '</select>' +
+    '</div>' +
+    '<div class="field">' +
+    '<label for="c_etapa">Etapa *</label>' +
+    '<select id="c_etapa" required>' +
+    ['UGEL', 'DRELM', 'MACROREGIONAL', 'NACIONAL'].map(e => '<option value="' + e + '">' + e + '</option>').join('') +
+    '</select>' +
+    '</div>' +
+    '<div class="field" style="position:relative">' +
+    '<label for="c_puesto">Puesto obtenido</label>' +
+    '<select id="c_puesto">' +
+    '<option value="">Sin puesto / Pendiente</option>' +
+    '<option value="1.er puesto">🥇 1.er puesto</option>' +
+    '<option value="2.° puesto">🥈 2.° puesto</option>' +
+    '<option value="3.er puesto">🥉 3.er puesto</option>' +
+    '<option value="Mención honrosa">🎖️ Mención honrosa</option>' +
+    '<option value="Finalista">⭐ Finalista</option>' +
+    '<option value="Clasificado">✓ Clasificado</option>' +
+    '<option value="Participante">👤 Participante</option>' +
+    '</select>' +
+    '<div id="c_puesto_soft_note" style="display:none;font-size:11.5px;color:var(--gold-600, #b45309);margin-top:4px"></div>' +
+    '</div>' +
+    '</div>' +
+    '<div id="c_puesto_conflict_wrap" style="display:none;margin-top:12px"></div>' +
+    '</div>' +
+
+    '<div class="panel">' +
+    '<h3>Datos de la Participación</h3>' +
+    '<div class="fieldGrid">' +
+    '<div class="field">' +
+    '<label for="c_categoria">Categoría *</label>' +
+    '<select id="c_categoria" required>' + catOpts + '</select>' +
+    '</div>' +
+    (tipo.tieneGenero ? (
+      '<div class="field">' +
+      '<label for="c_genero">Género *</label>' +
+      '<select id="c_genero" required>' +
+      '<option value="Damas">Damas</option>' +
+      '<option value="Varones">Varones</option>' +
+      '</select>' +
+      '</div>'
+    ) : '') +
+    (hasDisciplina ? (
+      '<div class="field" style="' + (tipo.tieneGenero ? '' : 'grid-column:span 2') + '">' +
+      '<label for="c_disciplina">' + esc(discLabel) + ' *</label>' +
+      '<input type="text" id="c_disciplina" list="dl_concurso_disc" placeholder="Ej: Comprensión Lectora, Danza tradicional, Indagación..." required>' +
+      discDatalistHtml +
+      '</div>'
+    ) : (
+      '<div class="field" style="' + (tipo.tieneGenero ? '' : 'grid-column:span 2') + '">' +
+      '<label for="c_disciplina">Área / Disciplina (opcional)</label>' +
+      '<input type="text" id="c_disciplina" placeholder="Opcional: área o especialidad...">' +
+      '</div>'
+    )) +
+    '</div>' +
+
+    '<div class="fieldGrid" style="margin-top:10px">' +
+    '<div class="field" style="grid-column:span 2">' +
+    '<label for="c_institucion">Institución Educativa *</label>' +
+    '<div class="ieSearchWrap" id="c_ieSearchWrap">' +
+    '<input type="text" id="c_institucion" autocomplete="off" placeholder="Buscar colegio por nombre o código modular..." required>' +
+    '<div class="ieDropdown" id="c_ieDropdown"></div>' +
+    '</div>' +
+    '<span id="c_colegioHint" style="display:none;font-size:11.5px;color:var(--primary);margin-top:4px;font-weight:600"></span>' +
+    '</div>' +
+    '<div class="field">' +
+    '<label for="c_codigoModular">Código modular / local</label>' +
+    '<input type="text" id="c_codigoModular" placeholder="Autocompletado con la I.E.">' +
+    '</div>' +
+    '<div class="field">' +
+    '<label for="c_fecha">Fecha *</label>' +
+    '<input type="date" id="c_fecha" value="' + todayStr() + '" required>' +
+    '</div>' +
+    '</div>' +
+
+    (tipo.tieneTituloTrabajo ? (
+      '<div class="fieldGrid" style="margin-top:10px">' +
+      '<div class="field" style="grid-column:span 2">' +
+      '<label for="c_tituloTrabajo">' + esc(tipo.etiquetaTitulo || 'Título del trabajo / proyecto') + ' *</label>' +
+      '<input type="text" id="c_tituloTrabajo" placeholder="Nombre de la obra, proyecto de indagación o ensayo..." required>' +
       '</div>' +
-
-      '<div class="panel">' +
-        '<h3>Datos de la Participación</h3>' +
-        '<div class="fieldGrid">' +
-          '<div class="field">' +
-            '<label for="c_categoria">Categoría *</label>' +
-            '<select id="c_categoria" required>' + catOpts + '</select>' +
-          '</div>' +
-          (tipo.tieneGenero ? (
-            '<div class="field">' +
-              '<label for="c_genero">Género *</label>' +
-              '<select id="c_genero" required>' +
-                '<option value="Damas">Damas</option>' +
-                '<option value="Varones">Varones</option>' +
-              '</select>' +
-            '</div>'
-          ) : '') +
-          (hasDisciplina ? (
-            '<div class="field" style="' + (tipo.tieneGenero ? '' : 'grid-column:span 2') + '">' +
-              '<label for="c_disciplina">' + esc(discLabel) + ' *</label>' +
-              '<input type="text" id="c_disciplina" list="dl_concurso_disc" placeholder="Ej: Comprensión Lectora, Danza tradicional, Indagación..." required>' +
-              discDatalistHtml +
-            '</div>'
-          ) : (
-            '<div class="field" style="' + (tipo.tieneGenero ? '' : 'grid-column:span 2') + '">' +
-              '<label for="c_disciplina">Área / Disciplina (opcional)</label>' +
-              '<input type="text" id="c_disciplina" placeholder="Opcional: área o especialidad...">' +
-            '</div>'
-          )) +
-        '</div>' +
-
-        '<div class="fieldGrid" style="margin-top:10px">' +
-          '<div class="field" style="grid-column:span 2">' +
-            '<label for="c_institucion">Institución Educativa *</label>' +
-            '<div class="ieSearchWrap" id="c_ieSearchWrap">' +
-              '<input type="text" id="c_institucion" autocomplete="off" placeholder="Buscar colegio por nombre o código modular..." required>' +
-              '<div class="ieDropdown" id="c_ieDropdown"></div>' +
-            '</div>' +
-            '<span id="c_colegioHint" style="display:none;font-size:11.5px;color:var(--primary);margin-top:4px;font-weight:600"></span>' +
-          '</div>' +
-          '<div class="field">' +
-            '<label for="c_codigoModular">Código modular / local</label>' +
-            '<input type="text" id="c_codigoModular" placeholder="Autocompletado con la I.E.">' +
-          '</div>' +
-          '<div class="field">' +
-            '<label for="c_fecha">Fecha *</label>' +
-            '<input type="date" id="c_fecha" value="' + todayStr() + '" required>' +
-          '</div>' +
-        '</div>' +
-
-        (tipo.tieneTituloTrabajo ? (
-          '<div class="fieldGrid" style="margin-top:10px">' +
-            '<div class="field" style="grid-column:span 2">' +
-              '<label for="c_tituloTrabajo">' + esc(tipo.etiquetaTitulo || 'Título del trabajo / proyecto') + ' *</label>' +
-              '<input type="text" id="c_tituloTrabajo" placeholder="Nombre de la obra, proyecto de indagación o ensayo..." required>' +
-            '</div>' +
-            '<div class="field">' +
-              '<label for="c_seudonimo">Seudónimo (opcional)</label>' +
-              '<input type="text" id="c_seudonimo" placeholder="Seudónimo del participante...">' +
-            '</div>' +
-          '</div>'
-        ) : '') +
-
-        '<div class="fieldGrid" style="margin-top:10px">' +
-          '<div class="field">' +
-            '<label for="c_resolucionRef">N° Resolución / Acreditación (opcional)</label>' +
-            '<input type="text" id="c_resolucionRef" placeholder="Ej: R.D. N° 00342-2026-UGEL03">' +
-          '</div>' +
-        '</div>' +
+      '<div class="field">' +
+      '<label for="c_seudonimo">Seudónimo (opcional)</label>' +
+      '<input type="text" id="c_seudonimo" placeholder="Seudónimo del participante...">' +
       '</div>' +
+      '</div>'
+    ) : '') +
 
-      '<!-- PARTICIPANTES REPETIBLES -->' +
-      '<div class="panel">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
-          '<h3 style="margin-bottom:0">Estudiantes / Participantes <small>(' + (tipo.tipoParticipacion === 'individual' ? 'Normalmente 1 fila para individual' : 'Permite múltiples filas para grupales') + ')</small></h3>' +
-          '<button type="button" class="btn secondary small" id="c_addPartBtn">＋ Agregar participante</button>' +
-        '</div>' +
-        '<div id="c_participantesList"></div>' +
-      '</div>' +
+    '<div class="fieldGrid" style="margin-top:10px">' +
+    '<div class="field">' +
+    '<label for="c_resolucionRef">N° Resolución / Acreditación (opcional)</label>' +
+    '<input type="text" id="c_resolucionRef" placeholder="Ej: R.D. N° 00342-2026-UGEL03">' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
 
-      '<!-- ASESORES REPETIBLES -->' +
-      '<div class="panel">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
-          '<h3 style="margin-bottom:0">Docentes Asesores / Entrenadores</h3>' +
-          '<button type="button" class="btn secondary small" id="c_addAsesBtn">＋ Agregar asesor</button>' +
-        '</div>' +
-        '<div id="c_asesoresList"></div>' +
-      '</div>' +
+    '<!-- PARTICIPANTES REPETIBLES -->' +
+    '<div class="panel">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
+    '<h3 style="margin-bottom:0">Estudiantes / Participantes <small>(' + (tipo.tipoParticipacion === 'individual' ? 'Normalmente 1 fila para individual' : 'Permite múltiples filas para grupales') + ')</small></h3>' +
+    '<button type="button" class="btn secondary small" id="c_addPartBtn">＋ Agregar participante</button>' +
+    '</div>' +
+    '<div id="c_participantesList"></div>' +
+    '</div>' +
 
-      '<div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">' +
-        '<button type="submit" class="btn" id="c_submitBtn">' + submitLabel + '</button>' +
-        (isEditing ? '<button type="button" class="btn secondary" id="c_cancelEditBtn">Cancelar edición</button>' : '') +
-      '</div>' +
+    '<!-- ASESORES REPETIBLES -->' +
+    '<div class="panel">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
+    '<h3 style="margin-bottom:0">Docentes Asesores / Entrenadores</h3>' +
+    '<button type="button" class="btn secondary small" id="c_addAsesBtn">＋ Agregar asesor</button>' +
+    '</div>' +
+    '<div id="c_asesoresList"></div>' +
+    '</div>' +
+
+    '<div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">' +
+    '<button type="submit" class="btn" id="c_submitBtn">' + submitLabel + '</button>' +
+    (isEditing ? '<button type="button" class="btn secondary" id="c_cancelEditBtn">Cancelar edición</button>' : '') +
+    '</div>' +
     '</form>';
 
   // ---- Cambio de tipo de concurso en el formulario ----
@@ -5358,7 +6478,7 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
         '<div><label style="margin-bottom:2px;font-size:11px">DNI / Documento</label><input type="text" placeholder="DNI" value="' + esc(p.dni) + '" data-pfield="dni" maxlength="15"></div>' +
         '<div><label style="margin-bottom:2px;font-size:11px">Rol</label><select data-pfield="rol">' + rolOpts + '</select></div>' +
         '<div style="padding-top:16px"><button type="button" class="iconBtn" data-delpart="' + idx + '" title="Quitar participante"' + (concursoParticipantes.length === 1 ? ' disabled' : '') + '>✕</button></div>' +
-      '</div>';
+        '</div>';
     }).join('');
 
     listEl.querySelectorAll('input[data-pfield], select[data-pfield]').forEach(inp => {
@@ -5394,7 +6514,7 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
         '<div><label style="margin-bottom:2px;font-size:11px">DNI / Documento</label><input type="text" placeholder="DNI" value="' + esc(a.dni) + '" data-afield="dni" maxlength="15"></div>' +
         '<div><label style="margin-bottom:2px;font-size:11px">Rol</label><select data-afield="rol">' + rolOpts + '</select></div>' +
         '<div style="padding-top:16px"><button type="button" class="iconBtn" data-delases="' + idx + '" title="Quitar asesor">✕</button></div>' +
-      '</div>';
+        '</div>';
     }).join('');
 
     listEl.querySelectorAll('input[data-afield], select[data-afield]').forEach(inp => {
@@ -5430,8 +6550,8 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
 
   // ---- Autocompletado de Colegio / I.E. ----
   const instInput = document.getElementById('c_institucion');
-  const dropdown  = document.getElementById('c_ieDropdown');
-  const hint      = document.getElementById('c_colegioHint');
+  const dropdown = document.getElementById('c_ieDropdown');
+  const hint = document.getElementById('c_colegioHint');
   const codModInp = document.getElementById('c_codigoModular');
 
   const showDropdown = () => {
@@ -5442,11 +6562,11 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
     if (!matches.length) { dropdown.style.display = 'none'; return; }
     dropdown.innerHTML = matches.map(c =>
       '<div class="ieDropdownItem" data-id="' + c.id + '">' +
-        '<div class="ieDropMain">' + esc(c.ie) + '</div>' +
-        '<div class="ieDropSub">' + esc(c.codigoLocal || '') +
-          (c.rei ? ' · ' + esc(c.rei) : '') +
-          (c.distrito ? ' · ' + esc(c.distrito) : '') +
-        '</div>' +
+      '<div class="ieDropMain">' + esc(c.ie) + '</div>' +
+      '<div class="ieDropSub">' + esc(c.codigoLocal || '') +
+      (c.rei ? ' · ' + esc(c.rei) : '') +
+      (c.distrito ? ' · ' + esc(c.distrito) : '') +
+      '</div>' +
       '</div>'
     ).join('');
     dropdown.style.display = 'block';
@@ -5473,6 +6593,197 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
   instInput.addEventListener('focus', () => { if (instInput.value.length === 0) showDropdown(); });
   instInput.addEventListener('blur', () => { setTimeout(() => { dropdown.style.display = 'none'; }, 200); });
 
+  // ---- Helper dinámico para anotar opciones ocupadas y alertas de conflicto ----
+  function updatePuestoSelectAnnotations() {
+    const pSelect = document.getElementById('c_puesto');
+    const conflictWrap = document.getElementById('c_puesto_conflict_wrap');
+    const softNote = document.getElementById('c_puesto_soft_note');
+    if (!pSelect) return;
+
+    const curTipoId = document.getElementById('c_tipoSelect') ? document.getElementById('c_tipoSelect').value : concursoSelectedTipoId;
+    const curTipo = state.tiposConcurso.find(t => t.id === curTipoId) || tipo;
+    const curEtapa = document.getElementById('c_etapa') ? document.getElementById('c_etapa').value : 'UGEL';
+    const curCat = document.getElementById('c_categoria') ? document.getElementById('c_categoria').value : '';
+    const curGen = document.getElementById('c_genero') ? document.getElementById('c_genero').value : null;
+    const curDisc = document.getElementById('c_disciplina') ? document.getElementById('c_disciplina').value.trim() : null;
+
+    const draftReg = {
+      tipoConcursoId: curTipo.id,
+      tipoConcursoNombre: curTipo.nombre,
+      etapa: curEtapa,
+      categoria: curCat,
+      genero: curGen,
+      disciplina: curDisc,
+      modalidad: concursoEditingData ? concursoEditingData.modalidad : null,
+      prueba: concursoEditingData ? (concursoEditingData.prueba || concursoEditingData.evento) : null
+    };
+
+    const draftPodioKey = getPodioKey(draftReg, curTipo);
+    const existingRegs = state.concursoRegistros || [];
+
+    // Buscar ocupantes en el mismo podio (excluyendo el registro actual si se edita)
+    const podioOccupants = existingRegs.filter(r => {
+      if (isEditing && r.id === concursoEditingId) return false;
+      return getPodioKey(r, curTipo) === draftPodioKey;
+    });
+
+    const topSlots = {
+      '1.er puesto': null,
+      '2.° puesto': null,
+      '3.er puesto': null
+    };
+
+    podioOccupants.forEach(r => {
+      const normP = normalizePuestoValue(r.puesto);
+      if (topSlots.hasOwnProperty(normP)) {
+        topSlots[normP] = r;
+      }
+    });
+
+    // Actualizar texto de opciones en el select
+    Array.from(pSelect.options).forEach(opt => {
+      const baseVal = opt.value;
+      if (baseVal === '') {
+        opt.textContent = 'Sin puesto / Pendiente';
+      } else if (topSlots.hasOwnProperty(baseVal)) {
+        const occ = topSlots[baseVal];
+        const icon = baseVal === '1.er puesto' ? '🥇' : (baseVal === '2.° puesto' ? '🥈' : '🥉');
+        if (occ) {
+          const occPart = (occ.participantes && occ.participantes[0]) ? formatearNombre(occ.participantes[0]) : '';
+          const occText = occ.institucion ? (occ.institucion + (occPart ? ' — ' + occPart : '')) : 'ocupado';
+          opt.textContent = `${icon} ${baseVal} (ocupado por: ${occText})`;
+        } else {
+          opt.textContent = `${icon} ${baseVal}`;
+        }
+      }
+    });
+
+    // Validar si la opción seleccionada entra en conflicto
+    const rawVal = pSelect.value;
+    const curPuestoVal = normalizePuestoValue(rawVal);
+    const isEmpate = rawVal.includes('(empate)');
+
+    if (topSlots.hasOwnProperty(curPuestoVal) && topSlots[curPuestoVal] && !isEmpate) {
+      const conflict = topSlots[curPuestoVal];
+      const podioLabel = getPodioLabel(draftReg, curTipo);
+      const conflictPart = (conflict.participantes && conflict.participantes[0])
+        ? formatearNombre(conflict.participantes[0])
+        : 'Sin participante registrado';
+
+      let warningExtra = '';
+      if (!conflict.genero && curTipo.tieneGenero) {
+        warningExtra = '<div style="margin-top:6px;font-size:12px;color:var(--danger)">⚠️ Nota: El registro ocupante no tiene género asignado.</div>';
+      }
+
+      if (conflictWrap) {
+        conflictWrap.style.display = 'block';
+        conflictWrap.innerHTML = `
+          <div class="alertCard warn" style="margin-top:6px">
+            <div class="alertIcon">⚠️</div>
+            <div class="alertBody">
+              <div class="alertTitle">Puesto ya ocupado en este podio</div>
+              <div class="alertDetail">
+                Ya existe un <strong>${esc(curPuestoVal)}</strong> en <strong>${esc(podioLabel)}</strong>:<br>
+                <strong>${esc(conflict.institucion)}</strong> — ${esc(conflictPart)}.<br>
+                Cada podio (disciplina, categoría y género) solo puede tener un ${esc(curPuestoVal)}.
+                ${warningExtra}
+              </div>
+              <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+                <button type="button" class="btn secondary small" id="btnVerConflicto" style="font-size:11.5px">🔍 Ver registro ocupante</button>
+                <button type="button" class="btn small" id="btnReemplazarConflicto" style="font-size:11.5px;background:var(--warn);color:#fff;border-color:var(--warn)">🔄 Reemplazar puesto</button>
+                ${isAdmin ? '<button type="button" class="btn secondary small" id="btnEmpateConflicto" style="font-size:11.5px">🤝 Marcar empate</button>' : ''}
+                <button type="button" class="btn secondary small" id="btnCancelarConflicto" style="font-size:11.5px">✕ Deshacer selección</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        const btnVer = document.getElementById('btnVerConflicto');
+        if (btnVer) {
+          btnVer.addEventListener('click', () => {
+            concursoFilters.tipoId = curTipo.id;
+            concursoFilters.etapa = curEtapa;
+            concursoFilters.categoria = curCat;
+            if (curGen) concursoFilters.genero = curGen;
+            if (curDisc) concursoFilters.disciplina = curDisc;
+            concursoSubTab = 'consolidado';
+            concursoExpandedId = conflict.id;
+            renderConcursosTab(container, state, dbNs, isAdmin, currentUser, navigate);
+          });
+        }
+
+        const btnReemp = document.getElementById('btnReemplazarConflicto');
+        if (btnReemp) {
+          btnReemp.addEventListener('click', () => {
+            abrirModalReemplazoPuesto(conflict, draftReg, curPuestoVal, curTipo, dbNs, state, isEditing ? concursoEditingId : null, () => {
+              renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+            });
+          });
+        }
+
+        const btnEmpate = document.getElementById('btnEmpateConflicto');
+        if (btnEmpate) {
+          btnEmpate.addEventListener('click', () => {
+            const motivo = prompt('Ingresa el motivo o Resolución Directoral que sustenta el puesto compartido (Empate):');
+            if (!motivo) return;
+            const empVal = `${curPuestoVal} (empate)`;
+            let existsOpt = Array.from(pSelect.options).some(o => o.value === empVal);
+            if (!existsOpt) {
+              const opt = document.createElement('option');
+              opt.value = empVal;
+              opt.textContent = `${empVal} · ${motivo.slice(0, 30)}`;
+              pSelect.appendChild(opt);
+            }
+            pSelect.value = empVal;
+            updatePuestoSelectAnnotations();
+          });
+        }
+
+        const btnCancel = document.getElementById('btnCancelarConflicto');
+        if (btnCancel) {
+          btnCancel.addEventListener('click', () => {
+            pSelect.value = isEditing && concursoEditingData ? (normalizePuestoValue(concursoEditingData.puesto) || '') : '';
+            updatePuestoSelectAnnotations();
+          });
+        }
+      }
+    } else {
+      if (conflictWrap) {
+        conflictWrap.style.display = 'none';
+        conflictWrap.innerHTML = '';
+      }
+    }
+
+    // Advertencia suave para saltos de puesto (ej. asignar 3.° sin 1.° ni 2.°)
+    if (softNote) {
+      if (curPuestoVal === '3.er puesto' && !topSlots['1.er puesto'] && !topSlots['2.° puesto']) {
+        softNote.style.display = 'block';
+        softNote.textContent = 'ℹ Aviso: Este podio aún no tiene asignado 1.er ni 2.° puesto. Podrás asignarlos posteriormente.';
+      } else if (curPuestoVal === '2.° puesto' && !topSlots['1.er puesto']) {
+        softNote.style.display = 'block';
+        softNote.textContent = 'ℹ Aviso: Este podio aún no tiene asignado 1.er puesto.';
+      } else {
+        softNote.style.display = 'none';
+        softNote.textContent = '';
+      }
+    }
+  }
+
+  // Escuchar cambios de campos que definen el podio
+  const puestoSelectEl = document.getElementById('c_puesto');
+  if (puestoSelectEl) puestoSelectEl.addEventListener('change', updatePuestoSelectAnnotations);
+  const catSelectEl = document.getElementById('c_categoria');
+  if (catSelectEl) catSelectEl.addEventListener('change', updatePuestoSelectAnnotations);
+  const genSelectEl = document.getElementById('c_genero');
+  if (genSelectEl) genSelectEl.addEventListener('change', updatePuestoSelectAnnotations);
+  const discInpEl = document.getElementById('c_disciplina');
+  if (discInpEl) {
+    discInpEl.addEventListener('input', updatePuestoSelectAnnotations);
+    discInpEl.addEventListener('change', updatePuestoSelectAnnotations);
+  }
+  const etapaSelectEl = document.getElementById('c_etapa');
+  if (etapaSelectEl) etapaSelectEl.addEventListener('change', updatePuestoSelectAnnotations);
+
   // ---- Precargar datos si estamos en modo edición ----
   if (concursoEditingId && concursoEditingData) {
     const d = concursoEditingData;
@@ -5488,16 +6799,21 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
       }
       puestoSelect.value = normPuesto || '';
     }
-    document.getElementById('c_etapa').value  = d.etapa || 'UGEL';
-    document.getElementById('c_fecha').value  = d.fecha || todayStr();
+    document.getElementById('c_etapa').value = d.etapa || 'UGEL';
+    document.getElementById('c_fecha').value = d.fecha || todayStr();
     document.getElementById('c_institucion').value = d.institucion || '';
     if (codModInp) codModInp.value = d.codigoModular || '';
     if (document.getElementById('c_categoria')) document.getElementById('c_categoria').value = d.categoria || '';
-    if (document.getElementById('c_genero')) document.getElementById('c_genero').value = d.genero || 'Damas';
+    if (document.getElementById('c_genero')) {
+      const normG = normalizeGenero(d.genero);
+      document.getElementById('c_genero').value = normG === 'varones' ? 'Varones' : 'Damas';
+    }
     if (document.getElementById('c_disciplina')) document.getElementById('c_disciplina').value = d.disciplina || '';
     if (document.getElementById('c_tituloTrabajo')) document.getElementById('c_tituloTrabajo').value = d.tituloTrabajo || '';
     if (document.getElementById('c_seudonimo')) document.getElementById('c_seudonimo').value = d.seudonimo || '';
     if (document.getElementById('c_resolucionRef')) document.getElementById('c_resolucionRef').value = d.resolucionRef || '';
+
+    updatePuestoSelectAnnotations();
 
     const cancelBtn = document.getElementById('c_cancelEditBtn');
     if (cancelBtn) {
@@ -5509,6 +6825,8 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
         renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, container, navigate);
       });
     }
+  } else {
+    updatePuestoSelectAnnotations();
   }
 
   // ---- Submit Formulario de Registro de Concurso ----
@@ -5519,80 +6837,126 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
     btn.textContent = isEditing ? 'Actualizando...' : 'Guardando...';
 
     try {
-      const pRows = concursoParticipantes.filter(p => (p.nombres || '').trim() || (p.apellidos || '').trim());
+      // ---- Validar participantes ----
+      concursoParticipantes.forEach(p => {
+        p.nombres   = (p.nombres   || '').trim().replace(/\s{2,}/g, ' ');
+        p.apellidos = (p.apellidos || '').trim().replace(/\s{2,}/g, ' ');
+        p.dni       = (p.dni       || '').trim();
+      });
+      concursoAsesores.forEach(a => {
+        a.nombres   = (a.nombres   || '').trim().replace(/\s{2,}/g, ' ');
+        a.apellidos = (a.apellidos || '').trim().replace(/\s{2,}/g, ' ');
+        a.dni       = (a.dni       || '').trim();
+      });
+
+      const namePattern = /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-\.]+$/u;
+      const pRows = concursoParticipantes.filter(p => p.nombres || p.apellidos);
       if (pRows.length === 0) {
-        showToast('Agrega al menos un participante con nombres.');
-        btn.disabled = false;
-        btn.textContent = submitLabel;
-        return;
+        showToast('Agrega al menos un participante con Nombres y Apellidos.');
+        btn.disabled = false; btn.textContent = submitLabel; return;
       }
 
-      const puestoVal = normalizePuestoValue(document.getElementById('c_puesto').value.trim());
-      if (!puestoVal) {
-        showToast('Selecciona el puesto obtenido.');
-        btn.disabled = false;
-        btn.textContent = submitLabel;
-        return;
+      for (let i = 0; i < pRows.length; i++) {
+        const p = pRows[i];
+        if (!p.nombres || p.nombres.length < 2) {
+          showToast('Participante ' + (i + 1) + ': ingresa los Nombres (mínimo 2 caracteres).');
+          btn.disabled = false; btn.textContent = submitLabel; return;
+        }
+        if (p.nombres && !namePattern.test(p.nombres)) {
+          showToast('Participante ' + (i + 1) + ': el campo Nombres solo debe contener letras, espacios y guiones.');
+          btn.disabled = false; btn.textContent = submitLabel; return;
+        }
+        if (!p.apellidos || p.apellidos.length < 2) {
+          showToast('Participante ' + (i + 1) + ': ingresa los Apellidos (mínimo 2 caracteres).');
+          btn.disabled = false; btn.textContent = submitLabel; return;
+        }
+        if (p.apellidos && !namePattern.test(p.apellidos)) {
+          showToast('Participante ' + (i + 1) + ': el campo Apellidos solo debe contener letras, espacios y guiones.');
+          btn.disabled = false; btn.textContent = submitLabel; return;
+        }
       }
 
-      const aRows = concursoAsesores.filter(a => (a.nombres || '').trim() || (a.apellidos || '').trim());
+      // El puesto puede ser vacío (Sin puesto / Pendiente) o un puesto formal
+      const rawPuestoVal = document.getElementById('c_puesto').value.trim();
+      const puestoVal = normalizePuestoValue(rawPuestoVal) || rawPuestoVal;
+
+      // Validar asesores (opcional)
+      const aRows = concursoAsesores.filter(a => a.nombres || a.apellidos);
+      for (let i = 0; i < aRows.length; i++) {
+        const a = aRows[i];
+        if (a.nombres && !namePattern.test(a.nombres)) {
+          showToast('Asesor ' + (i + 1) + ': el campo Nombres solo debe contener letras.');
+          btn.disabled = false; btn.textContent = submitLabel; return;
+        }
+        if (a.apellidos && !namePattern.test(a.apellidos)) {
+          showToast('Asesor ' + (i + 1) + ': el campo Apellidos solo debe contener letras.');
+          btn.disabled = false; btn.textContent = submitLabel; return;
+        }
+      }
+
       const discInp = document.getElementById('c_disciplina');
       const discVal = discInp ? discInp.value.trim() : null;
 
       const regData = {
-        tipoConcursoId:     tipo.id,
+        tipoConcursoId: tipo.id,
         tipoConcursoNombre: tipo.nombre,
-        etapa:              document.getElementById('c_etapa').value,
-        categoria:          document.getElementById('c_categoria') ? document.getElementById('c_categoria').value : '',
-        genero:             tipo.tieneGenero ? (document.getElementById('c_genero') ? document.getElementById('c_genero').value : null) : null,
-        disciplina:         discVal || null,
-        institucion:        document.getElementById('c_institucion').value.trim(),
-        codigoModular:      codModInp ? codModInp.value.trim() : '',
-        tituloTrabajo:      tipo.tieneTituloTrabajo ? (document.getElementById('c_tituloTrabajo') ? document.getElementById('c_tituloTrabajo').value.trim() : null) : null,
-        seudonimo:          tipo.tieneTituloTrabajo ? (document.getElementById('c_seudonimo') ? document.getElementById('c_seudonimo').value.trim() : null) : null,
-        puesto:             puestoVal,
-        participantes:      pRows,
-        asesores:           aRows,
-        resolucionRef:      document.getElementById('c_resolucionRef') ? document.getElementById('c_resolucionRef').value.trim() : null,
-        fecha:              document.getElementById('c_fecha').value,
-        responsable:        currentUser ? (currentUser.displayName || currentUser.email || 'Especialista') : 'Especialista',
-        createdAt:          isEditing ? (concursoEditingData.createdAt || Date.now()) : Date.now(),
-        updatedAt:          Date.now(),
+        etapa: document.getElementById('c_etapa').value,
+        categoria: document.getElementById('c_categoria') ? document.getElementById('c_categoria').value : '',
+        genero: tipo.tieneGenero ? (document.getElementById('c_genero') ? document.getElementById('c_genero').value : null) : null,
+        disciplina: discVal || null,
+        institucion: document.getElementById('c_institucion').value.trim(),
+        codigoModular: codModInp ? codModInp.value.trim() : '',
+        tituloTrabajo: tipo.tieneTituloTrabajo ? (document.getElementById('c_tituloTrabajo') ? document.getElementById('c_tituloTrabajo').value.trim() : null) : null,
+        seudonimo: tipo.tieneTituloTrabajo ? (document.getElementById('c_seudonimo') ? document.getElementById('c_seudonimo').value.trim() : null) : null,
+        puesto: puestoVal || '',
+        participantes: pRows,
+        asesores: aRows,
+        resolucionRef: document.getElementById('c_resolucionRef') ? document.getElementById('c_resolucionRef').value.trim() : null,
+        fecha: document.getElementById('c_fecha').value,
+        responsable: currentUser ? (currentUser.displayName || currentUser.email || 'Especialista') : 'Especialista',
+        createdAt: isEditing ? (concursoEditingData.createdAt || Date.now()) : Date.now(),
+        updatedAt: Date.now(),
       };
 
-      // Validar puesto duplicado (1.er puesto, 2.° puesto, 3.er puesto deben ser únicos por Concurso + Etapa + Categoría + Disciplina)
-      const isTopPuesto = ['1.er puesto', '2.° puesto', '3.er puesto'].includes(puestoVal);
+      // Validar unicidad de puesto por Podio (Etapa + Categoría + Disciplina + Género...)
+      const normP = normalizePuestoValue(puestoVal);
+      const isTopPuesto = ['1.er puesto', '2.° puesto', '3.er puesto'].includes(normP);
+      const isEmpate = (puestoVal || '').includes('(empate)');
+      const podioKey = getPodioKey(regData, tipo);
       const existingRegs = state.concursoRegistros || [];
-      if (isTopPuesto) {
+
+      if (isTopPuesto && !isEmpate) {
         const conflict = existingRegs.find(r => {
           if (isEditing && r.id === concursoEditingId) return false;
-          const sameTipo = (r.tipoConcursoId === tipo.id || r.tipoConcursoNombre === tipo.nombre);
-          const sameEtapa = (r.etapa || '').toUpperCase() === (regData.etapa || '').toUpperCase();
-          const sameCat = normalizeText(r.categoria) === normalizeText(regData.categoria);
-          const sameDisc = normalizeText(r.disciplina) === normalizeText(regData.disciplina);
-          const samePuesto = normalizePuestoValue(r.puesto) === puestoVal;
-          return sameTipo && sameEtapa && sameCat && sameDisc && samePuesto;
+          const samePodio = getPodioKey(r, tipo) === podioKey;
+          const samePuesto = normalizePuestoValue(r.puesto) === normP;
+          return samePodio && samePuesto && !(r.puesto || '').includes('(empate)');
         });
+
         if (conflict) {
-          showToast(`Ya existe un registro con el ${puestoVal} para la categoría "${regData.categoria}"${regData.disciplina ? ' y área "' + regData.disciplina + '"' : ''} (I.E. ${conflict.institucion}). No puede haber dos mismos puestos en la misma categoría.`);
+          updatePuestoSelectAnnotations();
+          const cWrap = document.getElementById('c_puesto_conflict_wrap');
+          if (cWrap) cWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
           btn.disabled = false;
           btn.textContent = submitLabel;
           return;
         }
       }
 
-      // Validar duplicado exacto
+      // Validar duplicado exacto (considerando Género para no bloquear a competidores de distinta rama)
       const exactDuplicate = existingRegs.find(r => {
         if (isEditing && r.id === concursoEditingId) return false;
         const sameTipo = (r.tipoConcursoId === tipo.id || r.tipoConcursoNombre === tipo.nombre);
         const sameInst = normalizeText(r.institucion) === normalizeText(regData.institucion);
         const sameCat = normalizeText(r.categoria) === normalizeText(regData.categoria);
         const sameDisc = normalizeText(r.disciplina) === normalizeText(regData.disciplina);
+        const sameGen = tipo.tieneGenero ? (normalizeGenero(r.genero) === normalizeGenero(regData.genero)) : true;
         const pDnis = pRows.map(p => (p.dni || '').trim()).filter(Boolean);
         const rDnis = (r.participantes || []).map(p => (p.dni || '').trim()).filter(Boolean);
         const sharesDni = pDnis.length > 0 && pDnis.some(d => rDnis.includes(d));
-        return sameTipo && sameInst && sameCat && (sharesDni || (sameDisc && normalizePuestoValue(r.puesto) === puestoVal));
+        return sameTipo && sameInst && sameCat && sameGen && (sharesDni || (sameDisc && normalizePuestoValue(r.puesto) === normP && normP !== ''));
       });
+
       if (exactDuplicate) {
         if (!confirm('Advertencia: Parece haber un registro idéntico o con los mismos participantes para esta I.E. en el sistema. ¿Deseas guardarlo de todas formas?')) {
           btn.disabled = false;
@@ -5601,15 +6965,68 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
         }
       }
 
-      if (isEditing) {
-        await dbNs.collection('concursoRegistros').doc(concursoEditingId).set(regData);
-        showToast('✓ Registro de concurso actualizado exitosamente.');
-        concursoEditingId = null;
-        concursoEditingData = null;
+      // Guardar con soporte transaccional y control de concurrencia
+      const lockDocId = isTopPuesto ? getPodioLockDocId(podioKey, normP) : null;
+      const oldLockDocId = (isEditing && concursoEditingData && ['1.er puesto', '2.° puesto', '3.er puesto'].includes(normalizePuestoValue(concursoEditingData.puesto)))
+        ? getPodioLockDocId(getPodioKey(concursoEditingData, tipo), normalizePuestoValue(concursoEditingData.puesto))
+        : null;
+
+      if (typeof dbNs.runTransaction === 'function') {
+        await dbNs.runTransaction(async (tx) => {
+          let targetId = concursoEditingId;
+          if (!targetId) {
+            const newRef = dbNs.collection('concursoRegistros').doc();
+            targetId = newRef.id;
+          }
+
+          if (isTopPuesto && !isEmpate && lockDocId) {
+            const lockSnap = await tx.get(dbNs.collection('concursoPodioLocks').doc(lockDocId));
+            if (lockSnap.exists) {
+              const lData = lockSnap.data();
+              if (lData && lData.registroId && lData.registroId !== targetId) {
+                throw new Error(`El ${normP} fue ocupado simultáneamente por otro usuario en este podio.`);
+              }
+            }
+            tx.set(dbNs.collection('concursoPodioLocks').doc(lockDocId), {
+              registroId: targetId,
+              podioKey: podioKey,
+              puesto: normP,
+              updatedAt: Date.now(),
+              usuario: currentUser ? (currentUser.displayName || currentUser.email || 'Especialista') : 'Especialista'
+            });
+          }
+
+          if (oldLockDocId && oldLockDocId !== lockDocId) {
+            tx.delete(dbNs.collection('concursoPodioLocks').doc(oldLockDocId));
+          }
+
+          tx.set(dbNs.collection('concursoRegistros').doc(targetId), regData);
+
+          if (isEditing && concursoEditingData && normalizePuestoValue(concursoEditingData.puesto) !== normP) {
+            const histRef = dbNs.collection('concursoHistorial').doc();
+            tx.set(histRef, {
+              tipo: 'cambio_puesto',
+              registroId: targetId,
+              institucion: regData.institucion,
+              podioKey: podioKey,
+              puestoAnterior: concursoEditingData.puesto || 'Sin puesto',
+              puestoNuevo: puestoVal || 'Sin puesto',
+              usuario: currentUser ? (currentUser.displayName || currentUser.email || 'Especialista') : 'Especialista',
+              fecha: Date.now()
+            });
+          }
+        });
       } else {
-        await dbNs.collection('concursoRegistros').add(regData);
-        showToast('✓ Registro de concurso guardado exitosamente.');
+        if (isEditing) {
+          await dbNs.collection('concursoRegistros').doc(concursoEditingId).set(regData);
+        } else {
+          await dbNs.collection('concursoRegistros').add(regData);
+        }
       }
+
+      showToast(isEditing ? '✓ Registro de concurso actualizado exitosamente.' : '✓ Registro de concurso guardado exitosamente.');
+      concursoEditingId = null;
+      concursoEditingData = null;
 
       // Reiniciar participantes y asesores a 1 fila limpia
       concursoParticipantes = [{ nombres: '', apellidos: '', dni: '', rol: partRoles[0] }];
@@ -5624,6 +7041,142 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
         btn.disabled = false;
         btn.textContent = submitLabel;
       }
+    }
+  });
+}
+
+// Modal para Reemplazar Puesto en Podio (Resolución de Conflictos)
+function abrirModalReemplazoPuesto(conflictReg, newRegData, puestoVal, tipo, dbNs, state, currentEditingId, onDone) {
+  const modalWrap = document.createElement('div');
+  modalWrap.id = 'reemplazoPuestoModal';
+  const podioLabel = getPodioLabel(conflictReg, tipo);
+  const partConf = (conflictReg.participantes && conflictReg.participantes[0]) ? formatearNombre(conflictReg.participantes[0]) : 'Sin participante';
+  const instNew = document.getElementById('c_institucion') ? document.getElementById('c_institucion').value.trim() : (newRegData.institucion || 'Nuevo registro');
+  const partNew = (concursoParticipantes && concursoParticipantes[0] && concursoParticipantes[0].nombres)
+    ? formatearNombre(concursoParticipantes[0])
+    : 'Participante actual';
+
+  modalWrap.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:250;display:flex;align-items:center;justify-content:center;padding:20px">
+      <div style="background:var(--surface);border:1.5px solid var(--line-strong);border-radius:14px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:var(--shadow-lg)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <h3 style="margin:0;display:flex;align-items:center;gap:8px">🔄 Reemplazar puesto en podio</h3>
+          <button type="button" class="iconBtn" id="m_reemp_close">✕</button>
+        </div>
+        <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px">
+          Podio: <strong>${esc(podioLabel)}</strong>
+        </p>
+
+        <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:16px">
+          <div style="font-size:11.5px;font-weight:700;color:var(--navy-900);margin-bottom:8px">VISTA PREVIA DEL REEMPLAZO</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12.5px">
+            <div style="background:#fff;padding:10px;border-radius:6px;border:1px solid var(--line)">
+              <div style="font-size:11px;font-weight:700;color:var(--danger)">OCUPANTE ACTUAL</div>
+              <div style="margin-top:4px"><strong>${esc(conflictReg.institucion)}</strong></div>
+              <div style="color:var(--ink-soft);font-size:11.5px">${esc(partConf)}</div>
+              <div style="margin-top:6px"><span class="badge badge-puesto puesto-1">${esc(puestoVal)}</span></div>
+            </div>
+            <div style="background:#fff;padding:10px;border-radius:6px;border:1px solid var(--line)">
+              <div style="font-size:11px;font-weight:700;color:var(--ok)">NUEVO ASIGNADO</div>
+              <div style="margin-top:4px"><strong>${esc(instNew)}</strong></div>
+              <div style="color:var(--ink-soft);font-size:11.5px">${esc(partNew)}</div>
+              <div style="margin-top:6px"><span class="badge badge-puesto puesto-1">${esc(puestoVal)}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:18px">
+          <label for="m_reemp_destino_antiguo">¿Qué puesto asignar al ocupante anterior (${esc(conflictReg.institucion)})?</label>
+          <select id="m_reemp_destino_antiguo">
+            <option value="">Sin puesto / Pendiente (Recomendado)</option>
+            <option value="2.° puesto">🥈 2.° puesto</option>
+            <option value="3.er puesto">🥉 3.er puesto</option>
+            <option value="Mención honrosa">🎖️ Mención honrosa</option>
+          </select>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px">
+          <button type="button" class="btn secondary" id="m_reemp_cancel">Cancelar</button>
+          <button type="button" class="btn" id="m_reemp_confirm" style="background:var(--primary);color:#fff">Confirmar y Reemplazar</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modalWrap);
+  const closeModal = () => { if (modalWrap.parentNode) modalWrap.parentNode.removeChild(modalWrap); };
+  document.getElementById('m_reemp_close').addEventListener('click', closeModal);
+  document.getElementById('m_reemp_cancel').addEventListener('click', closeModal);
+
+  document.getElementById('m_reemp_confirm').addEventListener('click', async () => {
+    const btn = document.getElementById('m_reemp_confirm');
+    btn.disabled = true;
+    btn.textContent = 'Procesando...';
+
+    const destinoAntiguo = document.getElementById('m_reemp_destino_antiguo').value;
+    const podioKey = getPodioKey(conflictReg, tipo);
+
+    try {
+      if (typeof dbNs.runTransaction === 'function') {
+        await dbNs.runTransaction(async (tx) => {
+          // 1. Actualizar el registro en conflicto
+          tx.update(dbNs.collection('concursoRegistros').doc(conflictReg.id), {
+            puesto: destinoAntiguo || '',
+            updatedAt: Date.now()
+          });
+
+          // 2. Si se estaba editando el registro actual, actualizarlo en la misma transacción
+          if (currentEditingId) {
+            tx.update(dbNs.collection('concursoRegistros').doc(currentEditingId), {
+              puesto: puestoVal,
+              updatedAt: Date.now()
+            });
+          }
+
+          // 3. Actualizar el bloqueo en concursoPodioLocks
+          const lockDocId = getPodioLockDocId(podioKey, puestoVal);
+          tx.set(dbNs.collection('concursoPodioLocks').doc(lockDocId), {
+            registroId: currentEditingId || 'form_nuevo',
+            podioKey: podioKey,
+            puesto: puestoVal,
+            updatedAt: Date.now(),
+            usuario: 'Especialista'
+          });
+
+          // 4. Registrar en historial de bitácora
+          const histDoc = dbNs.collection('concursoHistorial').doc();
+          tx.set(histDoc, {
+            tipo: 'reemplazo_puesto',
+            podioKey: podioKey,
+            puesto: puestoVal,
+            registroAnteriorId: conflictReg.id,
+            institucionAnterior: conflictReg.institucion,
+            puestoAnteriorNuevo: destinoAntiguo || 'Sin puesto',
+            institucionNueva: instNew,
+            fecha: Date.now()
+          });
+        });
+      } else {
+        await dbNs.collection('concursoRegistros').doc(conflictReg.id).update({
+          puesto: destinoAntiguo || '',
+          updatedAt: Date.now()
+        });
+        if (currentEditingId) {
+          await dbNs.collection('concursoRegistros').doc(currentEditingId).update({
+            puesto: puestoVal,
+            updatedAt: Date.now()
+          });
+        }
+      }
+
+      showToast(`✓ Se asignó el ${puestoVal} a ${instNew}.`);
+      closeModal();
+      if (onDone) onDone();
+    } catch (err) {
+      console.error('Error al reemplazar puesto:', err);
+      showToast('Error al reemplazar puesto: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Confirmar y Reemplazar';
     }
   });
 }
@@ -5722,7 +7275,7 @@ function getFacetOptions(rows, field, allLabel = 'Todas', emptyLabel = null) {
   return options;
 }
 
-function syncConcursoFiltersToUrl(filters, isJedpa) {
+function syncConcursoFiltersToUrl(filters, isJedpa, isJfen) {
   try {
     const url = new URL(window.location.href);
     if (filters.tipoId) url.searchParams.set('concurso', filters.tipoId);
@@ -5740,6 +7293,26 @@ function syncConcursoFiltersToUrl(filters, isJedpa) {
 
       if (filters.genero) url.searchParams.set('genero', filters.genero);
       else url.searchParams.delete('genero');
+
+      url.searchParams.delete('arte');
+      url.searchParams.delete('modalidad');
+    } else if (isJfen) {
+      if (filters.etapa) url.searchParams.set('etapa', filters.etapa);
+      else url.searchParams.delete('etapa');
+
+      if (filters.categoria) url.searchParams.set('categoria', filters.categoria);
+      else url.searchParams.delete('categoria');
+
+      if (filters.arte) url.searchParams.set('arte', filters.arte);
+      else url.searchParams.delete('arte');
+
+      if (filters.disciplina) url.searchParams.set('disciplina', filters.disciplina);
+      else url.searchParams.delete('disciplina');
+
+      if (filters.modalidad) url.searchParams.set('modalidad', filters.modalidad);
+      else url.searchParams.delete('modalidad');
+
+      url.searchParams.delete('genero');
     } else {
       if (filters.etapa) url.searchParams.set('etapa', filters.etapa);
       else url.searchParams.delete('etapa');
@@ -5749,13 +7322,15 @@ function syncConcursoFiltersToUrl(filters, isJedpa) {
       else url.searchParams.delete('genero');
       if (filters.disciplina) url.searchParams.set('disciplina', filters.disciplina);
       else url.searchParams.delete('disciplina');
+      url.searchParams.delete('arte');
+      url.searchParams.delete('modalidad');
     }
 
     if (filters.query) url.searchParams.set('q', filters.query);
     else url.searchParams.delete('q');
 
     window.history.replaceState(null, '', url.toString());
-  } catch (e) {}
+  } catch (e) { }
 }
 
 function restoreConcursoFiltersFromUrl(tipos) {
@@ -5770,8 +7345,10 @@ function restoreConcursoFiltersFromUrl(tipos) {
     if (params.has('disciplina')) concursoFilters.disciplina = params.get('disciplina');
     if (params.has('categoria')) concursoFilters.categoria = params.get('categoria');
     if (params.has('genero')) concursoFilters.genero = params.get('genero');
+    if (params.has('arte')) concursoFilters.arte = params.get('arte');
+    if (params.has('modalidad')) concursoFilters.modalidad = params.get('modalidad');
     if (params.has('q')) concursoFilters.query = params.get('q');
-  } catch (e) {}
+  } catch (e) { }
 }
 
 function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate) {
@@ -5795,6 +7372,11 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     (tipo.nombre || '').toLowerCase().includes('jedpa') ||
     (tipo.nombre || '').toLowerCase().includes('juegos escolares')
   );
+  const isJfen = tipo && (
+    tipo.id === 'jfen' ||
+    (tipo.nombre || '').toLowerCase().includes('jfen') ||
+    (tipo.nombre || '').toLowerCase().includes('florales')
+  );
 
   let filtered = [];
   let baseRows = [];
@@ -5802,6 +7384,8 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
   let disciplinaOptions = [];
   let categoriaOptions = [];
   let generoOptions = [];
+  let arteOptions = [];
+  let modalidadOptions = [];
   let etapaRows = [];
 
   if (isJedpa) {
@@ -5887,6 +7471,113 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       });
     }
 
+  } else if (isJfen) {
+    baseRows = regs.filter(r => {
+      if (r.tipoConcursoId === tipo.id) return true;
+      if (tipo && (r.tipoConcursoNombre === tipo.nombre || r.tipoConcurso === tipo.nombre)) return true;
+      return false;
+    });
+
+    // Añadir propiedades virtuales parseadas para filtrado fluido y limpio
+    baseRows.forEach(r => {
+      const p = parseArteDisciplina(r.disciplina);
+      r._arte = p.arte;
+      r._disciplina = p.disciplina;
+      r._modalidad = (r.modalidad || r.modalidadParticipacion || '').trim();
+    });
+
+    // 1. ETAPA
+    etapaOptions = getFacetOptions(baseRows, 'etapa', 'Todas las etapas', 'Sin etapa');
+    if (concursoFilters.etapa && !etapaOptions.some(o => o.value === concursoFilters.etapa)) {
+      concursoFilters.etapa = '';
+    }
+    etapaRows = baseRows;
+    if (concursoFilters.etapa) {
+      if (concursoFilters.etapa === '__empty__') {
+        etapaRows = baseRows.filter(r => !r.etapa || r.etapa.trim() === '' || r.etapa.trim() === '—');
+      } else {
+        etapaRows = baseRows.filter(r => normalizeFilterValue(r.etapa) === concursoFilters.etapa);
+      }
+    }
+
+    // 2. CATEGORÍA
+    categoriaOptions = getFacetOptions(etapaRows, 'categoria', 'Todas las categorías', 'Sin categoría');
+    if (concursoFilters.categoria && !categoriaOptions.some(o => o.value === concursoFilters.categoria)) {
+      concursoFilters.categoria = '';
+      showToast('Categoría reiniciada: no hay registros con esa combinación.');
+    }
+    let categoriaRows = etapaRows;
+    if (concursoFilters.categoria) {
+      if (concursoFilters.categoria === '__empty__') {
+        categoriaRows = etapaRows.filter(r => !r.categoria || r.categoria.trim() === '' || r.categoria.trim() === '—');
+      } else {
+        categoriaRows = etapaRows.filter(r => normalizeFilterValue(r.categoria) === concursoFilters.categoria);
+      }
+    }
+
+    // 3. ARTE
+    arteOptions = getFacetOptions(categoriaRows, '_arte', 'Todas las áreas', 'Sin área');
+    if (concursoFilters.arte && !arteOptions.some(o => o.value === concursoFilters.arte)) {
+      concursoFilters.arte = '';
+      showToast('Área de arte reiniciada: no hay registros con esa combinación.');
+    }
+    let arteRows = categoriaRows;
+    if (concursoFilters.arte) {
+      if (concursoFilters.arte === '__empty__') {
+        arteRows = categoriaRows.filter(r => !r._arte || r._arte.trim() === '');
+      } else {
+        arteRows = categoriaRows.filter(r => normalizeFilterValue(r._arte) === concursoFilters.arte);
+      }
+    }
+
+    // 4. DISCIPLINA
+    disciplinaOptions = getFacetOptions(arteRows, '_disciplina', 'Todas las disciplinas', 'Sin disciplina');
+    if (concursoFilters.disciplina && !disciplinaOptions.some(o => o.value === concursoFilters.disciplina)) {
+      concursoFilters.disciplina = '';
+      showToast('Disciplina reiniciada: no hay registros con esa combinación.');
+    }
+    let disciplinaRows = arteRows;
+    if (concursoFilters.disciplina) {
+      if (concursoFilters.disciplina === '__empty__') {
+        disciplinaRows = arteRows.filter(r => !r._disciplina || r._disciplina.trim() === '');
+      } else {
+        disciplinaRows = arteRows.filter(r => normalizeFilterValue(r._disciplina) === concursoFilters.disciplina);
+      }
+    }
+
+    // 5. MODALIDAD
+    modalidadOptions = getFacetOptions(disciplinaRows, '_modalidad', 'Todas las modalidades', 'Sin modalidad');
+    if (concursoFilters.modalidad && !modalidadOptions.some(o => o.value === concursoFilters.modalidad)) {
+      concursoFilters.modalidad = '';
+    }
+    let modalidadRows = disciplinaRows;
+    if (concursoFilters.modalidad) {
+      if (concursoFilters.modalidad === '__empty__') {
+        modalidadRows = disciplinaRows.filter(r => !r._modalidad);
+      } else {
+        modalidadRows = disciplinaRows.filter(r => normalizeFilterValue(r._modalidad) === concursoFilters.modalidad);
+      }
+    }
+
+    // 6. BUSCAR
+    filtered = modalidadRows;
+    if (concursoFilters.query) {
+      const q = normalizeText(concursoFilters.query);
+      filtered = filtered.filter(r => {
+        if (normalizeText(r.institucion).includes(q)) return true;
+        if (normalizeText(r.tituloTrabajo).includes(q)) return true;
+        if (normalizeText(r.disciplina).includes(q)) return true;
+        if (normalizeText(r._arte).includes(q)) return true;
+        if (normalizeText(r._disciplina).includes(q)) return true;
+        if (normalizeText(r.resolucionRef).includes(q)) return true;
+        if (normalizeText(r.codigoModular).includes(q)) return true;
+        if (normalizeText(r.tipoConcursoNombre || r.tipoConcurso).includes(q)) return true;
+        if ((r.participantes || []).some(p => normalizeText([p.nombres, p.apellidos, p.dni].filter(Boolean).join(' ')).includes(q))) return true;
+        if ((r.asesores || []).some(a => normalizeText([a.nombres, a.apellidos, a.dni].filter(Boolean).join(' ')).includes(q))) return true;
+        return false;
+      });
+    }
+
   } else {
     // Otros concursos (comportamiento estándar conservado)
     baseRows = regs.slice();
@@ -5931,7 +7622,7 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     }
   }
 
-  syncConcursoFiltersToUrl(concursoFilters, isJedpa);
+  syncConcursoFiltersToUrl(concursoFilters, isJedpa, isJfen);
 
   // Ordenamiento predeterminado: Categoría -> Área / Disciplina -> Puesto (1.er, 2.°, 3.er, MH...) -> Institución
   const puestoWeight = (p) => {
@@ -5947,10 +7638,12 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
   };
 
   filtered.sort((a, b) => {
-    const catComp = (a.categoria || '').localeCompare(b.categoria || '');
-    if (catComp !== 0) return catComp;
     const discComp = (a.disciplina || '').localeCompare(b.disciplina || '');
     if (discComp !== 0) return discComp;
+    const catComp = (a.categoria || '').localeCompare(b.categoria || '');
+    if (catComp !== 0) return catComp;
+    const genComp = (a.genero || '').localeCompare(b.genero || '');
+    if (genComp !== 0) return genComp;
     const pA = puestoWeight(a.puesto);
     const pB = puestoWeight(b.puesto);
     if (pA !== pB) return pA - pB;
@@ -5997,6 +7690,27 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       const opt = generoOptions.find(o => o.value === concursoFilters.genero);
       chips.push({ key: 'genero', label: `Género: ${opt ? opt.rawLabel : concursoFilters.genero}` });
     }
+  } else if (isJfen) {
+    if (concursoFilters.etapa) {
+      const opt = etapaOptions.find(o => o.value === concursoFilters.etapa);
+      chips.push({ key: 'etapa', label: `Etapa: ${opt ? opt.rawLabel : concursoFilters.etapa}` });
+    }
+    if (concursoFilters.categoria) {
+      const opt = categoriaOptions.find(o => o.value === concursoFilters.categoria);
+      chips.push({ key: 'categoria', label: `Categoría: ${opt ? opt.rawLabel : concursoFilters.categoria}` });
+    }
+    if (concursoFilters.arte) {
+      const opt = arteOptions.find(o => o.value === concursoFilters.arte);
+      chips.push({ key: 'arte', label: `Arte: ${opt ? opt.rawLabel : concursoFilters.arte}` });
+    }
+    if (concursoFilters.disciplina) {
+      const opt = disciplinaOptions.find(o => o.value === concursoFilters.disciplina);
+      chips.push({ key: 'disciplina', label: `Disciplina: ${opt ? opt.rawLabel : concursoFilters.disciplina}` });
+    }
+    if (concursoFilters.modalidad) {
+      const opt = modalidadOptions.find(o => o.value === concursoFilters.modalidad);
+      chips.push({ key: 'modalidad', label: `Modalidad: ${opt ? opt.rawLabel : concursoFilters.modalidad}` });
+    }
   } else {
     if (concursoFilters.etapa) chips.push({ key: 'etapa', label: `Etapa: ${concursoFilters.etapa}` });
     if (concursoFilters.categoria) chips.push({ key: 'categoria', label: `Categoría: ${concursoFilters.categoria}` });
@@ -6034,21 +7748,38 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       const gOpt = generoOptions.find(o => o.value === concursoFilters.genero);
       tableTitleParts.push(gOpt ? gOpt.rawLabel : concursoFilters.genero);
     }
+  } else if (isJfen) {
+    if (concursoFilters.etapa) {
+      const eOpt = etapaOptions.find(o => o.value === concursoFilters.etapa);
+      tableTitleParts.push(`Etapa ${eOpt ? eOpt.rawLabel : concursoFilters.etapa}`);
+    }
+    if (concursoFilters.categoria) {
+      const cOpt = categoriaOptions.find(o => o.value === concursoFilters.categoria);
+      tableTitleParts.push(`Categoría ${cOpt ? cOpt.rawLabel : concursoFilters.categoria}`);
+    }
+    if (concursoFilters.arte) {
+      const aOpt = arteOptions.find(o => o.value === concursoFilters.arte);
+      tableTitleParts.push(aOpt ? aOpt.rawLabel : concursoFilters.arte);
+    }
+    if (concursoFilters.disciplina) {
+      const dOpt = disciplinaOptions.find(o => o.value === concursoFilters.disciplina);
+      tableTitleParts.push(dOpt ? dOpt.rawLabel : concursoFilters.disciplina);
+    }
   }
   const dynamicTableTitle = 'Resultados consolidados: ' + tableTitleParts.join(' · ');
 
-  // Filas de la tabla de resultados
+  // Filas de la tabla de resultados (Modo Tabla)
   const rowsHtml = filtered.map(r => {
     const isExpanded = concursoExpandedId === r.id;
     const partSummary = (r.participantes || []).map(p => {
-      const nom = formatPersonName(p);
+      const nom = formatearNombre(p);
       const dni = p.dni ? ' <small style="color:var(--ink-soft)">(' + esc(p.dni) + ')</small>' : '';
       const rol = (p.rol && p.rol !== 'Estudiante' && p.rol !== 'Deportista') ? ' <small style="color:var(--ink-soft)">[' + esc(p.rol) + ']</small>' : '';
       return esc(nom) + dni + rol;
     }).join('<br>') || '<span style="color:var(--ink-soft);font-style:italic">Sin participante registrado</span>';
 
     const asesSummary = (r.asesores || []).map(a => {
-      const nom = formatPersonName(a);
+      const nom = formatearNombre(a);
       const dni = a.dni ? ' <small style="color:var(--ink-soft)">(' + esc(a.dni) + ')</small>' : '';
       const rol = a.rol ? ' <small style="color:var(--ink-soft)">[' + esc(a.rol) + ']</small>' : '';
       return esc(nom) + dni + rol;
@@ -6064,41 +7795,41 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     const detHtml = detExtra.join('<br>') || '—';
 
     const editBtn = '<button class="btn secondary small" data-cedit="' + r.id + '" title="Editar registro">✏️</button>';
-    const delBtn  = isAdmin ? '<button class="iconBtn" data-cdel="' + r.id + '" title="Eliminar registro">✕</button>' : '';
+    const delBtn = isAdmin ? '<button class="iconBtn" data-cdel="' + r.id + '" title="Eliminar registro">✕</button>' : '';
 
     let detailContent = '';
     if (isExpanded) {
       const partListDetailed = (r.participantes || []).map(p => {
-        const nom = [p.nombres, p.apellidos].filter(Boolean).join(' ').trim();
+        const nom = formatearNombre(p);
         return '<li><strong>' + esc(nom) + '</strong> · DNI: ' + esc(p.dni || '—') + ' · Rol: ' + esc(p.rol || 'Participante') + '</li>';
       }).join('');
       const asesListDetailed = (r.asesores || []).map(a => {
-        const nom = [a.nombres, a.apellidos].filter(Boolean).join(' ').trim();
+        const nom = formatearNombre(a);
         return '<li><strong>' + esc(nom) + '</strong> · DNI: ' + esc(a.dni || '—') + ' · Rol: ' + esc(a.rol || 'Asesor') + '</li>';
       }).join('');
 
       detailContent = '<tr class="detailRow"><td colspan="8">' +
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">' +
-          '<div>' +
-            '<h5 style="margin:0 0 6px;color:var(--ink)">Participantes (' + (r.participantes || []).length + ')</h5>' +
-            '<ul style="margin:0;padding-left:18px;font-size:12.5px">' + (partListDetailed || '<li>Sin participantes</li>') + '</ul>' +
-          '</div>' +
-          '<div>' +
-            '<h5 style="margin:0 0 6px;color:var(--ink)">Docentes Asesores / Delegados (' + (r.asesores || []).length + ')</h5>' +
-            '<ul style="margin:0;padding-left:18px;font-size:12.5px">' + (asesListDetailed || '<li>Sin asesores</li>') + '</ul>' +
-          '</div>' +
-          '<div>' +
-            '<h5 style="margin:0 0 6px;color:var(--ink)">Detalles Adicionales</h5>' +
-            '<p style="margin:0;font-size:12.5px;color:var(--ink-soft)">' +
-              'Concurso: <strong>' + esc(r.tipoConcursoNombre || r.tipoConcurso || '—') + '</strong><br>' +
-              'Código Modular: <strong>' + esc(r.codigoModular || '—') + '</strong><br>' +
-              'Resolución: <strong>' + esc(r.resolucionRef || '—') + '</strong><br>' +
-              'Registrado por: <strong>' + esc(r.responsable || '—') + '</strong><br>' +
-              'Fecha: <strong>' + fmtDate(r.fecha) + '</strong>' +
-            '</p>' +
-          '</div>' +
+        '<div>' +
+        '<h5 style="margin:0 0 6px;color:var(--ink)">Participantes (' + (r.participantes || []).length + ')</h5>' +
+        '<ul style="margin:0;padding-left:18px;font-size:12.5px">' + (partListDetailed || '<li>Sin participantes</li>') + '</ul>' +
         '</div>' +
-      '</td></tr>';
+        '<div>' +
+        '<h5 style="margin:0 0 6px;color:var(--ink)">Docentes Asesores / Delegados (' + (r.asesores || []).length + ')</h5>' +
+        '<ul style="margin:0;padding-left:18px;font-size:12.5px">' + (asesListDetailed || '<li>Sin asesores</li>') + '</ul>' +
+        '</div>' +
+        '<div>' +
+        '<h5 style="margin:0 0 6px;color:var(--ink)">Detalles Adicionales</h5>' +
+        '<p style="margin:0;font-size:12.5px;color:var(--ink-soft)">' +
+        'Concurso: <strong>' + esc(r.tipoConcursoNombre || r.tipoConcurso || '—') + '</strong><br>' +
+        'Código Modular: <strong>' + esc(r.codigoModular || '—') + '</strong><br>' +
+        'Resolución: <strong>' + esc(r.resolucionRef || '—') + '</strong><br>' +
+        'Registrado por: <strong>' + esc(r.responsable || '—') + '</strong><br>' +
+        'Fecha: <strong>' + fmtDate(r.fecha) + '</strong>' +
+        '</p>' +
+        '</div>' +
+        '</div>' +
+        '</td></tr>';
     }
 
     return '<tr class="clickable" data-crow="' + r.id + '">' +
@@ -6110,13 +7841,132 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       '<td>' + asesSummary + '</td>' +
       '<td><span class="badge badge-etapa">' + esc(r.etapa) + '</span></td>' +
       '<td style="white-space:nowrap">' + editBtn + delBtn + '</td>' +
-    '</tr>' + detailContent;
+      '</tr>' + detailContent;
   }).join('') || (
-    '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--ink-soft)">' +
+      '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--ink-soft)">' +
       '<p style="font-size:14.5px;margin-bottom:6px">No se encontraron registros con los filtros seleccionados.</p>' +
       (isAdmin && regs.length === 0 ? '<button type="button" class="btn" id="btnImportGanadoresConsolidadoEmpty" style="margin-top:8px">📥 Cargar 83 ganadores oficiales (RD UGEL 03 - 2026)</button>' : '') +
-    '</td></tr>'
-  );
+      '</td></tr>'
+    );
+
+  // Tarjetas de Ficha por Categoría y Disciplina (Modo Fichas JFEN)
+  const fichasHtml = filtered.map(r => {
+    const editBtn = '<button type="button" class="btn secondary small" data-cedit="' + r.id + '" title="Editar registro">✏️ Editar</button>';
+    const delBtn = isAdmin ? '<button type="button" class="iconBtn" data-cdel="' + r.id + '" title="Eliminar registro" style="margin-left:6px">✕</button>' : '';
+
+    const parts = (r.participantes || []).slice().sort((a, b) => {
+      const nomA = formatearNombre(a);
+      const nomB = formatearNombre(b);
+      return nomA.localeCompare(nomB, 'es', { sensitivity: 'base' });
+    });
+
+    const ases = (r.asesores || []);
+
+    const partRowsHtml = parts.map((p, idx) => {
+      const isAlt = (idx % 2 === 1) ? ' class="rowAlt"' : '';
+      const nom = formatearNombre(p);
+      const dni = p.dni ? esc(p.dni) : '—';
+      const rowHeaderCell = (idx === 0)
+        ? `<td rowspan="${Math.max(parts.length, 1)}" class="rowHeaderPart">Estudiantes (${parts.length})</td>`
+        : '';
+      return `
+        <tr${isAlt}>
+          ${rowHeaderCell}
+          <td style="width:36px;text-align:center;color:var(--ink-soft);font-size:11.5px">${idx + 1}</td>
+          <td class="partNameCell">${esc(nom)}</td>
+          <td class="partDniCell">${dni}</td>
+        </tr>
+      `;
+    }).join('') || `
+      <tr>
+        <td class="rowHeaderPart">Estudiantes (0)</td>
+        <td colspan="3" style="color:var(--ink-soft);font-style:italic;padding:10px 14px">Sin estudiantes registrados</td>
+      </tr>
+    `;
+
+    const asesRowsHtml = ases.map(a => {
+      const nom = formatearNombre(a);
+      const dni = a.dni ? esc(a.dni) : '—';
+      return `
+        <tr class="rowDocente">
+          <td class="rowHeaderDoc">Docente Asesor</td>
+          <td style="width:36px;text-align:center;color:var(--ink-soft);font-size:11.5px">—</td>
+          <td class="partNameCell" style="font-weight:600">${esc(nom)}</td>
+          <td class="partDniCell">${dni}</td>
+        </tr>
+      `;
+    }).join('') || `
+      <tr class="rowDocente">
+        <td class="rowHeaderDoc">Docente Asesor</td>
+        <td colspan="3" style="color:var(--ink-soft);font-style:italic;padding:10px 14px">Sin docente asesor registrado</td>
+      </tr>
+    `;
+
+    const parsed = parseArteDisciplina(r.disciplina);
+    const arteStr = r._arte || parsed.arte || '—';
+    const discStr = r._disciplina || parsed.disciplina || r.disciplina || '—';
+
+    return `
+      <div class="jfenFichaCard">
+        <div class="jfenCategoryBar">CATEGORÍA ${esc(r.categoria || '—')}</div>
+        <table class="jfenMetaTable">
+          <tbody>
+            <tr>
+              <th class="metaLabel">Arte</th>
+              <td class="metaVal"><strong>${esc(arteStr)}</strong></td>
+            </tr>
+            <tr>
+              <th class="metaLabel">Disciplina</th>
+              <td class="metaVal"><strong>${esc(discStr)}</strong></td>
+            </tr>
+            <tr>
+              <th class="metaLabel">Institución Educativa</th>
+              <td class="metaVal"><strong>${esc(r.institucion || '—')}</strong></td>
+            </tr>
+            <tr>
+              <th class="metaLabel">Código Modular</th>
+              <td class="metaVal">${esc(r.codigoModular || '—')}</td>
+            </tr>
+            ${r.tituloTrabajo ? `
+              <tr>
+                <th class="metaLabel">Título de la Obra</th>
+                <td class="metaVal"><em>«${esc(r.tituloTrabajo)}»</em> ${r.seudonimo ? `<small style="color:var(--ink-soft)">(${esc(r.seudonimo)})</small>` : ''}</td>
+              </tr>
+            ` : ''}
+            <tr>
+              <th class="metaLabel">Puesto obtenido</th>
+              <td class="metaVal">${formatPuestoBadge(r.puesto)}</td>
+            </tr>
+            <tr>
+              <th class="metaLabel">Resolución Directoral</th>
+              <td class="metaVal">${esc(r.resolucionRef || '—')}</td>
+            </tr>
+          </tbody>
+        </table>
+        <table class="jfenParticipantsTable">
+          <thead>
+            <tr>
+              <th style="width:140px">Condición</th>
+              <th style="width:36px">N°</th>
+              <th>Apellidos y Nombres</th>
+              <th style="width:110px;text-align:center">DNI</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${partRowsHtml}
+            ${asesRowsHtml}
+          </tbody>
+        </table>
+        <div class="jfenCardFooter">
+          <span style="font-size:12px;color:var(--ink-soft)">Etapa: <strong>${esc(r.etapa || '—')}</strong></span>
+          <div style="margin-left:auto;display:flex;align-items:center">
+            ${editBtn}
+            ${delBtn}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
 
   // Selector de disciplina label para JEDPA
   let selectedDisciplinaLabel = 'Todas';
@@ -6184,9 +8034,9 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
               <label for="cf_categoria">3. Categoría</label>
               <select id="cf_categoria" ${categoriaOptions.length <= 1 ? 'disabled' : ''}>
                 ${categoriaOptions.length <= 1
-                  ? '<option value="">Sin opciones</option>'
-                  : categoriaOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.categoria ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
-                }
+        ? '<option value="">Sin opciones</option>'
+        : categoriaOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.categoria ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
+      }
               </select>
             </div>
 
@@ -6195,9 +8045,9 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
               <label for="cf_genero">4. Género</label>
               <select id="cf_genero" ${generoOptions.length <= 1 ? 'disabled' : ''}>
                 ${generoOptions.length <= 1
-                  ? '<option value="">Sin opciones</option>'
-                  : generoOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.genero ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
-                }
+        ? '<option value="">Sin opciones</option>'
+        : generoOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.genero ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
+      }
               </select>
             </div>
 
@@ -6219,13 +8069,120 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
             </div>
           </div>
 
-          <!-- Fila 3: Botones de acción -->
-          <div class="jedpaActionsRow">
-            <button type="button" class="btn secondary small" id="cf_clear">Limpiar</button>
-            ${isAdmin ? '<button type="button" class="btn secondary small" id="cf_importRd" title="Importar 83 ganadores de Resoluciones Directorales 2026">📥 Cargar ganadores RD</button>' : ''}
-            <button type="button" class="btn secondary small" id="cf_detectDuplicatesBtn" title="Buscar registros duplicados o puestos repetidos">🔍 Detectar duplicados</button>
-            <button type="button" class="btn secondary small" id="cf_exportCsv" style="margin-left:auto">Exportar CSV</button>
-            <button type="button" class="btn small" id="cf_exportPdf">⬇ Descargar reporte (PDF)</button>
+          <!-- Fila 3: Botones de acción agrupados -->
+          <div class="concursoActionsRow">
+            <div class="concursoActionsLeft">
+              <button type="button" class="btn secondary small" id="cf_clear">Limpiar</button>
+              <button type="button" class="btn secondary small" id="cf_asignarPuestosBtn" title="Asignar puestos por podio de forma masiva">🏆 Asignar puestos</button>
+              ${isAdmin ? '<button type="button" class="btn secondary small" id="cf_importRd" title="Importar 83 ganadores de Resoluciones Directorales 2026">📥 Cargar ganadores RD</button>' : ''}
+              <button type="button" class="btn secondary small" id="cf_detectDuplicatesBtn" title="Buscar registros duplicados o puestos repetidos">🔍 Detectar duplicados</button>
+            </div>
+            <div class="concursoActionsRight">
+              <button type="button" class="btn secondary small" id="cf_exportCsv">Exportar CSV</button>
+              <button type="button" class="btn small" id="cf_exportPdf">⬇ Descargar reporte (PDF)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (isJfen) {
+    filterBarHtml = `
+      <div class="panel" style="margin-bottom:16px">
+        <div class="jfenFilterContainer">
+          <!-- Fila 0: Tipo de concurso (ancho completo) -->
+          <div class="jfenRowTipo">
+            <div class="jedpaFilterField">
+              <label for="cf_tipo">Tipo de concurso</label>
+              <select id="cf_tipo" title="${esc(tipo ? tipo.nombre : 'Juegos Florales Escolares Nacionales (JFEN)')}">
+                <option value="">Todos los concursos (${regs.length})</option>
+                ${tipos.map(t => `<option value="${t.id}" ${t.id === concursoFilters.tipoId ? 'selected' : ''}>${esc(t.nombre)}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <!-- Fila 1: Cascada (1. ETAPA -> 2. CATEGORÍA -> 3. ARTE -> 4. DISCIPLINA -> 5. MODALIDAD -> 6. BUSCAR) -->
+          <div class="jfenFiltersGrid">
+            <!-- 1. ETAPA -->
+            <div class="jedpaFilterField">
+              <label for="cf_etapa">1. Etapa</label>
+              <select id="cf_etapa" ${etapaOptions.length <= 1 ? 'disabled' : ''}>
+                ${etapaOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.etapa ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
+              </select>
+            </div>
+
+            <!-- 2. CATEGORÍA -->
+            <div class="jedpaFilterField">
+              <label for="cf_categoria">2. Categoría</label>
+              <select id="cf_categoria" ${categoriaOptions.length <= 1 ? 'disabled' : ''}>
+                ${categoriaOptions.length <= 1
+                  ? '<option value="">Sin opciones</option>'
+                  : categoriaOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.categoria ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
+                }
+              </select>
+            </div>
+
+            <!-- 3. ARTE -->
+            <div class="jedpaFilterField">
+              <label for="cf_arte">3. Arte / Área</label>
+              <select id="cf_arte" ${arteOptions.length <= 1 ? 'disabled' : ''}>
+                ${arteOptions.length <= 1
+                  ? '<option value="">Sin opciones</option>'
+                  : arteOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.arte ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
+                }
+              </select>
+            </div>
+
+            <!-- 4. DISCIPLINA -->
+            <div class="jedpaFilterField">
+              <label for="cf_disciplina">4. Disciplina</label>
+              <select id="cf_disciplina" ${disciplinaOptions.length <= 1 ? 'disabled' : ''}>
+                ${disciplinaOptions.length <= 1
+                  ? '<option value="">Sin opciones</option>'
+                  : disciplinaOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.disciplina ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
+                }
+              </select>
+            </div>
+
+            <!-- 5. MODALIDAD (solo si aplica) -->
+            ${modalidadOptions.length > 1 ? `
+              <div class="jedpaFilterField">
+                <label for="cf_modalidad">5. Modalidad</label>
+                <select id="cf_modalidad">
+                  ${modalidadOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.modalidad ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
+                </select>
+              </div>
+            ` : ''}
+
+            <!-- 6. BUSCAR -->
+            <div class="jedpaFilterField" style="min-width:180px">
+              <label for="cf_query">Buscar</label>
+              <input type="search" id="cf_query" value="${esc(concursoFilters.query)}" placeholder="I.E., estudiante, DNI, RD...">
+            </div>
+          </div>
+
+          <!-- Fila 2: Chips de filtros activos + Contador -->
+          <div class="jfenActiveFiltersRow">
+            ${hasActiveFilters ? `
+              <span style="font-size:12px;font-weight:700;color:var(--navy-900)">Filtros activos:</span>
+              ${activeChipsHtml}
+            ` : ''}
+            <div class="recordsCounter" aria-live="polite">
+              Mostrando <strong>${filtered.length}</strong> de <strong>${baseRows.length}</strong> registros
+            </div>
+          </div>
+
+          <!-- Fila 3: Botones de acción agrupados -->
+          <div class="concursoActionsRow">
+            <div class="concursoActionsLeft">
+              <button type="button" class="btn secondary small" id="cf_clear">Limpiar</button>
+              <button type="button" class="btn secondary small" id="cf_asignarPuestosBtn" title="Asignar puestos por podio de forma masiva">🏆 Asignar puestos</button>
+              ${isAdmin ? '<button type="button" class="btn secondary small" id="cf_importRd" title="Importar ganadores de Resoluciones Directorales 2026">📥 Cargar ganadores RD</button>' : ''}
+              <button type="button" class="btn secondary small" id="cf_detectDuplicatesBtn" title="Buscar registros duplicados o puestos repetidos">🔍 Detectar duplicados</button>
+            </div>
+            <div class="concursoActionsRight">
+              <button type="button" class="btn secondary small" id="cf_exportCsv">Exportar CSV</button>
+              <button type="button" class="btn small" id="cf_exportPdf">⬇ Descargar reporte (PDF)</button>
+            </div>
           </div>
         </div>
       </div>
@@ -6283,11 +8240,18 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
             <label for="cf_query">Buscar</label>
             <input type="search" id="cf_query" value="${esc(concursoFilters.query)}" placeholder="I.E., estudiante, DNI, RD...">
           </div>
-          <button type="button" class="btn secondary small" id="cf_clear" style="align-self:flex-end;margin-bottom:2px">Limpiar</button>
-          ${isAdmin ? '<button type="button" class="btn secondary small" id="cf_importRd" style="align-self:flex-end;margin-bottom:2px" title="Importar 83 ganadores de Resoluciones Directorales 2026">📥 Cargar ganadores RD</button>' : ''}
-          <button type="button" class="btn secondary small" id="cf_detectDuplicatesBtn" style="align-self:flex-end;margin-bottom:2px" title="Buscar registros duplicados o puestos repetidos">🔍 Detectar duplicados</button>
-          <button type="button" class="btn secondary small" id="cf_exportCsv" style="align-self:flex-end;margin-bottom:2px;margin-left:auto">Exportar CSV</button>
-          <button type="button" class="btn small" id="cf_exportPdf" style="align-self:flex-end;margin-bottom:2px">⬇ Descargar reporte (PDF)</button>
+          <div class="concursoActionsRow" style="width:100%;margin-top:10px">
+            <div class="concursoActionsLeft">
+              <button type="button" class="btn secondary small" id="cf_clear">Limpiar</button>
+              <button type="button" class="btn secondary small" id="cf_asignarPuestosBtn" title="Asignar puestos por podio de forma masiva">🏆 Asignar puestos</button>
+              ${isAdmin ? '<button type="button" class="btn secondary small" id="cf_importRd" title="Importar 83 ganadores de Resoluciones Directorales 2026">📥 Cargar ganadores RD</button>' : ''}
+              <button type="button" class="btn secondary small" id="cf_detectDuplicatesBtn" title="Buscar registros duplicados o puestos repetidos">🔍 Detectar duplicados</button>
+            </div>
+            <div class="concursoActionsRight">
+              <button type="button" class="btn secondary small" id="cf_exportCsv">Exportar CSV</button>
+              <button type="button" class="btn small" id="cf_exportPdf">⬇ Descargar reporte (PDF)</button>
+            </div>
+          </div>
         </div>
         ${hasActiveFilters ? `
           <div class="jedpaActiveFiltersRow" style="margin-top:10px">
@@ -6302,38 +8266,99 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     `;
   }
 
+  const mainResultsHtml = (isJfen && concursoVistaJfen === 'fichas')
+    ? (filtered.length === 0
+      ? '<div class="empty" style="padding:32px;text-align:center"><p style="font-size:14.5px;color:var(--ink-soft);margin-bottom:6px">No se encontraron registros con los filtros seleccionados.</p></div>'
+      : `<div class="jfenFichasContainer">${fichasHtml}</div>`)
+    : `
+      <div class="tblWrap"><table><thead><tr>
+      <th style="width:70px">Puesto</th>
+      <th>Institución</th>
+      <th>Categoría</th>
+      <th>Detalle / Área</th>
+      <th>Participantes</th>
+      <th>Docente Asesor</th>
+      <th>Etapa</th>
+      <th style="width:90px"></th>
+      </tr></thead><tbody>${rowsHtml}</tbody></table></div>
+    `;
+
   host.innerHTML = '' +
     filterBarHtml +
     '<div id="concursoReportCapture">' +
-      '<div class="cards">' +
-        '<div class="card"><div class="num">' + totalRegs + '</div><div class="lbl">Registros / Premiaciones</div></div>' +
-        '<div class="card"><div class="num">' + totalPartUnicos + '</div><div class="lbl">Participantes únicos</div></div>' +
-        '<div class="card"><div class="num">' + uniqueColegios + '</div><div class="lbl">Instituciones educativas</div></div>' +
-        '<div class="card"><div class="num">' + totalAsesUnicos + '</div><div class="lbl">Docentes asesores</div></div>' +
-      '</div>' +
+    '<div class="cards">' +
+    '<div class="card"><div class="num">' + totalRegs + '</div><div class="lbl">Registros / Premiaciones</div></div>' +
+    '<div class="card"><div class="num">' + totalPartUnicos + '</div><div class="lbl">Participantes únicos</div></div>' +
+    '<div class="card"><div class="num">' + uniqueColegios + '</div><div class="lbl">Instituciones educativas</div></div>' +
+    '<div class="card"><div class="num">' + totalAsesUnicos + '</div><div class="lbl">Docentes asesores</div></div>' +
+    '</div>' +
 
-      '<div class="panel">' +
-        '<h3>' + esc(dynamicTableTitle) + '</h3>' +
-        '<div class="tblWrap"><table><thead><tr>' +
-          '<th style="width:70px">Puesto</th>' +
-          '<th>Institución</th>' +
-          '<th>Categoría</th>' +
-          '<th>Detalle / Área</th>' +
-          '<th>Participantes</th>' +
-          '<th>Docente Asesor</th>' +
-          '<th>Etapa</th>' +
-          '<th style="width:90px"></th>' +
-        '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
-      '</div>' +
+    '<div class="panel">' +
+    '<div class="concursoResultsHeader" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">' +
+    '<h3 style="margin:0">' + esc(dynamicTableTitle) + '</h3>' +
+    (isJfen ? `
+      <div class="concursoViewSwitcher" role="tablist" aria-label="Modo de vista">
+        <button type="button" class="btnViewTab ${concursoVistaJfen === 'fichas' ? 'active' : ''}" id="btnVistaFichas" role="tab" aria-selected="${concursoVistaJfen === 'fichas'}">🗂 Fichas</button>
+        <button type="button" class="btnViewTab ${concursoVistaJfen === 'tabla' ? 'active' : ''}" id="btnVistaTabla" role="tab" aria-selected="${concursoVistaJfen === 'tabla'}">📑 Tabla</button>
+      </div>
+    ` : '') +
+    '</div>' +
+    mainResultsHtml +
+    '</div>' +
     '</div>';
 
-  // Event listeners de filtros
+  // Event listeners de vista y filtros JFEN
+  if (isJfen) {
+    const btnFichas = document.getElementById('btnVistaFichas');
+    if (btnFichas) {
+      btnFichas.addEventListener('click', () => {
+        concursoVistaJfen = 'fichas';
+        renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+      });
+    }
+    const btnTabla = document.getElementById('btnVistaTabla');
+    if (btnTabla) {
+      btnTabla.addEventListener('click', () => {
+        concursoVistaJfen = 'tabla';
+        renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+      });
+    }
+
+    const fArte = document.getElementById('cf_arte');
+    if (fArte) {
+      fArte.addEventListener('change', (e) => {
+        concursoFilters.arte = e.target.value;
+        concursoFilters.disciplina = '';
+        renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+      });
+    }
+
+    const fDiscJfen = document.getElementById('cf_disciplina');
+    if (fDiscJfen) {
+      fDiscJfen.addEventListener('change', (e) => {
+        concursoFilters.disciplina = e.target.value;
+        renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+      });
+    }
+
+    const fModJfen = document.getElementById('cf_modalidad');
+    if (fModJfen) {
+      fModJfen.addEventListener('change', (e) => {
+        concursoFilters.modalidad = e.target.value;
+        renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+      });
+    }
+  }
+
+  // Event listeners generales de filtros
   document.getElementById('cf_tipo').addEventListener('change', (e) => {
     concursoFilters.tipoId = e.target.value;
     concursoFilters.etapa = '';
     concursoFilters.disciplina = '';
     concursoFilters.categoria = '';
     concursoFilters.genero = '';
+    concursoFilters.arte = '';
+    concursoFilters.modalidad = '';
     concursoFilters.query = '';
     renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
   });
@@ -6362,7 +8387,7 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     });
   }
 
-  // Disciplina interactiva
+  // Disciplina interactiva para JEDPA
   if (isJedpa) {
     const btnDisc = document.getElementById('btn_cf_disciplina');
     const dropDisc = document.getElementById('drop_cf_disciplina');
@@ -6435,7 +8460,7 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
         });
       });
     }
-  } else {
+  } else if (!isJfen) {
     const filDisc = document.getElementById('cf_disciplina');
     if (filDisc) {
       let discDebounce;
@@ -6479,6 +8504,8 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       disciplina: '',
       categoria: '',
       genero: '',
+      arte: '',
+      modalidad: '',
       query: ''
     };
     renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
@@ -6489,6 +8516,15 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
   if (importBtn) {
     importBtn.addEventListener('click', () => {
       ejecutarImportacionGanadores(dbNs, state, container, isAdmin, currentUser, navigate);
+    });
+  }
+
+  // Botón Asignar Puestos por Podio
+  const asignarPuestosBtn = document.getElementById('cf_asignarPuestosBtn');
+  if (asignarPuestosBtn) {
+    asignarPuestosBtn.addEventListener('click', () => {
+      concursoSubTab = 'asignar_podios';
+      renderConcursosTab(container, state, dbNs, isAdmin, currentUser, navigate);
     });
   }
 
@@ -6508,7 +8544,7 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     });
   }
 
-  // Exportar PDF oficial de concursos (Acta de Resultados A4 Landscape)
+  // Exportar PDF oficial de concursos (Acta de Resultados A4 Landscape o Fichas JFEN A4 Portrait)
   document.getElementById('cf_exportPdf').addEventListener('click', () => {
     openDownloadConfigModal({
       documentTitle: `ACTA OFICIAL DE RESULTADOS — ${(tipo ? tipo.nombre : 'CONCURSOS EDUCATIVOS ESCOLARES').toUpperCase()}`,
@@ -6518,6 +8554,7 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       state,
       dbNs,
       isAdmin,
+      isJfen: isJfen,
       onConfirm: async (cfg) => {
         if (cfg.formatoConcurso === 'orden_merito') {
           await exportActaOrdenMeritoPdf(filtered, tipo, concursoFilters, cfg);
@@ -6528,25 +8565,53 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     });
   });
 
-  // Exportar CSV
+  // Exportar CSV — columnas separadas: Apellidos | Nombres | DNI | Rol
   document.getElementById('cf_exportCsv').addEventListener('click', () => {
-    const headers = ['Puesto', 'Institución', 'Código Modular', 'Concurso', 'Etapa', 'Categoría', 'Género', 'Disciplina/Área', 'Título', 'Seudónimo', 'Participantes', 'Asesores', 'Resolución', 'Fecha'];
-    const rows = filtered.map(r => [
-      r.puesto || '',
-      r.institucion || '',
-      r.codigoModular || '',
-      r.tipoConcursoNombre || r.tipoConcurso || '',
-      r.etapa || '',
-      r.categoria || '',
-      r.genero || '',
-      r.disciplina || '',
-      r.tituloTrabajo || '',
-      r.seudonimo || '',
-      (r.participantes || []).map(p => `${[p.nombres, p.apellidos].filter(Boolean).join(' ')} (${p.dni || 'S/D'}) [${p.rol || 'Estudiante'}]`).join('; '),
-      (r.asesores || []).map(a => `${[a.nombres, a.apellidos].filter(Boolean).join(' ')} (${a.dni || 'S/D'}) [${a.rol || 'Asesor'}]`).join('; '),
-      r.resolucionRef || '',
-      r.fecha || ''
-    ]);
+    const headers = [
+      'Puesto', 'Podio', 'Institución', 'Código Modular', 'Concurso', 'Etapa',
+      'Categoría', 'Género', 'Arte / Disciplina', 'Título', 'Seudónimo',
+      'Tipo Persona', 'Apellidos', 'Nombres', 'DNI/Doc.', 'Rol',
+      'Nombre heredado (texto libre)', 'Resolución', 'Fecha'
+    ];
+    const rows = [];
+    filtered.forEach(r => {
+      const curTipoObj = (state.tiposConcurso || []).find(t => t.id === r.tipoConcursoId || t.nombre === r.tipoConcursoNombre) || tipo;
+      const base = [
+        r.puesto || '',
+        getPodioLabel(r, curTipoObj),
+        r.institucion || '',
+        r.codigoModular || '',
+        r.tipoConcursoNombre || r.tipoConcurso || '',
+        r.etapa || '',
+        r.categoria || '',
+        formatGeneroDisplay(r.genero),
+        r.disciplina || '',
+        r.tituloTrabajo || '',
+        r.seudonimo || ''
+      ];
+      const personas = [
+        ...(r.participantes || []).map(p => ({ ...p, _tipo: 'Participante' })),
+        ...(r.asesores     || []).map(a => ({ ...a, _tipo: 'Asesor/Entrenador' }))
+      ];
+      if (personas.length === 0) {
+        rows.push([...base, '', '', '', '', '', '', r.resolucionRef || '', r.fecha || '']);
+      } else {
+        personas.forEach(p => {
+          const esHeredado = !((p.apellidos || '').trim()) && (p.nombres || '').trim();
+          rows.push([
+            ...base,
+            p._tipo,
+            (p.apellidos || '').trim(),
+            (p.nombres   || '').trim(),
+            (p.dni       || '').trim(),
+            p.rol || '',
+            esHeredado ? (p.nombres || '').trim() : '',
+            r.resolucionRef || '',
+            r.fecha || ''
+          ]);
+        });
+      }
+    });
     downloadCsv('concursos_' + (tipo ? tipo.id : 'todos') + '_' + todayStr() + '.csv', headers, rows);
   });
 
@@ -6595,6 +8660,876 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
 }
 
 /* -------------------------------------------------------------
+   SUB-PESTAÑA 2.5: ASIGNAR PUESTOS POR PODIO
+   Permite asignar masivamente los puestos 1.°, 2.° y 3.°
+   con selector por podio (disciplina + categoría + género),
+   dropdowns acotados a los participantes de ese podio,
+   prevención de colisiones y matriz de progreso visual.
+   ------------------------------------------------------------- */
+let asignarPodioState = {
+  tipoId: null,
+  etapa: '',
+  disciplina: '',
+  categoria: '',
+  genero: '',
+  soloPendientes: false,
+  filtroBusqueda: '',
+  activePodioKey: null
+};
+
+function renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate) {
+  const tipos = state.tiposConcurso || [];
+  const regs = state.concursoRegistros || [];
+
+  if (tipos.length === 0) {
+    host.innerHTML = '<div class="empty"><h4>Sin tipos de concurso</h4><p>Configura o siembra los tipos de concurso primero.</p></div>';
+    return;
+  }
+
+  // Preseleccionar tipo de concurso (por defecto JEDPA si existe, o el seleccionado)
+  if (!asignarPodioState.tipoId) {
+    const defaultTipo = tipos.find(t => t.id === 'jedpa' || (t.nombre || '').toLowerCase().includes('jedpa')) || tipos[0];
+    asignarPodioState.tipoId = defaultTipo ? defaultTipo.id : tipos[0].id;
+  }
+
+  const curTipo = tipos.find(t => t.id === asignarPodioState.tipoId) || tipos[0];
+
+  // Helper de ponderación de puestos
+  const puestoWeightLocal = (p) => {
+    const s = String(p || '').toLowerCase();
+    if (s.includes('1') || s.startsWith('primer')) return 1;
+    if (s.includes('2') || s.startsWith('segundo')) return 2;
+    if (s.includes('3') || s.startsWith('tercer')) return 3;
+    if (s.includes('menci') || s.includes('honrosa') || s.includes('mh')) return 4;
+    if (s.includes('4') || s.startsWith('cuarto')) return 5;
+    if (s.includes('final')) return 6;
+    if (s.includes('clasif')) return 7;
+    if (s.includes('partic')) return 8;
+    return 9;
+  };
+
+  // Filtrar registros del tipo actual
+  const tipoRows = regs.filter(r => {
+    if (r.tipoConcursoId === curTipo.id) return true;
+    if (curTipo && (r.tipoConcursoNombre === curTipo.nombre || r.tipoConcurso === curTipo.nombre)) return true;
+    return false;
+  });
+
+  // Agrupar registros en podios
+  const podiosMap = new Map();
+  tipoRows.forEach(r => {
+    const etapaVal = (r.etapa || 'UGEL').trim();
+    const pKey = getPodioKey(r, curTipo);
+    const fullKey = `${etapaVal.toUpperCase()}|${pKey}`;
+
+    if (!podiosMap.has(fullKey)) {
+      podiosMap.set(fullKey, {
+        fullKey,
+        etapa: etapaVal,
+        disciplina: r.disciplina || '',
+        categoria: r.categoria || '',
+        genero: r.genero || '',
+        label: getPodioLabel(r, curTipo),
+        records: []
+      });
+    }
+    podiosMap.get(fullKey).records.push(r);
+  });
+
+  const allPodios = Array.from(podiosMap.values());
+
+  // Analizar puestos y estados en cada podio
+  allPodios.forEach(podio => {
+    podio.records.sort((a, b) => {
+      const wA = puestoWeightLocal(a.puesto);
+      const wB = puestoWeightLocal(b.puesto);
+      if (wA !== wB) return wA - wB;
+      return (a.institucion || '').localeCompare(b.institucion || '');
+    });
+
+    podio.puesto1 = podio.records.find(r => normalizePuestoValue(r.puesto) === '1.er puesto') || null;
+    podio.puesto2 = podio.records.find(r => normalizePuestoValue(r.puesto) === '2.° puesto') || null;
+    podio.puesto3 = podio.records.find(r => normalizePuestoValue(r.puesto) === '3.er puesto') || null;
+
+    podio.assignedCount = (podio.puesto1 ? 1 : 0) + (podio.puesto2 ? 1 : 0) + (podio.puesto3 ? 1 : 0);
+    podio.totalRecords = podio.records.length;
+
+    podio.isComplete = podio.assignedCount === 3 || (podio.totalRecords > 0 && podio.assignedCount === podio.totalRecords);
+    podio.isPending = podio.assignedCount === 0;
+    podio.isPartial = podio.assignedCount > 0 && !podio.isComplete;
+  });
+
+  // Métricas globales
+  const totalPodios = allPodios.length;
+  const completados = allPodios.filter(p => p.isComplete).length;
+  const parciales = allPodios.filter(p => p.isPartial).length;
+  const pendientes = allPodios.filter(p => p.isPending).length;
+  const pctCompletado = totalPodios > 0 ? Math.round((completados / totalPodios) * 100) : 0;
+
+  // Opciones para filtros
+  const etapasDisponibles = Array.from(new Set(allPodios.map(p => p.etapa).filter(Boolean))).sort();
+  const disciplinasDisponibles = Array.from(new Set(allPodios.map(p => p.disciplina).filter(Boolean))).sort();
+  const categoriasDisponibles = Array.from(new Set(allPodios.map(p => p.categoria).filter(Boolean))).sort();
+
+  // Filtrar podios para la matriz / tabla
+  let filteredPodios = allPodios.filter(p => {
+    if (asignarPodioState.soloPendientes && p.isComplete) return false;
+    if (asignarPodioState.etapa && p.etapa.toUpperCase() !== asignarPodioState.etapa.toUpperCase()) return false;
+    if (asignarPodioState.disciplina && p.disciplina.toLowerCase() !== asignarPodioState.disciplina.toLowerCase()) return false;
+    if (asignarPodioState.categoria && p.categoria.toUpperCase() !== asignarPodioState.categoria.toUpperCase()) return false;
+    if (asignarPodioState.genero && normalizeGenero(p.genero) !== normalizeGenero(asignarPodioState.genero)) return false;
+    if (asignarPodioState.filtroBusqueda) {
+      const q = normalizeText(asignarPodioState.filtroBusqueda);
+      const matchLabel = normalizeText(p.label).includes(q);
+      const matchIE = p.records.some(r => normalizeText(r.institucion).includes(q));
+      if (!matchLabel && !matchIE) return false;
+    }
+    return true;
+  });
+
+  // Ordenar podios: por Disciplina -> Categoría -> Género
+  filteredPodios.sort((a, b) => {
+    const dComp = (a.disciplina || '').localeCompare(b.disciplina || '');
+    if (dComp !== 0) return dComp;
+    const cComp = (a.categoria || '').localeCompare(b.categoria || '');
+    if (cComp !== 0) return cComp;
+    return (a.genero || '').localeCompare(b.genero || '');
+  });
+
+  // Podio activo en el editor
+  let activePodio = null;
+  if (asignarPodioState.activePodioKey) {
+    activePodio = allPodios.find(p => p.fullKey === asignarPodioState.activePodioKey);
+  }
+  if (!activePodio && filteredPodios.length > 0) {
+    activePodio = filteredPodios[0];
+    asignarPodioState.activePodioKey = activePodio.fullKey;
+  } else if (!activePodio && allPodios.length > 0) {
+    activePodio = allPodios[0];
+    asignarPodioState.activePodioKey = activePodio.fullKey;
+  }
+
+  // Si el concurso distingue género, buscar su contraparte Damas/Varones
+  let counterpartPodio = null;
+  let damasPodio = null;
+  let varonesPodio = null;
+  if (curTipo.tieneGenero && activePodio) {
+    const curNormGen = normalizeGenero(activePodio.genero);
+    const targetGen = (curNormGen === 'damas') ? 'varones' : 'damas';
+    counterpartPodio = allPodios.find(p =>
+      p.etapa.toUpperCase() === activePodio.etapa.toUpperCase() &&
+      p.disciplina.toLowerCase() === activePodio.disciplina.toLowerCase() &&
+      p.categoria.toUpperCase() === activePodio.categoria.toUpperCase() &&
+      normalizeGenero(p.genero) === targetGen
+    );
+
+    damasPodio = (curNormGen === 'damas') ? activePodio : counterpartPodio;
+    varonesPodio = (curNormGen === 'varones') ? activePodio : counterpartPodio;
+  }
+
+  // Construir HTML del Editor del Podio Activo
+  let editorHtml = '';
+  if (activePodio) {
+    // Badges de estado
+    let statusBadge = '';
+    if (activePodio.isComplete) {
+      statusBadge = '<span class="badge" style="background:#dcfce7;color:#15803d;font-weight:700;font-size:12px">✓ Podio Completo (3/3)</span>';
+    } else if (activePodio.isPartial) {
+      statusBadge = `<span class="badge" style="background:#fef3c7;color:#b45309;font-weight:700;font-size:12px">⚠️ Parcial (${activePodio.assignedCount}/3)</span>`;
+    } else {
+      statusBadge = '<span class="badge" style="background:var(--surface-3);color:var(--ink-soft);font-weight:700;font-size:12px">⚪ Pendiente (0/3)</span>';
+    }
+
+    // Pestañas rápidas Damas / Varones para alternar con 1 clic
+    let genderTabsHtml = '';
+    if (curTipo.tieneGenero && (damasPodio || varonesPodio)) {
+      genderTabsHtml = `
+        <div style="display:flex;gap:8px;margin-bottom:16px;background:var(--surface-2);padding:6px;border-radius:10px;border:1px solid var(--line);width:fit-content">
+          ${damasPodio ? `
+            <button type="button" class="btn small ${activePodio.fullKey === damasPodio.fullKey ? '' : 'secondary'}" id="btnSwitchDamas" style="display:flex;align-items:center;gap:6px">
+              👩 Damas <small style="opacity:0.8">(${damasPodio.assignedCount}/3 ${damasPodio.isComplete ? '✓' : ''})</small>
+            </button>
+          ` : ''}
+          ${varonesPodio ? `
+            <button type="button" class="btn small ${activePodio.fullKey === varonesPodio.fullKey ? '' : 'secondary'}" id="btnSwitchVarones" style="display:flex;align-items:center;gap:6px">
+              👨 Varones <small style="opacity:0.8">(${varonesPodio.assignedCount}/3 ${varonesPodio.isComplete ? '✓' : ''})</small>
+            </button>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // Helper para opciones de un selector de puesto
+    const makeSlotOptions = (selectedRegId) => {
+      let opts = '<option value="">-- Sin asignar (Vacío) --</option>';
+      activePodio.records.forEach(r => {
+        const isSel = r.id === selectedRegId;
+        const partNom = (r.participantes && r.participantes.length) ? ` — ${formatearNombre(r.participantes[0])}` : '';
+        opts += `<option value="${r.id}" ${isSel ? 'selected' : ''}>${esc(r.institucion)}${esc(partNom)}</option>`;
+      });
+      return opts;
+    };
+
+    // Renderizado de detalles del ocupante actual de un puesto
+    const renderOccupantSnippet = (reg) => {
+      if (!reg) return '<div style="font-size:12px;color:var(--ink-soft);font-style:italic;padding:8px 0">Puesto disponible sin asignar</div>';
+      const partStr = (reg.participantes || []).map(p => `${formatearNombre(p)} ${p.dni ? `(${p.dni})` : ''}`).join(', ') || 'Sin participante';
+      const asesStr = (reg.asesores || []).map(a => `${formatearNombre(a)}`).join(', ') || 'Sin asesor';
+      return `
+        <div style="font-size:12px;color:var(--ink-soft);margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);line-height:1.4">
+          <div><strong>I.E.:</strong> ${esc(reg.institucion)} ${reg.codigoModular ? `<small>(${esc(reg.codigoModular)})</small>` : ''}</div>
+          <div><strong>Participante:</strong> ${esc(partStr)}</div>
+          <div><strong>Asesor:</strong> ${esc(asesStr)}</div>
+        </div>
+      `;
+    };
+
+    // Filas para otros participantes del podio
+    const otherParticipantsRows = activePodio.records.map(r => {
+      const partStr = (r.participantes || []).map(p => `${formatearNombre(p)} ${p.dni ? `(${p.dni})` : ''}`).join('<br>') || '—';
+      const asesStr = (r.asesores || []).map(a => `${formatearNombre(a)}`).join('<br>') || '—';
+      const normP = normalizePuestoValue(r.puesto);
+      const isTop3 = ['1.er puesto', '2.° puesto', '3.er puesto'].includes(normP);
+
+      return `
+        <tr data-other-row="${r.id}">
+          <td>
+            <strong>${esc(r.institucion)}</strong>
+            ${r.codigoModular ? `<br><small style="color:var(--ink-soft)">Cód. Mod: ${esc(r.codigoModular)}</small>` : ''}
+          </td>
+          <td style="font-size:12.5px">${partStr}</td>
+          <td style="font-size:12.5px">${asesStr}</td>
+          <td style="text-align:center">
+            ${isTop3 ? formatPuestoBadge(r.puesto) : `
+              <select class="otherPuestoSelect" data-rid="${r.id}" style="font-size:12px;padding:4px 8px">
+                <option value="" ${!r.puesto ? 'selected' : ''}>Sin puesto / Pendiente</option>
+                <option value="Mención Honrosa" ${normP === 'mención honrosa' ? 'selected' : ''}>Mención Honrosa</option>
+                <option value="4.° puesto" ${normP === '4.° puesto' ? 'selected' : ''}>4.° puesto</option>
+                <option value="Finalista" ${normP === 'finalista' ? 'selected' : ''}>Finalista</option>
+                <option value="Participante" ${normP === 'participante' ? 'selected' : ''}>Participante</option>
+              </select>
+            `}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    editorHtml = `
+      <div class="panel" id="podioEditorCard" style="border:2px solid var(--primary-tint);margin-bottom:24px;box-shadow:var(--shadow-md)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:12px">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+              <span class="badge" style="background:var(--primary);color:#fff;font-weight:700;font-size:11.5px">Etapa ${esc(activePodio.etapa)}</span>
+              <h3 style="margin:0;font-size:19px;color:var(--navy-900)">🏆 Podio: ${esc(activePodio.label)}</h3>
+              ${statusBadge}
+            </div>
+            <p style="margin:0;font-size:13px;color:var(--ink-soft)">
+              ${activePodio.records.length} instituciones inscritas en este podio oficial. Selecciona los puestos de honor o asigna menciones honrosas.
+            </p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn secondary small" id="btnDespejarPodio">Limpiar podio</button>
+            <button type="button" class="btn small" id="btnIrConsolidado">Ver en consolidado ➔</button>
+          </div>
+        </div>
+
+        ${genderTabsHtml}
+
+        <!-- Podio 3 Columnas: 1.°, 2.°, 3.er Puesto -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin:20px 0">
+          <!-- 1.er PUESTO -->
+          <div style="background:rgba(234,179,8,0.06);border:2px solid #eab308;border-radius:12px;padding:16px;box-shadow:var(--shadow-sm)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <span style="font-weight:800;font-size:14px;color:#854d0e;display:flex;align-items:center;gap:6px">
+                🥇 1.er Puesto (Oro)
+              </span>
+              <span class="badge" style="background:#fef08a;color:#854d0e;font-size:10.5px;font-weight:700">Campeón</span>
+            </div>
+            <label for="slot_puesto_1" style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Institución ganadora</label>
+            <select id="slot_puesto_1" class="podioSlotSelect" data-slot="1.er puesto" style="width:100%;font-weight:600">
+              ${makeSlotOptions(activePodio.puesto1 ? activePodio.puesto1.id : '')}
+            </select>
+            <div id="snippet_puesto_1">
+              ${renderOccupantSnippet(activePodio.puesto1)}
+            </div>
+          </div>
+
+          <!-- 2.° PUESTO -->
+          <div style="background:rgba(148,163,184,0.08);border:2px solid #94a3b8;border-radius:12px;padding:16px;box-shadow:var(--shadow-sm)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <span style="font-weight:800;font-size:14px;color:#334155;display:flex;align-items:center;gap:6px">
+                🥈 2.° Puesto (Plata)
+              </span>
+              <span class="badge" style="background:#e2e8f0;color:#334155;font-size:10.5px;font-weight:700">Subcampeón</span>
+            </div>
+            <label for="slot_puesto_2" style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Institución subcampeona</label>
+            <select id="slot_puesto_2" class="podioSlotSelect" data-slot="2.° puesto" style="width:100%;font-weight:600">
+              ${makeSlotOptions(activePodio.puesto2 ? activePodio.puesto2.id : '')}
+            </select>
+            <div id="snippet_puesto_2">
+              ${renderOccupantSnippet(activePodio.puesto2)}
+            </div>
+          </div>
+
+          <!-- 3.er PUESTO -->
+          <div style="background:rgba(217,119,6,0.06);border:2px solid #d97706;border-radius:12px;padding:16px;box-shadow:var(--shadow-sm)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <span style="font-weight:800;font-size:14px;color:#9a3412;display:flex;align-items:center;gap:6px">
+                🥉 3.er Puesto (Bronce)
+              </span>
+              <span class="badge" style="background:#ffedd5;color:#9a3412;font-size:10.5px;font-weight:700">Tercer Lugar</span>
+            </div>
+            <label for="slot_puesto_3" style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Institución tercer puesto</label>
+            <select id="slot_puesto_3" class="podioSlotSelect" data-slot="3.er puesto" style="width:100%;font-weight:600">
+              ${makeSlotOptions(activePodio.puesto3 ? activePodio.puesto3.id : '')}
+            </select>
+            <div id="snippet_puesto_3">
+              ${renderOccupantSnippet(activePodio.puesto3)}
+            </div>
+          </div>
+        </div>
+
+        <div id="podioValidationAlert" style="display:none;margin-bottom:16px" class="alertCard warn">
+          <p style="margin:0;font-size:13px" id="podioValidationText"></p>
+        </div>
+
+        <!-- Tabla de todos los participantes del podio -->
+        <div style="margin-top:20px">
+          <h4 style="margin:0 0 10px;font-size:14.5px;color:var(--navy-900)">Lista completa de participantes en este podio</h4>
+          <div class="tblWrap" style="max-height:280px;overflow-y:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Institución Educativa</th>
+                  <th>Participantes</th>
+                  <th>Docente Asesor</th>
+                  <th style="width:160px;text-align:center">Puesto / Distinción</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${otherParticipantsRows}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid var(--line)">
+          <span style="font-size:12.5px;color:var(--ink-soft)">Los cambios se guardan atómicamente asegurando la integridad del podio.</span>
+          <button type="button" class="btn" id="btnGuardarPodio" style="padding:10px 24px;font-size:14px;font-weight:700">
+            💾 Guardar puestos del podio
+          </button>
+        </div>
+      </div>
+    `;
+  } else {
+    editorHtml = `
+      <div class="panel" style="text-align:center;padding:36px;margin-bottom:24px">
+        <h4>Selecciona un podio para gestionar sus puestos</h4>
+        <p style="color:var(--ink-soft);font-size:13px">Usa los filtros de abajo o la matriz para elegir la disciplina y categoría.</p>
+      </div>
+    `;
+  }
+
+  // Filas de la tabla de podios (Matriz de Progreso)
+  const podiosRowsHtml = filteredPodios.map((p, idx) => {
+    const isCur = activePodio && activePodio.fullKey === p.fullKey;
+    const normGen = normalizeGenero(p.genero);
+    const genBadge = normGen === 'damas'
+      ? '<span class="badge" style="background:#fce7f3;color:#be185d;font-size:11px">👩 Damas</span>'
+      : (normGen === 'varones'
+        ? '<span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:11px">👨 Varones</span>'
+        : (p.genero ? `<span class="badge" style="background:var(--surface-3);font-size:11px">${esc(p.genero)}</span>` : '—'));
+
+    let progBadge = '';
+    if (p.isComplete) {
+      progBadge = '<span class="badge" style="background:#dcfce7;color:#15803d;font-weight:700;font-size:11px">3/3 ✓ Completo</span>';
+    } else if (p.isPartial) {
+      progBadge = `<span class="badge" style="background:#fef3c7;color:#b45309;font-weight:700;font-size:11px">${p.assignedCount}/3 ⚠️ Parcial</span>`;
+    } else {
+      progBadge = '<span class="badge" style="background:var(--surface-3);color:var(--ink-soft);font-size:11px">0/3 Pendiente</span>';
+    }
+
+    return `
+      <tr class="clickable ${isCur ? 'selectedRow' : ''}" data-podio-key="${esc(p.fullKey)}" style="${isCur ? 'background:rgba(14,165,233,0.08)' : ''}">
+        <td><strong>${esc(p.disciplina || '—')}</strong></td>
+        <td><span class="badge" style="background:var(--surface-2);font-weight:600">${esc(p.categoria || '—')}</span></td>
+        <td>${genBadge}</td>
+        <td><span class="badge" style="background:var(--surface-2);font-size:11px">${esc(p.etapa || '—')}</span></td>
+        <td>${progBadge}</td>
+        <td style="font-size:12px">${p.puesto1 ? `🥇 ${esc(p.puesto1.institucion)}` : '<span style="color:var(--ink-soft)">—</span>'}</td>
+        <td style="font-size:12px">${p.puesto2 ? `🥈 ${esc(p.puesto2.institucion)}` : '<span style="color:var(--ink-soft)">—</span>'}</td>
+        <td style="font-size:12px">${p.puesto3 ? `🥉 ${esc(p.puesto3.institucion)}` : '<span style="color:var(--ink-soft)">—</span>'}</td>
+        <td style="text-align:center">
+          <button type="button" class="btn small ${isCur ? '' : 'secondary'}" data-btn-podio="${esc(p.fullKey)}" style="font-size:11px;padding:3px 8px">
+            ${isCur ? 'Editando' : '✏️ Asignar'}
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // Renderizado completo de la vista
+  host.innerHTML = `
+    <!-- Barra superior: Selector de Tipo de Concurso y Métricas de Progreso -->
+    <div style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <label for="ap_tipoSelect" style="font-weight:700;font-size:14px;color:var(--navy-900)">Concurso:</label>
+          <select id="ap_tipoSelect" style="font-weight:600;font-size:13.5px;padding:6px 12px;border-radius:8px">
+            ${tipos.map(t => `<option value="${t.id}" ${t.id === curTipo.id ? 'selected' : ''}>${esc(t.nombre)}</option>`).join('')}
+          </select>
+        </div>
+        <div style="font-size:13px;color:var(--ink-soft)">
+          UGEL 03 — Concursos Educativos 2026
+        </div>
+      </div>
+
+      <!-- Tarjetas de Métricas del Concurso -->
+      <div class="cards" style="margin-bottom:20px">
+        <div class="card">
+          <div class="num">${totalPodios}</div>
+          <div class="lbl">Total de podios</div>
+        </div>
+        <div class="card" style="border-left:4px solid #15803d">
+          <div class="num" style="color:#15803d">${completados}</div>
+          <div class="lbl">Completos (3/3)</div>
+        </div>
+        <div class="card" style="border-left:4px solid #b45309">
+          <div class="num" style="color:#b45309">${parciales}</div>
+          <div class="lbl">Parciales</div>
+        </div>
+        <div class="card" style="border-left:4px solid #64748b">
+          <div class="num" style="color:#64748b">${pendientes}</div>
+          <div class="lbl">Pendientes (0/3)</div>
+        </div>
+        <div class="card" style="border-left:4px solid var(--primary)">
+          <div class="num" style="color:var(--primary)">${pctCompletado}%</div>
+          <div class="lbl">Avance global</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel de Editor del Podio Seleccionado -->
+    ${editorHtml}
+
+    <!-- Matriz de Progreso de Podios -->
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+        <div>
+          <h3 style="margin:0 0 2px">Matriz de Progreso por Podio</h3>
+          <p class="helpText" style="margin:0">Monitorea el estado de cada disciplina y categoría. Haz clic en una fila para asignarle puestos.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;font-weight:600">
+            <input type="checkbox" id="ap_soloPendientes" ${asignarPodioState.soloPendientes ? 'checked' : ''}> Solo pendientes / parciales
+          </label>
+        </div>
+      </div>
+
+      <!-- Filtros rápidos para la matriz -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;background:var(--surface-2);padding:12px;border-radius:10px;border:1px solid var(--line)">
+        <div>
+          <label for="ap_filtro_etapa" style="font-size:11.5px;font-weight:700;display:block;margin-bottom:3px">Etapa</label>
+          <select id="ap_filtro_etapa" style="font-size:12px;padding:4px 8px;width:100%">
+            <option value="">Todas (${etapasDisponibles.length})</option>
+            ${etapasDisponibles.map(e => `<option value="${esc(e)}" ${e === asignarPodioState.etapa ? 'selected' : ''}>${esc(e)}</option>`).join('')}
+          </select>
+        </div>
+
+        <div>
+          <label for="ap_filtro_disciplina" style="font-size:11.5px;font-weight:700;display:block;margin-bottom:3px">Disciplina</label>
+          <select id="ap_filtro_disciplina" style="font-size:12px;padding:4px 8px;width:100%">
+            <option value="">Todas (${disciplinasDisponibles.length})</option>
+            ${disciplinasDisponibles.map(d => `<option value="${esc(d)}" ${d === asignarPodioState.disciplina ? 'selected' : ''}>${esc(d)}</option>`).join('')}
+          </select>
+        </div>
+
+        <div>
+          <label for="ap_filtro_categoria" style="font-size:11.5px;font-weight:700;display:block;margin-bottom:3px">Categoría</label>
+          <select id="ap_filtro_categoria" style="font-size:12px;padding:4px 8px;width:100%">
+            <option value="">Todas (${categoriasDisponibles.length})</option>
+            ${categoriasDisponibles.map(c => `<option value="${esc(c)}" ${c === asignarPodioState.categoria ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+          </select>
+        </div>
+
+        ${curTipo.tieneGenero ? `
+          <div>
+            <label for="ap_filtro_genero" style="font-size:11.5px;font-weight:700;display:block;margin-bottom:3px">Género</label>
+            <select id="ap_filtro_genero" style="font-size:12px;padding:4px 8px;width:100%">
+              <option value="">Todos</option>
+              <option value="Damas" ${asignarPodioState.genero.toLowerCase() === 'damas' ? 'selected' : ''}>Damas</option>
+              <option value="Varones" ${asignarPodioState.genero.toLowerCase() === 'varones' ? 'selected' : ''}>Varones</option>
+            </select>
+          </div>
+        ` : ''}
+
+        <div style="grid-column: span 2">
+          <label for="ap_filtro_query" style="font-size:11.5px;font-weight:700;display:block;margin-bottom:3px">Buscar I.E. o podio</label>
+          <input type="search" id="ap_filtro_query" value="${esc(asignarPodioState.filtroBusqueda)}" placeholder="Ej: Jacaranda, Saco Oliveros, Ajedrez..." style="font-size:12px;padding:4px 8px;width:100%">
+        </div>
+      </div>
+
+      <!-- Tabla de Podios -->
+      <div class="tblWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Disciplina</th>
+              <th>Categoría</th>
+              <th>Género</th>
+              <th>Etapa</th>
+              <th>Estado</th>
+              <th>1.er puesto</th>
+              <th>2.° puesto</th>
+              <th>3.er puesto</th>
+              <th style="width:100px;text-align:center">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${podiosRowsHtml || '<tr><td colspan="9" style="text-align:center;color:var(--ink-soft);padding:24px">No hay podios que coincidan con los filtros aplicados.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  // EVENT LISTENERS
+
+  // Cambio de tipo de concurso
+  const tipoSelect = document.getElementById('ap_tipoSelect');
+  if (tipoSelect) {
+    tipoSelect.addEventListener('change', (e) => {
+      asignarPodioState.tipoId = e.target.value;
+      asignarPodioState.activePodioKey = null;
+      renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    });
+  }
+
+  // Switch rápido Damas / Varones
+  const btnDamas = document.getElementById('btnSwitchDamas');
+  if (btnDamas && damasPodio) {
+    btnDamas.addEventListener('click', () => {
+      asignarPodioState.activePodioKey = damasPodio.fullKey;
+      renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    });
+  }
+  const btnVarones = document.getElementById('btnSwitchVarones');
+  if (btnVarones && varonesPodio) {
+    btnVarones.addEventListener('click', () => {
+      asignarPodioState.activePodioKey = varonesPodio.fullKey;
+      renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    });
+  }
+
+  // Despejar podio en editor
+  const btnDespejar = document.getElementById('btnDespejarPodio');
+  if (btnDespejar) {
+    btnDespejar.addEventListener('click', () => {
+      ['slot_puesto_1', 'slot_puesto_2', 'slot_puesto_3'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      ['snippet_puesto_1', 'snippet_puesto_2', 'snippet_puesto_3'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '<div style="font-size:12px;color:var(--ink-soft);font-style:italic;padding:8px 0">Puesto disponible sin asignar</div>';
+      });
+      host.querySelectorAll('.otherPuestoSelect').forEach(s => s.value = '');
+      validateSlotSelections();
+    });
+  }
+
+  // Ir a Consolidado
+  const btnIrCons = document.getElementById('btnIrConsolidado');
+  if (btnIrCons && activePodio) {
+    btnIrCons.addEventListener('click', () => {
+      concursoFilters.tipoId = curTipo.id;
+      concursoFilters.etapa = activePodio.etapa;
+      concursoFilters.disciplina = activePodio.disciplina;
+      concursoFilters.categoria = activePodio.categoria;
+      concursoFilters.genero = activePodio.genero;
+      concursoSubTab = 'consolidado';
+      renderConcursosTab(container, state, dbNs, isAdmin, currentUser, navigate);
+    });
+  }
+
+  // Actualización dinámica de snippets al cambiar puestos
+  const updateSnippetForSlot = (slotNum, regId) => {
+    const snipEl = document.getElementById(`snippet_puesto_${slotNum}`);
+    if (!snipEl || !activePodio) return;
+    const reg = activePodio.records.find(r => r.id === regId);
+    if (!reg) {
+      snipEl.innerHTML = '<div style="font-size:12px;color:var(--ink-soft);font-style:italic;padding:8px 0">Puesto disponible sin asignar</div>';
+      return;
+    }
+    const partStr = (reg.participantes || []).map(p => `${formatearNombre(p)} ${p.dni ? `(${p.dni})` : ''}`).join(', ') || 'Sin participante';
+    const asesStr = (reg.asesores || []).map(a => `${formatearNombre(a)}`).join(', ') || 'Sin asesor';
+    snipEl.innerHTML = `
+      <div style="font-size:12px;color:var(--ink-soft);margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);line-height:1.4">
+        <div><strong>I.E.:</strong> ${esc(reg.institucion)} ${reg.codigoModular ? `<small>(${esc(reg.codigoModular)})</small>` : ''}</div>
+        <div><strong>Participante:</strong> ${esc(partStr)}</div>
+        <div><strong>Asesor:</strong> ${esc(asesStr)}</div>
+      </div>
+    `;
+  };
+
+  // Validación de no duplicar I.E. en múltiples slots
+  const validateSlotSelections = () => {
+    const s1 = document.getElementById('slot_puesto_1')?.value || '';
+    const s2 = document.getElementById('slot_puesto_2')?.value || '';
+    const s3 = document.getElementById('slot_puesto_3')?.value || '';
+    const alertEl = document.getElementById('podioValidationAlert');
+    const textEl = document.getElementById('podioValidationText');
+    const saveBtn = document.getElementById('btnGuardarPodio');
+
+    let hasConflict = false;
+    let conflictIE = '';
+
+    if (s1 && s2 && s1 === s2) {
+      hasConflict = true;
+      conflictIE = activePodio?.records.find(r => r.id === s1)?.institucion || 'Misma I.E.';
+    } else if (s1 && s3 && s1 === s3) {
+      hasConflict = true;
+      conflictIE = activePodio?.records.find(r => r.id === s1)?.institucion || 'Misma I.E.';
+    } else if (s2 && s3 && s2 === s3) {
+      hasConflict = true;
+      conflictIE = activePodio?.records.find(r => r.id === s2)?.institucion || 'Misma I.E.';
+    }
+
+    if (hasConflict) {
+      if (alertEl) alertEl.style.display = 'block';
+      if (textEl) textEl.innerHTML = `⚠️ Conflicto de podio: La institución <strong>${esc(conflictIE)}</strong> no puede ocupar dos puestos distintos simultáneamente. Corrige la selección para guardar.`;
+      if (saveBtn) saveBtn.disabled = true;
+      return false;
+    } else {
+      if (alertEl) alertEl.style.display = 'none';
+      if (saveBtn) saveBtn.disabled = false;
+      return true;
+    }
+  };
+
+  [1, 2, 3].forEach(num => {
+    const slotEl = document.getElementById(`slot_puesto_${num}`);
+    if (slotEl) {
+      slotEl.addEventListener('change', (e) => {
+        updateSnippetForSlot(num, e.target.value);
+        validateSlotSelections();
+      });
+    }
+  });
+
+  // Botón Guardar Podio (Transaccional Atómico)
+  const savePodioBtn = document.getElementById('btnGuardarPodio');
+  if (savePodioBtn && activePodio) {
+    savePodioBtn.addEventListener('click', async () => {
+      if (!validateSlotSelections()) return;
+
+      const p1Id = document.getElementById('slot_puesto_1')?.value || '';
+      const p2Id = document.getElementById('slot_puesto_2')?.value || '';
+      const p3Id = document.getElementById('slot_puesto_3')?.value || '';
+
+      // Determinar puestos meta para cada registro de este podio
+      const planUpdates = [];
+      activePodio.records.forEach(r => {
+        let desiredPuesto = '';
+        if (r.id === p1Id) desiredPuesto = '1.er puesto';
+        else if (r.id === p2Id) desiredPuesto = '2.° puesto';
+        else if (r.id === p3Id) desiredPuesto = '3.er puesto';
+        else {
+          const otherSel = host.querySelector(`.otherPuestoSelect[data-rid="${r.id}"]`);
+          desiredPuesto = otherSel ? otherSel.value.trim() : '';
+        }
+
+        const curNorm = normalizePuestoValue(r.puesto);
+        const desNorm = normalizePuestoValue(desiredPuesto);
+
+        if (curNorm !== desNorm || (r.puesto || '') !== desiredPuesto) {
+          planUpdates.push({
+            record: r,
+            oldPuesto: r.puesto || '',
+            newPuesto: desiredPuesto
+          });
+        }
+      });
+
+      if (planUpdates.length === 0) {
+        showToast('No se han modificado puestos en este podio.');
+        return;
+      }
+
+      savePodioBtn.disabled = true;
+      savePodioBtn.textContent = 'Guardando podio...';
+
+      try {
+        const podioKey = getPodioKey(activePodio.records[0] || { categoria: activePodio.categoria, disciplina: activePodio.disciplina, genero: activePodio.genero }, curTipo);
+
+        // Si existe runTransaction en dbNs, usarlo para atomicidad completa
+        if (typeof dbNs.runTransaction === 'function') {
+          await dbNs.runTransaction(async (tx) => {
+            for (const item of planUpdates) {
+              const { record, oldPuesto, newPuesto } = item;
+              const oldNorm = normalizePuestoValue(oldPuesto);
+              const newNorm = normalizePuestoValue(newPuesto);
+
+              // 1. Liberar lock previo si era puesto 1, 2 o 3
+              if (['1.er puesto', '2.° puesto', '3.er puesto'].includes(oldNorm)) {
+                const oldLockId = getPodioLockDocId(podioKey, oldNorm);
+                tx.delete(dbNs.collection('concursoPodioLocks').doc(oldLockId));
+              }
+
+              // 2. Establecer nuevo lock si es puesto 1, 2 o 3
+              if (['1.er puesto', '2.° puesto', '3.er puesto'].includes(newNorm)) {
+                const newLockId = getPodioLockDocId(podioKey, newNorm);
+                tx.set(dbNs.collection('concursoPodioLocks').doc(newLockId), {
+                  idRegistro: record.id,
+                  institucion: record.institucion || '',
+                  puesto: newNorm,
+                  podioKey: podioKey,
+                  tipoConcursoId: curTipo.id,
+                  etapa: activePodio.etapa || 'UGEL',
+                  updatedAt: Date.now(),
+                  updatedBy: currentUser?.email || 'admin'
+                });
+              }
+
+              // 3. Actualizar el registro principal
+              tx.update(dbNs.collection('concursoRegistros').doc(record.id), {
+                puesto: newPuesto,
+                updatedAt: Date.now()
+              });
+            }
+
+            // 4. Bitácora de auditoría
+            const histId = genId();
+            tx.set(dbNs.collection('concursoHistorial').doc(histId), {
+              tipo: 'asignacion_masiva_podio',
+              podioKey: activePodio.fullKey,
+              podioLabel: activePodio.label,
+              tipoConcursoId: curTipo.id,
+              actualizaciones: planUpdates.map(u => ({ id: u.record.id, ie: u.record.institucion, de: u.oldPuesto, a: u.newPuesto })),
+              usuario: currentUser?.email || 'admin',
+              fecha: Date.now()
+            });
+          });
+        } else {
+          // Fallback con batch
+          const batch = dbNs.batch();
+          for (const item of planUpdates) {
+            const { record, oldPuesto, newPuesto } = item;
+            const oldNorm = normalizePuestoValue(oldPuesto);
+            const newNorm = normalizePuestoValue(newPuesto);
+
+            if (['1.er puesto', '2.° puesto', '3.er puesto'].includes(oldNorm)) {
+              const oldLockId = getPodioLockDocId(podioKey, oldNorm);
+              batch.delete(dbNs.collection('concursoPodioLocks').doc(oldLockId));
+            }
+            if (['1.er puesto', '2.° puesto', '3.er puesto'].includes(newNorm)) {
+              const newLockId = getPodioLockDocId(podioKey, newNorm);
+              batch.set(dbNs.collection('concursoPodioLocks').doc(newLockId), {
+                idRegistro: record.id,
+                institucion: record.institucion || '',
+                puesto: newNorm,
+                podioKey: podioKey,
+                tipoConcursoId: curTipo.id,
+                etapa: activePodio.etapa || 'UGEL',
+                updatedAt: Date.now(),
+                updatedBy: currentUser?.email || 'admin'
+              });
+            }
+            batch.update(dbNs.collection('concursoRegistros').doc(record.id), {
+              puesto: newPuesto,
+              updatedAt: Date.now()
+            });
+          }
+          await batch.commit();
+        }
+
+        // Actualizar datos en memoria local
+        planUpdates.forEach(item => {
+          item.record.puesto = item.newPuesto;
+          item.record.updatedAt = Date.now();
+        });
+
+        showToast(`✓ Podio guardado exitosamente (${planUpdates.length} puestos actualizados).`);
+        renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+
+      } catch (err) {
+        console.error('Error guardando podio:', err);
+        showToast(`Error al guardar podio: ${err.message || 'Error desconocido'}`);
+        savePodioBtn.disabled = false;
+        savePodioBtn.textContent = '💾 Guardar puestos del podio';
+      }
+    });
+  }
+
+  // Filtros de la matriz
+  const chkPendientes = document.getElementById('ap_soloPendientes');
+  if (chkPendientes) {
+    chkPendientes.addEventListener('change', (e) => {
+      asignarPodioState.soloPendientes = e.target.checked;
+      renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    });
+  }
+
+  const selFiltroEtapa = document.getElementById('ap_filtro_etapa');
+  if (selFiltroEtapa) {
+    selFiltroEtapa.addEventListener('change', (e) => {
+      asignarPodioState.etapa = e.target.value;
+      renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    });
+  }
+
+  const selFiltroDisc = document.getElementById('ap_filtro_disciplina');
+  if (selFiltroDisc) {
+    selFiltroDisc.addEventListener('change', (e) => {
+      asignarPodioState.disciplina = e.target.value;
+      renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    });
+  }
+
+  const selFiltroCat = document.getElementById('ap_filtro_categoria');
+  if (selFiltroCat) {
+    selFiltroCat.addEventListener('change', (e) => {
+      asignarPodioState.categoria = e.target.value;
+      renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    });
+  }
+
+  const selFiltroGen = document.getElementById('ap_filtro_genero');
+  if (selFiltroGen) {
+    selFiltroGen.addEventListener('change', (e) => {
+      asignarPodioState.genero = e.target.value;
+      renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    });
+  }
+
+  const inputFiltroQuery = document.getElementById('ap_filtro_query');
+  if (inputFiltroQuery) {
+    let qDebounce;
+    inputFiltroQuery.addEventListener('input', (e) => {
+      clearTimeout(qDebounce);
+      qDebounce = setTimeout(() => {
+        asignarPodioState.filtroBusqueda = e.target.value;
+        renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+      }, 300);
+    });
+  }
+
+  // Clic en fila o botón para seleccionar podio y editarlo
+  host.querySelectorAll('[data-podio-key], [data-btn-podio]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      const key = el.dataset.podioKey || el.dataset.btnPodio;
+      if (!key) return;
+      asignarPodioState.activePodioKey = key;
+      renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+      const editorEl = document.getElementById('podioEditorCard');
+      if (editorEl) {
+        editorEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+}
+
+/* -------------------------------------------------------------
    SUB-PESTAÑA 3: TIPOS DE CONCURSO (ADMIN ONLY)
    ------------------------------------------------------------- */
 function renderConcursoTiposCatalogView(host, state, dbNs, isAdmin, currentUser, container, navigate) {
@@ -6607,37 +9542,37 @@ function renderConcursoTiposCatalogView(host, state, dbNs, isAdmin, currentUser,
 
     return '<div class="tipoCard">' +
       '<div class="ti">' +
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
-          '<h4 style="margin:0">' + esc(t.nombre) + '</h4>' +
-          '<span class="badge" style="background:var(--primary-tint);color:var(--primary);font-size:11px">' + (t.tipoParticipacion === 'individual' ? '👤 Individual' : '👥 Grupal') + '</span>' +
-          (t.tieneGenero ? '<span class="badge" style="background:rgba(14,165,233,0.15);color:#38bdf8;font-size:11px">Damas / Varones</span>' : '') +
-          (t.tieneDisciplina ? '<span class="badge" style="background:rgba(168,85,247,0.15);color:#c084fc;font-size:11px">Disciplina: Sí</span>' : '') +
-          (t.tieneTituloTrabajo ? '<span class="badge" style="background:rgba(245,158,11,0.15);color:#fbbf24;font-size:11px">Título / Seudónimo: Sí</span>' : '') +
-        '</div>' +
-        '<div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:6px">Categorías: ' + (cats || '—') + '</div>' +
-        '<div style="font-size:12px;color:var(--ink-soft)">Roles participantes: <strong>' + esc(partRoles) + '</strong> | Roles asesor: <strong>' + esc(asesRoles) + '</strong></div>' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+      '<h4 style="margin:0">' + esc(t.nombre) + '</h4>' +
+      '<span class="badge" style="background:var(--primary-tint);color:var(--primary);font-size:11px">' + (t.tipoParticipacion === 'individual' ? '👤 Individual' : '👥 Grupal') + '</span>' +
+      (t.tieneGenero ? '<span class="badge" style="background:rgba(14,165,233,0.15);color:#38bdf8;font-size:11px">Damas / Varones</span>' : '') +
+      (t.tieneDisciplina ? '<span class="badge" style="background:rgba(168,85,247,0.15);color:#c084fc;font-size:11px">Disciplina: Sí</span>' : '') +
+      (t.tieneTituloTrabajo ? '<span class="badge" style="background:rgba(245,158,11,0.15);color:#fbbf24;font-size:11px">Título / Seudónimo: Sí</span>' : '') +
+      '</div>' +
+      '<div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:6px">Categorías: ' + (cats || '—') + '</div>' +
+      '<div style="font-size:12px;color:var(--ink-soft)">Roles participantes: <strong>' + esc(partRoles) + '</strong> | Roles asesor: <strong>' + esc(asesRoles) + '</strong></div>' +
       '</div>' +
       '<div class="acts">' +
-        '<button type="button" class="btn secondary small" data-tedit="' + t.id + '">✎ Editar</button>' +
-        '<button type="button" class="iconBtn small" data-tdel="' + t.id + '" title="Eliminar tipo">✕</button>' +
+      '<button type="button" class="btn secondary small" data-tedit="' + t.id + '">✎ Editar</button>' +
+      '<button type="button" class="iconBtn small" data-tdel="' + t.id + '" title="Eliminar tipo">✕</button>' +
       '</div>' +
-    '</div>';
+      '</div>';
   }).join('') || '<div class="empty"><h4>Catálogo vacío</h4><p>No hay tipos de concurso configurados actualmente.</p></div>';
 
   host.innerHTML = '' +
     '<div class="panel">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">' +
-        '<div>' +
-          '<h3 style="margin-bottom:2px">Catálogo de Tipos de Concurso</h3>' +
-          '<p class="helpText" style="margin-bottom:0">Define las reglas, categorías, roles y campos dinámicos de cada concurso.</p>' +
-        '</div>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-          '<button type="button" class="btn secondary" id="btnSeedConcursos">🌱 Sembrar 6 concursos oficiales (UGEL 03)</button>' +
-          '<button type="button" class="btn secondary" id="btnImportGanadoresCatalog">📥 Cargar 83 ganadores oficiales (RD)</button>' +
-          '<button type="button" class="btn" id="btnNewTipoConcurso">＋ Nuevo tipo de concurso</button>' +
-        '</div>' +
-      '</div>' +
-      cardsHtml +
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">' +
+    '<div>' +
+    '<h3 style="margin-bottom:2px">Catálogo de Tipos de Concurso</h3>' +
+    '<p class="helpText" style="margin-bottom:0">Define las reglas, categorías, roles y campos dinámicos de cada concurso.</p>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+    '<button type="button" class="btn secondary" id="btnSeedConcursos">🌱 Sembrar 6 concursos oficiales (UGEL 03)</button>' +
+    '<button type="button" class="btn secondary" id="btnImportGanadoresCatalog">📥 Cargar 83 ganadores oficiales (RD)</button>' +
+    '<button type="button" class="btn" id="btnNewTipoConcurso">＋ Nuevo tipo de concurso</button>' +
+    '</div>' +
+    '</div>' +
+    cardsHtml +
     '</div>' +
     '<div id="modalTipoConcursoHost"></div>';
 
@@ -6703,62 +9638,81 @@ function openTipoConcursoModal(existingTipo, dbNs, state, container, isAdmin, cu
 
   host.innerHTML = '' +
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:150;display:flex;align-items:center;justify-content:center;padding:20px">' +
-      '<div style="background:var(--surface);border:1.5px solid var(--line-strong);border-radius:14px;max-width:620px;width:100%;max-height:90vh;overflow-y:auto;padding:26px;box-shadow:var(--shadow-lg)">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">' +
-          '<h3 style="margin:0">' + modalTitle + '</h3>' +
-          '<button type="button" class="iconBtn" id="m_tc_close">✕</button>' +
-        '</div>' +
-        '<form id="m_tc_form">' +
-          '<div class="field">' +
-            '<label>Nombre del concurso *</label>' +
-            '<input type="text" id="m_tc_nombre" value="' + esc(existingTipo ? existingTipo.nombre : '') + '" placeholder="Ej: Juegos Florales Escolares Nacionales" required>' +
-          '</div>' +
-          '<div class="field">' +
-            '<label>Tipo de participación *</label>' +
-            '<select id="m_tc_tipoPart">' +
-              '<option value="individual"' + (existingTipo && existingTipo.tipoParticipacion === 'individual' ? ' selected' : '') + '>Individual (1 participante por registro)</option>' +
-              '<option value="grupal"' + (existingTipo && existingTipo.tipoParticipacion === 'grupal' ? ' selected' : '') + '>Grupal (Múltiples participantes por registro)</option>' +
-            '</select>' +
-          '</div>' +
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0;background:var(--surface-2);padding:14px;border-radius:var(--radius);border:1px solid var(--line)">' +
-            '<label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">' +
-              '<input type="checkbox" id="m_tc_tieneGenero"' + (existingTipo && existingTipo.tieneGenero ? ' checked' : '') + '> Tiene Género (Damas / Varones)' +
-            '</label>' +
-            '<label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">' +
-              '<input type="checkbox" id="m_tc_tieneDisciplina"' + (existingTipo && existingTipo.tieneDisciplina ? ' checked' : '') + '> Tiene Disciplina / Área' +
-            '</label>' +
-            '<label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">' +
-              '<input type="checkbox" id="m_tc_tieneTituloTrabajo"' + (existingTipo && existingTipo.tieneTituloTrabajo ? ' checked' : '') + '> Tiene Título de Trabajo' +
-            '</label>' +
-          '</div>' +
+    '<div style="background:var(--surface);border:1.5px solid var(--line-strong);border-radius:14px;max-width:620px;width:100%;max-height:90vh;overflow-y:auto;padding:26px;box-shadow:var(--shadow-lg)">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">' +
+    '<h3 style="margin:0">' + modalTitle + '</h3>' +
+    '<button type="button" class="iconBtn" id="m_tc_close">✕</button>' +
+    '</div>' +
+    '<form id="m_tc_form">' +
+    '<div class="field">' +
+    '<label>Nombre del concurso *</label>' +
+    '<input type="text" id="m_tc_nombre" value="' + esc(existingTipo ? existingTipo.nombre : '') + '" placeholder="Ej: Juegos Florales Escolares Nacionales" required>' +
+    '</div>' +
+    '<div class="field">' +
+    '<label>Tipo de participación *</label>' +
+    '<select id="m_tc_tipoPart">' +
+    '<option value="individual"' + (existingTipo && existingTipo.tipoParticipacion === 'individual' ? ' selected' : '') + '>Individual (1 participante por registro)</option>' +
+    '<option value="grupal"' + (existingTipo && existingTipo.tipoParticipacion === 'grupal' ? ' selected' : '') + '>Grupal (Múltiples participantes por registro)</option>' +
+    '</select>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0;background:var(--surface-2);padding:14px;border-radius:var(--radius);border:1px solid var(--line)">' +
+    '<label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">' +
+    '<input type="checkbox" id="m_tc_tieneGenero"' + (existingTipo && existingTipo.tieneGenero ? ' checked' : '') + '> Tiene Género (Damas / Varones)' +
+    '</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">' +
+    '<input type="checkbox" id="m_tc_tieneDisciplina"' + (existingTipo && existingTipo.tieneDisciplina ? ' checked' : '') + '> Tiene Disciplina / Área' +
+    '</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">' +
+    '<input type="checkbox" id="m_tc_tieneTituloTrabajo"' + (existingTipo && existingTipo.tieneTituloTrabajo ? ' checked' : '') + '> Tiene Título de Trabajo' +
+    '</label>' +
+    '</div>' +
 
-          '<div class="field">' +
-            '<label>Categorías (separadas por comas) *</label>' +
-            '<input type="text" id="m_tc_categorias" value="' + esc(categorias.join(', ')) + '" placeholder="Ej: A, B, C, D o Alfa - Nivel 1, Beta - Nivel 1" required>' +
-            '<small style="color:var(--ink-soft)">Escribe las categorías separadas por coma.</small>' +
-          '</div>' +
+    '<div style="margin:14px 0;background:var(--surface-2);padding:14px;border-radius:var(--radius);border:1px solid var(--line)">' +
+    '<label style="font-weight:700;margin-bottom:8px;display:block">Campos que definen un Podio único (1.°, 2.° y 3.er puesto)</label>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer">' +
+    '<input type="checkbox" id="m_tc_podio_cat"' + ((!existingTipo || (existingTipo.camposPodio || ['categoria']).includes('categoria')) ? ' checked' : '') + '> Categoría' +
+    '</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer">' +
+    '<input type="checkbox" id="m_tc_podio_disc"' + ((existingTipo ? (existingTipo.camposPodio || []).includes('disciplina') : existingTipo?.tieneDisciplina) ? ' checked' : '') + '> Disciplina' +
+    '</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer">' +
+    '<input type="checkbox" id="m_tc_podio_gen"' + ((existingTipo ? (existingTipo.camposPodio || []).includes('genero') : existingTipo?.tieneGenero) ? ' checked' : '') + '> Género' +
+    '</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer">' +
+    '<input type="checkbox" id="m_tc_podio_mod"' + ((existingTipo && (existingTipo.camposPodio || []).includes('modalidad')) ? ' checked' : '') + '> Modalidad' +
+    '</label>' +
+    '</div>' +
+    '<small style="color:var(--ink-soft);display:block;margin-top:6px">Ej: En JEDPA se marcan Categoría, Disciplina y Género para que Damas y Varones tengan podios independientes.</small>' +
+    '</div>' +
 
-          '<div class="field">' +
-            '<label>Roles de participante (separados por comas) *</label>' +
-            '<input type="text" id="m_tc_rolesPart" value="' + esc(rolesPart.join(', ')) + '" placeholder="Ej: Estudiante, Deportista" required>' +
-          '</div>' +
+    '<div class="field">' +
+    '<label>Categorías (separadas por comas) *</label>' +
+    '<input type="text" id="m_tc_categorias" value="' + esc(categorias.join(', ')) + '" placeholder="Ej: A, B, C, D o Alfa - Nivel 1, Beta - Nivel 1" required>' +
+    '<small style="color:var(--ink-soft)">Escribe las categorías separadas por coma.</small>' +
+    '</div>' +
 
-          '<div class="field">' +
-            '<label>Roles de asesor / delegados (separados por comas) *</label>' +
-            '<input type="text" id="m_tc_rolesAses" value="' + esc(rolesAses.join(', ')) + '" placeholder="Ej: Docente Asesor, Entrenador, Delegado" required>' +
-          '</div>' +
+    '<div class="field">' +
+    '<label>Roles de participante (separados por comas) *</label>' +
+    '<input type="text" id="m_tc_rolesPart" value="' + esc(rolesPart.join(', ')) + '" placeholder="Ej: Estudiante, Deportista" required>' +
+    '</div>' +
 
-          '<div class="field">' +
-            '<label>Disciplinas sugeridas (opcional, separadas por comas)</label>' +
-            '<input type="text" id="m_tc_discSugeridas" value="' + esc((existingTipo && existingTipo.disciplinasSugeridas ? existingTipo.disciplinasSugeridas : []).join(', ')) + '" placeholder="Ej: Ajedrez, Atletismo, Natación o Danza, Teatro">' +
-          '</div>' +
+    '<div class="field">' +
+    '<label>Roles de asesor / delegados (separados por comas) *</label>' +
+    '<input type="text" id="m_tc_rolesAses" value="' + esc(rolesAses.join(', ')) + '" placeholder="Ej: Docente Asesor, Entrenador, Delegado" required>' +
+    '</div>' +
 
-          '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">' +
-            '<button type="button" class="btn secondary" id="m_tc_cancel">Cancelar</button>' +
-            '<button type="submit" class="btn" id="m_tc_submit">' + (isEdit ? 'Actualizar' : 'Crear tipo') + '</button>' +
-          '</div>' +
-        '</form>' +
-      '</div>' +
+    '<div class="field">' +
+    '<label>Disciplinas sugeridas (opcional, separadas por comas)</label>' +
+    '<input type="text" id="m_tc_discSugeridas" value="' + esc((existingTipo && existingTipo.disciplinasSugeridas ? existingTipo.disciplinasSugeridas : []).join(', ')) + '" placeholder="Ej: Ajedrez, Atletismo, Natación o Danza, Teatro">' +
+    '</div>' +
+
+    '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">' +
+    '<button type="button" class="btn secondary" id="m_tc_cancel">Cancelar</button>' +
+    '<button type="submit" class="btn" id="m_tc_submit">' + (isEdit ? 'Actualizar' : 'Crear tipo') + '</button>' +
+    '</div>' +
+    '</form>' +
+    '</div>' +
     '</div>';
 
   const closeModal = () => { host.innerHTML = ''; };
@@ -6776,18 +9730,26 @@ function openTipoConcursoModal(existingTipo, dbNs, state, container, isAdmin, cu
       const rA = document.getElementById('m_tc_rolesAses').value.split(',').map(s => s.trim()).filter(Boolean);
       const dS = document.getElementById('m_tc_discSugeridas').value.split(',').map(s => s.trim()).filter(Boolean);
 
+      const cPodio = [];
+      if (document.getElementById('m_tc_podio_cat')?.checked) cPodio.push('categoria');
+      if (document.getElementById('m_tc_podio_disc')?.checked) cPodio.push('disciplina');
+      if (document.getElementById('m_tc_podio_gen')?.checked) cPodio.push('genero');
+      if (document.getElementById('m_tc_podio_mod')?.checked) cPodio.push('modalidad');
+      if (cPodio.length === 0) cPodio.push('categoria');
+
       const data = {
-        nombre:              document.getElementById('m_tc_nombre').value.trim(),
-        tipoParticipacion:   document.getElementById('m_tc_tipoPart').value,
-        tieneGenero:         document.getElementById('m_tc_tieneGenero').checked,
-        tieneDisciplina:     document.getElementById('m_tc_tieneDisciplina').checked,
-        tieneTituloTrabajo:  document.getElementById('m_tc_tieneTituloTrabajo').checked,
-        categorias:          cats.length ? cats : ['Única'],
-        rolesParticipante:   rP.length ? rP : ['Estudiante'],
-        rolesAsesor:         rA.length ? rA : ['Docente Asesor'],
+        nombre: document.getElementById('m_tc_nombre').value.trim(),
+        tipoParticipacion: document.getElementById('m_tc_tipoPart').value,
+        tieneGenero: document.getElementById('m_tc_tieneGenero').checked,
+        tieneDisciplina: document.getElementById('m_tc_tieneDisciplina').checked,
+        tieneTituloTrabajo: document.getElementById('m_tc_tieneTituloTrabajo').checked,
+        camposPodio: cPodio,
+        categorias: cats.length ? cats : ['Única'],
+        rolesParticipante: rP.length ? rP : ['Estudiante'],
+        rolesAsesor: rA.length ? rA : ['Docente Asesor'],
         disciplinasSugeridas: dS,
-        createdAt:           isEdit ? (existingTipo.createdAt || Date.now()) : Date.now(),
-        updatedAt:           Date.now()
+        createdAt: isEdit ? (existingTipo.createdAt || Date.now()) : Date.now(),
+        updatedAt: Date.now()
       };
 
       if (isEdit) {
@@ -6872,10 +9834,11 @@ async function ejecutarImportacionGanadores(dbNs, state, container, isAdmin, cur
         const sameInst = normalizeText(r.institucion) === normalizeText(item.institucion);
         const sameCat = normalizeText(r.categoria) === normalizeText(item.categoria);
         const sameDisc = normalizeText(r.disciplina) === normalizeText(item.disciplina);
+        const sameGen = normalizeGenero(r.genero) === normalizeGenero(item.genero);
         const samePuesto = normalizePuestoValue(r.puesto) === normalizePuestoValue(item.puesto);
-        
-        // Si coinciden tipo, institución, categoría, puesto y disciplina -> es duplicado
-        if (sameTipo && sameInst && sameCat && sameDisc && samePuesto) return true;
+
+        // Si coinciden tipo, institución, categoría, género, puesto y disciplina -> es duplicado
+        if (sameTipo && sameInst && sameCat && sameDisc && sameGen && samePuesto) return true;
 
         // O si comparten algún DNI de participante en el mismo concurso y categoría
         if (sameTipo && sameCat && pDnis.length > 0) {
@@ -6919,25 +9882,25 @@ async function ejecutarImportacionGanadores(dbNs, state, container, isAdmin, cur
 
         const docRef = dbNs.collection('concursoRegistros').doc();
         batch.set(docRef, {
-          tipoConcursoId:     tipoId,
+          tipoConcursoId: tipoId,
           tipoConcursoNombre: tipoNombre,
-          etapa:              item.etapa || 'UGEL',
-          categoria:          item.categoria || '',
-          genero:             item.genero || null,
-          disciplina:         item.disciplina || null,
-          institucion:        item.institucion || '',
-          codigoModular:      codMod,
-          tituloTrabajo:      item.tituloTrabajo || null,
-          seudonimo:          item.seudonimo || null,
-          puesto:             normalizePuestoValue(item.puesto) || item.puesto || '',
-          participantes:      Array.isArray(item.participantes) ? item.participantes : [],
-          asesores:           Array.isArray(item.asesores) ? item.asesores : [],
-          resolucionRef:      item.resolucionRef || '',
-          fecha:              item.fecha || '',
-          responsable:        'RD UGEL 03 (2026)',
-          importadoDesdePdf:  true,
-          createdAt:          Date.now(),
-          updatedAt:          Date.now()
+          etapa: item.etapa || 'UGEL',
+          categoria: item.categoria || '',
+          genero: item.genero || null,
+          disciplina: item.disciplina || null,
+          institucion: item.institucion || '',
+          codigoModular: codMod,
+          tituloTrabajo: item.tituloTrabajo || null,
+          seudonimo: item.seudonimo || null,
+          puesto: normalizePuestoValue(item.puesto) || item.puesto || '',
+          participantes: Array.isArray(item.participantes) ? item.participantes : [],
+          asesores: Array.isArray(item.asesores) ? item.asesores : [],
+          resolucionRef: item.resolucionRef || '',
+          fecha: item.fecha || '',
+          responsable: 'RD UGEL 03 (2026)',
+          importadoDesdePdf: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
         });
       }
 
@@ -7062,12 +10025,13 @@ function openDuplicateDetectorModal(dbNs, state, container, isAdmin, currentUser
       const sameCat = normalizeText(r1.categoria) === normalizeText(r2.categoria);
       const sameInst = normalizeText(r1.institucion) === normalizeText(r2.institucion);
       const sameDisc = normalizeText(r1.disciplina) === normalizeText(r2.disciplina);
+      const sameGen = normalizeGenero(r1.genero) === normalizeGenero(r2.genero);
       const samePuesto = normalizePuestoValue(r1.puesto) === normalizePuestoValue(r2.puesto);
 
       const pDnis2 = (r2.participantes || []).map(p => (p.dni || '').trim()).filter(Boolean);
       const sharesDni = pDnis1.length > 0 && pDnis2.length > 0 && pDnis1.some(d => pDnis2.includes(d));
 
-      if (sameTipo && sameEtapa && sameCat && sameInst && (sharesDni || (sameDisc && samePuesto))) {
+      if (sameTipo && sameEtapa && sameCat && sameInst && sameGen && (sharesDni || (sameDisc && samePuesto))) {
         group.push(r2);
         visitedExact.add(r2.id);
       }
@@ -7079,7 +10043,7 @@ function openDuplicateDetectorModal(dbNs, state, container, isAdmin, currentUser
     }
   }
 
-  // 2. Detectar conflictos de puesto
+  // 2. Detectar conflictos de puesto (respetando los campos de podio como género)
   const puestoConflicts = [];
   const topPuestos = ['1.er puesto', '2.° puesto', '3.er puesto'];
   const pMap = new Map();
@@ -7087,11 +10051,12 @@ function openDuplicateDetectorModal(dbNs, state, container, isAdmin, currentUser
   regs.forEach(r => {
     const normP = normalizePuestoValue(r.puesto);
     if (!topPuestos.includes(normP)) return;
+    const rTipo = (state.tiposConcurso || []).find(t => t.id === r.tipoConcursoId || t.nombre === r.tipoConcursoNombre);
+    const podKey = getPodioKey(r, rTipo);
     const key = [
       r.tipoConcursoId || r.tipoConcursoNombre,
       (r.etapa || '').toUpperCase(),
-      normalizeText(r.categoria),
-      normalizeText(r.disciplina),
+      podKey,
       normP
     ].join('|');
 
@@ -7193,8 +10158,19 @@ function openDuplicateDetectorModal(dbNs, state, container, isAdmin, currentUser
     </div>
   `;
 
+  lockBodyScroll();
   document.body.appendChild(modalWrap);
-  const closeModal = () => { modalWrap.remove(); };
+
+  const onKey = (e) => {
+    if (e.key === 'Escape') closeModal();
+  };
+  window.addEventListener('keydown', onKey);
+
+  const closeModal = () => {
+    window.removeEventListener('keydown', onKey);
+    modalWrap.remove();
+    unlockBodyScroll();
+  };
   modalWrap.querySelector('#m_dup_close').addEventListener('click', closeModal);
   modalWrap.querySelector('#m_dup_cancel').addEventListener('click', closeModal);
 
@@ -7240,5 +10216,3 @@ function openDuplicateDetectorModal(dbNs, state, container, isAdmin, currentUser
     });
   });
 }
-
-

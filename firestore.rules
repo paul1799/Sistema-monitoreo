@@ -74,6 +74,17 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // --- Bloqueo de concurrencia y unicidad atómica de podios en concursos ---
+    match /concursoPodioLocks/{docId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    // --- Bitácora de historial de asignaciones y reemplazo de puestos ---
+    match /concursoHistorial/{docId} {
+      allow read, create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+
     // --- Catálogo de áreas de firma: cualquiera con sesión lee, solo admin administra ---
     match /areasFirma/{docId} {
       allow read: if signedIn();
