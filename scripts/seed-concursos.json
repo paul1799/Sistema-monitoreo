@@ -10,7 +10,8 @@
     "categorias": ["A - Fábula", "B - Cuento (EBA)", "C - Ensayo (EBR)", "D - Ensayo (EBA)"],
     "rolesParticipante": ["Estudiante"],
     "rolesAsesor": ["Docente Asesor"],
-    "disciplinasSugeridas": []
+    "disciplinasSugeridas": [],
+    "formato_pdf_actas": "tabular"
   },
   {
     "id": "onem",
@@ -29,7 +30,8 @@
     ],
     "rolesParticipante": ["Estudiante"],
     "rolesAsesor": ["Docente Asesor"],
-    "disciplinasSugeridas": []
+    "disciplinasSugeridas": [],
+    "formato_pdf_actas": "tabular"
   },
   {
     "id": "peru_lee",
@@ -41,7 +43,8 @@
     "categorias": ["A", "B", "C", "D", "E"],
     "rolesParticipante": ["Estudiante"],
     "rolesAsesor": ["Docente Asesor"],
-    "disciplinasSugeridas": []
+    "disciplinasSugeridas": [],
+    "formato_pdf_actas": "tabular"
   },
   {
     "id": "eureka",
@@ -55,7 +58,8 @@
     "categorias": ["D", "E"],
     "disciplinasSugeridas": ["Indagación Científica", "Soluciones Tecnológicas", "Indagación Social"],
     "rolesParticipante": ["Estudiante"],
-    "rolesAsesor": ["Docente Asesor(a)"]
+    "rolesAsesor": ["Docente Asesor(a)"],
+    "formato_pdf_actas": "tabular"
   },
   {
     "id": "jfen",
@@ -79,7 +83,8 @@
       "Artes digitales / Cortometraje"
     ],
     "rolesParticipante": ["Estudiante"],
-    "rolesAsesor": ["Docente Asesor"]
+    "rolesAsesor": ["Docente Asesor"],
+    "formato_pdf_actas": "fichas_por_categoria"
   },
   {
     "id": "jedpa",
@@ -103,7 +108,8 @@
       "Paraatletismo",
       "Paranatación"
     ],
-    "rolesParticipante": ["Deportista"],
-    "rolesAsesor": ["Entrenador", "Delegado"]
+    "rolesParticipante": ["Deportista", "Estudiante"],
+    "rolesAsesor": ["Entrenador", "Docente Asesor", "Delegado"],
+    "formato_pdf_actas": "tabular"
   }
 ]

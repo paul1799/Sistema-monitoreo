@@ -97,6 +97,7 @@ const SEED_TIPOS_CONCURSO = [
     rolesParticipante: ['Estudiante'],
     rolesAsesor: ['Docente Asesor'],
     disciplinasSugeridas: [],
+    formato_pdf_actas: 'tabular'
   },
   {
     id: 'onem',
@@ -116,6 +117,7 @@ const SEED_TIPOS_CONCURSO = [
     rolesParticipante: ['Estudiante'],
     rolesAsesor: ['Docente Asesor'],
     disciplinasSugeridas: [],
+    formato_pdf_actas: 'tabular'
   },
   {
     id: 'peru_lee',
@@ -128,6 +130,7 @@ const SEED_TIPOS_CONCURSO = [
     rolesParticipante: ['Estudiante'],
     rolesAsesor: ['Docente Asesor'],
     disciplinasSugeridas: [],
+    formato_pdf_actas: 'tabular'
   },
   {
     id: 'eureka',
@@ -146,6 +149,7 @@ const SEED_TIPOS_CONCURSO = [
     ],
     rolesParticipante: ['Estudiante'],
     rolesAsesor: ['Docente Asesor'],
+    formato_pdf_actas: 'tabular'
   },
   {
     id: 'jfen',
@@ -174,6 +178,7 @@ const SEED_TIPOS_CONCURSO = [
     ],
     rolesParticipante: ['Estudiante'],
     rolesAsesor: ['Docente Asesor'],
+    formato_pdf_actas: 'fichas_por_categoria'
   },
   {
     id: 'jedpa',
@@ -199,8 +204,9 @@ const SEED_TIPOS_CONCURSO = [
       'Karate',
       'Taekwondo'
     ],
-    rolesParticipante: ['Deportista'],
-    rolesAsesor: ['Entrenador', 'Delegado'],
+    rolesParticipante: ['Deportista', 'Estudiante'],
+    rolesAsesor: ['Entrenador', 'Docente Asesor', 'Delegado'],
+    formato_pdf_actas: 'tabular'
   }
 ];
 

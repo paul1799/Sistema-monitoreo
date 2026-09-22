@@ -228,6 +228,362 @@ export function parseArteDisciplina(disciplinaStr) {
   };
 }
 
+/* =========================================================================
+   CONFIGURACIÓN CENTRALIZADA POR CONCURSO (ACTAS PDF Y TABLAS)
+   ========================================================================= */
+export const CONCURSOS_CONFIG = {
+  jedpa: {
+    id: 'jedpa',
+    nombreCorto: 'JEDPA',
+    columna_asesor_singular: 'Delegado / Entrenador',
+    etiqueta_columna_asesor: 'Delegado / Entrenador',
+    etiqueta_asesor_plural: 'Cuerpo técnico',
+    etiqueta_cuerpo_tecnico: 'Delegado / Entrenador',
+    cuerpo_tecnico_por_grupo: true,
+    formato_pdf_actas: 'tabular',
+    alcance_cuerpo_tecnico: 'por_grupo',
+    columnas_combinables: ['categoria', 'disciplina', 'cuerpoTecnico', 'etapa', 'resolucionRef'],
+    mayusculas_cuerpo_tecnico: true,
+    optimizar_filas_compactas: true,
+    roles_permitidos_asesor: ['DELEGADO', 'ENTRENADOR']
+  },
+  jfen: {
+    id: 'jfen',
+    nombreCorto: 'JFEN',
+    columna_asesor_singular: 'Docente Asesor',
+    etiqueta_columna_asesor: 'Docente Asesor',
+    etiqueta_asesor_plural: 'Docentes asesores',
+    etiqueta_cuerpo_tecnico: 'Docente Asesor',
+    cuerpo_tecnico_por_grupo: false,
+    formato_pdf_actas: 'fichas_por_categoria',
+    alcance_cuerpo_tecnico: 'individual',
+    columnas_combinables: [],
+    mayusculas_cuerpo_tecnico: false,
+    optimizar_filas_compactas: false,
+    roles_permitidos_asesor: ['DOCENTE ASESOR']
+  },
+  peru_lee: {
+    id: 'peru_lee',
+    nombreCorto: 'El Perú Lee',
+    columna_asesor_singular: 'Docente Asesor',
+    etiqueta_columna_asesor: 'Docente Asesor',
+    etiqueta_asesor_plural: 'Docentes asesores',
+    etiqueta_cuerpo_tecnico: 'Docente Asesor',
+    cuerpo_tecnico_por_grupo: false,
+    formato_pdf_actas: 'tabular',
+    alcance_cuerpo_tecnico: 'individual',
+    columnas_combinables: [],
+    mayusculas_cuerpo_tecnico: false,
+    optimizar_filas_compactas: false,
+    roles_permitidos_asesor: ['DOCENTE ASESOR']
+  },
+  eureka: {
+    id: 'eureka',
+    nombreCorto: 'Eureka',
+    columna_asesor_singular: 'Docente Asesor',
+    etiqueta_columna_asesor: 'Docente Asesor',
+    etiqueta_asesor_plural: 'Docentes asesores',
+    etiqueta_cuerpo_tecnico: 'Docente Asesor',
+    cuerpo_tecnico_por_grupo: false,
+    formato_pdf_actas: 'tabular',
+    alcance_cuerpo_tecnico: 'individual',
+    columnas_combinables: [],
+    mayusculas_cuerpo_tecnico: false,
+    optimizar_filas_compactas: false,
+    roles_permitidos_asesor: ['DOCENTE ASESOR']
+  },
+  onem: {
+    id: 'onem',
+    nombreCorto: 'ONEM',
+    columna_asesor_singular: 'Docente Asesor',
+    etiqueta_columna_asesor: 'Docente Asesor',
+    etiqueta_asesor_plural: 'Docentes asesores',
+    etiqueta_cuerpo_tecnico: 'Docente Asesor',
+    cuerpo_tecnico_por_grupo: false,
+    formato_pdf_actas: 'tabular',
+    alcance_cuerpo_tecnico: 'individual',
+    columnas_combinables: [],
+    mayusculas_cuerpo_tecnico: false,
+    optimizar_filas_compactas: false,
+    roles_permitidos_asesor: ['DOCENTE ASESOR']
+  },
+  jma: {
+    id: 'jma',
+    nombreCorto: 'José María Arguedas',
+    columna_asesor_singular: 'Docente Asesor',
+    etiqueta_columna_asesor: 'Docente Asesor',
+    etiqueta_asesor_plural: 'Docentes asesores',
+    etiqueta_cuerpo_tecnico: 'Docente Asesor',
+    cuerpo_tecnico_por_grupo: false,
+    formato_pdf_actas: 'tabular',
+    alcance_cuerpo_tecnico: 'individual',
+    columnas_combinables: [],
+    mayusculas_cuerpo_tecnico: false,
+    optimizar_filas_compactas: false,
+    roles_permitidos_asesor: ['DOCENTE ASESOR']
+  }
+};
+
+/**
+ * Obtiene la configuración consolidada para un tipo de concurso
+ */
+export function getConcursoConfig(tipoConcurso) {
+  if (!tipoConcurso) {
+    return {
+      id: 'general',
+      nombreCorto: 'Concursos',
+      etiqueta_columna_asesor: 'Docente Asesor',
+      etiqueta_cuerpo_tecnico: 'Docente Asesor',
+      formato_pdf_actas: 'tabular',
+      alcance_cuerpo_tecnico: 'individual',
+      columnas_combinables: [],
+      mayusculas_cuerpo_tecnico: false,
+      optimizar_filas_compactas: false,
+      roles_permitidos_asesor: ['Docente Asesor']
+    };
+  }
+
+  const id = String(tipoConcurso.id || '').toLowerCase().trim();
+  const nom = String(tipoConcurso.nombre || '').toLowerCase().trim();
+
+  if (CONCURSOS_CONFIG[id]) {
+    return { ...CONCURSOS_CONFIG[id], ...tipoConcurso };
+  }
+  if (id.includes('jedpa') || nom.includes('jedpa') || nom.includes('deportivos')) {
+    return { ...CONCURSOS_CONFIG.jedpa, ...tipoConcurso };
+  }
+  if (id.includes('jfen') || nom.includes('jfen') || nom.includes('florales')) {
+    return { ...CONCURSOS_CONFIG.jfen, ...tipoConcurso };
+  }
+  if (id.includes('peru_lee') || nom.includes('lee') || nom.includes('lectora')) {
+    return { ...CONCURSOS_CONFIG.peru_lee, ...tipoConcurso };
+  }
+  if (id.includes('eureka') || nom.includes('eureka') || nom.includes('ciencia')) {
+    return { ...CONCURSOS_CONFIG.eureka, ...tipoConcurso };
+  }
+  if (id.includes('onem') || nom.includes('onem') || nom.includes('matematica')) {
+    return { ...CONCURSOS_CONFIG.onem, ...tipoConcurso };
+  }
+  if (id.includes('jma') || nom.includes('arguedas') || nom.includes('narrativa')) {
+    return { ...CONCURSOS_CONFIG.jma, ...tipoConcurso };
+  }
+
+  return {
+    id: id || 'general',
+    nombreCorto: tipoConcurso.nombre || 'Concursos',
+    etiqueta_columna_asesor: tipoConcurso.etiqueta_columna_asesor || 'Docente Asesor',
+    etiqueta_cuerpo_tecnico: tipoConcurso.etiqueta_cuerpo_tecnico || 'Docente Asesor',
+    formato_pdf_actas: tipoConcurso.formato_pdf_actas || 'tabular',
+    alcance_cuerpo_tecnico: tipoConcurso.alcance_cuerpo_tecnico || 'individual',
+    columnas_combinables: tipoConcurso.columnas_combinables || [],
+    mayusculas_cuerpo_tecnico: Boolean(tipoConcurso.mayusculas_cuerpo_tecnico),
+    optimizar_filas_compactas: Boolean(tipoConcurso.optimizar_filas_compactas),
+    roles_permitidos_asesor: tipoConcurso.roles_permitidos_asesor || ['Docente Asesor'],
+    ...tipoConcurso
+  };
+}
+
+/**
+ * Formatea el rol para presentación
+ */
+export function formatearRol(rol, { mayusculas = false } = {}) {
+  if (!rol || !String(rol).trim()) return mayusculas ? 'ASESOR' : 'Asesor';
+  const r = String(rol).trim();
+  return mayusculas ? r.toUpperCase() : r;
+}
+
+/**
+ * Deduplica y formatea el cuerpo técnico para presentación en actas y tablas.
+ * En JEDPA:
+ *   - Orden: primero Delegado(s), luego Entrenador(es); dentro de cada rol, alfabético por apellidos.
+ *   - Todo en MAYÚSCULAS.
+ *   - Formato en dos líneas compactas por persona:
+ *       DELEGADO: ESCURRA ZAPATA SIMON
+ *       DNI 09428296
+ */
+export function formatearCuerpoTecnicoTexto(personas, { mayusculas = true, formato = 'multiline', vacioTexto = '' } = {}) {
+  if (!Array.isArray(personas) || personas.length === 0) {
+    return vacioTexto || (mayusculas ? 'SIN CUERPO TÉCNICO REGISTRADO' : 'Sin docente asesor registrado');
+  }
+
+  // Deduplicar personas por DNI o por nombre completo normalizado
+  const uniqueMap = new Map();
+  personas.forEach(p => {
+    if (!p) return;
+    const nom = formatearNombre(p);
+    const dni = (p.dni || '').trim();
+    const key = dni ? `dni_${dni}` : `nom_${nom.toLowerCase()}`;
+    if (!key || key === 'nom_') return;
+
+    if (!uniqueMap.has(key)) {
+      uniqueMap.set(key, {
+        apellidos: (p.apellidos || '').trim(),
+        nombres: (p.nombres || '').trim(),
+        dni: dni,
+        rol: (p.rol || (mayusculas ? 'ENTRENADOR' : 'Docente Asesor')).trim()
+      });
+    }
+  });
+
+  const uniqueList = Array.from(uniqueMap.values());
+  if (uniqueList.length === 0) {
+    return vacioTexto || (mayusculas ? 'SIN CUERPO TÉCNICO REGISTRADO' : 'Sin docente asesor registrado');
+  }
+
+  // Ordenamiento: 1.° Delegados, 2.° Entrenadores, 3.° Asesores, 4.° Otros; luego alfabético por apellidos/nombres
+  function getRolRank(r) {
+    const s = (r || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (s.includes('delegad')) return 1;
+    if (s.includes('entrenad')) return 2;
+    if (s.includes('docente') || s.includes('asesor')) return 3;
+    return 4;
+  }
+
+  uniqueList.sort((a, b) => {
+    const rk = getRolRank(a.rol) - getRolRank(b.rol);
+    if (rk !== 0) return rk;
+    const nameA = formatearNombre(a);
+    const nameB = formatearNombre(b);
+    return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+  });
+
+  if (formato === 'single_line') {
+    return uniqueList.map(p => {
+      const rolStr = mayusculas ? (p.rol || 'ENTRENADOR').toUpperCase() : (p.rol || 'Entrenador');
+      const nomStr = formatearNombre(p);
+      const dniStr = p.dni ? ` (DNI ${p.dni})` : '';
+      return `${rolStr}: ${nomStr}${dniStr}`;
+    }).join(' · ');
+  }
+
+  // Formato multiline (2 líneas compactas por persona)
+  return uniqueList.map(p => {
+    const rolStr = mayusculas ? (p.rol || 'ENTRENADOR').toUpperCase() : (p.rol || 'Entrenador');
+    const nomStr = formatearNombre(p);
+    const dniStr = p.dni ? `DNI ${p.dni}` : '';
+    return dniStr ? `${rolStr}: ${nomStr}\n${dniStr}` : `${rolStr}: ${nomStr}`;
+  }).join('\n\n');
+}
+
+/**
+ * Formatea los filtros para el subtítulo del PDF con la etiqueta real en mayúsculas
+ * (Etapa -> Disciplina -> Categoría -> Género)
+ */
+export function formatearFiltrosSubtitulo(filters = {}, etapaLabel = 'UGEL') {
+  const filtrosArr = [];
+  if (filters.etapa) {
+    filtrosArr.push(`Etapa ${String(filters.etapa).trim().toUpperCase()}`);
+  }
+  if (filters.disciplina) {
+    filtrosArr.push(`Disciplina ${String(filters.disciplina).trim().toUpperCase()}`);
+  }
+  if (filters.categoria) {
+    filtrosArr.push(`Categoría ${String(filters.categoria).trim().toUpperCase()}`);
+  }
+  if (filters.genero) {
+    filtrosArr.push(`Género ${String(filters.genero).trim().toUpperCase()}`);
+  }
+  if (filtrosArr.length > 0) {
+    return `Filtros: ${filtrosArr.join(' · ')}`;
+  }
+  return `Etapa oficial: ${String(etapaLabel || 'UGEL').trim().toUpperCase()}`;
+}
+
+/**
+ * Regla de lectura unificada del cuerpo técnico para un grupo:
+ * 1. Si existe en la entidad concursoCuerpoTecnico -> usar ese
+ * 2. Si no -> calcular en memoria con registros del grupo (unión y deduplicación por DNI)
+ *    Detecta conflictos de rol para advertir en "Datos por revisar"
+ */
+export function obtenerCuerpoTecnicoGrupo(grupoKey, registrosGrupo = [], state = {}, tipoConcurso = null) {
+  const cList = (state && state.concursoCuerpoTecnico) || [];
+  const registrado = cList.find(c => c.id === grupoKey || c.grupoKey === grupoKey);
+
+  if (registrado && Array.isArray(registrado.personas) && registrado.personas.length > 0) {
+    return {
+      origen: 'grupo',
+      personas: registrado.personas,
+      conflictos: [],
+      docId: registrado.id
+    };
+  }
+
+  // Deduplicación en memoria de los asesores del grupo
+  const personasMap = new Map();
+  const conflictos = [];
+
+  (registrosGrupo || []).forEach(r => {
+    if (r.tieneExcepcionCuerpoTecnico) return;
+    (r.asesores || []).forEach(a => {
+      const nom = formatearNombre(a);
+      const dni = (a.dni || '').trim();
+      const key = dni ? `dni_${dni}` : `nom_${nom.toLowerCase()}`;
+      if (!key || key === 'nom_') return;
+
+      if (!personasMap.has(key)) {
+        personasMap.set(key, {
+          apellidos: (a.apellidos || '').trim(),
+          nombres: (a.nombres || '').trim(),
+          dni: dni,
+          roles: new Set([a.rol || 'Entrenador']),
+          registroIds: [r.id]
+        });
+      } else {
+        const item = personasMap.get(key);
+        item.roles.add(a.rol || 'Entrenador');
+        item.registroIds.push(r.id);
+      }
+    });
+  });
+
+  const personas = [];
+  personasMap.forEach((val) => {
+    const rolesArr = Array.from(val.roles);
+    let rolFinal = rolesArr[0];
+    if (rolesArr.length > 1) {
+      rolFinal = rolesArr.join(' / ');
+      conflictos.push({
+        persona: formatearNombre(val),
+        dni: val.dni,
+        roles: rolesArr,
+        mensaje: `${formatearNombre(val)} (DNI ${val.dni || '—'}) figura como ${rolesArr.join(' y ')} en diferentes registros del grupo.`
+      });
+    }
+    personas.push({
+      apellidos: val.apellidos,
+      nombres: val.nombres,
+      dni: val.dni,
+      rol: rolFinal
+    });
+  });
+
+  return {
+    origen: 'calculado',
+    personas,
+    conflictos,
+    docId: null
+  };
+}
+
+/**
+ * Verificación automática contra textos corruptos en el PDF
+ */
+export function verificarTextoPdf(texto, contexto = '') {
+  if (texto === null || texto === undefined) return '';
+  const s = String(texto);
+  const prohibidos = ['[object Object]', 'undefined', 'NaN', 'null'];
+  for (const p of prohibidos) {
+    if (s.includes(p)) {
+      const msg = `[PDF Check] Texto prohibido detectado ("${p}") en ${contexto || 'documento'}: "${s.slice(0, 100)}"`;
+      console.warn(msg);
+      if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
+        throw new Error(msg);
+      }
+    }
+  }
+  return s;
+}
+
 /**
  * Formatea y asegura guiones estándar en resoluciones oficiales en una sola línea.
  * Ejemplo: "RD N.° 05200-2026-UGEL03"
@@ -560,6 +916,7 @@ export async function createOfficialPdfDocument({
   tableHeaders = [],
   tableRows = [],
   columnStyles = {},
+  tableStyles = {},
   customTables = [], // Array de { title, subtitle, minHeight, pageBreak, beforeDraw, tableHeaders, tableRows, columnStyles, didDrawCell, didParseCell, styles, headStyles, alternateRowStyles }
   summarySections = [], // { title, content }
   signatures = [], // Array de { cargo, nombre, entidad, leyenda }
@@ -661,29 +1018,112 @@ export async function createOfficialPdfDocument({
   if (metaGrid && metaGrid.length > 0) {
     const boxW = pageW - 2 * margin;
     const numItems = metaGrid.length;
-    const itemW = boxW / numItems;
-    const boxH = 34;
+
+    // Distribución proporcional de anchos para evitar solapamientos
+    const hasCustomRatios = metaGrid.some(item => typeof item.widthRatio === 'number' && item.widthRatio > 0);
+    let ratios;
+    if (hasCustomRatios) {
+      const sum = metaGrid.reduce((acc, it) => acc + (it.widthRatio || (1 / numItems)), 0);
+      ratios = metaGrid.map(it => (it.widthRatio || (1 / numItems)) / sum);
+    } else if (numItems === 4 && metaGrid[0].label && metaGrid[0].label.toLowerCase().includes('concurso')) {
+      // 44% Concurso Educativo, 14% Etapa, 20% Total Registros, 22% Instituciones
+      ratios = [0.44, 0.14, 0.20, 0.22];
+    } else {
+      ratios = metaGrid.map(() => 1 / numItems);
+    }
+
+    // Pre-calcular posiciones horizontales y ajustar textos con wrap estricto
+    let colAccX = margin;
+    const preparedItems = metaGrid.map((item, idx) => {
+      const colW = boxW * ratios[idx];
+      const colX = colAccX;
+      colAccX += colW;
+
+      // Margen de seguridad interno para el texto
+      const maxTextW = Math.max(20, colW - 14);
+
+      doc.setFont(baseFont || 'helvetica', 'bold');
+      doc.setFontSize(7);
+      const labelLines = doc.splitTextToSize((item.label || '').toUpperCase(), maxTextW);
+
+      doc.setFont(baseFont || 'helvetica', 'normal');
+      doc.setFontSize(8.5);
+      const valStr = String(item.value !== undefined && item.value !== null ? item.value : '—');
+      const valueLines = doc.splitTextToSize(valStr, maxTextW);
+
+      let noteLines = [];
+      if (item.note) {
+        doc.setFontSize(6.5);
+        noteLines = doc.splitTextToSize(item.note, maxTextW);
+      }
+
+      return {
+        colX,
+        colW,
+        maxTextW,
+        labelLines,
+        valueLines,
+        noteLines,
+        item
+      };
+    });
+
+    // Calcular altura dinámica de la tarjeta (boxH) si el texto ocupa más de 1 línea
+    let maxContentBottom = 34;
+    preparedItems.forEach(p => {
+      const valStartY = 11 + (p.labelLines.length * 8) + 3;
+      const valEndY = valStartY + ((p.valueLines.length - 1) * 9.5);
+      let itemBottom = valEndY + 4;
+      if (p.noteLines.length > 0) {
+        const noteStartY = Math.max(valEndY + 8, 30);
+        itemBottom = noteStartY + ((p.noteLines.length - 1) * 7.5) + 4;
+      }
+      if (itemBottom > maxContentBottom) {
+        maxContentBottom = itemBottom;
+      }
+    });
+
+    const boxH = Math.max(34, Math.ceil(maxContentBottom));
 
     doc.setFillColor(247, 249, 252);
     doc.setDrawColor(227, 232, 239);
     doc.roundedRect(margin, curY, boxW, boxH, 3, 3, 'FD');
 
-    metaGrid.forEach((item, idx) => {
-      const x = margin + idx * itemW + 8;
-      doc.setFont('helvetica', 'bold');
+    preparedItems.forEach(p => {
+      const textX = p.colX + 7;
+
+      // Etiqueta
+      doc.setFont(baseFont || 'helvetica', 'bold');
       doc.setFontSize(7);
       doc.setTextColor(91, 107, 128);
-      doc.text(item.label.toUpperCase(), x, curY + 11);
+      let labelY = curY + 11;
+      p.labelLines.forEach(line => {
+        doc.text(line, textX, labelY);
+        labelY += 8;
+      });
 
-      doc.setFont('helvetica', 'normal');
+      // Valor
+      doc.setFont(baseFont || 'helvetica', 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(11, 27, 54);
-      doc.text(String(item.value || '—'), x, curY + 22);
+      let valY = curY + 11 + (p.labelLines.length * 8) + 3;
+      if (p.labelLines.length === 1) valY = curY + 22;
+      p.valueLines.forEach(line => {
+        doc.text(line, textX, valY);
+        valY += 9.5;
+      });
 
-      if (item.note) {
+      // Nota (si existe)
+      if (p.noteLines.length > 0) {
         doc.setFontSize(6.5);
         doc.setTextColor(138, 151, 168);
-        doc.text(item.note, x, curY + 30);
+        let noteY = (p.valueLines.length === 1 && p.labelLines.length === 1)
+          ? (curY + 30)
+          : (valY - 9.5 + 8);
+        p.noteLines.forEach(line => {
+          doc.text(line, textX, noteY);
+          noteY += 7.5;
+        });
       }
     });
     curY += boxH + 10;
@@ -791,7 +1231,7 @@ export async function createOfficialPdfDocument({
         theme: 'plain',
         rowPageBreak: 'avoid',
         showHead: 'everyPage',
-        styles: {
+        styles: Object.assign({
           font: baseFont,
           fontSize: orientation === 'landscape' ? 7.5 : 8,
           cellPadding: { top: 5, right: 5, bottom: 5, left: 5 },
@@ -799,7 +1239,7 @@ export async function createOfficialPdfDocument({
           lineWidth: 0.5,
           textColor: [15, 27, 45],
           overflow: 'linebreak',
-        },
+        }, tableStyles || {}),
         headStyles: {
           fillColor: [18, 41, 77], // #12294D
           textColor: [255, 255, 255],
@@ -815,8 +1255,12 @@ export async function createOfficialPdfDocument({
         didParseCell: (data) => {
           if (data.cell) {
             if (Array.isArray(data.cell.text)) {
-              data.cell.text = data.cell.text.map(txt => sanitizePdfText(txt));
+              data.cell.text = data.cell.text.map(txt => {
+                verificarTextoPdf(txt, 'autoTable');
+                return sanitizePdfText(txt);
+              });
             } else if (typeof data.cell.text === 'string') {
+              verificarTextoPdf(data.cell.text, 'autoTable');
               data.cell.text = sanitizePdfText(data.cell.text);
             }
           }
@@ -999,8 +1443,8 @@ export async function createOfficialPdfDocument({
     doc.setTextColor(138, 151, 168); // #8A97A8
 
     const qrOffset = (qrDataUrl && i === pageCount) ? 26 : 0;
-    const footerLeft = `Documento generado por el Sistema de Fichas de Monitoreo · UGEL 03 · Emitido el ${emissionStr}`;
-    let footerRight = `Cód. Verif: ${docVerifCode} · Página ${i} de ${totalPagesExp}`;
+    const footerLeft = `Documento generado por el Sistema de Fichas de Monitoreo · UGEL 03 · Emitido el ${emissionStr} · Cód. Verif: ${docVerifCode}`;
+    let footerRight = `Página ${i} de ${totalPagesExp}`;
     if (datosIncompletos) {
       footerRight = `[ ! Datos incompletos ] · ${footerRight}`;
     }
@@ -2585,6 +3029,95 @@ export function deduplicateConcursoRows(rows) {
 }
 
 /**
+ * Determina el formato oficial de PDF de actas para un concurso.
+ * Por defecto es 'tabular' para todos los concursos, excepto 'jfen' que usa 'fichas_por_categoria'.
+ * @param {Object} tipoConcurso
+ * @returns {'tabular' | 'fichas_por_categoria'}
+ */
+export function getFormatoPdfConcurso(tipoConcurso) {
+  if (!tipoConcurso) return 'tabular';
+  if (tipoConcurso.formato_pdf_actas) return tipoConcurso.formato_pdf_actas;
+  if (tipoConcurso.formatoPdfActas) return tipoConcurso.formatoPdfActas;
+  const id = String(tipoConcurso.id || '').toLowerCase().trim();
+  const nom = String(tipoConcurso.nombre || '').toLowerCase().trim();
+  if (id === 'jfen' || nom.includes('jfen') || nom.includes('florales')) {
+    return 'fichas_por_categoria';
+  }
+  return 'tabular';
+}
+
+/**
+ * Obtiene la paleta de colores oficial diferenciada y de alto contraste por categoría para JFEN.
+ * Mantiene la armonía morado/lila/índigo institucional con contraste óptimo para texto blanco (ratio >= 4.5:1).
+ * @param {string} categoria
+ * @returns {{ bar: number[], altRow: number[], kvLabel: number[] }}
+ */
+export function colorPorCategoria(categoria) {
+  const c = String(categoria || '').trim().toUpperCase();
+
+  // Paleta institucional con tonos oscuros bien diferenciados y alto contraste con texto blanco
+  const palette = {
+    // Categoría A: Morado berenjena oscuro profundo (#3B1A5B) — ratio > 12:1
+    'A': {
+      bar: [59, 26, 91],
+      altRow: [244, 239, 249], // #F4EFF9
+      kvLabel: [238, 230, 246] // #EEE6F6
+    },
+    // Categoría B: Índigo azulado oscuro (#1E255E) — ratio > 12.5:1
+    'B': {
+      bar: [30, 37, 94],
+      altRow: [238, 241, 250], // #EEF1FA
+      kvLabel: [230, 235, 248] // #E6EBF8
+    },
+    // Categoría C: Violeta cobalto intenso (#581C87) — ratio > 7:1
+    'C': {
+      bar: [88, 28, 135],
+      altRow: [246, 239, 252], // #F6EFFC
+      kvLabel: [240, 228, 251] // #F0E4FB
+    },
+    // Categoría D: Púrpura vino oscuro (#4A154B) — ratio > 10:1
+    'D': {
+      bar: [74, 21, 75],
+      altRow: [247, 238, 248], // #F7EEF8
+      kvLabel: [243, 227, 244] // #F3E3F4
+    },
+    // Categoría E: Índigo medianoche profundo (#1E1B4B) — ratio > 14:1
+    'E': {
+      bar: [30, 27, 75],
+      altRow: [238, 238, 248], // #EEEEF8
+      kvLabel: [229, 229, 245] // #E5E5F5
+    },
+    // Categoría F: Morado real oscuro vibrante (#6B21A8) — ratio > 6:1
+    'F': {
+      bar: [107, 33, 168],
+      altRow: [247, 239, 253], // #F7EFFD
+      kvLabel: [242, 228, 252] // #F2E4FC
+    },
+    // Categoría H: Violeta oscuro abisal (#2E1065) — ratio > 13:1
+    'H': {
+      bar: [46, 16, 101],
+      altRow: [241, 237, 249], // #F1EDF9
+      kvLabel: [232, 225, 246] // #E8E1F6
+    }
+  };
+
+  if (palette[c]) return palette[c];
+
+  for (const key of Object.keys(palette)) {
+    if (c.startsWith(key) || c.includes(` ${key}`)) {
+      return palette[key];
+    }
+  }
+
+  // Por defecto (Categorías no mapeadas): Morado institucional oscuro (#4C1D95) — ratio ~8.5:1
+  return {
+    bar: [76, 29, 149],
+    altRow: [244, 239, 250],
+    kvLabel: [237, 228, 247]
+  };
+}
+
+/**
  * Renderizador oficial de Fichas por Categoría y Disciplina para JFEN (Juegos Florales Escolares Nacionales)
  * Formato oficial A4 Vertical con paleta morado/lila, banda de título dinámica, clave-valor institucional,
  * tabla de participantes por estudiante con celda combinada y docente asesor.
@@ -2604,7 +3137,7 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
   const contentW = pageW - 2 * margin; // 523.28 pt
   const headerBottomY = margin + 34 + 6; // 76 pt
 
-  const concursoNombre = tipoConcurso ? tipoConcurso.nombre : 'JUEGOS FLORALES ESCOLARES NACIONALES (JFEN)';
+  const concursoNombre = tipoConcurso ? tipoConcurso.nombre : 'Juegos Florales Escolares Nacionales (JFEN)';
   const areaConfig = downloadConfig.areaConfig || null;
   const docVerifCode = downloadConfig.verificationCode || generateVerificationCode();
 
@@ -2623,16 +3156,16 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
   const areaAuthor = (areaConfig && areaConfig.sigla) ? `${areaConfig.sigla} · UGEL 03` : 'UGEL 03 – AGEBRE';
   doc.setProperties({
     title: `Acta Oficial de Resultados — ${concursoNombre}`,
-    subject: 'Juegos Florales Escolares Nacionales 2026 – UGEL 03',
+    subject: `${concursoNombre} 2026 – UGEL 03`,
     author: areaAuthor,
-    keywords: 'JFEN, Juegos Florales, 2026, UGEL 03, MINEDU, Ganadores',
+    keywords: `${concursoNombre}, 2026, UGEL 03, MINEDU, Ganadores`,
     creator: 'Sistema de Fichas de Monitoreo · UGEL 03'
   });
 
   // Generar QR si está habilitado
   let qrDataUrl = null;
   if (downloadConfig.incluirQr !== false) {
-    const qrPayload = `UGEL 03 - MINEDU\nDoc: JFEN 2026\nEmitido: ${getLimaDateStr()}\nCódigo: ${docVerifCode}`;
+    const qrPayload = `UGEL 03 - MINEDU\nDoc: ${concursoNombre} 2026\nEmitido: ${getLimaDateStr()}\nCódigo: ${docVerifCode}`;
     qrDataUrl = await generateQrDataUrl(qrPayload);
   }
 
@@ -2679,7 +3212,7 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
   let curY = safeDrawHeader(1);
 
   // 2. Banda de título dinámica (Fondo lila claro #E9E1F0, texto negro negrita)
-  let titleBandText = `GANADORES DE LOS JUEGOS FLORALES ESCOLARES NACIONALES 2026 – ETAPA ${etapaLabel.toUpperCase()}`;
+  let titleBandText = `GANADORES DE ${concursoNombre.toUpperCase()} 2026 – ETAPA ${etapaLabel.toUpperCase()}`;
   if (singleCategory) {
     titleBandText += ` – CATEGORÍA "${singleCategory.toUpperCase()}"`;
   }
@@ -2730,7 +3263,7 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(15, 27, 45);
-    const introText = `En el marco de las bases generales de los Juegos Florales Escolares Nacionales (JFEN) 2026 promovidos por el Ministerio de Educación y la UGEL 03, se emite la presente nómina oficial de delegaciones e instituciones educativas ganadoras en la Etapa ${etapaLabel}.`;
+    const introText = `En el marco de las bases generales de ${concursoNombre} 2026 promovidos por el Ministerio de Educación y la UGEL 03, se emite la presente nómina oficial de delegaciones e instituciones educativas ganadoras en la Etapa ${etapaLabel}.`;
     const splitIntro = doc.splitTextToSize(introText, contentW);
     doc.text(splitIntro, margin, curY, { maxWidth: contentW, lineHeightFactor: 1.2 });
     curY += splitIntro.length * 10 + 6;
@@ -2792,7 +3325,7 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
         textColor: [11, 27, 54]
       },
       headStyles: {
-        fillColor: [112, 48, 160], // Morado institucional #7030A0
+        fillColor: [76, 29, 149], // Morado institucional oscuro #4C1D95
         textColor: [255, 255, 255],
         fontStyle: 'bold',
         halign: 'center',
@@ -2848,6 +3381,7 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
   for (let i = 0; i < sortedFichas.length; i++) {
     const r = sortedFichas[i];
     const cat = (r.categoria || 'D').trim();
+    const catColors = colorPorCategoria(cat);
     const isNewCat = lastCategory !== null && lastCategory !== cat;
     lastCategory = cat;
 
@@ -2897,13 +3431,13 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
 
     const fichaBody = [];
 
-    // Barra de categoría (ancho completo, morado institucional #7030A0)
+    // Barra de categoría (ancho completo, color diferenciado según categoría con alto contraste)
     fichaBody.push([
       {
         content: `CATEGORÍA ${cat.toUpperCase()}`,
         colSpan: 3,
         styles: {
-          fillColor: [112, 48, 160], // #7030A0
+          fillColor: catColors.bar,
           textColor: [255, 255, 255],
           fontStyle: 'bold',
           halign: 'center',
@@ -2914,37 +3448,37 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
       }
     ]);
 
-    // Bloque Clave-Valor institucional
+    // Bloque Clave-Valor institucional con fondo de etiqueta entonado por categoría
     fichaBody.push([
-      { content: 'Institución Educativa', styles: { fillColor: [239, 233, 245], fontStyle: 'bold', halign: 'left' } },
+      { content: 'Institución Educativa', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'left' } },
       { content: (r.institucion || '—').toUpperCase(), colSpan: 2, styles: { fontStyle: 'bold', textColor: [11, 27, 54] } }
     ]);
 
     fichaBody.push([
-      { content: 'Código Modular', styles: { fillColor: [239, 233, 245], fontStyle: 'bold', halign: 'left' } },
+      { content: 'Código Modular', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'left' } },
       { content: r.codigoModular || '—', colSpan: 2 }
     ]);
 
     fichaBody.push([
-      { content: 'Arte', styles: { fillColor: [239, 233, 245], fontStyle: 'bold', halign: 'left' } },
+      { content: 'Arte', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'left' } },
       { content: parsedDisc.arte, colSpan: 2, styles: { fontStyle: 'bold', textColor: [11, 27, 54] } }
     ]);
 
     fichaBody.push([
-      { content: 'Disciplina', styles: { fillColor: [239, 233, 245], fontStyle: 'bold', halign: 'left' } },
+      { content: 'Disciplina', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'left' } },
       { content: parsedDisc.disciplina, colSpan: 2, styles: { fontStyle: 'bold', textColor: [11, 27, 54] } }
     ]);
 
     if (mostrarPuesto && r.puesto) {
       fichaBody.push([
-        { content: 'Puesto', styles: { fillColor: [239, 233, 245], fontStyle: 'bold', halign: 'left' } },
+        { content: 'Puesto', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'left' } },
         { content: formatPuestoLabel(r.puesto), colSpan: 2, styles: { fontStyle: 'bold' } }
       ]);
     }
 
     if (mostrarResolucion && r.resolucionRef) {
       fichaBody.push([
-        { content: 'Resolución', styles: { fillColor: [239, 233, 245], fontStyle: 'bold', halign: 'left' } },
+        { content: 'Resolución', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'left' } },
         { content: formatResolucionRef(r.resolucionRef), colSpan: 2 }
       ]);
     }
@@ -2954,29 +3488,29 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
         ? `Grupal · ${(r.participantes || []).length} integrantes`
         : 'Individual · 1 integrante';
       fichaBody.push([
-        { content: 'Modalidad', styles: { fillColor: [239, 233, 245], fontStyle: 'bold', halign: 'left' } },
+        { content: 'Modalidad', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'left' } },
         { content: modLabel, colSpan: 2 }
       ]);
     }
 
-    // Encabezado de Participantes (Gris #A6A6A6, texto blanco en negrita)
+    // Encabezado de Participantes (Slate oscuro #475569 con alto contraste y texto blanco en negrita)
     fichaBody.push([
-      { content: 'PARTICIPANTES', styles: { fillColor: [166, 166, 166], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 7.5 } },
-      { content: 'APELLIDOS Y NOMBRES', styles: { fillColor: [166, 166, 166], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left', fontSize: 7.5 } },
-      { content: 'DNI', styles: { fillColor: [166, 166, 166], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 7.5 } }
+      { content: 'PARTICIPANTES', styles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 7.5 } },
+      { content: 'APELLIDOS Y NOMBRES', styles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left', fontSize: 7.5 } },
+      { content: 'DNI', styles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 7.5 } }
     ]);
 
     // Filas de Estudiantes
     if (rawParts.length === 0) {
       fichaBody.push([
-        { content: 'Estudiante', styles: { fillColor: [244, 240, 248], fontStyle: 'bold', halign: 'center', valign: 'middle' } },
+        { content: 'Estudiante', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'center', valign: 'middle' } },
         { content: 'Sin participante registrado', styles: { fontStyle: 'italic', textColor: [138, 151, 168] } },
         { content: '—', styles: { halign: 'center' } }
       ]);
     } else {
       const studentLabel = rawParts.length > 1 ? `Estudiantes (${rawParts.length})` : 'Estudiante';
       rawParts.forEach((p, pIdx) => {
-        const rowBg = pIdx % 2 === 0 ? [239, 233, 245] : [255, 255, 255];
+        const rowBg = pIdx % 2 === 0 ? catColors.altRow : [255, 255, 255];
         const studentName = formatearNombre(p);
         const studentDni = p.dni ? String(p.dni).trim() : '—';
 
@@ -2986,7 +3520,7 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
               content: studentLabel,
               rowSpan: rawParts.length,
               styles: {
-                fillColor: [244, 240, 248],
+                fillColor: catColors.kvLabel,
                 fontStyle: 'bold',
                 halign: 'center',
                 valign: 'middle',
@@ -3008,7 +3542,7 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
     // Filas de Docente Asesor / Entrenador
     if (asesores.length === 0) {
       fichaBody.push([
-        { content: 'Docente Asesor', styles: { fillColor: [239, 233, 245], fontStyle: 'bold', halign: 'center', valign: 'middle' } },
+        { content: 'Docente Asesor', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'center', valign: 'middle' } },
         { content: 'Sin docente asesor registrado', colSpan: 2, styles: { fontStyle: 'italic', textColor: [138, 151, 168] } }
       ]);
     } else {
@@ -3017,7 +3551,7 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
         const asesorName = formatearNombre(a);
         const asesorDni = a.dni ? String(a.dni).trim() : '—';
         fichaBody.push([
-          { content: rolLabel, styles: { fillColor: [239, 233, 245], fontStyle: 'bold', halign: 'center', valign: 'middle' } },
+          { content: rolLabel, styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'center', valign: 'middle' } },
           { content: asesorName, styles: { fontStyle: 'normal', halign: 'left' } },
           { content: asesorDni, styles: { halign: 'center' } }
         ]);
@@ -3058,11 +3592,10 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
 
   // 4. Bloque de firmas oficial (keep-together)
   const defaultSignatures = [
-    { cargo: 'Coordinador(a) JFEN 2026', entidad: 'Comisión Organizadora UGEL 03', leyenda: 'Firma y Sello' },
+    { cargo: `Coordinador(a) ${concursoNombre} 2026`, entidad: 'Comisión Organizadora UGEL 03', leyenda: 'Firma y Sello' },
     { cargo: 'Especialista de AGEBRE / Jurado', entidad: 'UGEL 03 – DRELM', leyenda: 'Firma y Sello' },
     { cargo: 'V.° B.° Jefatura AGEBRE', entidad: 'UGEL 03', leyenda: 'Sello Institucional' }
   ];
-
   const signatures = downloadConfig.signatures || defaultSignatures;
   const sinFirmas = downloadConfig.sinFirmas === true;
 
@@ -3207,7 +3740,8 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
   const cleanEtapaStr = sanitizeFilename(etapaLabel || 'UGEL');
   const cleanCatStr = singleCategory ? `_${sanitizeFilename(singleCategory)}` : '';
   const cleanDateStr = getLimaDateStr();
-  const filename = downloadConfig.filename || `Acta_Resultados_JFEN_${cleanEtapaStr}${cleanCatStr}_${cleanDateStr}.pdf`;
+  const cleanConcursoPrefix = sanitizeFilename(tipoConcurso?.id ? tipoConcurso.id.toUpperCase() : 'JFEN');
+  const filename = downloadConfig.filename || `Acta_Resultados_${cleanConcursoPrefix}_${cleanEtapaStr}${cleanCatStr}_${cleanDateStr}.pdf`;
 
   doc.save(filename);
 }
@@ -3218,6 +3752,8 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
  */
 export async function exportConcursosReportPdf(filtered, tipoConcurso, filters = {}, downloadConfig = {}) {
   const isLandscape = downloadConfig.orientation ? (downloadConfig.orientation === 'landscape') : true;
+  const concursoCfg = getConcursoConfig(tipoConcurso);
+  const isJedpa = (concursoCfg.id === 'jedpa');
   const concursoNombre = tipoConcurso ? tipoConcurso.nombre : 'CONCURSOS EDUCATIVOS ESCOLARES';
   const title = `ACTA OFICIAL DE RESULTADOS — ${concursoNombre.toUpperCase()}`;
 
@@ -3225,14 +3761,15 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
   const cleanRows = deduplicateConcursoRows(filtered);
   const totalRegs = cleanRows.length;
 
-  const isJfen = (tipoConcurso && (
-    tipoConcurso.id === 'jfen' ||
-    (tipoConcurso.nombre || '').toLowerCase().includes('jfen') ||
-    (tipoConcurso.nombre || '').toLowerCase().includes('florales')
-  )) || (cleanRows.length > 0 && cleanRows.every(r => (r.tipoConcurso || r.tipoConcursoNombre || '').toLowerCase().includes('florales')));
+  const formatoConcurso = getFormatoPdfConcurso(tipoConcurso);
 
-  // Si es JFEN (o el usuario configuró formato 'fichas'), derivar al renderizador oficial de Fichas
-  if (downloadConfig.formatoConcurso === 'fichas' || (isJfen && downloadConfig.formatoConcurso !== 'completo')) {
+  // Formato Fichas por Categoría: EXCLUSIVO para JFEN (o concursos con formato_pdf_actas === 'fichas_por_categoria')
+  // Siempre y cuando el usuario no haya seleccionado explícitamente formato 'completo' (tabular) u 'orden_merito'
+  const debeUsarFichas = formatoConcurso === 'fichas_por_categoria' &&
+    downloadConfig.formatoConcurso !== 'completo' &&
+    downloadConfig.formatoConcurso !== 'orden_merito';
+
+  if (debeUsarFichas) {
     return await exportJfenFichasPdf(cleanRows, tipoConcurso, filters, downloadConfig);
   }
 
@@ -3245,24 +3782,43 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
     ? filters.etapa
     : (etapasPresentes.length === 1 ? etapasPresentes[0] : (etapasPresentes.length > 1 ? etapasPresentes.join(', ') : 'UGEL'));
 
-  // Filtros aplicados visibles (Orden: Etapa -> Disciplina -> Categoría -> Género)
-  const filtrosArr = [];
-  if (filters.etapa) filtrosArr.push(`Etapa: ${filters.etapa}`);
-  if (filters.disciplina) filtrosArr.push(`Disciplina: ${filters.disciplina}`);
-  if (filters.categoria) filtrosArr.push(`Categoría: ${filters.categoria}`);
-  if (filters.genero) filtrosArr.push(`Género: ${filters.genero}`);
-  const filtrosTexto = filtrosArr.length ? `Filtros: ${filtrosArr.join(' · ')}` : `Etapa oficial: ${etapaLabel}`;
+  // Filtros aplicados visibles (Orden: Etapa -> Disciplina -> Categoría -> Género) con etiquetas y valores en mayúsculas
+  const filtrosTexto = formatearFiltrosSubtitulo(filters, etapaLabel);
 
-  const introParagraph = `En el marco de las bases generales de los Concursos Educativos Escolares 2026 promovidos por el Ministerio de Educación y la UGEL 03, se emite la presente Acta Oficial de Resultados y Premiaciones para ${concursoNombre} en la Etapa ${etapaLabel}. Se consolidan a continuación los estudiantes ganadores, delegaciones e instituciones educativas reconocidas. ${filtrosTexto}.`;
+  // Párrafo introductorio sin repetición de filtros al final (se muestran exclusivamente en el subtítulo oficial)
+  const introParagraph = `En el marco de las bases generales de los Concursos Educativos Escolares 2026 promovidos por el Ministerio de Educación y la UGEL 03, se emite la presente Acta Oficial de Resultados y Premiaciones para ${concursoNombre} en la Etapa ${etapaLabel}. Se consolidan a continuación los estudiantes ganadores, delegaciones e instituciones educativas reconocidas.`;
 
-  const metaGrid = [
-    { label: 'Concurso Educativo', value: concursoNombre },
-    { label: 'Etapa', value: etapaLabel },
-    { label: 'Total Registros / Premiaciones', value: String(totalRegs) },
-    { label: 'Instituciones Participantes', value: String(uniqueColegios), note: '* Cuenta por código modular' }
-  ];
+  // Tarjeta de resumen de metadatos (metaGrid)
+  let metaGrid;
+  if (isJedpa) {
+    const uniqueTecnicos = new Set();
+    cleanRows.forEach(r => {
+      (r.asesores || []).forEach(a => {
+        const k = a.dni ? a.dni.trim() : formatearNombre(a).toLowerCase();
+        if (k) uniqueTecnicos.add(k);
+      });
+    });
+    const totalTecnicos = uniqueTecnicos.size;
 
-  const tableHeaders = ['Puesto', 'Institución Educativa', 'Categoría', 'Área / Disciplina', 'Participantes (DNI)', 'Docente Asesor', 'Etapa', 'Resolución Ref.'];
+    metaGrid = [
+      { label: 'Concurso Educativo', value: concursoNombre, widthRatio: 0.34 },
+      { label: 'Etapa', value: etapaLabel, widthRatio: 0.12 },
+      { label: 'Total Registros / Premiaciones', value: String(totalRegs), widthRatio: 0.16 },
+      { label: 'Instituciones Participantes', value: String(uniqueColegios), note: '* Cuenta por código modular', widthRatio: 0.18 },
+      { label: 'Delegado / Entrenador', value: String(totalTecnicos), note: '* Personas únicas', widthRatio: 0.20 }
+    ];
+  } else {
+    metaGrid = [
+      { label: 'Concurso Educativo', value: concursoNombre, widthRatio: 0.44 },
+      { label: 'Etapa', value: etapaLabel, widthRatio: 0.14 },
+      { label: 'Total Registros / Premiaciones', value: String(totalRegs), widthRatio: 0.20 },
+      { label: 'Instituciones Participantes', value: String(uniqueColegios), note: '* Cuenta por código modular', widthRatio: 0.22 }
+    ];
+  }
+
+  // Nombre de columna de cuerpo técnico según configuración por concurso
+  const asesoresColHeader = concursoCfg.etiqueta_columna_asesor || 'Docente Asesor';
+  const tableHeaders = ['Puesto', 'Institución Educativa', 'Categoría', 'Área / Disciplina', 'Participantes (DNI)', asesoresColHeader, 'Etapa', 'Resolución Ref.'];
 
   // Agrupar filas por: Disciplina — Categoría (y Género cuando aplique)
   const groupsMap = new Map();
@@ -3297,55 +3853,168 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
           fillColor: [238, 241, 245], // #EEF1F5
           textColor: [11, 27, 54],    // #0B1B36
           fontStyle: 'bold',
-          fontSize: 8,
+          fontSize: isJedpa ? 7.5 : 8,
           halign: 'left',
-          cellPadding: { top: 5, bottom: 5, left: 8, right: 8 }
+          cellPadding: isJedpa ? { top: 3.5, bottom: 3.5, left: 6, right: 6 } : { top: 5, bottom: 5, left: 8, right: 8 }
         }
       }
     ]);
 
-    rowsInGroup.forEach(r => {
-      const ieText = r.codigoModular
-        ? `${(r.institucion || '—').toUpperCase()}\nCód. Mod.: ${r.codigoModular}`
-        : (r.institucion || '—').toUpperCase();
+    if (isJedpa) {
+      // JEDPA: cuerpo técnico del grupo con celdas combinadas (rowSpan)
+      const ctInfo = obtenerCuerpoTecnicoGrupo(
+        groupName,
+        rowsInGroup,
+        downloadConfig.state || (typeof window !== 'undefined' ? window.state : {}),
+        tipoConcurso
+      );
+      const ctTextoGrupo = formatearCuerpoTecnicoTexto(ctInfo.personas, { mayusculas: true, formato: 'multiline' });
 
-      // Participantes en formato unificado: APELLIDOS, Nombres
-      let partText = (r.participantes || []).map(p => {
-        const nom = formatPersonName(p);
-        const dni = p.dni ? `DNI: ${p.dni}` : '';
-        return dni ? `${nom}\n${dni}` : nom;
-      }).filter(Boolean).join('\n\n');
+      // Verificar si las columnas comunes son idénticas en todas las filas del grupo
+      const numRows = rowsInGroup.length;
+      const spanCount = numRows;
+      const firstCat = rowsInGroup[0].categoria || '—';
+      const sameCat = rowsInGroup.every(r => (r.categoria || '—') === firstCat);
 
-      if (!partText) {
-        partText = 'Sin participante registrado';
-      }
+      const firstDisc = rowsInGroup[0].disciplina || rowsInGroup[0].tituloTrabajo || '—';
+      const sameDisc = rowsInGroup.every(r => (r.disciplina || r.tituloTrabajo || '—') === firstDisc);
 
-      // Docente asesor en formato unificado: APELLIDOS, Nombres
-      let asestext = (r.asesores || []).map(a => {
-        const nom = formatPersonName(a);
-        const dni = a.dni ? `DNI: ${a.dni}` : '';
-        const rol = a.rol ? `(${a.rol})` : '';
-        const line2 = [dni, rol].filter(Boolean).join(' ');
-        return line2 ? `${nom}\n${line2}` : nom;
-      }).filter(Boolean).join('\n\n');
+      const firstEtapa = rowsInGroup[0].etapa || 'UGEL';
+      const sameEtapa = rowsInGroup.every(r => (r.etapa || 'UGEL') === firstEtapa);
 
-      if (!asestext) {
-        asestext = 'Sin docente asesor registrado';
-      }
+      const firstResRef = formatResolucionRef(rowsInGroup[0].resolucionRef);
+      const sameResRef = rowsInGroup.every(r => formatResolucionRef(r.resolucionRef) === firstResRef);
 
-      const resRef = formatResolucionRef(r.resolucionRef);
+      const anyExcepcion = rowsInGroup.some(r => r.tieneExcepcionCuerpoTecnico);
+      const canSpanCuerpoTecnico = !anyExcepcion && numRows > 1;
 
-      tableRows.push([
-        formatPuestoLabel(r.puesto),
-        ieText,
-        r.categoria || '—',
-        r.disciplina || r.tituloTrabajo || '—',
-        partText,
-        asestext,
-        r.etapa || 'UGEL',
-        resRef
-      ]);
-    });
+      rowsInGroup.forEach((r, idx) => {
+        const ieText = r.codigoModular
+          ? `${(r.institucion || '—').toUpperCase()}\nCód. Mod.: ${r.codigoModular}`
+          : (r.institucion || '—').toUpperCase();
+
+        // Participante en formato compacto (nombre en 1 línea + DNI)
+        let partText = (r.participantes || []).map(p => {
+          const nom = formatPersonName(p);
+          const dni = p.dni ? `DNI ${p.dni}` : '';
+          return dni ? `${nom}\n${dni}` : nom;
+        }).filter(Boolean).join('\n\n') || 'Sin participante registrado';
+
+        let indAsestext = '';
+        if (r.tieneExcepcionCuerpoTecnico || !canSpanCuerpoTecnico) {
+          indAsestext = formatearCuerpoTecnicoTexto(r.asesores, { mayusculas: true, formato: 'multiline' });
+        }
+
+        const resRef = formatResolucionRef(r.resolucionRef);
+        const puestoText = formatPuestoLabel(r.puesto);
+
+        if (idx === 0) {
+          // Primera fila del grupo: celdas combinadas con rowSpan
+          const rowCells = [
+            { content: puestoText, styles: { halign: 'center', fontStyle: 'bold' } },
+            { content: ieText, styles: { halign: 'left' } }
+          ];
+
+          if (sameCat && spanCount > 1) {
+            rowCells.push({ content: firstCat, rowSpan: spanCount, styles: { halign: 'center', valign: 'middle' } });
+          } else {
+            rowCells.push({ content: r.categoria || '—', styles: { halign: 'center' } });
+          }
+
+          if (sameDisc && spanCount > 1) {
+            rowCells.push({ content: firstDisc, rowSpan: spanCount, styles: { halign: 'left', valign: 'middle' } });
+          } else {
+            rowCells.push({ content: r.disciplina || r.tituloTrabajo || '—', styles: { halign: 'left' } });
+          }
+
+          rowCells.push({ content: partText, styles: { halign: 'left' } });
+
+          if (canSpanCuerpoTecnico) {
+            rowCells.push({ content: ctTextoGrupo, rowSpan: spanCount, styles: { halign: 'left', valign: 'middle', fontSize: 6.8 } });
+          } else {
+            rowCells.push({ content: indAsestext || ctTextoGrupo, styles: { halign: 'left', fontSize: 6.8 } });
+          }
+
+          if (sameEtapa && spanCount > 1) {
+            rowCells.push({ content: firstEtapa, rowSpan: spanCount, styles: { halign: 'center', valign: 'middle', fontStyle: 'bold' } });
+          } else {
+            rowCells.push({ content: r.etapa || 'UGEL', styles: { halign: 'center', fontStyle: 'bold' } });
+          }
+
+          if (sameResRef && spanCount > 1) {
+            rowCells.push({ content: firstResRef, rowSpan: spanCount, styles: { halign: 'center', valign: 'middle' } });
+          } else {
+            rowCells.push({ content: resRef, styles: { halign: 'center' } });
+          }
+
+          tableRows.push(rowCells);
+        } else {
+          // Filas subsecuentes dentro del grupo: omitir celdas combinadas con rowSpan
+          const rowCells = [
+            { content: puestoText, styles: { halign: 'center', fontStyle: 'bold' } },
+            { content: ieText, styles: { halign: 'left' } }
+          ];
+
+          if (!sameCat || numRows <= 1) {
+            rowCells.push({ content: r.categoria || '—', styles: { halign: 'center' } });
+          }
+
+          if (!sameDisc || numRows <= 1) {
+            rowCells.push({ content: r.disciplina || r.tituloTrabajo || '—', styles: { halign: 'left' } });
+          }
+
+          rowCells.push({ content: partText, styles: { halign: 'left' } });
+
+          if (!canSpanCuerpoTecnico) {
+            rowCells.push({ content: indAsestext || ctTextoGrupo, styles: { halign: 'left', fontSize: 6.8 } });
+          }
+
+          if (!sameEtapa || numRows <= 1) {
+            rowCells.push({ content: r.etapa || 'UGEL', styles: { halign: 'center', fontStyle: 'bold' } });
+          }
+
+          if (!sameResRef || numRows <= 1) {
+            rowCells.push({ content: resRef, styles: { halign: 'center' } });
+          }
+
+          tableRows.push(rowCells);
+        }
+      });
+    } else {
+      // Formato tabular tradicional para los demás concursos (100% retrocompatible)
+      rowsInGroup.forEach(r => {
+        const ieText = r.codigoModular
+          ? `${(r.institucion || '—').toUpperCase()}\nCód. Mod.: ${r.codigoModular}`
+          : (r.institucion || '—').toUpperCase();
+
+        let partText = (r.participantes || []).map(p => {
+          const nom = formatPersonName(p);
+          const dni = p.dni ? `DNI: ${p.dni}` : '';
+          return dni ? `${nom}\n${dni}` : nom;
+        }).filter(Boolean).join('\n\n') || 'Sin participante registrado';
+
+        let asestext = (r.asesores || []).map(a => {
+          const nom = formatPersonName(a);
+          const dni = a.dni ? `DNI: ${a.dni}` : '';
+          const rol = a.rol ? `(${a.rol})` : '';
+          const line2 = [dni, rol].filter(Boolean).join(' ');
+          return line2 ? `${nom}\n${line2}` : nom;
+        }).filter(Boolean).join('\n\n') || 'Sin docente asesor registrado';
+
+        const resRef = formatResolucionRef(r.resolucionRef);
+
+        tableRows.push([
+          formatPuestoLabel(r.puesto),
+          ieText,
+          r.categoria || '—',
+          r.disciplina || r.tituloTrabajo || '—',
+          partText,
+          asestext,
+          r.etapa || 'UGEL',
+          resRef
+        ]);
+      });
+    }
   });
 
   const filename = `Acta_Resultados_${sanitizeFilename(concursoNombre)}_${getLimaDateStr()}.pdf`;
@@ -3356,6 +4025,39 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
     { cargo: 'V.° B.° Jefatura AGEBRE', entidad: 'UGEL 03', leyenda: 'Sello Institucional' }
   ];
 
+  // Configuración de anchos y paddings compactos
+  const jedpaColumnStyles = {
+    0: { halign: 'center', cellWidth: 45, fontStyle: 'bold' },
+    1: { halign: 'left', cellWidth: 160 },
+    2: { halign: 'center', cellWidth: 40 },
+    3: { halign: 'left', cellWidth: 80 },
+    4: { halign: 'left', cellWidth: 190 },
+    5: { halign: 'left', cellWidth: 130 },
+    6: { halign: 'center', cellWidth: 40, fontStyle: 'bold' },
+    7: { halign: 'center', cellWidth: 85 }
+  };
+
+  const defaultColumnStyles = {
+    0: { halign: 'center', cellWidth: 55, fontStyle: 'bold' },
+    1: { halign: 'left', cellWidth: 135 },
+    2: { halign: 'center', cellWidth: 50 },
+    3: { halign: 'left', cellWidth: 90 },
+    4: { halign: 'left', cellWidth: 185 },
+    5: { halign: 'left', cellWidth: 115 },
+    6: { halign: 'center', cellWidth: 45, fontStyle: 'bold' },
+    7: { halign: 'center', cellWidth: 95 }
+  };
+
+  const tableStyles = isJedpa ? {
+    fontSize: 7.2,
+    cellPadding: { top: 2.5, right: 4, bottom: 2.5, left: 4 },
+    minCellHeight: 12
+  } : {
+    fontSize: 7.5,
+    cellPadding: { top: 4.5, right: 5, bottom: 4.5, left: 5 },
+    minCellHeight: 14
+  };
+
   await createOfficialPdfDocument({
     title,
     subtitle: `Comisión Organizadora de Concursos Escolares 2026 · UGEL 03 · ${filtrosTexto}`,
@@ -3364,16 +4066,8 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
     metaGrid,
     tableHeaders,
     tableRows,
-    columnStyles: {
-      0: { halign: 'center', cellWidth: 55, fontStyle: 'bold' },
-      1: { halign: 'left', cellWidth: 135 },
-      2: { halign: 'center', cellWidth: 50 },
-      3: { halign: 'left', cellWidth: 90 },
-      4: { halign: 'left', cellWidth: 185 },
-      5: { halign: 'left', cellWidth: 115 },
-      6: { halign: 'center', cellWidth: 45, fontStyle: 'bold' },
-      7: { halign: 'center', cellWidth: 95 }
-    },
+    columnStyles: isJedpa ? jedpaColumnStyles : defaultColumnStyles,
+    tableStyles,
     signatures: downloadConfig.signatures || defaultSignatures,
     lugarFecha: downloadConfig.lugarFecha || `Lima, ${formatDate(getLimaDateStr())}`,
     sinFirmas: downloadConfig.sinFirmas || false,
@@ -3410,13 +4104,15 @@ export async function exportActaOrdenMeritoPdf(filtered, tipoConcurso, filters =
   const introParagraph = `En el marco de las bases generales de los Concursos Educativos Escolares 2026 promovidos por el Ministerio de Educación y la UGEL 03, se emite la presente Acta Oficial de Orden de Mérito (Podio Oficial de Ganadores) para ${concursoNombre} en la Etapa ${etapaLabel}. Se reconocen y proclaman formalmente a las delegaciones escolares que alcanzaron los primeros lugares en sus respectivas categorías y disciplinas.`;
 
   const metaGrid = [
-    { label: 'Concurso Educativo', value: concursoNombre },
-    { label: 'Etapa', value: etapaLabel },
-    { label: 'Total Ganadores en Podio', value: String(podiumRows.length) },
-    { label: 'Instituciones Ganadoras', value: String(uniqueColegios), note: '* Cuenta por código modular' }
+    { label: 'Concurso Educativo', value: concursoNombre, widthRatio: 0.44 },
+    { label: 'Etapa', value: etapaLabel, widthRatio: 0.14 },
+    { label: 'Total Ganadores en Podio', value: String(podiumRows.length), widthRatio: 0.20 },
+    { label: 'Instituciones Ganadoras', value: String(uniqueColegios), note: '* Cuenta por código modular', widthRatio: 0.22 }
   ];
 
-  const tableHeaders = ['Puesto', 'Institución Educativa', 'Cód. Modular', 'UGEL / DRE', 'Participante(s) Ganador(es)', 'Docente Asesor / Entrenador', 'Resolución Ref.'];
+  const concursoCfg = getConcursoConfig(tipoConcurso);
+  const asesorColHeader = (concursoCfg.id === 'jedpa') ? 'Delegado / Entrenador' : 'Docente Asesor / Entrenador';
+  const tableHeaders = ['Puesto', 'Institución Educativa', 'Cód. Modular', 'UGEL / DRE', 'Participante(s) Ganador(es)', asesorColHeader, 'Resolución Ref.'];
 
   // Agrupar por Categoría / Disciplina / Género (Podios oficiales)
   const groupsMap = new Map();
@@ -3458,11 +4154,11 @@ export async function exportActaOrdenMeritoPdf(filtered, tipoConcurso, filters =
         return dni ? `${nom}\n${dni}` : nom;
       }).filter(Boolean).join('\n\n') || 'Sin participante registrado';
 
-      const asestext = (r.asesores || []).map(a => {
-        const nom = formatPersonName(a);
-        const dni = a.dni ? `DNI: ${a.dni}` : '';
-        return dni ? `${nom}\n${dni}` : nom;
-      }).filter(Boolean).join('\n\n') || 'Sin docente asesor registrado';
+      const asestext = formatearCuerpoTecnicoTexto(r.asesores, {
+        mayusculas: concursoCfg.mayusculas_cuerpo_tecnico,
+        formato: 'multiline',
+        vacioTexto: 'Sin docente asesor registrado'
+      });
 
       tableRows.push([
         formatPuestoLabel(r.puesto),

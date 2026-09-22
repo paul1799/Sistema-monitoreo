@@ -19,8 +19,12 @@ import {
   formatPuestoLabel,
   puestoRank,
   generateVerificationCode,
-  getLimaDateStr
-} from './pdf-template.js?v=20260921_v2';
+  getLimaDateStr,
+  getFormatoPdfConcurso,
+  getConcursoConfig,
+  formatearCuerpoTecnicoTexto,
+  obtenerCuerpoTecnicoGrupo
+} from './pdf-template.js?v=20260922_v6';
 
 /* ============================= CONSTANTES COMPARTIDAS ============================= */
 export const RESPONSE_OPTIONS = {
@@ -416,9 +420,10 @@ export function openDownloadConfigModal({
   dbNs = null,
   isAdmin = false,
   isJfen = false,
+  formatoPdfActas = null,
   onConfirm = async (downloadConfig) => { }
 }) {
-  const isJfenReport = isJfen || (tipoReporte === 'concursos' && (documentTitle.toUpperCase().includes('JFEN') || documentTitle.toUpperCase().includes('FLORALES')));
+  const isJfenReport = isJfen || formatoPdfActas === 'fichas_por_categoria' || (tipoReporte === 'concursos' && (documentTitle.toUpperCase().includes('JFEN') || documentTitle.toUpperCase().includes('FLORALES')));
 
   const oldModal = document.getElementById('downloadConfigModal');
   if (oldModal) {
@@ -446,7 +451,13 @@ export function openDownloadConfigModal({
   let mostrarEncabezadoArea = savedPref ? (savedPref.mostrarEncabezadoArea !== false) : true;
   let incluirQr = savedPref ? (savedPref.incluirQr !== false) : true;
   let orientationChoice = savedPref ? (savedPref.orientation || 'auto') : 'auto';
-  let formatoConcurso = savedPref ? (savedPref.formatoConcurso || (isJfenReport ? 'fichas' : 'completo')) : (isJfenReport ? 'fichas' : 'completo');
+
+  // RESTRICCIÓN ESTRICTA: 'fichas' es exclusivo de JFEN. Para cualquier otro concurso, default es 'completo' (tabular)
+  const defaultFormato = isJfenReport ? 'fichas' : 'completo';
+  let formatoConcurso = savedPref ? (savedPref.formatoConcurso || defaultFormato) : defaultFormato;
+  if (!isJfenReport && formatoConcurso === 'fichas') {
+    formatoConcurso = 'completo';
+  }
   let jfenOrden = (savedPref && savedPref.ordenParticipantes) ? savedPref.ordenParticipantes : 'alfabetico';
   let jfenRepetirBarra = savedPref ? (savedPref.repetirBarraCategoria !== false) : true;
   let jfenPuestoRes = savedPref ? (savedPref.mostrarPuesto !== false) : true;
@@ -767,12 +778,12 @@ export function openDownloadConfigModal({
                     ${isJfenReport ? `
                       <label style="display:flex;align-items:center;gap:4px;font-size:12.5px;cursor:pointer">
                         <input type="radio" name="dl_formato_concurso" value="fichas" ${formatoConcurso === 'fichas' ? 'checked' : ''}>
-                        <strong>Fichas por categoría (oficial)</strong>
+                        <strong>Fichas por categoría (oficial JFEN)</strong>
                       </label>
                     ` : ''}
                     <label style="display:flex;align-items:center;gap:4px;font-size:12.5px;cursor:pointer">
                       <input type="radio" name="dl_formato_concurso" value="completo" ${formatoConcurso === 'completo' ? 'checked' : ''}>
-                      Listado tabular (anterior)
+                      Listado tabular ${isJfenReport ? '(alternativo)' : '(estándar oficial)'}
                     </label>
                     <label style="display:flex;align-items:center;gap:4px;font-size:12.5px;cursor:pointer">
                       <input type="radio" name="dl_formato_concurso" value="orden_merito" ${formatoConcurso === 'orden_merito' ? 'checked' : ''}>
@@ -1160,7 +1171,7 @@ export function openDownloadConfigModal({
             mostrarEncabezadoArea,
             incluirQr,
             orientation: orientationChoice,
-            formatoConcurso,
+            formatoConcurso: (!isJfenReport && formatoConcurso === 'fichas') ? 'completo' : formatoConcurso,
             lugar,
             fecha,
             firmantes: firmantesList,
@@ -5790,6 +5801,7 @@ export const SEED_CONCURSOS_DEFAULTS = [
     rolesAsesor: ['Docente Asesor'],
     disciplinasSugeridas: [],
     camposPodio: ['categoria'],
+    formato_pdf_actas: 'tabular'
   },
   {
     id: 'onem',
@@ -5810,6 +5822,7 @@ export const SEED_CONCURSOS_DEFAULTS = [
     rolesAsesor: ['Docente Asesor'],
     disciplinasSugeridas: [],
     camposPodio: ['categoria'],
+    formato_pdf_actas: 'tabular'
   },
   {
     id: 'peru_lee',
@@ -5824,6 +5837,7 @@ export const SEED_CONCURSOS_DEFAULTS = [
     rolesAsesor: ['Docente Asesor'],
     disciplinasSugeridas: ['Comprensión Lectora', 'Lectura Crítica', 'Creación Literaria'],
     camposPodio: ['categoria', 'disciplina'],
+    formato_pdf_actas: 'tabular'
   },
   {
     id: 'eureka',
@@ -5839,6 +5853,7 @@ export const SEED_CONCURSOS_DEFAULTS = [
     rolesParticipante: ['Estudiante'],
     rolesAsesor: ['Docente Asesor(a)'],
     camposPodio: ['categoria', 'disciplina'],
+    formato_pdf_actas: 'tabular'
   },
   {
     id: 'jfen',
@@ -5864,6 +5879,7 @@ export const SEED_CONCURSOS_DEFAULTS = [
     rolesParticipante: ['Estudiante'],
     rolesAsesor: ['Docente Asesor'],
     camposPodio: ['categoria', 'disciplina'],
+    formato_pdf_actas: 'fichas_por_categoria'
   },
   {
     id: 'jedpa',
@@ -5887,11 +5903,74 @@ export const SEED_CONCURSOS_DEFAULTS = [
       'Paraatletismo',
       'Paranatación'
     ],
-    rolesParticipante: ['Deportista'],
-    rolesAsesor: ['Entrenador', 'Delegado'],
+    rolesParticipante: ['Deportista', 'Estudiante'],
+    rolesAsesor: ['Entrenador', 'Docente Asesor', 'Delegado'],
     camposPodio: ['categoria', 'disciplina', 'genero'],
+    formato_pdf_actas: 'tabular'
   }
 ];
+
+/* -------------------------------------------------------------
+   HELPERS DE ROLES DINÁMICOS POR TIPO DE CONCURSO (JEDPA Y OFICIALES)
+   ------------------------------------------------------------- */
+export function isJedpaConcurso(tipo) {
+  if (!tipo) return false;
+  const id = String(tipo.id || '').toLowerCase().trim();
+  const nom = String(tipo.nombre || '').toLowerCase().trim();
+  return id === 'jedpa' || nom.includes('jedpa') || nom.includes('deportiv');
+}
+
+export function getConcursoAsesorRoles(tipo) {
+  if (!tipo) return ['Docente Asesor'];
+  const isJedpa = isJedpaConcurso(tipo);
+  let roles = Array.isArray(tipo.rolesAsesor) && tipo.rolesAsesor.length > 0
+    ? [...tipo.rolesAsesor]
+    : [];
+
+  if (isJedpa) {
+    const jedpaMandatory = ['Entrenador', 'Docente Asesor', 'Delegado'];
+    jedpaMandatory.forEach(r => {
+      if (!roles.includes(r)) roles.push(r);
+    });
+    roles = ['Entrenador', ...roles.filter(r => r !== 'Entrenador')];
+    return roles;
+  }
+
+  if (roles.length === 0) {
+    const def = SEED_CONCURSOS_DEFAULTS.find(d => d.id === tipo.id || (tipo.nombre && d.nombre.toLowerCase() === tipo.nombre.toLowerCase()));
+    if (def && Array.isArray(def.rolesAsesor) && def.rolesAsesor.length) {
+      return [...def.rolesAsesor];
+    }
+    return ['Docente Asesor'];
+  }
+  return roles;
+}
+
+export function getConcursoParticipanteRoles(tipo) {
+  if (!tipo) return ['Estudiante'];
+  const isJedpa = isJedpaConcurso(tipo);
+  let roles = Array.isArray(tipo.rolesParticipante) && tipo.rolesParticipante.length > 0
+    ? [...tipo.rolesParticipante]
+    : [];
+
+  if (isJedpa) {
+    const jedpaMandatory = ['Deportista', 'Estudiante'];
+    jedpaMandatory.forEach(r => {
+      if (!roles.includes(r)) roles.push(r);
+    });
+    roles = ['Deportista', ...roles.filter(r => r !== 'Deportista')];
+    return roles;
+  }
+
+  if (roles.length === 0) {
+    const def = SEED_CONCURSOS_DEFAULTS.find(d => d.id === tipo.id || (tipo.nombre && d.nombre.toLowerCase() === tipo.nombre.toLowerCase()));
+    if (def && Array.isArray(def.rolesParticipante) && def.rolesParticipante.length) {
+      return [...def.rolesParticipante];
+    }
+    return ['Estudiante'];
+  }
+  return roles;
+}
 
 /* -------------------------------------------------------------
    HELPERS DE PODIO Y GÉNERO
@@ -6017,6 +6096,27 @@ export function renderConcursosTab(container, state, dbNs, isAdmin, currentUser,
   // Si no hay tipos seleccionados y hay tipos disponibles, preseleccionar el primero
   if (!concursoSelectedTipoId && state.tiposConcurso.length > 0) {
     concursoSelectedTipoId = state.tiposConcurso[0].id;
+  }
+
+  // Autocura de roles oficiales para JEDPA en Firestore si el usuario es admin y faltan roles
+  if (isAdmin && dbNs && Array.isArray(state.tiposConcurso)) {
+    const jedpaDoc = state.tiposConcurso.find(t => isJedpaConcurso(t));
+    if (jedpaDoc) {
+      const hasEntrenador = Array.isArray(jedpaDoc.rolesAsesor) && jedpaDoc.rolesAsesor.includes('Entrenador');
+      const hasDocenteAsesor = Array.isArray(jedpaDoc.rolesAsesor) && jedpaDoc.rolesAsesor.includes('Docente Asesor');
+      const hasDeportista = Array.isArray(jedpaDoc.rolesParticipante) && jedpaDoc.rolesParticipante.includes('Deportista');
+      if (!hasEntrenador || !hasDocenteAsesor || !hasDeportista) {
+        const fixedAsesor = getConcursoAsesorRoles(jedpaDoc);
+        const fixedPart = getConcursoParticipanteRoles(jedpaDoc);
+        jedpaDoc.rolesAsesor = fixedAsesor;
+        jedpaDoc.rolesParticipante = fixedPart;
+        dbNs.collection('tiposConcurso').doc(jedpaDoc.id).set({
+          rolesAsesor: fixedAsesor,
+          rolesParticipante: fixedPart,
+          updatedAt: Date.now()
+        }, { merge: true }).catch(err => console.warn('Aviso sincronizando roles JEDPA:', err));
+      }
+    }
   }
 
   // Definir sub-pestañas disponibles
@@ -6306,15 +6406,27 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
     : '';
 
   // Determinar roles para participantes y asesores
-  const partRoles = (tipo.rolesParticipante && tipo.rolesParticipante.length) ? tipo.rolesParticipante : ['Estudiante'];
-  const asesRoles = (tipo.rolesAsesor && tipo.rolesAsesor.length) ? tipo.rolesAsesor : ['Docente Asesor'];
+  const partRoles = getConcursoParticipanteRoles(tipo);
+  const asesRoles = getConcursoAsesorRoles(tipo);
 
-  // Asegurar que las listas tengan al menos 1 elemento
+  // Asegurar que las listas tengan al menos 1 elemento con roles válidos
   if (!concursoParticipantes || concursoParticipantes.length === 0) {
     concursoParticipantes = [{ nombres: '', apellidos: '', dni: '', rol: partRoles[0] }];
+  } else {
+    concursoParticipantes.forEach(p => {
+      if (!p.rol || (!partRoles.includes(p.rol) && isJedpaConcurso(tipo))) {
+        p.rol = partRoles[0];
+      }
+    });
   }
   if (!concursoAsesores || concursoAsesores.length === 0) {
     concursoAsesores = [{ nombres: '', apellidos: '', dni: '', rol: asesRoles[0] }];
+  } else {
+    concursoAsesores.forEach(a => {
+      if (!a.rol || (!asesRoles.includes(a.rol) && isJedpaConcurso(tipo) && a.rol === 'Docente Asesor' && !a.nombres && !a.apellidos)) {
+        a.rol = asesRoles[0];
+      }
+    });
   }
 
   const isEditing = !!concursoEditingId;
@@ -6436,12 +6548,15 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
     '</div>' +
 
     '<!-- ASESORES REPETIBLES -->' +
-    '<div class="panel">' +
+    '<div class="panel" id="c_asesoresPanel">' +
+    '<div id="c_jedpaGroupCtWrap"></div>' +
+    '<div id="c_standardAsesoresWrap">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
-    '<h3 style="margin-bottom:0">Docentes Asesores / Entrenadores</h3>' +
+    '<h3 style="margin-bottom:0" id="c_asesoresTitle">Docentes Asesores / Entrenadores</h3>' +
     '<button type="button" class="btn secondary small" id="c_addAsesBtn">＋ Agregar asesor</button>' +
     '</div>' +
     '<div id="c_asesoresList"></div>' +
+    '</div>' +
     '</div>' +
 
     '<div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">' +
@@ -6456,10 +6571,19 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
     // Adaptar roles de participantes y asesores a las opciones del nuevo tipo
     const newTipo = state.tiposConcurso.find(t => t.id === concursoSelectedTipoId);
     if (newTipo) {
-      const pR = (newTipo.rolesParticipante && newTipo.rolesParticipante.length) ? newTipo.rolesParticipante[0] : 'Estudiante';
-      const aR = (newTipo.rolesAsesor && newTipo.rolesAsesor.length) ? newTipo.rolesAsesor[0] : 'Docente Asesor';
-      concursoParticipantes.forEach(p => p.rol = pR);
-      concursoAsesores.forEach(a => a.rol = aR);
+      const newPartRoles = getConcursoParticipanteRoles(newTipo);
+      const newAsesRoles = getConcursoAsesorRoles(newTipo);
+      const isJedpa = isJedpaConcurso(newTipo);
+      concursoParticipantes.forEach(p => {
+        if (isJedpa || !newPartRoles.includes(p.rol)) {
+          p.rol = newPartRoles[0];
+        }
+      });
+      concursoAsesores.forEach(a => {
+        if (isJedpa || !newAsesRoles.includes(a.rol)) {
+          a.rol = newAsesRoles[0];
+        }
+      });
     }
     renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, container, navigate);
   });
@@ -6469,8 +6593,10 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
     const listEl = document.getElementById('c_participantesList');
     if (!listEl) return;
     listEl.innerHTML = concursoParticipantes.map((p, idx) => {
-      const rolOpts = partRoles.map(r =>
-        '<option value="' + esc(r) + '"' + (r === p.rol ? ' selected' : '') + '>' + esc(r) + '</option>'
+      const curRol = p.rol || partRoles[0];
+      const availableRoles = partRoles.includes(curRol) ? partRoles : [curRol, ...partRoles];
+      const rolOpts = availableRoles.map(r =>
+        '<option value="' + esc(r) + '"' + (r === curRol ? ' selected' : '') + '>' + esc(r) + '</option>'
       ).join('');
       return '<div class="personRow" data-pidx="' + idx + '">' +
         '<div><label style="margin-bottom:2px;font-size:11px">Nombres y Apellidos *</label><input type="text" placeholder="Nombres o nombre completo" value="' + esc(p.nombres) + '" data-pfield="nombres" required></div>' +
@@ -6482,12 +6608,14 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
     }).join('');
 
     listEl.querySelectorAll('input[data-pfield], select[data-pfield]').forEach(inp => {
-      inp.addEventListener('input', (e) => {
+      const updateField = (e) => {
         const row = e.target.closest('[data-pidx]');
         if (!row) return;
         const i = Number(row.dataset.pidx);
         concursoParticipantes[i][e.target.dataset.pfield] = e.target.value;
-      });
+      };
+      inp.addEventListener('input', updateField);
+      inp.addEventListener('change', updateField);
     });
 
     listEl.querySelectorAll('[data-delpart]').forEach(btn => {
@@ -6505,8 +6633,10 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
     const listEl = document.getElementById('c_asesoresList');
     if (!listEl) return;
     listEl.innerHTML = concursoAsesores.map((a, idx) => {
-      const rolOpts = asesRoles.map(r =>
-        '<option value="' + esc(r) + '"' + (r === a.rol ? ' selected' : '') + '>' + esc(r) + '</option>'
+      const curRol = a.rol || asesRoles[0];
+      const availableRoles = asesRoles.includes(curRol) ? asesRoles : [curRol, ...asesRoles];
+      const rolOpts = availableRoles.map(r =>
+        '<option value="' + esc(r) + '"' + (r === curRol ? ' selected' : '') + '>' + esc(r) + '</option>'
       ).join('');
       return '<div class="personRow" data-aidx="' + idx + '">' +
         '<div><label style="margin-bottom:2px;font-size:11px">Nombres y Apellidos *</label><input type="text" placeholder="Nombres o nombre completo" value="' + esc(a.nombres) + '" data-afield="nombres" required></div>' +
@@ -6518,12 +6648,14 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
     }).join('');
 
     listEl.querySelectorAll('input[data-afield], select[data-afield]').forEach(inp => {
-      inp.addEventListener('input', (e) => {
+      const updateField = (e) => {
         const row = e.target.closest('[data-aidx]');
         if (!row) return;
         const i = Number(row.dataset.aidx);
         concursoAsesores[i][e.target.dataset.afield] = e.target.value;
-      });
+      };
+      inp.addEventListener('input', updateField);
+      inp.addEventListener('change', updateField);
     });
 
     listEl.querySelectorAll('[data-delases]').forEach(btn => {
@@ -6769,20 +6901,124 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
     }
   }
 
-  // Escuchar cambios de campos que definen el podio
+  // ---- Panel de Cuerpo Técnico para JEDPA ----
+  function updateJedpaGroupCtBox() {
+    const wrap = document.getElementById('c_jedpaGroupCtWrap');
+    const stdWrap = document.getElementById('c_standardAsesoresWrap');
+    const titleEl = document.getElementById('c_asesoresTitle');
+    if (!wrap || !stdWrap) return;
+
+    const curTipoId = document.getElementById('c_tipoSelect') ? document.getElementById('c_tipoSelect').value : concursoSelectedTipoId;
+    const curTipo = state.tiposConcurso.find(t => t.id === curTipoId) || tipo;
+
+    if (!isJedpaConcurso(curTipo)) {
+      wrap.innerHTML = '';
+      wrap.style.display = 'none';
+      stdWrap.style.display = 'block';
+      if (titleEl) titleEl.textContent = 'Docentes Asesores';
+      return;
+    }
+
+    if (titleEl) titleEl.textContent = 'Docentes Asesores / Entrenadores (Cuerpo Técnico JEDPA)';
+
+    const curEtapa = document.getElementById('c_etapa') ? document.getElementById('c_etapa').value : 'UGEL';
+    const curCat = document.getElementById('c_categoria') ? document.getElementById('c_categoria').value : '';
+    const curGen = document.getElementById('c_genero') ? document.getElementById('c_genero').value : null;
+    const curDisc = document.getElementById('c_disciplina') ? document.getElementById('c_disciplina').value.trim() : null;
+
+    const dummyReg = {
+      tipoConcursoId: curTipo.id,
+      tipoConcursoNombre: curTipo.nombre,
+      etapa: curEtapa,
+      categoria: curCat,
+      genero: curGen,
+      disciplina: curDisc
+    };
+
+    const ctInfo = obtenerCuerpoTecnicoGrupo(dummyReg, state.concursoCuerpoTecnico || [], state.concursoRegistros || []);
+    wrap.style.display = 'block';
+
+    if (ctInfo && ctInfo.miembros && ctInfo.miembros.length > 0) {
+      const origenText = ctInfo.origen === 'concursoCuerpoTecnico' ? 'Oficial centralizado' : 'Detectado en este grupo';
+      wrap.innerHTML = `
+        <div style="background:var(--surface-2, #f1f5f9);border-left:4px solid var(--primary, #1e3a8a);border-radius:8px;padding:14px;margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <strong style="color:var(--navy-900);font-size:13.5px">👥 Delegado / Entrenador del grupo</strong>
+                <span class="badge" style="font-size:11px;background:var(--primary-tint, #e0e7ff);color:var(--primary, #3730a3)">${esc(origenText)}</span>
+              </div>
+              <p style="font-size:12px;color:var(--ink-soft);margin:4px 0 10px">El cuerpo técnico aplica automáticamente a todos los participantes de este grupo (${esc(curEtapa)} · ${esc(curDisc || '—')} · ${esc(curCat || '—')} · ${esc(curGen || '—')}).</p>
+            </div>
+            ${isAdmin ? '<button type="button" class="btn secondary small" id="c_btnEditGrupoCt" style="font-size:11.5px">✏️ Modificar cuerpo técnico</button>' : ''}
+          </div>
+          <table style="width:100%;font-size:12.5px;border-collapse:collapse;margin-top:4px">
+            <thead>
+              <tr style="text-align:left;border-bottom:1.5px solid var(--line);color:var(--ink-soft)">
+                <th style="padding:4px 8px;width:120px">Rol</th>
+                <th style="padding:4px 8px">Apellidos y Nombres</th>
+                <th style="padding:4px 8px;width:110px">DNI / Doc.</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${ctInfo.miembros.map(m => `
+                <tr style="border-bottom:1px dashed var(--line)">
+                  <td style="padding:6px 8px"><span class="badge" style="font-size:10.5px">${esc((m.rol || 'DELEGADO').toUpperCase())}</span></td>
+                  <td style="padding:6px 8px"><strong>${esc((m.apellidos || '').toUpperCase())} ${esc((m.nombres || '').toUpperCase())}</strong></td>
+                  <td style="padding:6px 8px">${esc(m.dni || '—')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div style="margin-top:12px">
+            <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--ink)">
+              <input type="checkbox" id="c_chkAsesorIndividual">
+              <span>Asignar cuerpo técnico individual exclusivo para este registro (excepción)</span>
+            </label>
+          </div>
+        </div>
+      `;
+
+      const chk = document.getElementById('c_chkAsesorIndividual');
+      if (chk) {
+        stdWrap.style.display = chk.checked ? 'block' : 'none';
+        chk.addEventListener('change', () => {
+          stdWrap.style.display = chk.checked ? 'block' : 'none';
+        });
+      } else {
+        stdWrap.style.display = 'none';
+      }
+
+      const btnEditCt = document.getElementById('c_btnEditGrupoCt');
+      if (btnEditCt) {
+        btnEditCt.addEventListener('click', () => {
+          openConsolidarCuerpoTecnicoModal(dbNs, state, container, isAdmin, currentUser, navigate);
+        });
+      }
+    } else {
+      wrap.innerHTML = `
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:#1e40af">
+          ℹ️ <strong>Cuerpo Técnico JEDPA:</strong> Este grupo aún no tiene cuerpo técnico registrado. Los asesores y entrenadores ingresados a continuación se asociarán automáticamente al grupo para no tener que repetirlos en los siguientes competidores.
+        </div>
+      `;
+      stdWrap.style.display = 'block';
+    }
+  }
+
+  // Escuchar cambios de campos que definen el podio y grupo
   const puestoSelectEl = document.getElementById('c_puesto');
   if (puestoSelectEl) puestoSelectEl.addEventListener('change', updatePuestoSelectAnnotations);
   const catSelectEl = document.getElementById('c_categoria');
-  if (catSelectEl) catSelectEl.addEventListener('change', updatePuestoSelectAnnotations);
+  if (catSelectEl) catSelectEl.addEventListener('change', () => { updatePuestoSelectAnnotations(); updateJedpaGroupCtBox(); });
   const genSelectEl = document.getElementById('c_genero');
-  if (genSelectEl) genSelectEl.addEventListener('change', updatePuestoSelectAnnotations);
+  if (genSelectEl) genSelectEl.addEventListener('change', () => { updatePuestoSelectAnnotations(); updateJedpaGroupCtBox(); });
   const discInpEl = document.getElementById('c_disciplina');
   if (discInpEl) {
-    discInpEl.addEventListener('input', updatePuestoSelectAnnotations);
-    discInpEl.addEventListener('change', updatePuestoSelectAnnotations);
+    discInpEl.addEventListener('input', () => { updatePuestoSelectAnnotations(); updateJedpaGroupCtBox(); });
+    discInpEl.addEventListener('change', () => { updatePuestoSelectAnnotations(); updateJedpaGroupCtBox(); });
   }
   const etapaSelectEl = document.getElementById('c_etapa');
-  if (etapaSelectEl) etapaSelectEl.addEventListener('change', updatePuestoSelectAnnotations);
+  if (etapaSelectEl) etapaSelectEl.addEventListener('change', () => { updatePuestoSelectAnnotations(); updateJedpaGroupCtBox(); });
 
   // ---- Precargar datos si estamos en modo edición ----
   if (concursoEditingId && concursoEditingData) {
@@ -6814,6 +7050,7 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
     if (document.getElementById('c_resolucionRef')) document.getElementById('c_resolucionRef').value = d.resolucionRef || '';
 
     updatePuestoSelectAnnotations();
+    updateJedpaGroupCtBox();
 
     const cancelBtn = document.getElementById('c_cancelEditBtn');
     if (cancelBtn) {
@@ -6827,6 +7064,7 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
     }
   } else {
     updatePuestoSelectAnnotations();
+    updateJedpaGroupCtBox();
   }
 
   // ---- Submit Formulario de Registro de Concurso ----
@@ -6838,15 +7076,23 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
 
     try {
       // ---- Validar participantes ----
-      concursoParticipantes.forEach(p => {
+      concursoParticipantes.forEach((p, idx) => {
         p.nombres   = (p.nombres   || '').trim().replace(/\s{2,}/g, ' ');
         p.apellidos = (p.apellidos || '').trim().replace(/\s{2,}/g, ' ');
         p.dni       = (p.dni       || '').trim();
+        if (!p.rol) {
+          const sel = document.querySelector(`.personRow[data-pidx="${idx}"] select[data-pfield="rol"]`);
+          p.rol = (sel && sel.value) ? sel.value : partRoles[0];
+        }
       });
-      concursoAsesores.forEach(a => {
+      concursoAsesores.forEach((a, idx) => {
         a.nombres   = (a.nombres   || '').trim().replace(/\s{2,}/g, ' ');
         a.apellidos = (a.apellidos || '').trim().replace(/\s{2,}/g, ' ');
         a.dni       = (a.dni       || '').trim();
+        if (!a.rol) {
+          const sel = document.querySelector(`.personRow[data-aidx="${idx}"] select[data-afield="rol"]`);
+          a.rol = (sel && sel.value) ? sel.value : asesRoles[0];
+        }
       });
 
       const namePattern = /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-\.]+$/u;
@@ -6897,6 +7143,59 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
       const discInp = document.getElementById('c_disciplina');
       const discVal = discInp ? discInp.value.trim() : null;
 
+      // Determinación de asesores / cuerpo técnico
+      let finalAsesores = aRows;
+      const chkInd = document.getElementById('c_chkAsesorIndividual');
+      if (isJedpaConcurso(tipo)) {
+        const dummyReg = {
+          tipoConcursoId: tipo.id,
+          tipoConcursoNombre: tipo.nombre,
+          etapa: document.getElementById('c_etapa').value,
+          categoria: document.getElementById('c_categoria') ? document.getElementById('c_categoria').value : '',
+          genero: tipo.tieneGenero ? (document.getElementById('c_genero') ? document.getElementById('c_genero').value : null) : null,
+          disciplina: discVal || null
+        };
+        const ctInfo = obtenerCuerpoTecnicoGrupo(dummyReg, state.concursoCuerpoTecnico || [], state.concursoRegistros || []);
+        if (chkInd && !chkInd.checked && ctInfo && ctInfo.miembros && ctInfo.miembros.length > 0) {
+          finalAsesores = ctInfo.miembros.map(m => ({
+            rol: (m.rol || 'Delegado').trim(),
+            apellidos: (m.apellidos || '').trim().toUpperCase(),
+            nombres: (m.nombres || '').trim().toUpperCase(),
+            dni: (m.dni || '').trim()
+          }));
+        } else if (finalAsesores.length > 0) {
+          finalAsesores = finalAsesores.map(a => ({
+            rol: (a.rol || 'Delegado').trim(),
+            apellidos: (a.apellidos || '').trim().toUpperCase(),
+            nombres: (a.nombres || '').trim().toUpperCase(),
+            dni: (a.dni || '').trim()
+          }));
+
+          const slug = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+          const ctDocId = `jedpa_${slug(dummyReg.etapa)}_${slug(dummyReg.disciplina)}_${slug(dummyReg.categoria)}_${slug(dummyReg.genero)}`;
+          const existingDoc = (state.concursoCuerpoTecnico || []).find(d => {
+            return String(d.etapa || '').toLowerCase() === String(dummyReg.etapa || '').toLowerCase() &&
+                   String(d.disciplina || '').toLowerCase() === String(dummyReg.disciplina || '').toLowerCase() &&
+                   String(d.categoria || '').toLowerCase() === String(dummyReg.categoria || '').toLowerCase() &&
+                   String(d.genero || '').toLowerCase() === String(dummyReg.genero || '').toLowerCase();
+          });
+          if (!existingDoc && (!chkInd || !chkInd.checked) && dbNs) {
+            dbNs.collection('concursoCuerpoTecnico').doc(ctDocId).set({
+              tipoConcursoId: 'jedpa',
+              concursoNombre: tipo.nombre || 'Juegos Escolares Deportivos y Paradeportivos (JEDPA)',
+              etapa: dummyReg.etapa,
+              disciplina: dummyReg.disciplina,
+              categoria: dummyReg.categoria,
+              genero: dummyReg.genero,
+              miembros: finalAsesores,
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              updatedBy: currentUser ? (currentUser.displayName || currentUser.email || 'Especialista') : 'Especialista'
+            }).catch(err => console.warn('Aviso guardando concursoCuerpoTecnico:', err));
+          }
+        }
+      }
+
       const regData = {
         tipoConcursoId: tipo.id,
         tipoConcursoNombre: tipo.nombre,
@@ -6910,7 +7209,7 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
         seudonimo: tipo.tieneTituloTrabajo ? (document.getElementById('c_seudonimo') ? document.getElementById('c_seudonimo').value.trim() : null) : null,
         puesto: puestoVal || '',
         participantes: pRows,
-        asesores: aRows,
+        asesores: finalAsesores,
         resolucionRef: document.getElementById('c_resolucionRef') ? document.getElementById('c_resolucionRef').value.trim() : null,
         fecha: document.getElementById('c_fecha').value,
         responsable: currentUser ? (currentUser.displayName || currentUser.email || 'Especialista') : 'Especialista',
@@ -7650,6 +7949,9 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     return (a.institucion || '').localeCompare(b.institucion || '');
   });
 
+  // Configuración oficial del concurso
+  const concursoCfg = getConcursoConfig(tipo ? tipo.nombre : '');
+
   // Métricas calculadas
   const totalRegs = filtered.length;
   const uniqueColegios = new Set(filtered.map(r => r.codigoModular || r.institucion).filter(Boolean)).size;
@@ -7670,6 +7972,46 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     });
   });
   const totalAsesUnicos = asesSet.size;
+
+  // Cálculo de cuerpo técnico único para JEDPA
+  const ctSet = new Set();
+  filtered.forEach(r => {
+    const ctInfo = obtenerCuerpoTecnicoGrupo(r, state.concursoCuerpoTecnico || [], filtered);
+    (ctInfo.miembros || []).forEach(m => {
+      const k = (m.dni && m.dni.trim()) ? m.dni.trim() : [m.nombres, m.apellidos].filter(Boolean).join(' ').trim().toUpperCase();
+      if (k) ctSet.add(k);
+    });
+  });
+  const totalCtUnicos = ctSet.size > 0 ? ctSet.size : totalAsesUnicos;
+
+  // Banner informativo del cuerpo técnico si se está filtrando un grupo específico en JEDPA
+  const isGroupFiltered = isJedpa && concursoFilters.disciplina && concursoFilters.categoria && concursoFilters.genero;
+  let groupCtBannerHtml = '';
+  if (isGroupFiltered && filtered.length > 0) {
+    const groupCt = obtenerCuerpoTecnicoGrupo(filtered[0], state.concursoCuerpoTecnico || [], filtered);
+    const miembrosCt = groupCt.miembros || [];
+    const origenLabel = groupCt.origen === 'concursoCuerpoTecnico' ? 'Oficial centralizado' : 'Detectado en registros del grupo';
+    groupCtBannerHtml = `
+      <div class="panel" style="margin-bottom:14px;border-left:4px solid var(--primary);background:var(--surface-1,#f8fafc);padding:14px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <strong style="color:var(--navy-900);font-size:13.5px">👥 Delegado / Entrenador del grupo:</strong>
+              <span class="badge" style="font-size:11px;background:var(--primary-tint,#e0e7ff);color:var(--primary,#3730a3)">${esc(origenLabel)}</span>
+            </div>
+            <div style="margin-top:6px;font-size:13px;line-height:1.5">
+              ${miembrosCt.length > 0 ? miembrosCt.map(m => `
+                <span style="display:inline-block;margin-right:16px">
+                  <strong>${esc(m.rol ? m.rol.toUpperCase() : 'DELEGADO')}:</strong> ${esc((m.apellidos || '').toUpperCase())} ${esc((m.nombres || '').toUpperCase())} ${m.dni ? `<small style="color:var(--ink-soft)">(${esc(m.dni)})</small>` : ''}
+                </span>
+              `).join('') : '<span style="color:var(--ink-soft);font-style:italic">Sin cuerpo técnico asignado a este grupo</span>'}
+            </div>
+          </div>
+          ${isAdmin ? '<button type="button" class="btn secondary small" id="btnConsolidarCtGrupoBanner" style="font-size:11.5px">⚙️ Gestionar cuerpo técnico</button>' : ''}
+        </div>
+      </div>
+    `;
+  }
 
   // Chips de filtros activos
   const chips = [];
@@ -7778,12 +8120,24 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       return esc(nom) + dni + rol;
     }).join('<br>') || '<span style="color:var(--ink-soft);font-style:italic">Sin participante registrado</span>';
 
-    const asesSummary = (r.asesores || []).map(a => {
-      const nom = formatearNombre(a);
-      const dni = a.dni ? ' <small style="color:var(--ink-soft)">(' + esc(a.dni) + ')</small>' : '';
-      const rol = a.rol ? ' <small style="color:var(--ink-soft)">[' + esc(a.rol) + ']</small>' : '';
-      return esc(nom) + dni + rol;
-    }).join('<br>') || '<span style="color:var(--ink-soft);font-style:italic">Sin docente asesor registrado</span>';
+    let asesSummary = '';
+    if (isJedpa) {
+      const ctGrupo = obtenerCuerpoTecnicoGrupo(r, state.concursoCuerpoTecnico || [], filtered);
+      const ctLista = (ctGrupo.miembros && ctGrupo.miembros.length > 0) ? ctGrupo.miembros : (r.asesores || []);
+      asesSummary = ctLista.map(a => {
+        const nom = formatearNombre(a).toUpperCase();
+        const dni = a.dni ? ' <small style="color:var(--ink-soft)">(' + esc(a.dni) + ')</small>' : '';
+        const rol = a.rol ? ' <small style="color:var(--ink-soft)">[' + esc(a.rol.toUpperCase()) + ']</small>' : '';
+        return esc(nom) + dni + rol;
+      }).join('<br>') || '<span style="color:var(--ink-soft);font-style:italic">Sin cuerpo técnico registrado</span>';
+    } else {
+      asesSummary = (r.asesores || []).map(a => {
+        const nom = formatearNombre(a);
+        const dni = a.dni ? ' <small style="color:var(--ink-soft)">(' + esc(a.dni) + ')</small>' : '';
+        const rol = a.rol ? ' <small style="color:var(--ink-soft)">[' + esc(a.rol) + ']</small>' : '';
+        return esc(nom) + dni + rol;
+      }).join('<br>') || '<span style="color:var(--ink-soft);font-style:italic">Sin docente asesor registrado</span>';
+    }
 
     let detExtra = [];
     if (!concursoFilters.tipoId) {
@@ -7804,8 +8158,9 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
         return '<li><strong>' + esc(nom) + '</strong> · DNI: ' + esc(p.dni || '—') + ' · Rol: ' + esc(p.rol || 'Participante') + '</li>';
       }).join('');
       const asesListDetailed = (r.asesores || []).map(a => {
-        const nom = formatearNombre(a);
-        return '<li><strong>' + esc(nom) + '</strong> · DNI: ' + esc(a.dni || '—') + ' · Rol: ' + esc(a.rol || 'Asesor') + '</li>';
+        const nom = isJedpa ? formatearNombre(a).toUpperCase() : formatearNombre(a);
+        const rol = isJedpa ? (a.rol ? a.rol.toUpperCase() : 'DELEGADO') : (a.rol || 'Asesor');
+        return '<li><strong>' + esc(nom) + '</strong> · DNI: ' + esc(a.dni || '—') + ' · Rol: ' + esc(rol) + '</li>';
       }).join('');
 
       detailContent = '<tr class="detailRow"><td colspan="8">' +
@@ -8074,6 +8429,7 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
             <div class="concursoActionsLeft">
               <button type="button" class="btn secondary small" id="cf_clear">Limpiar</button>
               <button type="button" class="btn secondary small" id="cf_asignarPuestosBtn" title="Asignar puestos por podio de forma masiva">🏆 Asignar puestos</button>
+              ${isAdmin ? '<button type="button" class="btn secondary small" id="cf_consolidarCuerpoTecnicoBtn" title="Asistente para consolidar el cuerpo técnico por grupo">👥 Consolidar cuerpo técnico</button>' : ''}
               ${isAdmin ? '<button type="button" class="btn secondary small" id="cf_importRd" title="Importar 83 ganadores de Resoluciones Directorales 2026">📥 Cargar ganadores RD</button>' : ''}
               <button type="button" class="btn secondary small" id="cf_detectDuplicatesBtn" title="Buscar registros duplicados o puestos repetidos">🔍 Detectar duplicados</button>
             </div>
@@ -8244,6 +8600,7 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
             <div class="concursoActionsLeft">
               <button type="button" class="btn secondary small" id="cf_clear">Limpiar</button>
               <button type="button" class="btn secondary small" id="cf_asignarPuestosBtn" title="Asignar puestos por podio de forma masiva">🏆 Asignar puestos</button>
+              ${(isAdmin && isJedpa) ? '<button type="button" class="btn secondary small" id="cf_consolidarCuerpoTecnicoBtn" title="Asistente para formalizar el cuerpo técnico por grupo">👥 Consolidar cuerpo técnico</button>' : ''}
               ${isAdmin ? '<button type="button" class="btn secondary small" id="cf_importRd" title="Importar 83 ganadores de Resoluciones Directorales 2026">📥 Cargar ganadores RD</button>' : ''}
               <button type="button" class="btn secondary small" id="cf_detectDuplicatesBtn" title="Buscar registros duplicados o puestos repetidos">🔍 Detectar duplicados</button>
             </div>
@@ -8277,7 +8634,7 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       <th>Categoría</th>
       <th>Detalle / Área</th>
       <th>Participantes</th>
-      <th>Docente Asesor</th>
+      <th>${esc(concursoCfg.etiqueta_columna_asesor || 'Docente Asesor')}</th>
       <th>Etapa</th>
       <th style="width:90px"></th>
       </tr></thead><tbody>${rowsHtml}</tbody></table></div>
@@ -8286,11 +8643,13 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
   host.innerHTML = '' +
     filterBarHtml +
     '<div id="concursoReportCapture">' +
+    (groupCtBannerHtml || '') +
     '<div class="cards">' +
     '<div class="card"><div class="num">' + totalRegs + '</div><div class="lbl">Registros / Premiaciones</div></div>' +
     '<div class="card"><div class="num">' + totalPartUnicos + '</div><div class="lbl">Participantes únicos</div></div>' +
     '<div class="card"><div class="num">' + uniqueColegios + '</div><div class="lbl">Instituciones educativas</div></div>' +
-    '<div class="card"><div class="num">' + totalAsesUnicos + '</div><div class="lbl">Docentes asesores</div></div>' +
+    '<div class="card"><div class="num">' + totalAsesUnicos + '</div><div class="lbl">' + esc(concursoCfg.etiqueta_asesor_plural || 'Docentes asesores') + '</div></div>' +
+    (isJedpa ? '<div class="card"><div class="num">' + totalCtUnicos + '</div><div class="lbl">Cuerpo técnico único</div></div>' : '') +
     '</div>' +
 
     '<div class="panel">' +
@@ -8536,6 +8895,20 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     });
   }
 
+  // Botón Consolidar Cuerpo Técnico por Grupo (JEDPA)
+  const consolidarBtn = document.getElementById('cf_consolidarCuerpoTecnicoBtn');
+  if (consolidarBtn) {
+    consolidarBtn.addEventListener('click', () => {
+      openConsolidarCuerpoTecnicoModal(dbNs, state, container, isAdmin, currentUser, navigate);
+    });
+  }
+  const bannerConsolidarBtn = document.getElementById('btnConsolidarCtGrupoBanner');
+  if (bannerConsolidarBtn) {
+    bannerConsolidarBtn.addEventListener('click', () => {
+      openConsolidarCuerpoTecnicoModal(dbNs, state, container, isAdmin, currentUser, navigate);
+    });
+  }
+
   // Botón Cargar Ganadores RD (en estado vacío)
   const importEmptyBtn = document.getElementById('btnImportGanadoresConsolidadoEmpty');
   if (importEmptyBtn) {
@@ -8546,6 +8919,8 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
 
   // Exportar PDF oficial de concursos (Acta de Resultados A4 Landscape o Fichas JFEN A4 Portrait)
   document.getElementById('cf_exportPdf').addEventListener('click', () => {
+    const formatoTipo = getFormatoPdfConcurso(tipo);
+    const esJfenConcurso = isJfen || formatoTipo === 'fichas_por_categoria';
     openDownloadConfigModal({
       documentTitle: `ACTA OFICIAL DE RESULTADOS — ${(tipo ? tipo.nombre : 'CONCURSOS EDUCATIVOS ESCOLARES').toUpperCase()}`,
       tipoReporte: 'concursos',
@@ -8554,7 +8929,8 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       state,
       dbNs,
       isAdmin,
-      isJfen: isJfen,
+      isJfen: esJfenConcurso,
+      formatoPdfActas: formatoTipo,
       onConfirm: async (cfg) => {
         if (cfg.formatoConcurso === 'orden_merito') {
           await exportActaOrdenMeritoPdf(filtered, tipo, concursoFilters, cfg);
@@ -8567,12 +8943,22 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
 
   // Exportar CSV — columnas separadas: Apellidos | Nombres | DNI | Rol
   document.getElementById('cf_exportCsv').addEventListener('click', () => {
-    const headers = [
-      'Puesto', 'Podio', 'Institución', 'Código Modular', 'Concurso', 'Etapa',
-      'Categoría', 'Género', 'Arte / Disciplina', 'Título', 'Seudónimo',
-      'Tipo Persona', 'Apellidos', 'Nombres', 'DNI/Doc.', 'Rol',
-      'Nombre heredado (texto libre)', 'Resolución', 'Fecha'
-    ];
+    let headers;
+    if (isJedpa) {
+      headers = [
+        'Puesto', 'Podio', 'Institución', 'Código Modular', 'Concurso', 'Etapa',
+        'Categoría', 'Género', 'Arte / Disciplina', 'Título', 'Seudónimo',
+        'Tipo Persona', 'Rol cuerpo técnico', 'Apellidos', 'Nombres', 'DNI/Doc.',
+        'Origen', 'Resolución', 'Fecha'
+      ];
+    } else {
+      headers = [
+        'Puesto', 'Podio', 'Institución', 'Código Modular', 'Concurso', 'Etapa',
+        'Categoría', 'Género', 'Arte / Disciplina', 'Título', 'Seudónimo',
+        'Tipo Persona', 'Apellidos', 'Nombres', 'DNI/Doc.', 'Rol',
+        'Nombre heredado (texto libre)', 'Resolución', 'Fecha'
+      ];
+    }
     const rows = [];
     filtered.forEach(r => {
       const curTipoObj = (state.tiposConcurso || []).find(t => t.id === r.tipoConcursoId || t.nombre === r.tipoConcursoNombre) || tipo;
@@ -8589,27 +8975,73 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
         r.tituloTrabajo || '',
         r.seudonimo || ''
       ];
-      const personas = [
-        ...(r.participantes || []).map(p => ({ ...p, _tipo: 'Participante' })),
-        ...(r.asesores     || []).map(a => ({ ...a, _tipo: 'Asesor/Entrenador' }))
-      ];
-      if (personas.length === 0) {
-        rows.push([...base, '', '', '', '', '', '', r.resolucionRef || '', r.fecha || '']);
+
+      if (isJedpa) {
+        // En JEDPA: participantes individuales + cuerpo técnico del grupo (o individual) en mayúsculas
+        const grupoCt = obtenerCuerpoTecnicoGrupo(r, state.concursoCuerpoTecnico || [], filtered);
+        const ctMiembros = (grupoCt.miembros && grupoCt.miembros.length > 0)
+          ? grupoCt.miembros.map(m => ({ ...m, _origen: grupoCt.origen === 'concursoCuerpoTecnico' ? 'grupo' : 'grupo' }))
+          : (r.asesores || []).map(a => ({ ...a, _origen: 'individual' }));
+
+        const deportistas = (r.participantes || []).map(p => ({
+          _tipo: 'Deportista / Participante',
+          rol: p.rol || 'Deportista',
+          apellidos: (p.apellidos || '').trim().toUpperCase(),
+          nombres: (p.nombres || '').trim().toUpperCase(),
+          dni: (p.dni || '').trim(),
+          origen: 'individual'
+        }));
+
+        const ctExport = ctMiembros.map(a => ({
+          _tipo: 'Cuerpo Técnico',
+          rol: (a.rol || 'Delegado').toUpperCase(),
+          apellidos: (a.apellidos || '').trim().toUpperCase(),
+          nombres: (a.nombres || '').trim().toUpperCase(),
+          dni: (a.dni || '').trim(),
+          origen: a._origen || 'grupo'
+        }));
+
+        const totalJ = [...deportistas, ...ctExport];
+        if (totalJ.length === 0) {
+          rows.push([...base, '', '', '', '', '', '', r.resolucionRef || '', r.fecha || '']);
+        } else {
+          totalJ.forEach(p => {
+            rows.push([
+              ...base,
+              p._tipo,
+              p.rol,
+              p.apellidos,
+              p.nombres,
+              p.dni,
+              p.origen,
+              r.resolucionRef || '',
+              r.fecha || ''
+            ]);
+          });
+        }
       } else {
-        personas.forEach(p => {
-          const esHeredado = !((p.apellidos || '').trim()) && (p.nombres || '').trim();
-          rows.push([
-            ...base,
-            p._tipo,
-            (p.apellidos || '').trim(),
-            (p.nombres   || '').trim(),
-            (p.dni       || '').trim(),
-            p.rol || '',
-            esHeredado ? (p.nombres || '').trim() : '',
-            r.resolucionRef || '',
-            r.fecha || ''
-          ]);
-        });
+        const personas = [
+          ...(r.participantes || []).map(p => ({ ...p, _tipo: 'Participante' })),
+          ...(r.asesores     || []).map(a => ({ ...a, _tipo: 'Asesor/Entrenador' }))
+        ];
+        if (personas.length === 0) {
+          rows.push([...base, '', '', '', '', '', '', r.resolucionRef || '', r.fecha || '']);
+        } else {
+          personas.forEach(p => {
+            const esHeredado = !((p.apellidos || '').trim()) && (p.nombres || '').trim();
+            rows.push([
+              ...base,
+              p._tipo,
+              (p.apellidos || '').trim(),
+              (p.nombres   || '').trim(),
+              (p.dni       || '').trim(),
+              p.rol || '',
+              esHeredado ? (p.nombres || '').trim() : '',
+              r.resolucionRef || '',
+              r.fecha || ''
+            ]);
+          });
+        }
       }
     });
     downloadCsv('concursos_' + (tipo ? tipo.id : 'todos') + '_' + todayStr() + '.csv', headers, rows);
@@ -8635,8 +9067,11 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       concursoEditingId = r.id;
       concursoEditingData = JSON.parse(JSON.stringify(r));
       concursoSelectedTipoId = r.tipoConcursoId;
-      concursoParticipantes = r.participantes && r.participantes.length ? JSON.parse(JSON.stringify(r.participantes)) : [{ nombres: '', apellidos: '', dni: '', rol: 'Estudiante' }];
-      concursoAsesores = r.asesores && r.asesores.length ? JSON.parse(JSON.stringify(r.asesores)) : [{ nombres: '', apellidos: '', dni: '', rol: 'Docente Asesor' }];
+      const rTipo = (state.tiposConcurso || []).find(t => t.id === r.tipoConcursoId || t.nombre === r.tipoConcursoNombre);
+      const defPartRol = getConcursoParticipanteRoles(rTipo)[0];
+      const defAsesRol = getConcursoAsesorRoles(rTipo)[0];
+      concursoParticipantes = r.participantes && r.participantes.length ? JSON.parse(JSON.stringify(r.participantes)) : [{ nombres: '', apellidos: '', dni: '', rol: defPartRol }];
+      concursoAsesores = r.asesores && r.asesores.length ? JSON.parse(JSON.stringify(r.asesores)) : [{ nombres: '', apellidos: '', dni: '', rol: defAsesRol }];
       concursoSubTab = 'registrar';
       renderConcursosTab(container, state, dbNs, isAdmin, currentUser, navigate);
     });
@@ -8840,6 +9275,17 @@ function renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, contai
       statusBadge = '<span class="badge" style="background:var(--surface-3);color:var(--ink-soft);font-weight:700;font-size:12px">⚪ Pendiente (0/3)</span>';
     }
 
+    let ctStatusBadge = '';
+    if (isJedpaConcurso(curTipo)) {
+      const ctInfo = obtenerCuerpoTecnicoGrupo(activePodio.records[0], state.concursoCuerpoTecnico || [], activePodio.records);
+      if (!ctInfo || !ctInfo.miembros || ctInfo.miembros.length === 0) {
+        ctStatusBadge = '<span class="badge" style="background:#fee2e2;color:#991b1b;font-weight:700;font-size:12px">⚠️ Sin cuerpo técnico asignado</span>';
+      } else {
+        const ctLabel = ctInfo.origen === 'concursoCuerpoTecnico' ? 'Oficial' : 'Detectado';
+        ctStatusBadge = `<span class="badge" style="background:#e0e7ff;color:#3730a3;font-weight:700;font-size:12px">👥 ${ctInfo.miembros.length} del cuerpo técnico (${ctLabel})</span>`;
+      }
+    }
+
     // Pestañas rápidas Damas / Varones para alternar con 1 clic
     let genderTabsHtml = '';
     if (curTipo.tieneGenero && (damasPodio || varonesPodio)) {
@@ -8922,6 +9368,7 @@ function renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, contai
               <span class="badge" style="background:var(--primary);color:#fff;font-weight:700;font-size:11.5px">Etapa ${esc(activePodio.etapa)}</span>
               <h3 style="margin:0;font-size:19px;color:var(--navy-900)">🏆 Podio: ${esc(activePodio.label)}</h3>
               ${statusBadge}
+              ${ctStatusBadge}
             </div>
             <p style="margin:0;font-size:13px;color:var(--ink-soft)">
               ${activePodio.records.length} instituciones inscritas en este podio oficial. Selecciona los puestos de honor o asigna menciones honrosas.
@@ -9537,14 +9984,18 @@ function renderConcursoTiposCatalogView(host, state, dbNs, isAdmin, currentUser,
 
   const cardsHtml = tipos.map(t => {
     const cats = (t.categorias || []).map(c => '<span class="badge" style="background:var(--surface-3);font-size:10.5px;margin:2px">' + esc(c) + '</span>').join('');
-    const partRoles = (t.rolesParticipante || []).join(', ');
-    const asesRoles = (t.rolesAsesor || []).join(', ');
+    const partRoles = getConcursoParticipanteRoles(t).join(', ');
+    const asesRoles = getConcursoAsesorRoles(t).join(', ');
+    const formatoBadge = getFormatoPdfConcurso(t) === 'fichas_por_categoria'
+      ? '<span class="badge" style="background:rgba(112,48,160,0.15);color:#7030A0;font-size:11px">PDF: 📄 Fichas por categoría</span>'
+      : '<span class="badge" style="background:rgba(15,23,42,0.08);color:var(--navy-900);font-size:11px">PDF: 📊 Listado tabular</span>';
 
     return '<div class="tipoCard">' +
       '<div class="ti">' +
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
       '<h4 style="margin:0">' + esc(t.nombre) + '</h4>' +
       '<span class="badge" style="background:var(--primary-tint);color:var(--primary);font-size:11px">' + (t.tipoParticipacion === 'individual' ? '👤 Individual' : '👥 Grupal') + '</span>' +
+      formatoBadge +
       (t.tieneGenero ? '<span class="badge" style="background:rgba(14,165,233,0.15);color:#38bdf8;font-size:11px">Damas / Varones</span>' : '') +
       (t.tieneDisciplina ? '<span class="badge" style="background:rgba(168,85,247,0.15);color:#c084fc;font-size:11px">Disciplina: Sí</span>' : '') +
       (t.tieneTituloTrabajo ? '<span class="badge" style="background:rgba(245,158,11,0.15);color:#fbbf24;font-size:11px">Título / Seudónimo: Sí</span>' : '') +
@@ -9633,8 +10084,8 @@ function openTipoConcursoModal(existingTipo, dbNs, state, container, isAdmin, cu
   const modalTitle = isEdit ? 'Editar Tipo de Concurso' : 'Nuevo Tipo de Concurso';
 
   let categorias = isEdit ? [...(existingTipo.categorias || [])] : ['A', 'B', 'C'];
-  let rolesPart = isEdit ? [...(existingTipo.rolesParticipante || [])] : ['Estudiante'];
-  let rolesAses = isEdit ? [...(existingTipo.rolesAsesor || [])] : ['Docente Asesor'];
+  let rolesPart = isEdit ? getConcursoParticipanteRoles(existingTipo) : ['Estudiante'];
+  let rolesAses = isEdit ? getConcursoAsesorRoles(existingTipo) : ['Docente Asesor'];
 
   host.innerHTML = '' +
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:150;display:flex;align-items:center;justify-content:center;padding:20px">' +
@@ -9707,6 +10158,15 @@ function openTipoConcursoModal(existingTipo, dbNs, state, container, isAdmin, cu
     '<input type="text" id="m_tc_discSugeridas" value="' + esc((existingTipo && existingTipo.disciplinasSugeridas ? existingTipo.disciplinasSugeridas : []).join(', ')) + '" placeholder="Ej: Ajedrez, Atletismo, Natación o Danza, Teatro">' +
     '</div>' +
 
+    '<div class="field">' +
+    '<label>Formato oficial de actas PDF *</label>' +
+    '<select id="m_tc_formatoPdf">' +
+    '<option value="tabular"' + ((!existingTipo || existingTipo.formato_pdf_actas === 'tabular' || !existingTipo.formato_pdf_actas) ? ' selected' : '') + '>Listado tabular (Estándar oficial)</option>' +
+    '<option value="fichas_por_categoria"' + (existingTipo && existingTipo.formato_pdf_actas === 'fichas_por_categoria' ? ' selected' : '') + '>Fichas por categoría (Exclusivo JFEN)</option>' +
+    '</select>' +
+    '<small style="color:var(--ink-soft)">El formato de fichas por categoría es exclusivo de JFEN. Para todos los demás concursos se utiliza el listado tabular horizontal.</small>' +
+    '</div>' +
+
     '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">' +
     '<button type="button" class="btn secondary" id="m_tc_cancel">Cancelar</button>' +
     '<button type="submit" class="btn" id="m_tc_submit">' + (isEdit ? 'Actualizar' : 'Crear tipo') + '</button>' +
@@ -9737,6 +10197,8 @@ function openTipoConcursoModal(existingTipo, dbNs, state, container, isAdmin, cu
       if (document.getElementById('m_tc_podio_mod')?.checked) cPodio.push('modalidad');
       if (cPodio.length === 0) cPodio.push('categoria');
 
+      const formatoPdf = document.getElementById('m_tc_formatoPdf')?.value || 'tabular';
+
       const data = {
         nombre: document.getElementById('m_tc_nombre').value.trim(),
         tipoParticipacion: document.getElementById('m_tc_tipoPart').value,
@@ -9748,6 +10210,7 @@ function openTipoConcursoModal(existingTipo, dbNs, state, container, isAdmin, cu
         rolesParticipante: rP.length ? rP : ['Estudiante'],
         rolesAsesor: rA.length ? rA : ['Docente Asesor'],
         disciplinasSugeridas: dS,
+        formato_pdf_actas: formatoPdf,
         createdAt: isEdit ? (existingTipo.createdAt || Date.now()) : Date.now(),
         updatedAt: Date.now()
       };
@@ -10215,4 +10678,401 @@ function openDuplicateDetectorModal(dbNs, state, container, isAdmin, currentUser
       }
     });
   });
+}
+
+// =========================================================================
+// ASISTENTE DE CONSOLIDACIÓN DE CUERPO TÉCNICO POR GRUPO (JEDPA)
+// Permite asociar delegados y entrenadores a nivel de grupo de competencia,
+// detectando y resolviendo discrepancias de roles de forma interactiva.
+// =========================================================================
+export function openConsolidarCuerpoTecnicoModal(dbNs, state, container, isAdmin, currentUser, navigate) {
+  const regs = state.concursoRegistros || [];
+  const tipos = state.tiposConcurso || [];
+
+  // Filtrar registros JEDPA
+  const jedpaRegs = regs.filter(r => {
+    const t = tipos.find(tp => tp.id === r.tipoConcursoId || tp.nombre === r.tipoConcursoNombre);
+    return isJedpaConcurso(t) || (r.tipoConcursoId || '').toLowerCase().includes('jedpa') || (r.tipoConcursoNombre || '').toLowerCase().includes('jedpa');
+  });
+
+  if (jedpaRegs.length === 0) {
+    showToast('No se encontraron registros de JEDPA para analizar.');
+    return;
+  }
+
+  // Agrupar registros por grupo (Etapa · Disciplina · Categoría · Género)
+  const groupMap = new Map();
+  jedpaRegs.forEach(r => {
+    const etapa = (r.etapa || 'UGEL').trim().toUpperCase();
+    const disc = (r.disciplina || 'GENERAL').trim().toUpperCase();
+    const cat = (r.categoria || 'A').trim().toUpperCase();
+    const gen = formatGeneroDisplay(r.genero).trim().toUpperCase();
+    const groupKey = `${etapa} · ${disc} · CATEGORÍA ${cat} · ${gen}`;
+
+    if (!groupMap.has(groupKey)) {
+      groupMap.set(groupKey, {
+        groupKey,
+        etapa: (r.etapa || 'UGEL').trim(),
+        disciplina: (r.disciplina || '').trim(),
+        categoria: (r.categoria || '').trim(),
+        genero: (r.genero || '').trim(),
+        records: []
+      });
+    }
+    groupMap.get(groupKey).records.push(r);
+  });
+
+  const groups = Array.from(groupMap.values());
+
+  const modalWrap = document.createElement('div');
+  modalWrap.id = 'consolidarCuerpoTecnicoModal';
+
+  function renderModalBody() {
+    const ctCollection = state.concursoCuerpoTecnico || [];
+
+    const groupsHtml = groups.map((g, gIdx) => {
+      // Buscar si este grupo ya está en concursoCuerpoTecnico
+      const existingDoc = ctCollection.find(d => {
+        return String(d.etapa || '').toLowerCase() === String(g.etapa || '').toLowerCase() &&
+               String(d.disciplina || '').toLowerCase() === String(g.disciplina || '').toLowerCase() &&
+               String(d.categoria || '').toLowerCase() === String(g.categoria || '').toLowerCase() &&
+               String(d.genero || '').toLowerCase() === String(g.genero || '').toLowerCase();
+      });
+
+      if (existingDoc && Array.isArray(existingDoc.miembros) && existingDoc.miembros.length > 0) {
+        // Estado: Formalizado en concursoCuerpoTecnico
+        return `
+          <div class="panel" style="border:1.5px solid #bbf7d0;background:#f0fdf4;border-radius:10px;padding:16px;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <h4 style="margin:0;color:var(--navy-900);font-size:15px">🏅 ${esc(g.groupKey)}</h4>
+                  <span class="badge" style="background:#dcfce7;color:#15803d;font-weight:700;font-size:11px">✓ Guardado en concursoCuerpoTecnico</span>
+                </div>
+                <p style="margin:4px 0 0;font-size:12px;color:var(--ink-soft)">
+                  ${g.records.length} competidores registrados en este grupo. El cuerpo técnico está formalizado a nivel institucional.
+                </p>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button type="button" class="btn secondary small" data-rollback-ct="${esc(existingDoc.id)}" data-gkey="${esc(g.groupKey)}" style="color:#b91c1c;border-color:#fca5a5" title="Eliminar registro centralizado y revertir al estado individual">
+                  🗑️ Deshacer formalización (Rollback)
+                </button>
+              </div>
+            </div>
+
+            <table style="width:100%;font-size:12.5px;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #dcfce7">
+              <thead>
+                <tr style="background:#f0fdf4;border-bottom:1.5px solid #bbf7d0;color:var(--ink);text-align:left">
+                  <th style="padding:6px 10px;width:140px">Rol oficial</th>
+                  <th style="padding:6px 10px">Apellidos y Nombres</th>
+                  <th style="padding:6px 10px;width:120px">DNI / Documento</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${existingDoc.miembros.map(m => `
+                  <tr style="border-bottom:1px solid #f0fdf4">
+                    <td style="padding:6px 10px"><span class="badge" style="font-size:11px;font-weight:700">${esc((m.rol || 'DELEGADO').toUpperCase())}</span></td>
+                    <td style="padding:6px 10px"><strong>${esc((m.apellidos || '').toUpperCase())} ${esc((m.nombres || '').toUpperCase())}</strong></td>
+                    <td style="padding:6px 10px;color:var(--ink-soft)">${esc(m.dni || '—')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      // Estado: Pendiente de formalización (analizar miembros detectados en los registros del grupo)
+      const memberMap = new Map();
+      g.records.forEach(r => {
+        (r.asesores || []).forEach(a => {
+          const dni = (a.dni || '').trim();
+          const nom = (a.nombres || '').trim().replace(/\s{2,}/g, ' ');
+          const ape = (a.apellidos || '').trim().replace(/\s{2,}/g, ' ');
+          const key = dni || `${ape}|${nom}`.toUpperCase();
+          if (!key) return;
+
+          if (!memberMap.has(key)) {
+            memberMap.set(key, {
+              key,
+              dni,
+              nombres: nom,
+              apellidos: ape,
+              rolesCount: {},
+              recordsCount: 0
+            });
+          }
+
+          const item = memberMap.get(key);
+          item.recordsCount++;
+          const curRol = (a.rol || 'Delegado').trim();
+          item.rolesCount[curRol] = (item.rolesCount[curRol] || 0) + 1;
+        });
+      });
+
+      const detectedMembers = Array.from(memberMap.values());
+
+      if (detectedMembers.length === 0) {
+        return `
+          <div class="panel" style="border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px">
+            <h4 style="margin:0;color:var(--navy-900);font-size:15px">🏅 ${esc(g.groupKey)}</h4>
+            <p style="margin:6px 0 0;font-size:12.5px;color:var(--ink-soft)">
+              Este grupo tiene ${g.records.length} registros pero no cuenta con asesores ni cuerpo técnico registrado en sus filas.
+            </p>
+          </div>
+        `;
+      }
+
+      const rowsDetectedHtml = detectedMembers.map((m, mIdx) => {
+        const rolesArr = Object.entries(m.rolesCount).sort((a, b) => b[1] - a[1]);
+        const majorityRole = rolesArr[0] ? rolesArr[0][0] : 'Delegado';
+        const hasConflict = rolesArr.length > 1;
+
+        let conflictNotice = '';
+        if (hasConflict) {
+          const conflictBreakdown = rolesArr.map(([r, c]) => `${r} (${c} registros)`).join(', ');
+          conflictNotice = `
+            <div style="font-size:11.5px;color:#b45309;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:4px 8px;margin-top:4px">
+              ⚠️ <strong>Discrepancia detectada:</strong> aparece en distintos registros como: <em>${esc(conflictBreakdown)}</em>.<br>
+              Se preselecciona el rol mayoritario (<strong>${esc(majorityRole)}</strong>). Puedes cambiarlo si corresponde.
+            </div>
+          `;
+        }
+
+        const roleOptions = ['Delegado', 'Entrenador', 'Docente Asesor'].map(rolOpt => {
+          const isSel = (rolOpt.toLowerCase() === majorityRole.toLowerCase());
+          return `<option value="${esc(rolOpt)}" ${isSel ? 'selected' : ''}>${esc(rolOpt)}</option>`;
+        }).join('');
+
+        const fullNameUpper = `${m.apellidos ? m.apellidos.toUpperCase() + ', ' : ''}${m.nombres.toUpperCase()}`.trim();
+
+        return `
+          <tr style="border-bottom:1px solid var(--line);background:${hasConflict ? '#fffbeb' : '#fff'}" data-member-idx="${mIdx}">
+            <td style="padding:8px 10px;vertical-align:top">
+              <select class="m_ct_role" data-gidx="${gIdx}" data-midx="${mIdx}" style="font-weight:700;padding:4px 8px;font-size:12px">
+                ${roleOptions}
+              </select>
+              ${conflictNotice}
+            </td>
+            <td style="padding:8px 10px;vertical-align:top">
+              <strong style="color:var(--navy-900)">${esc(fullNameUpper)}</strong>
+              <input type="hidden" class="m_ct_ape" value="${esc(m.apellidos.toUpperCase())}">
+              <input type="hidden" class="m_ct_nom" value="${esc(m.nombres.toUpperCase())}">
+            </td>
+            <td style="padding:8px 10px;vertical-align:top">
+              <span style="font-family:monospace;font-size:12px">${esc(m.dni || '—')}</span>
+              <input type="hidden" class="m_ct_dni" value="${esc(m.dni)}">
+            </td>
+            <td style="padding:8px 10px;vertical-align:top;text-align:center;font-size:12px;color:var(--ink-soft)">
+              <span class="badge" style="font-size:11px">${m.recordsCount} de ${g.records.length}</span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div class="panel" style="border:1.5px solid var(--primary-tint);border-radius:10px;padding:16px;margin-bottom:16px;background:var(--surface)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <h4 style="margin:0;color:var(--navy-900);font-size:15px">🏅 ${esc(g.groupKey)}</h4>
+                <span class="badge" style="background:#fef3c7;color:#b45309;font-weight:700;font-size:11px">⚠️ Pendiente de consolidación</span>
+              </div>
+              <p style="margin:4px 0 0;font-size:12px;color:var(--ink-soft)">
+                Se detectaron ${detectedMembers.length} personas actuando como cuerpo técnico en ${g.records.length} registros. Confirma el rol definitivo para registrarlos a nivel de grupo.
+              </p>
+            </div>
+            <div>
+              <button type="button" class="btn small" data-save-ct="${gIdx}" style="font-size:12px">
+                💾 Guardar en concursoCuerpoTecnico
+              </button>
+            </div>
+          </div>
+
+          <table style="width:100%;font-size:12.5px;border-collapse:collapse;border:1px solid var(--line);border-radius:8px;overflow:hidden">
+            <thead>
+              <tr style="background:var(--surface-2);border-bottom:1.5px solid var(--line);color:var(--ink);text-align:left">
+                <th style="padding:6px 10px;width:190px">Rol a asignar</th>
+                <th style="padding:6px 10px">Apellidos y Nombres (en mayúsculas)</th>
+                <th style="padding:6px 10px;width:120px">DNI / Documento</th>
+                <th style="padding:6px 10px;width:110px;text-align:center">Apariciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsDetectedHtml}
+            </tbody>
+          </table>
+
+          <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+            <label style="font-size:11.5px;color:var(--ink-soft);display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" data-clean-individual="${gIdx}">
+              <span>Limpiar asesores redundantes en registros individuales (Opcional · Desmarcado por defecto para no modificar ningún dato existente)</span>
+            </label>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    modalWrap.innerHTML = `
+      <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px">
+        <div style="background:var(--surface);border:1.5px solid var(--line-strong);border-radius:14px;max-width:960px;width:100%;max-height:90vh;overflow-y:auto;padding:26px;box-shadow:var(--shadow-lg)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:14px">
+            <div>
+              <h3 style="margin:0;display:flex;align-items:center;gap:8px;font-size:18px;color:var(--navy-900)">
+                👥 Consolidar Cuerpo Técnico por Grupo (JEDPA)
+              </h3>
+              <p style="margin:4px 0 0;font-size:13px;color:var(--ink-soft)">
+                Asigna el cuerpo técnico (Delegado / Entrenador) una sola vez por cada grupo de competencia. Esto optimiza el acta oficial a 1 sola página sin duplicar información.
+              </p>
+            </div>
+            <button type="button" class="iconBtn" id="m_ct_close">✕</button>
+          </div>
+
+          <div style="margin-bottom:16px">
+            ${groupsHtml}
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;border-top:1px solid var(--line);padding-top:14px">
+            <button type="button" class="btn secondary" id="m_ct_closeBtn">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Event listeners
+    const closeModal = () => {
+      modalWrap.remove();
+      renderConcursosTab(container, state, dbNs, isAdmin, currentUser, navigate);
+    };
+
+    const closeBtn1 = modalWrap.querySelector('#m_ct_close');
+    if (closeBtn1) closeBtn1.addEventListener('click', closeModal);
+    const closeBtn2 = modalWrap.querySelector('#m_ct_closeBtn');
+    if (closeBtn2) closeBtn2.addEventListener('click', closeModal);
+
+    // Guardar cuerpo técnico de un grupo
+    modalWrap.querySelectorAll('[data-save-ct]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const gIdx = Number(btn.dataset.saveCt);
+        const group = groups[gIdx];
+        if (!group) return;
+
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+
+        try {
+          const panel = btn.closest('.panel');
+          const rows = panel.querySelectorAll('tbody tr[data-member-idx]');
+          const membersToSave = [];
+
+          rows.forEach(r => {
+            const rolSel = r.querySelector('.m_ct_role');
+            const apeInp = r.querySelector('.m_ct_ape');
+            const nomInp = r.querySelector('.m_ct_nom');
+            const dniInp = r.querySelector('.m_ct_dni');
+
+            membersToSave.push({
+              rol: rolSel ? rolSel.value.trim() : 'Delegado',
+              apellidos: apeInp ? apeInp.value.trim().toUpperCase() : '',
+              nombres: nomInp ? nomInp.value.trim().toUpperCase() : '',
+              dni: dniInp ? dniInp.value.trim() : ''
+            });
+          });
+
+          if (membersToSave.length === 0) {
+            showToast('No hay miembros para guardar.');
+            btn.disabled = false;
+            btn.textContent = '💾 Guardar en concursoCuerpoTecnico';
+            return;
+          }
+
+          const slug = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+          const ctDocId = `jedpa_${slug(group.etapa)}_${slug(group.disciplina)}_${slug(group.categoria)}_${slug(group.genero)}`;
+
+          await dbNs.collection('concursoCuerpoTecnico').doc(ctDocId).set({
+            tipoConcursoId: 'jedpa',
+            concursoNombre: 'Juegos Escolares Deportivos y Paradeportivos (JEDPA)',
+            etapa: group.etapa,
+            disciplina: group.disciplina,
+            categoria: group.categoria,
+            genero: group.genero,
+            miembros: membersToSave,
+            registrosCount: group.records.length,
+            consolidatedAt: Date.now(),
+            consolidatedBy: currentUser ? (currentUser.displayName || currentUser.email || 'Admin') : 'Admin',
+            updatedAt: Date.now()
+          });
+
+          // Registrar en logActividades
+          await dbNs.collection('logActividades').add({
+            tipo: 'consolidar_cuerpo_tecnico_grupo',
+            grupo: group.groupKey,
+            docId: ctDocId,
+            miembrosCount: membersToSave.length,
+            usuario: currentUser ? (currentUser.displayName || currentUser.email || 'Admin') : 'Admin',
+            fecha: Date.now()
+          });
+
+          // Checkbox para limpiar registros individuales (opcional)
+          const cleanChk = panel.querySelector(`[data-clean-individual="${gIdx}"]`);
+          if (cleanChk && cleanChk.checked) {
+            const batch = dbNs.batch();
+            group.records.forEach(rec => {
+              const recRef = dbNs.collection('concursoRegistros').doc(rec.id);
+              batch.update(recRef, { asesores: [], cuerpoTecnicoRef: ctDocId, updatedAt: Date.now() });
+            });
+            await batch.commit();
+          }
+
+          showToast('✓ Cuerpo técnico formalizado en concursoCuerpoTecnico.');
+          renderModalBody();
+        } catch (err) {
+          console.error('Error guardando cuerpo técnico:', err);
+          showToast('Error al guardar: ' + (err.message || err));
+          btn.disabled = false;
+          btn.textContent = '💾 Guardar en concursoCuerpoTecnico';
+        }
+      });
+    });
+
+    // Rollback de cuerpo técnico
+    modalWrap.querySelectorAll('[data-rollback-ct]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const docId = btn.dataset.rollbackCt;
+        const gKey = btn.dataset.gkey;
+        if (!docId) return;
+
+        if (!confirm(`¿Deseas eliminar la formalización del cuerpo técnico para ${gKey}?\n\nLos registros de los competidores individuales mantendrán intacta su información histórica.`)) {
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Eliminando...';
+
+        try {
+          await dbNs.collection('concursoCuerpoTecnico').doc(docId).delete();
+
+          // Registrar rollback en logActividades
+          await dbNs.collection('logActividades').add({
+            tipo: 'rollback_cuerpo_tecnico_grupo',
+            grupo: gKey,
+            docId: docId,
+            usuario: currentUser ? (currentUser.displayName || currentUser.email || 'Admin') : 'Admin',
+            fecha: Date.now()
+          });
+
+          showToast('✓ Rollback completado. Se eliminó la formalización del grupo.');
+          renderModalBody();
+        } catch (err) {
+          console.error('Error en rollback de cuerpo técnico:', err);
+          showToast('Error en rollback: ' + (err.message || err));
+          btn.disabled = false;
+          btn.textContent = '🗑️ Deshacer formalización (Rollback)';
+        }
+      });
+    });
+  }
+
+  renderModalBody();
+  document.body.appendChild(modalWrap);
 }

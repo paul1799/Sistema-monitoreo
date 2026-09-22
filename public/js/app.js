@@ -25,7 +25,7 @@ import {
   computeStats,
   forceResetBodyScroll,
   setAppState,
-} from './ui.js?v=20260921_v2';
+} from './ui.js?v=20260922_v6';
 
 /* ============================= MANEJADORES GLOBALES DE ERROR ============================= */
 if (typeof window !== 'undefined') {
@@ -60,6 +60,7 @@ const state = {
   responsables:      [],  // {id, red, distrito, especialista, nombresApellidos, cargo, modalidad, celular, correo}
   tiposConcurso:     [],  // {id, nombre, tipoParticipacion, tieneGenero, tieneDisciplina, tieneTituloTrabajo, categorias, ...}
   concursoRegistros: [],  // {id, tipoConcursoId, etapa, categoria, institucion, participantes, asesores, ...}
+  concursoCuerpoTecnico: [], // {id, grupoKey, tipoConcursoId, etapa, categoria, disciplina, genero, personas, bitacora, ...}
   areasFirma:        [],  // {id, nombre, sigla, descripcionEncabezado, logo, activa, esPredeterminada}
   plantillasFirmantes: [], // {id, areaId, tipoReporte, orden, cargo, nombreOpcional, entidad, leyenda}
   preferenciasDescarga: [], // {usuarioId, tipoReporte, areaId, firmantesJson, opcionesJson}
@@ -238,6 +239,16 @@ function startListeners() {
     }
   }, err => {
     console.error('concursoRegistros snapshot error', err);
+  });
+
+  // Cuerpo técnico por grupo de concurso (JEDPA u otros)
+  dbNs.collection('concursoCuerpoTecnico').onSnapshot(snap => {
+    state.concursoCuerpoTecnico = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (state.activeTab === 'concursos') {
+      render();
+    }
+  }, err => {
+    console.error('concursoCuerpoTecnico snapshot error', err);
   });
 
   // Catálogo administrable de áreas de firma
