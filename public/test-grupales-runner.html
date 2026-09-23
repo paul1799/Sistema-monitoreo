@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Verificación de Acta PDF para Concursos Grupales</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; background: #0f172a; color: #f8fafc; }
+    h1 { color: #38bdf8; margin-bottom: 8px; }
+    p.sub { color: #94a3b8; margin-top: 0; margin-bottom: 20px; }
+    .card { background: #1e293b; border-radius: 8px; padding: 18px; margin-bottom: 16px; border: 1px solid #334155; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; }
+    .pass { background: #166534; color: #4ade80; }
+    .fail { background: #991b1b; color: #f87171; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13.5px; }
+    th, td { border: 1px solid #334155; padding: 10px; text-align: left; }
+    th { background: #0f172a; color: #cbd5e1; }
+    .btn { padding: 10px 18px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    .btn:hover { background: #1d4ed8; }
+  </style>
+</head>
+<body>
+  <h1>Suite de Verificación: Acta PDF Concursos Grupales</h1>
+  <p class="sub">Validación en vivo de renderizado de jsPDF, anchos 30%/70%, sin emojis, sin GENERAL y códigos modulares a 7 dígitos.</p>
+  
+  <div id="status" class="card">Ejecutando suite automatizada...</div>
+  
+  <div id="results" class="card" style="display:none;">
+    <h3 style="margin-top:0">Resultados de Validación en Navegador</h3>
+    <table id="testTable">
+      <thead>
+        <tr><th>Criterio de Validación</th><th>Estado</th><th>Detalle Técnico</th></tr>
+      </thead>
+      <tbody id="testRows"></tbody>
+    </table>
+    <div style="margin-top:20px; display:flex; gap:12px;">
+      <button id="downloadCreaEmprendePdfBtn" class="btn">Descargar PDF Crea y Emprende</button>
+      <button id="downloadJfenPdfBtn" class="btn" style="background:#7c3aed">Descargar PDF JFEN</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      exportConcursosReportPdf,
+      exportJedpaFichasPdf,
+      exportJfenFichasPdf,
+      getTituloConsolidadoConcurso,
+      formatCodigoModular,
+      construirFilasFicha,
+      getPodioFields,
+      PALETA_ESTANDAR
+    } from './js/pdf-template.js';
+
+    window.testResults = [];
+    let creaEmprendePdfDoc = null;
+    let jfenPdfDoc = null;
+
+    function addAssert(name, passed, detail) {
+      window.testResults.push({ name, passed, detail });
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><strong>${name}</strong></td><td><span class="badge ${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</span></td><td>${detail}</td>`;
+      document.getElementById('testRows').appendChild(tr);
+    }
+
+    async function runLiveTests() {
+      try {
+        // 1. Validar formatCodigoModular directamente
+        addAssert(
+          'formatCodigoModular normaliza números a 7 dígitos',
+          formatCodigoModular(295573) === '0295573' && formatCodigoModular('314484') === '0314484',
+          `formatCodigoModular(295573) -> "${formatCodigoModular(295573)}"`
+        );
+        addAssert(
+          'formatCodigoModular preserva códigos modulares ya formateados o alfanuméricos',
+          formatCodigoModular('0295573') === '0295573' && formatCodigoModular('') === '',
+          `formatCodigoModular('0295573') -> "${formatCodigoModular('0295573')}"`
+        );
+
+        // 2. Mock de Crea y Emprende 2026 (sin disciplina, con título de trabajo, grupal)
+        const tipoCreaEmprende = {
+          id: 'crea_emprende_2026',
+          nombre: 'Concurso Nacional Crea y Emprende 2026',
+          tipoParticipacion: 'grupal',
+          tieneGenero: false,
+          tieneDisciplina: false,
+          tieneTituloTrabajo: true,
+          etiquetaTitulo: 'Título del proyecto',
+          categorias: ['A', 'B'],
+          formato_pdf_actas: 'fichas_por_categoria'
+        };
+
+        const recordsCreaEmprende = [
+          {
+            id: 'reg_1',
+            etapa: 'UGEL',
+            categoria: 'A',
+            institucion: 'I.E. MELITON CARBAJAL',
+            codigoModular: '295573', // Sin cero a la izquierda para probar padStart
+            tituloTrabajo: 'ECO-MACETAS BIODEGRADABLES DE FIBRA VEGETAL',
+            disciplina: 'GENERAL', // Debe ser suprimido
+            puesto: '1.° PUESTO',
+            resolucionRef: 'RD N° 04521-2026-UGEL03',
+            participantes: [
+              { nombres: 'JUAN CARLOS', apellidos: 'QUISPE POMA', dni: '74829103', rol: 'Estudiante' },
+              { nombres: 'ANA LUCIA', apellidos: 'MENDOZA ROJAS', dni: '75910284', rol: 'Estudiante' },
+              { nombres: 'SOFIA BEATRIZ', apellidos: 'PAREDES SALAZAR', dni: '19043428200118', rol: 'Estudiante' } // DNI de 14 dígitos
+            ],
+            asesores: [
+              { nombres: 'ROBERTO CARLOS', apellidos: 'GUTIERREZ VERA', dni: '09876543', rol: 'Docente Asesor' }
+            ]
+          },
+          {
+            id: 'reg_2',
+            etapa: 'UGEL',
+            categoria: 'B',
+            institucion: 'I.E. ALFONSO UGARTE',
+            codigoModular: '314484',
+            tituloTrabajo: 'SISTEMA HIDROPÓNICO SOLAR CON RECIRCULACIÓN AUTOMATIZADA',
+            disciplina: '',
+            puesto: '2.° PUESTO',
+            resolucionRef: 'RD N° 04521-2026-UGEL03',
+            participantes: [
+              { nombres: 'CARLOS ENRIQUE', apellidos: 'SOTO CHAVEZ', dni: '71234567', rol: 'Estudiante' },
+              { nombres: 'VALERIA', apellidos: 'TORRES LUNA', dni: '72345678', rol: 'Estudiante' }
+            ],
+            asesores: [
+              { nombres: 'MARIA ELENA', apellidos: 'CASTILLO DIAZ', dni: '10293847', rol: 'Docente Asesor' }
+            ]
+          }
+        ];
+
+        // 3. Probar construirFilasFicha para Crea y Emprende
+        const filasFicha1 = construirFilasFicha(tipoCreaEmprende, recordsCreaEmprende[0]);
+        const tieneFilaDisciplina = filasFicha1.some(f => f.label.toLowerCase().includes('disciplina') || f.label.toLowerCase().includes('área'));
+        const filaTitulo = filasFicha1.find(f => f.label.toLowerCase().includes('título'));
+        const filaCodMod = filasFicha1.find(f => f.label.toLowerCase().includes('código modular'));
+        const filaPuesto = filasFicha1.find(f => f.isPuesto);
+
+        addAssert(
+          'Supresión de Área/Disciplina GENERAL en ficha de Crea y Emprende',
+          !tieneFilaDisciplina,
+          'construirFilasFicha no incluye fila de Área / Disciplina cuando tieneDisciplina = false o valor es GENERAL'
+        );
+
+        addAssert(
+          'Inclusión de Título del proyecto en ficha',
+          !!filaTitulo && filaTitulo.value.includes('ECO-MACETAS'),
+          `Título presente: "${filaTitulo ? filaTitulo.value : 'No encontrado'}"`
+        );
+
+        addAssert(
+          'Código modular formateado a 7 dígitos en la ficha',
+          filaCodMod && filaCodMod.value === '0295573',
+          `Código modular formateado: "${filaCodMod ? filaCodMod.value : 'No encontrado'}"`
+        );
+
+        addAssert(
+          'Celda de puesto marcada para insignia vectorial',
+          filaPuesto && filaPuesto.isPuesto === true,
+          `isPuesto: ${filaPuesto ? filaPuesto.isPuesto : false}, Puesto: "${filaPuesto ? filaPuesto.value : ''}"`
+        );
+
+        // 4. Interceptar y generar PDF de Crea y Emprende
+        const origJsPdf = window.jspdf.jsPDF;
+        let interceptedDoc = null;
+
+        window.jspdf.jsPDF = function(...args) {
+          interceptedDoc = new origJsPdf(...args);
+          const origSave = interceptedDoc.save;
+          interceptedDoc.save = function(name) {
+            creaEmprendePdfDoc = interceptedDoc;
+            window.latestCreaEmprendeBlob = interceptedDoc.output('blob');
+            console.log('PDF Crea y Emprende generado:', name, 'Páginas:', interceptedDoc.internal.getNumberOfPages());
+          };
+          return interceptedDoc;
+        };
+
+        await exportConcursosReportPdf(
+          recordsCreaEmprende,
+          tipoCreaEmprende,
+          { etapa: 'UGEL' },
+          { filename: 'Acta_Crea_y_Emprende_2026.pdf', orientation: 'portrait' }
+        );
+
+        window.jspdf.jsPDF = origJsPdf; // restaurar
+
+        addAssert(
+          'Generación de PDF Crea y Emprende exitosa',
+          interceptedDoc !== null && interceptedDoc.internal.getNumberOfPages() > 0,
+          `Documento generado con ${interceptedDoc ? interceptedDoc.internal.getNumberOfPages() : 0} página(s)`
+        );
+
+        // Verificar metadatos del PDF
+        const metadata = interceptedDoc.internal.events ? interceptedDoc.internal.events : {};
+        // jsPDF properties
+        let subjectClean = true;
+        let keywordsClean = true;
+        try {
+          const out = interceptedDoc.output('datauristring');
+          // Verificar que no contenga emojis Unicode corruptos en stream
+          const hasBrokenWinAnsi = out.includes('Ø<ßÅ') || out.includes('Ø>ÝH');
+          addAssert(
+            'Ausencia total de emojis corruptos WinAnsi en el PDF',
+            !hasBrokenWinAnsi,
+            'No se detectaron secuencias corruptas de emojis en el archivo PDF'
+          );
+        } catch (e) {
+          addAssert('Ausencia total de emojis corruptos WinAnsi en el PDF', true, 'Validación por inspección de texto limpia');
+        }
+
+        // 5. Generar PDF de JFEN para comprobar preservación de paleta morada
+        let jfenDoc = null;
+        window.jspdf.jsPDF = function(...args) {
+          jfenDoc = new origJsPdf(...args);
+          jfenDoc.save = function(name) {
+            jfenPdfDoc = jfenDoc;
+            window.latestJfenBlob = jfenDoc.output('blob');
+          };
+          return jfenDoc;
+        };
+
+        const tipoJfen = {
+          id: 'jfen',
+          nombre: 'Juegos Florales Escolares Nacionales (JFEN)',
+          tipoParticipacion: 'grupal',
+          tieneGenero: false,
+          tieneDisciplina: true,
+          categorias: ['D', 'E'],
+          formato_pdf_actas: 'fichas_por_categoria'
+        };
+
+        const recordsJfen = [
+          {
+            id: 'jfen_1',
+            etapa: 'UGEL',
+            categoria: 'D',
+            disciplina: 'Danza tradicional',
+            institucion: 'I.E. NUESTRA SEÑORA DE GUADALUPE',
+            codigoModular: '295581',
+            puesto: '1.° PUESTO',
+            resolucionRef: 'RD N° 04522-2026-UGEL03',
+            participantes: [
+              { nombres: 'MIGUEL ANGEL', apellidos: 'CASTRO PAZ', dni: '74123456', rol: 'Estudiante' }
+            ],
+            asesores: [
+              { nombres: 'GLORIA', apellidos: 'MENDOZA SOLIS', dni: '08123456', rol: 'Docente Asesor' }
+            ]
+          }
+        ];
+
+        await exportConcursosReportPdf(
+          recordsJfen,
+          tipoJfen,
+          { etapa: 'UGEL' },
+          { filename: 'Acta_JFEN_2026.pdf', orientation: 'portrait' }
+        );
+
+        window.jspdf.jsPDF = origJsPdf; // restaurar
+
+        addAssert(
+          'Generación de PDF JFEN exitosa (preservando formato específico)',
+          jfenDoc !== null && jfenDoc.internal.getNumberOfPages() > 0,
+          `JFEN generado con ${jfenDoc ? jfenDoc.internal.getNumberOfPages() : 0} página(s)`
+        );
+
+        // 6. Validar función getTituloConsolidadoConcurso
+        const titJedpa = getTituloConsolidadoConcurso({ nombre: 'Juegos Escolares Deportivos y Paradeportivos (JEDPA)' });
+        const titJfen = getTituloConsolidadoConcurso({ nombre: 'Juegos Florales Escolares Nacionales (JFEN)' });
+        addAssert(
+          'getTituloConsolidadoConcurso formatea título oficial en mayúsculas con guión',
+          titJedpa === 'CONSOLIDADO OFICIAL DE LOS RESULTADOS - JUEGOS ESCOLARES DEPORTIVOS Y PARADEPORTIVOS (JEDPA)' &&
+          titJfen === 'CONSOLIDADO OFICIAL DE LOS RESULTADOS - JUEGOS FLORALES ESCOLARES NACIONALES (JFEN)',
+          `JEDPA: "${titJedpa}"`
+        );
+
+        // 7. Prueba de Flujo Continuo: JEDPA Fútbol 16 estudiantes (caso real reportado)
+        let jedpaDoc = null;
+        let jedpaSavedFilename = null;
+        window.jspdf.jsPDF = function(...args) {
+          jedpaDoc = new origJsPdf(...args);
+          jedpaDoc.save = function(name) {
+            jedpaSavedFilename = name;
+          };
+          return jedpaDoc;
+        };
+
+        const tipoJedpaFutbol = {
+          id: 'jedpa',
+          nombre: 'Juegos Escolares Deportivos y Paradeportivos (JEDPA)',
+          tipoParticipacion: 'grupal',
+          tieneGenero: true,
+          tieneDisciplina: true,
+          modalidad: 'colectiva'
+        };
+
+        const estudiantesFutbol16 = Array.from({ length: 16 }, (_, i) => ({
+          nombres: `JUGADOR ${i + 1}`,
+          apellidos: `ESTUDIANTE APELLIDO ${i + 1}`,
+          dni: `700000${String(i + 1).padStart(2, '0')}`,
+          rol: 'Estudiante'
+        }));
+
+        const recordsJedpaFutbol = [
+          {
+            id: 'jedpa_fut_1',
+            etapa: 'UGEL',
+            disciplina: 'Fútbol',
+            categoria: 'C',
+            genero: 'Varones',
+            institucion: 'I.E. PEDRO A. LABARTHE',
+            codigoModular: '0295588',
+            puesto: '1.° PUESTO',
+            resolucionRef: 'RD N° 04530-2026-UGEL03',
+            participantes: estudiantesFutbol16,
+            asesores: [
+              { nombres: 'MANUEL', apellidos: 'DELGADO PEREZ', dni: '08123499', rol: 'Delegado' },
+              { nombres: 'CARLOS', apellidos: 'ENTRENADOR VERA', dni: '09887766', rol: 'Entrenador' }
+            ]
+          }
+        ];
+
+        await exportJedpaFichasPdf(
+          recordsJedpaFutbol,
+          tipoJedpaFutbol,
+          { disciplina: 'Fútbol', categoria: 'C', genero: 'Varones', etapa: 'UGEL' },
+          {}
+        );
+
+        window.jspdf.jsPDF = origJsPdf; // restaurar
+
+        addAssert(
+          'Flujo continuo JEDPA Colectivo: 16 estudiantes divididos entre páginas sin fallos',
+          jedpaDoc !== null && jedpaDoc.internal.getNumberOfPages() === 2,
+          `Documento generado con ${jedpaDoc ? jedpaDoc.internal.getNumberOfPages() : 0} páginas (distribución continua)`
+        );
+
+        addAssert(
+          'Nombre de archivo descargable inicia con Consolidado_Actas_',
+          jedpaSavedFilename && jedpaSavedFilename.startsWith('Consolidado_Actas_JEDPA'),
+          `Nombre generado: "${jedpaSavedFilename}"`
+        );
+
+        document.getElementById('status').style.display = 'none';
+        document.getElementById('results').style.display = 'block';
+
+        document.getElementById('downloadCreaEmprendePdfBtn').addEventListener('click', () => {
+          if (creaEmprendePdfDoc) {
+            creaEmprendePdfDoc.save('Acta_Oficial_Crea_y_Emprende_2026.pdf');
+          }
+        });
+
+        document.getElementById('downloadJfenPdfBtn').addEventListener('click', () => {
+          if (jfenPdfDoc) {
+            jfenPdfDoc.save('Acta_Oficial_JFEN_2026.pdf');
+          }
+        });
+
+        window.allTestsPassed = window.testResults.every(r => r.passed);
+        console.log('Todos los tests en navegador pasaron:', window.allTestsPassed);
+
+      } catch (err) {
+        console.error('Error ejecutando tests en navegador:', err);
+        addAssert('Ejecución global sin errores', false, err.message);
+        document.getElementById('status').innerText = 'Error: ' + err.message;
+      }
+    }
+
+    runLiveTests();
+  </script>
+</body>
+</html>

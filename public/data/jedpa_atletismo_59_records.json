@@ -1,0 +1,1363 @@
+﻿[
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "COLEGIO PERUANO JAPONES LA UNION",
+        "codigoModular":  "0336727",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "ORTIZ KAMIYA AKEMI SILVANA",
+                                  "dni":  "78418863"
+                              },
+                              {
+                                  "nombres":  "ESCURRA ZAPATA SIMON",
+                                  "dni":  "09428296"
+                              },
+                              {
+                                  "nombres":  "CARMEN DEL ROSARIO",
+                                  "dni":  "09920449"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "COLEGIO PERUANO JAPONES LA UNION",
+        "codigoModular":  "0333658",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "NAKAMOTO URASAKI AIRI ZOE",
+                                  "dni":  "78810870"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "COLEGIO PERUANO JAPONES LA UNION",
+        "codigoModular":  "0333658",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "AVILA NAKASHIMA ALONDRA AYUMI",
+                                  "dni":  "79331479"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "COLEGIO PERUANO JAPONES LA UNION",
+        "codigoModular":  "0333658",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "WATANABE MIYASHIRO AMI",
+                                  "dni":  "79104545"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "LICEO NAVAL CONTRALMIRANTE",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "MONTERO",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "MONTERO",
+        "codigoModular":  "0693465",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "ESPEJO ECHE NICOLE YAMILETH",
+                                  "dni":  "78708903"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "PERUANO CHINO JUAN XXIII",
+        "codigoModular":  "0331413",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "SAGRADO CORAZON SOPHIANUM",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SAGRADO CORAZON SOPHIANUM",
+        "codigoModular":  "0314633",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "TAM CISNEROS LUANA ISABELLA",
+                                  "dni":  "79140411"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "1160 JOSE FAUSTINO SANCHEZ CARRION",
+        "codigoModular":  "0339275",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "GUTIERREZ BLONDET YSABEL",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "CATALINA",
+                                  "dni":  "25774484"
+                              },
+                              {
+                                  "nombres":  "NOVORIKAWA AKIRA ARHAMIZ",
+                                  "dni":  "60945690"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "COLEGIO PERUANO JAPONES LA UNION",
+        "codigoModular":  "0333658",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "GUIMA FUKUHARA SEBASTIAN TOMOYUKI",
+                                  "dni":  "78556941"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SANCHEZ DEZA",
+        "codigoModular":  "0639161",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "LOPEZ ESPICHAN FERNANDO GENARO SALVADOR",
+                                  "dni":  "79050802"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SANCHEZ DEZA",
+        "codigoModular":  "0639161",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "HURTADO YAURI YARED NAHEL",
+                                  "dni":  "78650582"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "LA SALLE",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "LA SALLE",
+        "codigoModular":  "0331488",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "SUAREZ RUIZ MATTEO GUSTAVO",
+                                  "dni":  "78617176"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "PERUANO CHINO JUAN XXIII",
+        "codigoModular":  "0331413",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "ESCALLY CORTIJO ALVARO JOSE",
+                                  "dni":  "78806726"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "SAGRADO CORAZON SOPHIANUM",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SAGRADO CORAZON SOPHIANUM",
+        "codigoModular":  "0314633",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "ALANIA ROSALES MISAEL ELIAS",
+                                  "dni":  "78726210"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "COLEGIO PERUANO JAPONES LA UNION",
+        "codigoModular":  "0336727",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "QUESADA YTO MIDORI KEILY",
+                                  "dni":  "78222429"
+                              },
+                              {
+                                  "nombres":  "CESAR",
+                                  "dni":  "41314316"
+                              },
+                              {
+                                  "nombres":  "RIVERA CARMEN DEL ROSARIO",
+                                  "dni":  "09920449"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "A",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "COLEGIO PERUANO JAPONES LA UNION",
+        "codigoModular":  "0336727",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "VALENCIA INOUYE CATALINA KAORI",
+                                  "dni":  "78173422"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "COLEGIO PERUANO JAPONES LA UNION",
+        "codigoModular":  "0336727",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "PARRA VILLACREZ ZOE ARITZA",
+                                  "dni":  "77990645"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "JESUS REPARADOR",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  ""
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "JESUS REPARADOR",
+        "codigoModular":  "1490127",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "RAMOS ALAVE DAYLIN THAMARA",
+                                  "dni":  "63132827"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "LICEO NAVAL CONTRALMIRANTE",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "MONTERO",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "MONTERO",
+        "codigoModular":  "0693499",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "AGUERO DAMASO ANGIE ISABEL",
+                                  "dni":  "78126149"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "LICEO NAVAL CONTRALMIRANTE",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "MONTERO",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "MONTERO",
+        "codigoModular":  "0693499",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "CLAUDIO ROSAS REYSHEL CELESTE",
+                                  "dni":  "77649018"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "MIGUEL GRAU",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "MIGUEL GRAU",
+        "codigoModular":  "315401",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "DEZA SUAREZ ARIANNA NALEXY",
+                                  "dni":  "78225792"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "MIGUEL GRAU",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "MIGUEL GRAU",
+        "codigoModular":  "0245670",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "APAZA VILCA NALLELY TEREZA",
+                                  "dni":  "77544930"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "PERUANO CHINO JUAN XXIII",
+        "codigoModular":  "0336966",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "ONAJA VALDIVIA KEI GUADALUPE",
+                                  "dni":  "77771378"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "PERUANO CHINO JUAN XXIII",
+        "codigoModular":  "0336966",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "YONG SANCHEZ ZULEMA DANA",
+                                  "dni":  "62983431"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "ROSA DOMINGA PEREZ LIENDO",
+        "codigoModular":  "0340398",
+        "puesto":  "Clasificado",
+        "participantes":  [
+
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SAGRADO CORAZON SOPHIANUM",
+        "codigoModular":  "0449520",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "GUZMAN DIAZ ISABELLA VALENTINA",
+                                  "dni":  "78136221"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "SAN AGUSTIN",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SAN AGUSTIN",
+        "codigoModular":  "0314476",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "CHAVEZ CASTILLO LUZ MICAELA",
+                                  "dni":  "78122971"
+                              },
+                              {
+                                  "nombres":  "Clasificad",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "SANTA ANA",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SANTA ANA",
+        "codigoModular":  "0337220",
+        "puesto":  "Clasificado",
+        "participantes":  [
+
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "1112 VICTOR ANDRES BELAUNDE",
+        "codigoModular":  "0340323",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "MADRID VELASQUEZ AARON JOSUE",
+                                  "dni":  "005925317"
+                              },
+                              {
+                                  "nombres":  "RIVERA CARMEN DEL ROSARIO",
+                                  "dni":  "09920449"
+                              },
+                              {
+                                  "nombres":  "LUIS RODOLFO",
+                                  "dni":  "09678687"
+                              },
+                              {
+                                  "nombres":  "BARTOLOME HERRERA",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "BARTOLOME HERRERA",
+        "codigoModular":  "0334649",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "PEZO ZEVALLOS ZEAM JUNIOR",
+                                  "dni":  "77889815"
+                              },
+                              {
+                                  "nombres":  "TRUCIOS PIPA JESUS ALONSO",
+                                  "dni":  "77752927"
+                              },
+                              {
+                                  "nombres":  "BOLEJE NAVA ANGEL DAVID",
+                                  "dni":  "93265659"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "COLEGIO PERUANO JAPONES LA UNION",
+        "codigoModular":  "0336727",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "OSHIRO YARA JUAN CAMILO",
+                                  "dni":  "78123432"
+                              },
+                              {
+                                  "nombres":  "AREVALO CHINININ LUIS ENRIQUE",
+                                  "dni":  "63160027"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SANCHEZ DEZA",
+        "codigoModular":  "0643692",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "TAYPE APAZA MIGUEL ANGEL",
+                                  "dni":  "77845356"
+                              },
+                              {
+                                  "nombres":  "ARROYO ROJAS PAOLO ISMAEL",
+                                  "dni":  "77754317"
+                              },
+                              {
+                                  "nombres":  "CRUZ COTRINA DANTE LEANDRO",
+                                  "dni":  "77626523"
+                              },
+                              {
+                                  "nombres":  "FLORES QUISPE STEFANO FELIMON",
+                                  "dni":  "78216833"
+                              },
+                              {
+                                  "nombres":  "GARCIA CHAPARRO DIDDIER ENGHINO LIONEL",
+                                  "dni":  "77747238"
+                              },
+                              {
+                                  "nombres":  "LOS ALAMOS",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "LOS ALAMOS",
+        "codigoModular":  "1098656",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "MORI TORRES MIZAEL ALEJANDRO",
+                                  "dni":  "77722379"
+                              },
+                              {
+                                  "nombres":  "SAN AGUSTIN",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SAN AGUSTIN",
+        "codigoModular":  "0314476",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "RABORG SOLIS MATEO ALONSO",
+                                  "dni":  "77546078"
+                              },
+                              {
+                                  "nombres":  "SAN FRANCISCO DE SALES",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SAN FRANCISCO DE SALES",
+        "codigoModular":  "0337311",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "LAVERIANO CHUQUIJA DYLAN IKER MATHIEL",
+                                  "dni":  "77640376"
+                              },
+                              {
+                                  "nombres":  "SANTO DOMINGO EL APOSTOL",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SANTO DOMINGO EL APOSTOL",
+        "codigoModular":  "1199009",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "COSTA BERNAL AARON ENRIQUE KALEB",
+                                  "dni":  "77543639"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "1105 LA SAGRADA FAMILIA",
+        "codigoModular":  "0535666",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "BARZOLA PINZGER TALITA AKEMY",
+                                  "dni":  "74257387"
+                              },
+                              {
+                                  "nombres":  "AYME ZULEMA",
+                                  "dni":  "07497741"
+                              },
+                              {
+                                  "nombres":  "JOSE",
+                                  "dni":  "06711701"
+                              },
+                              {
+                                  "nombres":  "RIVERA CARMEN DEL ROSARIO",
+                                  "dni":  "09920449"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "1112 VICTOR ANDRES BELAUNDE",
+        "codigoModular":  "0340323",
+        "puesto":  "Clasificado",
+        "participantes":  [
+
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "COLEGIO PERUANO JAPONES LA UNION",
+        "codigoModular":  "0336727",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "ASCENCIO CALDERON KIARA LUCIANA",
+                                  "dni":  "76883607"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SANCHEZ DEZA",
+        "codigoModular":  "0643692",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "REYES ESPINOZA MARIA GRAZIA",
+                                  "dni":  "75637849"
+                              },
+                              {
+                                  "nombres":  "CHIRA VARGAS BRISSA GISELL",
+                                  "dni":  "62645726"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "INNOVA SCHOOLS SAN MIGUEL 3 LA PAZ",
+        "codigoModular":  "1723873",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "RIVERA PEZO LUCIANA",
+                                  "dni":  "73298195"
+                              },
+                              {
+                                  "nombres":  "ISABEL LA CATOLICA",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "ISABEL LA CATOLICA",
+        "codigoModular":  "0245662",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "RENGEL ACOSTA AYNARA VALENTINA",
+                                  "dni":  "21031835200048"
+                              },
+                              {
+                                  "nombres":  "LICEO NAVAL CONTRALMIRANTE",
+                                  "dni":  ""
+                              },
+                              {
+                                  "nombres":  "MONTERO",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "MONTERO",
+        "codigoModular":  "0693499",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "HUAMANI HUAMANI SOFIA KATHERINE",
+                                  "dni":  "62350891"
+                              },
+                              {
+                                  "nombres":  "MIGUEL GRAU",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "MIGUEL GRAU",
+        "codigoModular":  "0245670",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "LANDAURO OBLITAS NICOLE SAORI",
+                                  "dni":  "77375291"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "NUESTRA SEÑORA DE LA LUZ",
+        "codigoModular":  "0827022",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "MARENGO MANZO ANEL ANDREA",
+                                  "dni":  "77256383"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "PERUANO CHINO JUAN XXIII",
+        "codigoModular":  "0336966",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "GARCIA CHAVEZ VIVIANA NICOLE",
+                                  "dni":  "73927388"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "PERUANO JAPONES LA VICTORIA",
+        "codigoModular":  "0582338",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "HIGA CAMPOS KIRSTEN HARUKO",
+                                  "dni":  "77300698"
+                              },
+                              {
+                                  "nombres":  "CHINEN ARAKAKI ASAMI SOFIA",
+                                  "dni":  "77106019"
+                              },
+                              {
+                                  "nombres":  "REINA DE LA PAZ",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "B",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "REINA DE LA PAZ",
+        "codigoModular":  "0449975",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "SAGRADO CORAZON SOPHIANUM",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "C",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SAGRADO CORAZON SOPHIANUM",
+        "codigoModular":  "0449520",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "MENDEZ MENDOZA MICAELA",
+                                  "dni":  "77316305"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "C",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "1070 MELITON CARVAJAL",
+        "codigoModular":  "0245647",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "MORENO QUIROZ DEREK ELIAS",
+                                  "dni":  "61843388"
+                              },
+                              {
+                                  "nombres":  "EDGAR",
+                                  "dni":  "08884629"
+                              },
+                              {
+                                  "nombres":  "JOSE",
+                                  "dni":  "06711701"
+                              },
+                              {
+                                  "nombres":  "RIVERA CARMEN DEL ROSARIO",
+                                  "dni":  "09920449"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "C",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "1071 ALFONSO UGARTE",
+        "codigoModular":  "0340224",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "LOAYZA CHIA MISHELS JAMC",
+                                  "dni":  "61901742"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "C",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "1107 JAVIER PRADO",
+        "codigoModular":  "1007160",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "ROJAS LANDA LEANDRO GERAD",
+                                  "dni":  "77265869"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "C",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "COLEGIO PERUANO JAPONES LA UNION",
+        "codigoModular":  "0336727",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "TAKAESU TAKARA GIAN",
+                                  "dni":  "62367203"
+                              },
+                              {
+                                  "nombres":  "TOYAMA HIGA ANDY KOJI",
+                                  "dni":  "77191880"
+                              },
+                              {
+                                  "nombres":  "KOBAYASHI SHIMABUKURO YUGA NICOLAS",
+                                  "dni":  "77189417"
+                              },
+                              {
+                                  "nombres":  "WESTERKAM TOBARU OLIVER MASAKI",
+                                  "dni":  "74027463"
+                              },
+                              {
+                                  "nombres":  "DE JESUS",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "C",
+        "genero":  "DAMAS",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "DE JESUS",
+        "codigoModular":  "0336800",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "LERZO VALLEBUONA MATTEO DANIEL",
+                                  "dni":  "62762004"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "C",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SANCHEZ DEZA",
+        "codigoModular":  "0643692",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "VILLCAS ARROYO GEREMY ARLETT",
+                                  "dni":  "62375904"
+                              },
+                              {
+                                  "nombres":  "GARCIA PORRAS CHRISTIAN LEONEL ANDRE",
+                                  "dni":  "74511059"
+                              },
+                              {
+                                  "nombres":  "LA SALLE",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "C",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "LA SALLE",
+        "codigoModular":  "0336982",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "BLUA VALDIVIEZO JON KEVIN",
+                                  "dni":  "61790949"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "C",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "NUESTRA SEÑORA DE GUADALUPE",
+        "codigoModular":  "0336495",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "SAGRADO CORAZON SOPHIANUM",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "C",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SAGRADO CORAZON SOPHIANUM",
+        "codigoModular":  "0449520",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "MATOS TSUKAZAN IAN PIERO IRISHI",
+                                  "dni":  "73411439"
+                              },
+                              {
+                                  "nombres":  "SAN FRANCISCO DE SALES",
+                                  "dni":  ""
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    },
+    {
+        "tipoConcurso":  "Juegos Escolares Deportivos y Paradeportivos (JEDPA)",
+        "tipoConcursoId":  "jedpa",
+        "etapa":  "UGEL",
+        "categoria":  "C",
+        "genero":  "VARONES",
+        "disciplina":  "ATLETISMO",
+        "institucion":  "SAN FRANCISCO DE SALES",
+        "codigoModular":  "0337311",
+        "puesto":  "Clasificado",
+        "participantes":  [
+                              {
+                                  "nombres":  "APAZA VARGAS YADIR OZIEL",
+                                  "dni":  "62648374"
+                              }
+                          ],
+        "resolucionRef":  "RD 04851-2026-UGEL03"
+    }
+]

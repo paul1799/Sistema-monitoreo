@@ -229,6 +229,113 @@ export function parseArteDisciplina(disciplinaStr) {
 }
 
 /* =========================================================================
+   PALETA ESTÁNDAR INSTITUCIONAL Y MODALIDADES OFICIALES
+   ========================================================================= */
+export const PALETA_ESTANDAR = {
+  navy: '#12294C',       // [18, 41, 76] Encabezados de tabla, cabecera de ficha, línea superior
+  navyRgb: [18, 41, 76],
+  title: '#0B1B36',      // [11, 27, 54] Título principal del acta
+  titleRgb: [11, 27, 54],
+  band: '#2E4A73',       // [46, 74, 115] Franja de grupo / sección
+  bandRgb: [46, 74, 115],
+  gold: '#E0A626',       // [224, 166, 38] Acento lateral de la franja / podio oro
+  goldRgb: [224, 166, 38],
+  goldText: '#B7791F',   // [183, 121, 31] Subtítulo oficial
+  goldSoft: '#FDF6E3',   // [253, 246, 227] Fondo suave de cuerpo técnico / asesor
+  goldSoftRgb: [253, 246, 227],
+  kvLabel: '#EDF2F5',    // [237, 242, 245] Gris claro en etiquetas de la ficha
+  kvLabelRgb: [237, 242, 245],
+  kpiBg: '#F7FAFC',      // [247, 250, 252] Caja de indicadores (KPI)
+  border: '#D9E1EA',     // [217, 225, 234] Bordes suaves
+  borderRgb: [217, 225, 234],
+  muted: '#5F6A7B',      // [95, 106, 123] Texto secundario
+  mutedRgb: [95, 106, 123],
+  altRow: '#F7FAFC',     // Fondo alterno de filas de participantes
+  altRowRgb: [247, 250, 252],
+  podioOro: '#D4A017',
+  podioPlata: '#9EA7B3',
+  podioBronce: '#B87333',
+  podioOroBg: '#FEF9E7',
+  podioPlataBg: '#F1F3F5',
+  podioBronceBg: '#FAF0E6'
+};
+
+export const JEDPA_THEME = {
+  navy: '#12294C',       // [18, 41, 76] Encabezados de tabla, línea superior del documento
+  title: '#0B1B36',      // [11, 27, 54] Título principal del acta
+  band: '#2E4A73',       // [46, 74, 115] Franja de grupo (ej. BÁSQUET · CATEGORÍA B · VARONES)
+  gold: '#E0A626',       // [224, 166, 38] Acento lateral de la franja / destacados
+  goldText: '#B7791F',   // [183, 121, 31] Subtítulo (Comisión Organizadora · Filtros)
+  goldSoft: '#FDF6E3',   // [253, 246, 227] Fondo suave de cuerpo técnico
+  boxBg: '#EDF2F5',      // [237, 242, 245] Cajas del membrete (PERÚ, DRELM, UGEL 03, AGEBRE)
+  kpiBg: '#F7FAFC',      // [247, 250, 252] Caja de indicadores (KPI)
+  border: '#D9E1EA',     // [217, 225, 234] Bordes suaves
+  muted: '#5F6A7B',      // [95, 106, 123] Texto secundario
+  altRow: '#F7FAFC'      // Fondo alterno de filas de estudiantes
+};
+
+export const DISCIPLINAS_COLECTIVAS_DEFAULT = [
+  'FUTBOL', 'FÚTBOL', 'FUTSAL', 'BASQUET', 'BÁSQUET', 'VOLEIBOL', 'VÓLEIBOL',
+  'VOLEY', 'VÓLEY', 'VOLEY PLAYA', 'VÓLEY PLAYA', 'HANDBALL', 'BALONMANO'
+];
+
+/**
+ * Determina si una disciplina o registro de JEDPA corresponde a una modalidad colectiva (grupal).
+ * Criterios:
+ * 1. Campo explícito modalidad === 'colectiva' en registro o tipoConcurso
+ * 2. Si la disciplina está en DISCIPLINAS_COLECTIVAS_DEFAULT
+ * 3. Respaldo: si el registro tiene más de 1 participante
+ */
+export function esDisciplinaColectiva(disciplina, registro = null, tipoConcurso = null) {
+  if (registro && registro.modalidad) {
+    const mod = String(registro.modalidad).toLowerCase().trim();
+    if (mod === 'colectiva' || mod === 'grupal') return true;
+    if (mod === 'individual') return false;
+  }
+  if (tipoConcurso && tipoConcurso.modalidad) {
+    const mod = String(tipoConcurso.modalidad).toLowerCase().trim();
+    if (mod === 'colectiva' || mod === 'grupal') return true;
+    if (mod === 'individual') return false;
+  }
+  const discNorm = String(disciplina || (registro ? (registro.disciplina || registro.tituloTrabajo) : '') || '')
+    .trim().toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  if (DISCIPLINAS_COLECTIVAS_DEFAULT.some(d => {
+    const dNorm = d.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return discNorm.includes(dNorm) || dNorm.includes(discNorm);
+  })) {
+    return true;
+  }
+
+  // Respaldo: si tiene más de 1 estudiante en participantes
+  if (registro && Array.isArray(registro.participantes) && registro.participantes.length > 1) {
+    return true;
+  }
+
+  return false;
+}
+
+export function normalizeGenero(val) {
+  if (!val) return 'sin_genero';
+  const s = String(val).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (!s || s === '—' || s === '-' || s === 'sin genero' || s === 'sin_genero') return 'sin_genero';
+  if (['damas', 'dama', 'femenino', 'f', 'd'].includes(s)) return 'damas';
+  if (['varones', 'varon', 'masculino', 'm', 'v'].includes(s)) return 'varones';
+  if (s.includes('mixt')) return 'mixto';
+  return s;
+}
+
+export function formatGeneroDisplay(val) {
+  const norm = normalizeGenero(val);
+  if (norm === 'damas') return 'Damas';
+  if (norm === 'varones') return 'Varones';
+  if (norm === 'mixto') return 'Mixto';
+  if (norm === 'sin_genero') return 'Sin género';
+  return val ? String(val).trim() : 'Sin género';
+}
+
+/* =========================================================================
    CONFIGURACIÓN CENTRALIZADA POR CONCURSO (ACTAS PDF Y TABLAS)
    ========================================================================= */
 export const CONCURSOS_CONFIG = {
@@ -241,11 +348,15 @@ export const CONCURSOS_CONFIG = {
     etiqueta_cuerpo_tecnico: 'Delegado / Entrenador',
     cuerpo_tecnico_por_grupo: true,
     formato_pdf_actas: 'tabular',
+    formato_pdf_colectivo: 'fichas',
     alcance_cuerpo_tecnico: 'por_grupo',
     columnas_combinables: ['categoria', 'disciplina', 'cuerpoTecnico', 'etapa', 'resolucionRef'],
     mayusculas_cuerpo_tecnico: true,
     optimizar_filas_compactas: true,
-    roles_permitidos_asesor: ['DELEGADO', 'ENTRENADOR']
+    roles_permitidos_asesor: ['DELEGADO', 'ENTRENADOR'],
+    color_fila_grupo: [47, 74, 116],        // Azul pizarra #2F4A74
+    color_texto_fila_grupo: [255, 255, 255],// Blanco
+    color_borde_fila_grupo: [224, 165, 38]  // Dorado #E0A526
   },
   jfen: {
     id: 'jfen',
@@ -494,25 +605,170 @@ export function formatearFiltrosSubtitulo(filters = {}, etapaLabel = 'UGEL') {
  * 1. Si existe en la entidad concursoCuerpoTecnico -> usar ese
  * 2. Si no -> calcular en memoria con registros del grupo (unión y deduplicación por DNI)
  *    Detecta conflictos de rol para advertir en "Datos por revisar"
+/**
+ * Generador de ID determinístico de documento para concursoCuerpoTecnico por grupo
+ * Formato: ETAPA__DISCIPLINA__CATEGORIA__RAMA (normalizado en mayúsculas y sin acentos)
  */
-export function obtenerCuerpoTecnicoGrupo(grupoKey, registrosGrupo = [], state = {}, tipoConcurso = null) {
-  const cList = (state && state.concursoCuerpoTecnico) || [];
-  const registrado = cList.find(c => c.id === grupoKey || c.grupoKey === grupoKey);
+export function generarConcursoCuerpoTecnicoDocId(etapa, disciplina, categoria, rama) {
+  return [etapa, disciplina, categoria, rama]
+    .map(v => String(v || '').trim().toUpperCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, '_'))
+    .join('__');
+}
 
-  if (registrado && Array.isArray(registrado.personas) && registrado.personas.length > 0) {
-    return {
-      origen: 'grupo',
-      personas: registrado.personas,
-      conflictos: [],
-      docId: registrado.id
-    };
+/**
+ * Regla de lectura unificada del cuerpo técnico para un grupo:
+ * 1. Si existe en la entidad concursoCuerpoTecnico -> usar ese (con esGrupoFormalizado = true)
+ * 2. Si no -> calcular en memoria con registros del grupo (unión y deduplicación por DNI)
+ *    Detecta conflictos de rol para advertir en "Datos por revisar"
+ * 
+ * Soporta de manera polimórfica:
+ * - llamada desde ui.js: (record, state.concursoCuerpoTecnico, filteredRecords)
+ * - llamada desde pdf-template: (grupoKey, rowsInGroup, state, tipoConcurso)
+ */
+export function obtenerCuerpoTecnicoGrupo(target, arg2 = [], arg3 = {}, arg4 = null) {
+  // Extraer cList (documentos de concursoCuerpoTecnico) y registros del grupo
+  let cList = [];
+  let registrosGrupo = [];
+
+  if (Array.isArray(arg2)) {
+    // Si el 2º argumento contiene documentos de concursoCuerpoTecnico (tienen miembros/personas o id estructurado)
+    const looksLikeCtDocs = arg2.length === 0 || arg2.some(item => item && (item.miembros || item.personas || item.consolidatedAt || (item.id && (item.id.includes('__') || item.id.startsWith('jedpa_')))));
+    if (looksLikeCtDocs && arg2.length > 0) {
+      cList = arg2;
+      if (Array.isArray(arg3)) {
+        registrosGrupo = arg3;
+      }
+    } else {
+      registrosGrupo = arg2;
+      if (arg3 && Array.isArray(arg3.concursoCuerpoTecnico)) {
+        cList = arg3.concursoCuerpoTecnico;
+      }
+    }
+  }
+
+  // Búsqueda de respaldo en arg3 o window.state
+  if (cList.length === 0 && arg3 && Array.isArray(arg3.concursoCuerpoTecnico)) {
+    cList = arg3.concursoCuerpoTecnico;
+  }
+  if (cList.length === 0 && typeof window !== 'undefined' && window.state && Array.isArray(window.state.concursoCuerpoTecnico)) {
+    cList = window.state.concursoCuerpoTecnico;
+  }
+
+  // Desestructuración y normalización de los 4 ejes del grupo
+  let etapa = '';
+  let disciplina = '';
+  let categoria = '';
+  let genero = '';
+  let targetKey = '';
+
+  const normText = (s) => String(s || '').trim().toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  const normSlug = (s) => normText(s)
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  if (target && typeof target === 'object') {
+    etapa = target.etapa || 'UGEL';
+    disciplina = target.disciplina || target.tituloTrabajo || '';
+    categoria = target.categoria || '';
+    genero = target.genero || target.rama || '';
+    targetKey = `${etapa} · ${disciplina} · CATEGORÍA ${categoria} · ${genero}`;
+  } else if (typeof target === 'string') {
+    targetKey = target;
+    const parts = target.split('·').map(p => p.trim());
+    if (parts.length >= 4) {
+      etapa = parts[0];
+      disciplina = parts[1];
+      categoria = parts[2].replace(/^CATEGOR[IÍ]A\s*/i, '');
+      genero = parts[3];
+    } else if (parts.length === 3) {
+      etapa = 'UGEL';
+      disciplina = parts[0];
+      categoria = parts[1].replace(/^CATEGOR[IÍ]A\s*/i, '');
+      genero = parts[2];
+    }
+  }
+
+  const normCat = (c) => normSlug(c).replace(/^CATEGORIA_?/, '');
+  const normGen = (g) => {
+    const n = normText(g);
+    if (n.startsWith('DAM') || n === 'F') return 'DAMAS';
+    if (n.startsWith('VAR') || n === 'M') return 'VARONES';
+    if (n.startsWith('MIX')) return 'MIXTO';
+    return n;
+  };
+
+  const detDocId = generarConcursoCuerpoTecnicoDocId(etapa || 'UGEL', disciplina, categoria, genero);
+  const slug = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const legacyDocId = `jedpa_${slug(etapa)}_${slug(disciplina)}_${slug(categoria)}_${slug(genero)}`;
+
+  // Buscar coincidencia en la colección centralizada
+  const registrado = (cList || []).find(c => {
+    if (!c) return false;
+    // 1. Por ID directo (determinístico o legacy)
+    if (c.id === detDocId || c.id === legacyDocId) return true;
+    if (targetKey && (c.id === targetKey || c.grupoKey === targetKey)) return true;
+    if (typeof target === 'string' && (c.id === target || c.grupoKey === target)) return true;
+
+    // 2. Por coincidencia de los 4 ejes
+    if (etapa || disciplina || categoria || genero) {
+      const cEtapa = c.etapa || 'UGEL';
+      const cDisc = c.disciplina || '';
+      const cCat = c.categoria || '';
+      const cGen = c.genero || c.rama || '';
+
+      const matchE = !etapa || normText(cEtapa) === normText(etapa);
+      const matchD = !disciplina || normText(cDisc) === normText(disciplina);
+      const matchC = !categoria || normCat(cCat) === normCat(categoria);
+      const matchG = !genero || normGen(cGen) === normGen(genero);
+
+      if (matchE && matchD && matchC && matchG) return true;
+    }
+    return false;
+  });
+
+  // Si existe en concursoCuerpoTecnico
+  if (registrado) {
+    const rawMembers = Array.isArray(registrado.miembros) && registrado.miembros.length > 0
+      ? registrado.miembros
+      : (Array.isArray(registrado.personas) ? registrado.personas : []);
+
+    if (rawMembers.length > 0) {
+      const normalizedMembers = rawMembers.map(m => ({
+        rol: (m.rol || 'Delegado').trim(),
+        apellidos: (m.apellidos || '').trim().toUpperCase(),
+        nombres: (m.nombres || '').trim().toUpperCase(),
+        dni: (m.dni || '').trim()
+      }));
+
+      return {
+        origen: 'concursoCuerpoTecnico',
+        esGrupoFormalizado: true,
+        personas: normalizedMembers,
+        miembros: normalizedMembers,
+        conflictos: [],
+        docId: registrado.id
+      };
+    }
   }
 
   // Deduplicación en memoria de los asesores del grupo
+  const groupRecs = (registrosGrupo || []).filter(rec => {
+    if (!rec) return false;
+    if (!disciplina && !categoria && !genero) return true;
+    const matchD = !disciplina || normText(rec.disciplina || rec.tituloTrabajo) === normText(disciplina);
+    const matchC = !categoria || normCat(rec.categoria) === normCat(categoria);
+    const matchG = !genero || normGen(rec.genero) === normGen(genero);
+    return matchD && matchC && matchG;
+  });
+
   const personasMap = new Map();
   const conflictos = [];
 
-  (registrosGrupo || []).forEach(r => {
+  groupRecs.forEach(r => {
     if (r.tieneExcepcionCuerpoTecnico) return;
     (r.asesores || []).forEach(a => {
       const nom = formatearNombre(a);
@@ -550,19 +806,94 @@ export function obtenerCuerpoTecnicoGrupo(grupoKey, registrosGrupo = [], state =
       });
     }
     personas.push({
-      apellidos: val.apellidos,
-      nombres: val.nombres,
+      apellidos: val.apellidos.toUpperCase(),
+      nombres: val.nombres.toUpperCase(),
       dni: val.dni,
       rol: rolFinal
     });
   });
 
+  const hasCalculated = personas.length > 0;
   return {
-    origen: 'calculado',
+    origen: hasCalculated ? 'calculado' : 'individual',
+    esGrupoFormalizado: false,
     personas,
+    miembros: personas,
     conflictos,
     docId: null
   };
+}
+
+/**
+ * Formatea el Código Modular a texto oficial de 7 dígitos con cero inicial cuando corresponde.
+ * @param {string|number} val
+ * @returns {string}
+ */
+export function formatCodigoModular(val) {
+  if (val === null || val === undefined) return '—';
+  const str = String(val).trim();
+  if (!str || str === '—' || str === '-') return '—';
+  // Si contiene solo dígitos y tiene entre 1 y 7 caracteres, rellenar con ceros a la izquierda
+  if (/^\d{1,7}$/.test(str)) {
+    return str.padStart(7, '0');
+  }
+  return str;
+}
+
+/**
+ * Obtiene el cuerpo técnico exclusivo de un equipo/institución en disciplinas colectivas de JEDPA.
+ * Para disciplinas grupales, el cuerpo técnico mostrado es el de ese equipo/institución.
+ * Si existe un cuerpo técnico formalizado a nivel de grupo en concursoCuerpoTecnico,
+ * se toman solo los integrantes vinculados a esa institución sin mezclar otros colegios.
+ * Orden: Delegado primero, luego Entrenador(es).
+ */
+export function obtenerCuerpoTecnicoDeEquipo(registro, state = null) {
+  if (!registro) return [];
+
+  let miembros = [];
+
+  // 1. Asesores propios del registro del equipo
+  if (Array.isArray(registro.asesores) && registro.asesores.length > 0) {
+    miembros = registro.asesores.map(a => ({
+      rol: (a.rol || 'Delegado').trim(),
+      apellidos: (a.apellidos || '').trim().toUpperCase(),
+      nombres: (a.nombres || '').trim().toUpperCase(),
+      dni: (a.dni || '').trim()
+    }));
+  } else {
+    // 2. Si no tiene asesores individuales, buscar en concursoCuerpoTecnico
+    const cList = (state && Array.isArray(state.concursoCuerpoTecnico))
+      ? state.concursoCuerpoTecnico
+      : ((typeof window !== 'undefined' && window.state && Array.isArray(window.state.concursoCuerpoTecnico))
+          ? window.state.concursoCuerpoTecnico
+          : []);
+
+    const ctGrupo = obtenerCuerpoTecnicoGrupo(registro, cList);
+    if (ctGrupo && ctGrupo.personas && ctGrupo.personas.length > 0) {
+      // Filtrar por institución o código modular si viene marcado
+      const matching = ctGrupo.personas.filter(m => {
+        if (m.codigoModular && registro.codigoModular) {
+          return formatCodigoModular(m.codigoModular) === formatCodigoModular(registro.codigoModular);
+        }
+        if (m.institucion && registro.institucion) {
+          return m.institucion.trim().toUpperCase() === registro.institucion.trim().toUpperCase();
+        }
+        return true;
+      });
+      miembros = matching.length > 0 ? matching : ctGrupo.personas;
+    }
+  }
+
+  // Ordenar: Delegado primero, luego Entrenador(es), luego Docente Asesor
+  const rolPriority = (rol) => {
+    const r = (rol || '').toUpperCase();
+    if (r.includes('DELEGAD')) return 1;
+    if (r.includes('ENTRENAD')) return 2;
+    if (r.includes('DOCENTE') || r.includes('ASESOR')) return 3;
+    return 4;
+  };
+
+  return miembros.slice().sort((a, b) => rolPriority(a.rol) - rolPriority(b.rol));
 }
 
 /**
@@ -601,6 +932,16 @@ export function formatResolucionRef(res) {
 }
 
 /**
+ * Retorna el título oficial estandarizado para los consolidados de resultados de concursos
+ * @param {Object} tipoConcurso
+ * @returns {string}
+ */
+export function getTituloConsolidadoConcurso(tipoConcurso) {
+  const nombre = tipoConcurso ? (tipoConcurso.nombre || '') : 'CONCURSOS EDUCATIVOS ESCOLARES';
+  return `CONSOLIDADO OFICIAL DE LOS RESULTADOS - ${nombre.toUpperCase()}`;
+}
+
+/**
  * Normaliza y formatea la etiqueta de puesto oficial
  */
 export function formatPuestoLabel(p) {
@@ -624,6 +965,236 @@ export function puestoRank(p) {
   if (s === '3' || s === '3°' || s === '3.' || s.includes('3.er') || s.includes('3er')) return 3;
   if (s.includes('menci') || s.includes('mh')) return 4;
   return 5;
+}
+
+/**
+ * Obtiene los campos que definen el podio para un tipo de concurso.
+ * @param {Object} tipo
+ * @returns {string[]}
+ */
+export function getPodioFields(tipo) {
+  if (tipo && Array.isArray(tipo.camposPodio) && tipo.camposPodio.length > 0) {
+    return tipo.camposPodio;
+  }
+  if (tipo && (tipo.tieneGenero || tipo.id === 'jedpa')) {
+    return ['categoria', 'disciplina', 'genero'];
+  }
+  if (tipo && (tipo.tieneDisciplina || tipo.id === 'peru_lee')) {
+    return ['categoria', 'disciplina'];
+  }
+  return ['categoria'];
+}
+
+/**
+ * Construye dinámicamente las filas de datos de la ficha según la configuración del concurso y valores reales.
+ * Evita imprimir filas vacías o campos con relleno artificial "GENERAL".
+ * @param {Object} tipoConcurso
+ * @param {Object} registro
+ * @param {Object} [options]
+ * @returns {Array<{label: string, value: string, isBold?: boolean, isItalic?: boolean, isMuted?: boolean, isPuesto?: boolean, puestoRank?: number}>}
+ */
+export function construirFilasFicha(tipoConcurso, registro, options = {}) {
+  const rows = [];
+  if (!registro) return rows;
+
+  // 1. Título del proyecto / trabajo (solo si tieneTitulo o tieneTituloTrabajo y existe valor válido)
+  const hasTituloCfg = !!(tipoConcurso && (tipoConcurso.tieneTitulo || tipoConcurso.tieneTituloTrabajo));
+  const rawTitulo = (registro.tituloTrabajo || '').trim();
+  if ((hasTituloCfg || rawTitulo) && rawTitulo && rawTitulo !== '—') {
+    const labelTit = (tipoConcurso && tipoConcurso.etiquetaTitulo) || 'Título del proyecto / trabajo';
+    rows.push({
+      label: labelTit,
+      value: rawTitulo.toUpperCase()
+    });
+  }
+
+  // 2. Área / Disciplina (solo si tieneDisciplina y el valor no es vacío ni "GENERAL" / "SIN DISCIPLINA")
+  const hasDiscCfg = tipoConcurso ? (tipoConcurso.tieneDisciplina === true || (Array.isArray(tipoConcurso.disciplinas) && tipoConcurso.disciplinas.length > 0)) : true;
+  const rawDisc = (registro.disciplina || '').trim();
+  const isGenericDisc = !rawDisc || rawDisc === '—' || rawDisc.toUpperCase() === 'GENERAL' || rawDisc.toUpperCase() === 'SIN DISCIPLINA';
+  if (hasDiscCfg && !isGenericDisc) {
+    const labelDisc = (tipoConcurso && tipoConcurso.etiquetaDisciplina) || 'Área / Disciplina';
+    rows.push({
+      label: labelDisc,
+      value: rawDisc.toUpperCase()
+    });
+  }
+
+  // 3. Género (solo si tieneGenero y el valor no es vacío ni "SIN GÉNERO")
+  const hasGenCfg = !!(tipoConcurso && tipoConcurso.tieneGenero === true);
+  const rawGen = formatGeneroDisplay(registro.genero).trim();
+  const isGenericGen = !rawGen || rawGen === '—' || rawGen.toUpperCase() === 'SIN GÉNERO';
+  if (hasGenCfg && !isGenericGen) {
+    rows.push({
+      label: 'Género',
+      value: rawGen.toUpperCase()
+    });
+  }
+
+  // 4. Modalidad (opcional, solo si se solicita explícitamente y existe valor)
+  if (options.mostrarModalidad && registro.modalidad && registro.modalidad !== '—') {
+    rows.push({
+      label: 'Modalidad',
+      value: String(registro.modalidad).trim().toUpperCase()
+    });
+  }
+
+  // 5. Institución Educativa (siempre presente, mayúsculas y negrita)
+  rows.push({
+    label: 'Institución Educativa',
+    value: (registro.institucion || '—').trim().toUpperCase(),
+    isBold: true
+  });
+
+  // 6. Código Modular (siempre presente y formateado con 7 dígitos)
+  rows.push({
+    label: 'Código Modular',
+    value: formatCodigoModular(registro.codigoModular)
+  });
+
+  // 7. Puesto obtenido (con soporte para insignia vectorial)
+  const rk = puestoRank(registro.puesto);
+  const pLabel = formatPuestoLabel(registro.puesto);
+  rows.push({
+    label: 'Puesto obtenido',
+    value: pLabel,
+    isPuesto: true,
+    puestoRank: rk
+  });
+
+  // 8. Resolución Directoral (referencia oficial o 'Sin resolución registrada' en cursiva)
+  const hasRd = !!(registro.resolucionRef && String(registro.resolucionRef).trim() !== '—' && String(registro.resolucionRef).trim() !== '');
+  rows.push({
+    label: 'Resolución Directoral',
+    value: hasRd ? formatResolucionRef(registro.resolucionRef) : 'Sin resolución registrada',
+    isItalic: !hasRd,
+    isMuted: !hasRd
+  });
+
+  return rows;
+}
+
+/**
+ * Dibuja una insignia vectorial de puesto con círculo de color y texto limpio (sin emojis).
+ * @param {Object} doc - Instancia de jsPDF
+ * @param {string|number} puesto - Puesto original o rank
+ * @param {number} x - Posición X inicial
+ * @param {number} y - Posición Y inicial
+ * @param {number} [w] - Ancho del recuadro
+ * @param {number} [h] - Alto del recuadro
+ */
+export function dibujarInsigniaPuesto(doc, puesto, x, y, w = 84, h = 12) {
+  const rk = puestoRank(puesto);
+  const rawLabel = formatPuestoLabel(puesto);
+  const label = rawLabel && rawLabel !== '—' ? rawLabel : 'Pendiente de asignación';
+
+  let bg = [248, 250, 252];
+  let border = [209, 213, 219];
+  let dotColor = [100, 116, 139];
+  let textColor = [30, 41, 59];
+
+  if (rk === 1) {
+    bg = [254, 249, 231];      // #FEF9E7
+    border = [212, 160, 23];   // #D4A017 dorado
+    dotColor = [212, 160, 23]; // #D4A017
+    textColor = [122, 90, 0];   // #7A5A00
+  } else if (rk === 2) {
+    bg = [241, 243, 245];      // #F1F3F5
+    border = [158, 167, 179];  // #9EA7B3 plata
+    dotColor = [158, 167, 179];// #9EA7B3
+    textColor = [71, 85, 105];  // #475569
+  } else if (rk === 3) {
+    bg = [250, 240, 230];      // #FAF0E6
+    border = [184, 115, 51];   // #B87333 bronce
+    dotColor = [184, 115, 51]; // #B87333
+    textColor = [120, 53, 15];  // #78350F
+  } else if (!puesto || puesto === '—') {
+    bg = [248, 250, 252];
+    border = [226, 232, 240];
+    dotColor = [148, 163, 184];
+    textColor = [100, 116, 139];
+  }
+
+  doc.setFillColor(bg[0], bg[1], bg[2]);
+  doc.setDrawColor(border[0], border[1], border[2]);
+  doc.setLineWidth(0.6);
+  doc.roundedRect(x, y, w, h, 2, 2, 'FD');
+
+  // Punto o círculo indicador de color de podio
+  doc.setFillColor(dotColor[0], dotColor[1], dotColor[2]);
+  doc.circle(x + 6.5, y + h / 2, 2.4, 'F');
+
+  // Texto del puesto
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.8);
+  doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+  doc.text(label, x + 12.5, y + h / 2 + 2.3);
+}
+
+/**
+ * Dibuja el pie de página oficial en 2 líneas sin colisión ni superposiciones.
+ * @param {Object} doc - Instancia de jsPDF
+ * @param {Object} datos - Datos del documento y página
+ */
+export function dibujarPiePagina(doc, datos) {
+  const {
+    pageNumber,
+    totalPagesExp,
+    margin,
+    pageW,
+    pageH,
+    emissionStr,
+    docVerifCode,
+    faltantes = [],
+    qrDataUrl = null,
+    isLastPage = false,
+    marcaBorrador = false
+  } = datos;
+
+  if (marcaBorrador) {
+    doc.saveGraphicsState && doc.saveGraphicsState();
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(55);
+    doc.setTextColor(220, 225, 235);
+    doc.text('BORRADOR', pageW / 2, pageH / 2, { align: 'center', angle: 45 });
+    doc.restoreGraphicsState && doc.restoreGraphicsState();
+  }
+
+  // Línea separadora
+  doc.setDrawColor(227, 232, 239);
+  doc.setLineWidth(0.5);
+  doc.line(margin, pageH - 28, pageW - margin, pageH - 28);
+
+  const qrOffset = (qrDataUrl && isLastPage) ? 24 : 0;
+  if (qrDataUrl && isLastPage) {
+    try {
+      doc.addImage(qrDataUrl, 'PNG', margin, pageH - 52, 20, 20);
+    } catch (e) { }
+  }
+
+  // Línea 1 (izquierda: sistema y fecha; derecha: página)
+  const line1Y = pageH - 18;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(138, 151, 168);
+  const sysText = `Documento generado por el Sistema de Fichas de Monitoreo · UGEL 03 · Emitido el ${emissionStr}`;
+  doc.text(sysText, margin + qrOffset, line1Y);
+
+  const pageStr = `Página ${pageNumber} de ${totalPagesExp}`;
+  doc.text(pageStr, pageW - margin, line1Y, { align: 'right' });
+
+  // Línea 2 (izquierda: código de verificación y datos pendientes si los hay)
+  const line2Y = pageH - 9;
+  const verifText = `Cód. Verif: ${docVerifCode}`;
+  doc.text(verifText, margin + qrOffset, line2Y);
+
+  if (faltantes && faltantes.length > 0) {
+    const verifWidth = doc.getTextWidth(verifText);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(180, 83, 9); // Ámbar oscuro #B45309 para aviso constructivo
+    const faltantesText = `  ·  Datos por completar: ${faltantes.join(' · ')}`;
+    doc.text(faltantesText, margin + qrOffset + verifWidth, line2Y);
+  }
 }
 
 /**
@@ -673,37 +1244,52 @@ export function sanitizeFilename(name) {
  * Genera una imagen Data URL para un código QR usando QRCode.js si está disponible
  */
 async function generateQrDataUrl(text) {
-  if (typeof window.QRCode === 'undefined') return null;
+  if (typeof window === 'undefined' || typeof window.QRCode === 'undefined') return null;
   return new Promise((resolve) => {
+    let container = null;
     try {
-      const container = document.createElement('div');
+      container = document.createElement('div');
       container.style.display = 'none';
       document.body.appendChild(container);
 
+      // Limitar a 300 caracteres para evitar overflow en librerías QRCode.js estándar
+      const safeText = String(text || '').slice(0, 300);
+
       new window.QRCode(container, {
-        text: text,
+        text: safeText,
         width: 100,
         height: 100,
         colorDark: '#0B1B36',
         colorLight: '#FFFFFF',
-        correctLevel: window.QRCode.CorrectLevel.M
+        correctLevel: (window.QRCode && window.QRCode.CorrectLevel && window.QRCode.CorrectLevel.L) || 1
       });
 
       // Esperar un frame a que se genere el canvas o imagen
       setTimeout(() => {
         let dataUrl = null;
-        const canvas = container.querySelector('canvas');
-        if (canvas) {
-          dataUrl = canvas.toDataURL('image/png');
-        } else {
-          const img = container.querySelector('img');
-          if (img && img.src) dataUrl = img.src;
-        }
-        document.body.removeChild(container);
+        try {
+          const canvas = container.querySelector('canvas');
+          if (canvas) {
+            dataUrl = canvas.toDataURL('image/png');
+          } else {
+            const img = container.querySelector('img');
+            if (img && img.src) dataUrl = img.src;
+          }
+        } catch (canvasErr) { }
+        try {
+          if (container && container.parentNode) {
+            document.body.removeChild(container);
+          }
+        } catch (domErr) { }
         resolve(dataUrl);
       }, 50);
     } catch (e) {
       console.warn('No se pudo generar QR:', e);
+      try {
+        if (container && container.parentNode) {
+          document.body.removeChild(container);
+        }
+      } catch (domErr) { }
       resolve(null);
     }
   });
@@ -918,6 +1504,7 @@ export async function createOfficialPdfDocument({
   columnStyles = {},
   tableStyles = {},
   customTables = [], // Array de { title, subtitle, minHeight, pageBreak, beforeDraw, tableHeaders, tableRows, columnStyles, didDrawCell, didParseCell, styles, headStyles, alternateRowStyles }
+  renderCustomTable = null, // Función personalizada de renderizado de tabla (ej: JEDPA continuo)
   summarySections = [], // { title, content }
   signatures = [], // Array de { cargo, nombre, entidad, leyenda }
   lugarFecha = '', // Texto de lugar y fecha para firmas (ej: "Lima, 19 de septiembre de 2026")
@@ -1129,8 +1716,20 @@ export async function createOfficialPdfDocument({
     curY += boxH + 10;
   }
 
-  // 6. Tablas principales mediante autoTable (soporte para customTables múltiples o tabla única)
-  if (customTables && customTables.length > 0) {
+  // 6. Tablas principales mediante autoTable (soporte para renderCustomTable, customTables múltiples o tabla única)
+  if (typeof renderCustomTable === 'function') {
+    curY = await renderCustomTable({
+      doc,
+      curY,
+      pageW,
+      pageH,
+      margin,
+      CONTENT_WIDTH,
+      headerBottomY,
+      safeDrawHeader,
+      baseFont
+    });
+  } else if (customTables && customTables.length > 0) {
     if (typeof doc.autoTable !== 'function') {
       console.warn('doc.autoTable no está disponible.');
     } else {
@@ -3153,9 +3752,10 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
   };
 
   // Metadatos oficiales del PDF
+  const docMainTitle = getTituloConsolidadoConcurso(tipoConcurso);
   const areaAuthor = (areaConfig && areaConfig.sigla) ? `${areaConfig.sigla} · UGEL 03` : 'UGEL 03 – AGEBRE';
   doc.setProperties({
-    title: `Acta Oficial de Resultados — ${concursoNombre}`,
+    title: docMainTitle,
     subject: `${concursoNombre} 2026 – UGEL 03`,
     author: areaAuthor,
     keywords: `${concursoNombre}, 2026, UGEL 03, MINEDU, Ganadores`,
@@ -3212,15 +3812,7 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
   let curY = safeDrawHeader(1);
 
   // 2. Banda de título dinámica (Fondo lila claro #E9E1F0, texto negro negrita)
-  let titleBandText = `GANADORES DE ${concursoNombre.toUpperCase()} 2026 – ETAPA ${etapaLabel.toUpperCase()}`;
-  if (singleCategory) {
-    titleBandText += ` – CATEGORÍA "${singleCategory.toUpperCase()}"`;
-  }
-  if (singleDisciplina) {
-    const parsed = parseArteDisciplina(singleDisciplina);
-    const discLabel = (parsed.arte && parsed.arte !== '—') ? `${parsed.arte.toUpperCase()} / ${parsed.disciplina.toUpperCase()}` : singleDisciplina.toUpperCase();
-    titleBandText += ` – ${discLabel}`;
-  }
+  let titleBandText = docMainTitle;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10.5);
@@ -3415,24 +4007,18 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
     if (mostrarModalidad) kvRowsCount++;
     const kvH = kvRowsCount * 13.5;
     const partHeadH = 14.5;
-    const partRowsH = partCount * 13.2;
-    const asesRowsH = asesCount * 13.5;
-    const estimatedFichaH = barH + kvH + partHeadH + partRowsH + asesRowsH + 12;
+    const minStudentRows = Math.min(partCount, 3);
+    const minFichaRowsH = barH + kvH + partHeadH + (minStudentRows * 13.5);
 
-    const availablePageSpace = pageH - 42 - curY;
-
-    if (estimatedFichaH > availablePageSpace) {
-      if (estimatedFichaH <= (pageH - headerBottomY - 60)) {
-        doc.addPage();
-        safeDrawHeader(doc.internal.getCurrentPageInfo ? doc.internal.getCurrentPageInfo().pageNumber : null);
-        curY = headerBottomY + 16;
-      }
+    if (curY + minFichaRowsH > (pageH - 42)) {
+      doc.addPage();
+      safeDrawHeader(doc.internal.getCurrentPageInfo ? doc.internal.getCurrentPageInfo().pageNumber : null);
+      curY = headerBottomY + 16;
     }
 
-    const fichaBody = [];
-
-    // Barra de categoría (ancho completo, color diferenciado según categoría con alto contraste)
-    fichaBody.push([
+    // 1. Bloque Clave-Valor institucional indivisible (con barra de categoría al inicio)
+    const kvBody = [];
+    kvBody.push([
       {
         content: `CATEGORÍA ${cat.toUpperCase()}`,
         colSpan: 3,
@@ -3448,36 +4034,35 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
       }
     ]);
 
-    // Bloque Clave-Valor institucional con fondo de etiqueta entonado por categoría
-    fichaBody.push([
+    kvBody.push([
       { content: 'Institución Educativa', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'left' } },
       { content: (r.institucion || '—').toUpperCase(), colSpan: 2, styles: { fontStyle: 'bold', textColor: [11, 27, 54] } }
     ]);
 
-    fichaBody.push([
+    kvBody.push([
       { content: 'Código Modular', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'left' } },
-      { content: r.codigoModular || '—', colSpan: 2 }
+      { content: formatCodigoModular(r.codigoModular), colSpan: 2 }
     ]);
 
-    fichaBody.push([
+    kvBody.push([
       { content: 'Arte', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'left' } },
       { content: parsedDisc.arte, colSpan: 2, styles: { fontStyle: 'bold', textColor: [11, 27, 54] } }
     ]);
 
-    fichaBody.push([
+    kvBody.push([
       { content: 'Disciplina', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'left' } },
       { content: parsedDisc.disciplina, colSpan: 2, styles: { fontStyle: 'bold', textColor: [11, 27, 54] } }
     ]);
 
     if (mostrarPuesto && r.puesto) {
-      fichaBody.push([
+      kvBody.push([
         { content: 'Puesto', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'left' } },
         { content: formatPuestoLabel(r.puesto), colSpan: 2, styles: { fontStyle: 'bold' } }
       ]);
     }
 
     if (mostrarResolucion && r.resolucionRef) {
-      fichaBody.push([
+      kvBody.push([
         { content: 'Resolución', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'left' } },
         { content: formatResolucionRef(r.resolucionRef), colSpan: 2 }
       ]);
@@ -3487,79 +4072,14 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
       const modLabel = (r.participantes || []).length > 1
         ? `Grupal · ${(r.participantes || []).length} integrantes`
         : 'Individual · 1 integrante';
-      fichaBody.push([
+      kvBody.push([
         { content: 'Modalidad', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'left' } },
         { content: modLabel, colSpan: 2 }
       ]);
     }
 
-    // Encabezado de Participantes (Slate oscuro #475569 con alto contraste y texto blanco en negrita)
-    fichaBody.push([
-      { content: 'PARTICIPANTES', styles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 7.5 } },
-      { content: 'APELLIDOS Y NOMBRES', styles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left', fontSize: 7.5 } },
-      { content: 'DNI', styles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 7.5 } }
-    ]);
-
-    // Filas de Estudiantes
-    if (rawParts.length === 0) {
-      fichaBody.push([
-        { content: 'Estudiante', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'center', valign: 'middle' } },
-        { content: 'Sin participante registrado', styles: { fontStyle: 'italic', textColor: [138, 151, 168] } },
-        { content: '—', styles: { halign: 'center' } }
-      ]);
-    } else {
-      const studentLabel = rawParts.length > 1 ? `Estudiantes (${rawParts.length})` : 'Estudiante';
-      rawParts.forEach((p, pIdx) => {
-        const rowBg = pIdx % 2 === 0 ? catColors.altRow : [255, 255, 255];
-        const studentName = formatearNombre(p);
-        const studentDni = p.dni ? String(p.dni).trim() : '—';
-
-        if (pIdx === 0) {
-          fichaBody.push([
-            {
-              content: studentLabel,
-              rowSpan: rawParts.length,
-              styles: {
-                fillColor: catColors.kvLabel,
-                fontStyle: 'bold',
-                halign: 'center',
-                valign: 'middle',
-                textColor: [11, 27, 54]
-              }
-            },
-            { content: studentName, styles: { fillColor: rowBg, halign: 'left' } },
-            { content: studentDni, styles: { fillColor: rowBg, halign: 'center' } }
-          ]);
-        } else {
-          fichaBody.push([
-            { content: studentName, styles: { fillColor: rowBg, halign: 'left' } },
-            { content: studentDni, styles: { fillColor: rowBg, halign: 'center' } }
-          ]);
-        }
-      });
-    }
-
-    // Filas de Docente Asesor / Entrenador
-    if (asesores.length === 0) {
-      fichaBody.push([
-        { content: 'Docente Asesor', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'center', valign: 'middle' } },
-        { content: 'Sin docente asesor registrado', colSpan: 2, styles: { fontStyle: 'italic', textColor: [138, 151, 168] } }
-      ]);
-    } else {
-      asesores.forEach((a) => {
-        const rolLabel = a.rol || 'Docente Asesor';
-        const asesorName = formatearNombre(a);
-        const asesorDni = a.dni ? String(a.dni).trim() : '—';
-        fichaBody.push([
-          { content: rolLabel, styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'center', valign: 'middle' } },
-          { content: asesorName, styles: { fontStyle: 'normal', halign: 'left' } },
-          { content: asesorDni, styles: { halign: 'center' } }
-        ]);
-      });
-    }
-
     doc.autoTable({
-      body: fichaBody,
+      body: kvBody,
       startY: curY,
       margin: { left: margin, right: margin, top: headerBottomY + 14, bottom: 42 },
       theme: 'plain',
@@ -3568,7 +4088,7 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
         font: 'helvetica',
         fontSize: 7.5,
         cellPadding: { top: 3.2, bottom: 3.2, left: 5, right: 5 },
-        lineColor: [209, 199, 217], // Borde fino lila 0.5 pt (#D1C7D9)
+        lineColor: [209, 199, 217],
         lineWidth: 0.5,
         textColor: [11, 27, 54],
         overflow: 'linebreak',
@@ -3587,7 +4107,199 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
       }
     });
 
-    curY = doc.lastAutoTable.finalY + 12;
+    curY = doc.lastAutoTable.finalY;
+
+    // 2. Preparar lista unificada de integrantes para partición continua limpia
+    const itemsToRender = [];
+    if (rawParts.length === 0) {
+      itemsToRender.push({ isStudent: true, emptyStudent: true });
+    } else {
+      rawParts.forEach((p, idx) => {
+        itemsToRender.push({ isStudent: true, emptyStudent: false, data: p, idx });
+      });
+    }
+
+    if (asesores.length === 0) {
+      itemsToRender.push({ isAsesor: true, emptyAsesor: true });
+    } else {
+      asesores.forEach((a, idx) => {
+        itemsToRender.push({ isAsesor: true, emptyAsesor: false, data: a, idx });
+      });
+    }
+
+    // 3. Renderizado continuo por tramos
+    let startIdx = 0;
+    let isContinuation = false;
+
+    while (startIdx < itemsToRender.length) {
+      const remainingRows = itemsToRender.length - startIdx;
+      const availSpace = (pageH - 42) - curY - 14.5;
+      let rowsInChunk = Math.floor(availSpace / 13.5);
+
+      if (rowsInChunk >= remainingRows) {
+        rowsInChunk = remainingRows;
+      } else {
+        // Regla antiviuda: no dejar exactamente 1 fila aislada en la página siguiente
+        if ((remainingRows - rowsInChunk) === 1 && rowsInChunk > 2) {
+          rowsInChunk--;
+        }
+        if (rowsInChunk < 2 && curY > (headerBottomY + 30)) {
+          doc.addPage();
+          safeDrawHeader(doc.internal.getCurrentPageInfo ? doc.internal.getCurrentPageInfo().pageNumber : null);
+          curY = headerBottomY + 16;
+          isContinuation = true;
+          continue;
+        }
+        rowsInChunk = Math.max(1, rowsInChunk);
+      }
+
+      const chunkSlice = itemsToRender.slice(startIdx, startIdx + rowsInChunk);
+
+      if (isContinuation) {
+        // Barra de continuación con paleta de categoría JFEN
+        const contBar = [[{
+          content: `CATEGORÍA ${cat.toUpperCase()} (continuación)`,
+          colSpan: 3,
+          styles: {
+            fillColor: catColors.bar,
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            halign: 'center',
+            valign: 'middle',
+            fontSize: 8.5,
+            minCellHeight: 17
+          }
+        }]];
+        doc.autoTable({
+          body: contBar,
+          startY: curY,
+          margin: { left: margin, right: margin, top: headerBottomY + 14, bottom: 42 },
+          theme: 'plain',
+          tableWidth: contentW,
+          columnStyles: {
+            0: { cellWidth: 118 },
+            1: { cellWidth: 335 },
+            2: { cellWidth: 70.28 }
+          },
+          didDrawPage: (data) => {
+            if (data.pageNumber > 1) safeDrawHeader(data.pageNumber);
+          }
+        });
+        curY = doc.lastAutoTable.finalY;
+      }
+
+      const chunkBody = [];
+      const chunkStudents = chunkSlice.filter(it => it.isStudent);
+      const studentLabel = rawParts.length > 1 ? `Estudiantes (${rawParts.length})` : 'Estudiante';
+      let studentIdxInChunk = 0;
+
+      chunkSlice.forEach(it => {
+        if (it.isStudent) {
+          if (it.emptyStudent) {
+            chunkBody.push([
+              { content: 'Estudiante', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'center', valign: 'middle' } },
+              { content: 'Sin participante registrado', styles: { fontStyle: 'italic', textColor: [138, 151, 168] } },
+              { content: '—', styles: { halign: 'center' } }
+            ]);
+          } else {
+            const pIdx = it.idx;
+            const rowBg = pIdx % 2 === 0 ? catColors.altRow : [255, 255, 255];
+            const studentName = formatearNombre(it.data);
+            const studentDni = it.data.dni ? String(it.data.dni).trim() : '—';
+
+            if (studentIdxInChunk === 0) {
+              chunkBody.push([
+                {
+                  content: studentLabel,
+                  rowSpan: chunkStudents.length,
+                  styles: {
+                    fillColor: catColors.kvLabel,
+                    fontStyle: 'bold',
+                    halign: 'center',
+                    valign: 'middle',
+                    textColor: [11, 27, 54]
+                  }
+                },
+                { content: studentName, styles: { fillColor: rowBg, halign: 'left' } },
+                { content: studentDni, styles: { fillColor: rowBg, halign: 'center' } }
+              ]);
+            } else {
+              chunkBody.push([
+                { content: studentName, styles: { fillColor: rowBg, halign: 'left' } },
+                { content: studentDni, styles: { fillColor: rowBg, halign: 'center' } }
+              ]);
+            }
+            studentIdxInChunk++;
+          }
+        } else if (it.isAsesor) {
+          if (it.emptyAsesor) {
+            chunkBody.push([
+              { content: 'Docente Asesor', styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'center', valign: 'middle' } },
+              { content: 'Sin docente asesor registrado', colSpan: 2, styles: { fontStyle: 'italic', textColor: [138, 151, 168] } }
+            ]);
+          } else {
+            const a = it.data;
+            const rolLabel = a.rol || 'Docente Asesor';
+            const asesorName = formatearNombre(a);
+            const asesorDni = a.dni ? String(a.dni).trim() : '—';
+            chunkBody.push([
+              { content: rolLabel, styles: { fillColor: catColors.kvLabel, fontStyle: 'bold', halign: 'center', valign: 'middle' } },
+              { content: asesorName, styles: { fontStyle: 'normal', halign: 'left' } },
+              { content: asesorDni, styles: { halign: 'center' } }
+            ]);
+          }
+        }
+      });
+
+      doc.autoTable({
+        head: [['PARTICIPANTES', 'APELLIDOS Y NOMBRES', 'DNI']],
+        body: chunkBody,
+        startY: curY,
+        margin: { left: margin, right: margin, top: headerBottomY + 14, bottom: 42 },
+        theme: 'plain',
+        tableWidth: contentW,
+        styles: {
+          font: 'helvetica',
+          fontSize: 7.5,
+          cellPadding: { top: 3.2, bottom: 3.2, left: 5, right: 5 },
+          lineColor: [209, 199, 217],
+          lineWidth: 0.5,
+          textColor: [11, 27, 54],
+          overflow: 'linebreak',
+          valign: 'middle'
+        },
+        headStyles: {
+          fillColor: [71, 85, 105],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 7.5,
+          cellPadding: { top: 3.5, bottom: 3.5, left: 5, right: 5 }
+        },
+        columnStyles: {
+          0: { cellWidth: 118, fontStyle: 'bold', halign: 'center' },
+          1: { cellWidth: 335, halign: 'left' },
+          2: { cellWidth: 70.28, halign: 'center' }
+        },
+        rowPageBreak: 'avoid',
+        didDrawPage: (data) => {
+          if (data.pageNumber > 1) {
+            safeDrawHeader(data.pageNumber);
+          }
+        }
+      });
+
+      curY = doc.lastAutoTable.finalY;
+      startIdx += rowsInChunk;
+
+      if (startIdx < itemsToRender.length) {
+        doc.addPage();
+        safeDrawHeader(doc.internal.getCurrentPageInfo ? doc.internal.getCurrentPageInfo().pageNumber : null);
+        curY = headerBottomY + 16;
+        isContinuation = true;
+      }
+    }
+
+    curY += 12; // Separación fija entre fichas
   }
 
   // 4. Bloque de firmas oficial (keep-together)
@@ -3691,46 +4403,34 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
     }
   }
 
-  // 5. Pie de página en todas las hojas
+  // 5. Pie de página en todas las hojas (garantizando membrete oficial previo en cada una)
   const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    if (!drawnHeaderPages.has(i)) {
+      doc.setPage(i);
+      drawOfficialHeader(doc, pageW, margin, pageH, areaConfig);
+      drawnHeaderPages.add(i);
+    }
+  }
+
   const emissionStr = getCurrentDateTimeStr();
 
+  const faltantesJfen = downloadConfig.datosIncompletos ? ['Documento con datos por completar'] : [];
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-
-    if (downloadConfig.marcaBorrador) {
-      doc.saveGraphicsState && doc.saveGraphicsState();
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(55);
-      doc.setTextColor(220, 225, 235);
-      doc.text('BORRADOR', pageW / 2, pageH / 2, { align: 'center', angle: 45 });
-      doc.restoreGraphicsState && doc.restoreGraphicsState();
-    }
-
-    doc.setDrawColor(227, 232, 239);
-    doc.setLineWidth(0.5);
-    doc.line(margin, pageH - 26, pageW - margin, pageH - 26);
-
-    if (qrDataUrl && i === pageCount) {
-      try {
-        doc.addImage(qrDataUrl, 'PNG', margin, pageH - 50, 20, 20);
-      } catch (e) { }
-    }
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
-    doc.setTextColor(138, 151, 168);
-
-    const qrOffset = (qrDataUrl && i === pageCount) ? 24 : 0;
-    let footerLeft = `Documento generado por el Sistema de Fichas de Monitoreo · UGEL 03 · Emitido el ${emissionStr} · Cód. Verif: ${docVerifCode}`;
-    if (downloadConfig.datosIncompletos) {
-      footerLeft += '  [ ! Documento con datos por completar ]';
-    }
-
-    doc.text(footerLeft, margin + qrOffset, pageH - 14);
-
-    const pageStr = `Página ${i} de ${totalPagesExp}`;
-    doc.text(pageStr, pageW - margin, pageH - 14, { align: 'right' });
+    dibujarPiePagina(doc, {
+      pageNumber: i,
+      totalPagesExp,
+      margin,
+      pageW,
+      pageH,
+      emissionStr,
+      docVerifCode,
+      faltantes: faltantesJfen,
+      qrDataUrl,
+      isLastPage: (i === pageCount),
+      marcaBorrador: downloadConfig.marcaBorrador
+    });
   }
 
   if (typeof doc.putTotalPages === 'function') {
@@ -3741,9 +4441,1185 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
   const cleanCatStr = singleCategory ? `_${sanitizeFilename(singleCategory)}` : '';
   const cleanDateStr = getLimaDateStr();
   const cleanConcursoPrefix = sanitizeFilename(tipoConcurso?.id ? tipoConcurso.id.toUpperCase() : 'JFEN');
-  const filename = downloadConfig.filename || `Acta_Resultados_${cleanConcursoPrefix}_${cleanEtapaStr}${cleanCatStr}_${cleanDateStr}.pdf`;
+  const filename = downloadConfig.filename || `Consolidado_Actas_${cleanConcursoPrefix}_${cleanEtapaStr}${cleanCatStr}_${cleanDateStr}.pdf`;
 
   doc.save(filename);
+}
+
+/**
+ * Exporta el Acta Oficial de Resultados de JEDPA para Disciplinas Colectivas (Grupales)
+ * en formato FICHA POR EQUIPO/INSTITUCIÓN (A4 Vertical/Portrait).
+ * - Mantiene con estricta fidelidad la paleta oficial de JEDPA (sin colores morados de JFEN).
+ * - Una ficha por equipo con bloque de datos y tabla de integrantes numerados alfabéticamente.
+ * - Celda "Estudiantes (N)" combinada con rowSpan en la columna Condición.
+ * - Nombre y DNI en la misma fila sin saltos de línea.
+ * - Fila de Cuerpo Técnico al final con fondo suave dorado (#FDF6E3) y línea separadora dorada (#E0A626).
+ * - Franja de grupo con texto exacto "X equipo(s) · Y estudiantes".
+ * - Paginación inteligente: ninguna ficha se corta entre páginas.
+ */
+export async function exportJedpaFichasPdf(filtered, tipoConcurso, filters = {}, downloadConfig = {}) {
+  const jsPDF = getJsPdf();
+  const orientation = downloadConfig.orientation === 'landscape' ? 'landscape' : 'portrait';
+  const doc = new jsPDF({
+    orientation: orientation,
+    unit: 'pt',
+    format: 'a4'
+  });
+
+  const totalPagesExp = '{total_pages_count_string}';
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 36;
+  const contentW = pageW - 2 * margin;
+  const headerBottomY = margin + 34 + 6;
+
+  const concursoCfg = getConcursoConfig(tipoConcurso);
+  const isJedpa = (concursoCfg.id === 'jedpa' || (tipoConcurso && (tipoConcurso.id === 'jedpa' || (tipoConcurso.nombre || '').toUpperCase().includes('JEDPA'))));
+  const concursoNombre = tipoConcurso ? tipoConcurso.nombre : (isJedpa ? 'Juegos Escolares Deportivos y Paradeportivos (JEDPA)' : 'CONCURSOS EDUCATIVOS ESCOLARES');
+  const areaConfig = downloadConfig.areaConfig || null;
+  const docVerifCode = downloadConfig.verificationCode || generateVerificationCode();
+
+  const drawnHeaderPages = new Set();
+  const safeDrawHeader = (pageNumber) => {
+    const p = pageNumber || (doc.internal.getCurrentPageInfo ? doc.internal.getCurrentPageInfo().pageNumber : 1);
+    if (!drawnHeaderPages.has(p)) {
+      drawnHeaderPages.add(p);
+      return drawOfficialHeader(doc, pageW, margin, pageH, areaConfig);
+    }
+    return headerBottomY + 16;
+  };
+
+  let cleanRows = deduplicateConcursoRows(filtered);
+  if (downloadConfig.soloPodio === true || downloadConfig.contenidoFiltro === 'solo_podio') {
+    cleanRows = cleanRows.filter(r => {
+      const rk = puestoRank(r.puesto);
+      return rk >= 1 && rk <= 3;
+    });
+  }
+
+  if (cleanRows.length === 0) {
+    throw new Error('No hay registros de delegaciones disponibles con los filtros aplicados para generar el Acta PDF.');
+  }
+
+  const etapasPresentes = [...new Set(cleanRows.map(r => r.etapa).filter(Boolean))];
+  const etapaLabel = filters.etapa
+    ? filters.etapa
+    : (etapasPresentes.length === 1 ? etapasPresentes[0] : (etapasPresentes.length > 1 ? etapasPresentes.join(', ') : 'UGEL'));
+
+  const areaAuthor = (areaConfig && areaConfig.sigla) ? `${areaConfig.sigla} · UGEL 03` : 'UGEL 03 – AGEBRE';
+  const yaTieneAnio = (concursoNombre || '').includes('2026');
+  const subjectStr = yaTieneAnio ? `${concursoNombre} – UGEL 03` : `${concursoNombre} 2026 – UGEL 03`;
+  const kwList = [concursoNombre, '2026', 'UGEL 03', 'MINEDU', 'Ganadores'];
+  if (etapaLabel) kwList.push(`Etapa ${etapaLabel}`);
+  if (isJedpa) {
+    kwList.push('JEDPA', 'Disciplinas Colectivas');
+  }
+  const keywordsStr = kwList.filter(Boolean).join(', ');
+
+  const docMainTitle = getTituloConsolidadoConcurso(tipoConcurso);
+  doc.setProperties({
+    title: docMainTitle,
+    subject: subjectStr,
+    author: areaAuthor,
+    keywords: keywordsStr,
+    creator: 'Sistema de Fichas de Monitoreo · UGEL 03'
+  });
+
+  let qrDataUrl = null;
+  if (downloadConfig.incluirQr !== false) {
+    const qrPayload = `UGEL 03 - MINEDU\nDoc: ${concursoNombre.slice(0, 60)} 2026\nEmitido: ${getLimaDateStr()}\nCódigo: ${docVerifCode}`;
+    qrDataUrl = await generateQrDataUrl(qrPayload);
+  }
+
+  const totalEquipos = cleanRows.length;
+  const uniqueColegios = new Set(cleanRows.map(r => formatCodigoModular(r.codigoModular) || r.institucion).filter(Boolean)).size;
+
+  const uniqueStudents = new Set();
+  cleanRows.forEach(r => {
+    (r.participantes || []).forEach(p => {
+      const k = p.dni ? String(p.dni).trim() : `${p.apellidos || ''}|${p.nombres || ''}`.trim().toLowerCase();
+      if (k) uniqueStudents.add(k);
+    });
+  });
+  const totalEstudiantes = uniqueStudents.size;
+
+  const uniqueTecnicos = new Set();
+  cleanRows.forEach(r => {
+    const ct = obtenerCuerpoTecnicoDeEquipo(r, downloadConfig.state);
+    ct.forEach(a => {
+      const k = a.dni ? String(a.dni).trim() : `${a.apellidos || ''}|${a.nombres || ''}`.trim().toLowerCase();
+      if (k) uniqueTecnicos.add(k);
+    });
+  });
+  const totalTecnicos = uniqueTecnicos.size;
+
+  // 1. Membrete oficial en pág 1
+  let curY = safeDrawHeader(1);
+
+  // Línea superior azul marino #12294C
+  doc.setDrawColor(18, 41, 76);
+  doc.setLineWidth(1.5);
+  doc.line(margin, curY, pageW - margin, curY);
+  curY += 10;
+
+  // 2. Título principal #0B1B36
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(11, 27, 54);
+  const mainTitle = docMainTitle;
+  const splitTitle = doc.splitTextToSize(mainTitle, contentW - 10);
+  doc.text(splitTitle, pageW / 2, curY, { align: 'center' });
+  curY += splitTitle.length * 13 + 3;
+
+  // 3. Subtítulo oficial dorado #B7791F con filtros
+  const subtituloFiltros = formatearFiltrosSubtitulo(filters, etapaLabel);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(183, 121, 31);
+  const splitSub = doc.splitTextToSize(subtituloFiltros, contentW - 10);
+  doc.text(splitSub, pageW / 2, curY, { align: 'center' });
+  curY += splitSub.length * 11 + 6;
+
+  // 4. Párrafo introductorio
+  if (downloadConfig.incluirIntro !== false) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(95, 106, 123); // #5F6A7B
+    const introText = isJedpa
+      ? `En el marco de las bases generales de los Juegos Escolares Deportivos y Paradeportivos (JEDPA) 2026 promovidos por el Ministerio de Educación y la UGEL 03, se emite la presente Acta Oficial de Resultados y Premiaciones para la Etapa ${etapaLabel}. Se consolidan a continuación los equipos ganadores, delegaciones y cuerpo técnico reconocidos institucionalmente.`
+      : `En el marco de las bases generales de los Concursos Educativos Escolares 2026 promovidos por el Ministerio de Educación y la UGEL 03, se emite la presente Acta Oficial de Resultados y Premiaciones para ${concursoNombre} en la Etapa ${etapaLabel}. Se consolidan a continuación los equipos, delegaciones y estudiantes ganadores reconocidos institucionalmente.`;
+    const splitIntro = doc.splitTextToSize(introText, contentW);
+    doc.text(splitIntro, margin, curY, { maxWidth: contentW, lineHeightFactor: 1.15 });
+    curY += splitIntro.length * 9 + 6;
+  }
+
+  // 5. Caja de indicadores KPI (#F7FAFC con borde #D9E1EA)
+  const kpiBoxH = 28;
+  doc.setFillColor(247, 250, 252);
+  doc.setDrawColor(217, 225, 234);
+  doc.setLineWidth(0.75);
+  doc.roundedRect(margin, curY, contentW, kpiBoxH, 3, 3, 'FD');
+
+  const asesorLabel = isJedpa ? 'Cuerpo Técnico' : (concursoCfg.etiqueta_asesor_plural || 'Docentes Asesores');
+  const teamLabel = isJedpa ? 'Equipos' : 'Equipos / Grupos';
+  const fullContestName = tipoConcurso ? (tipoConcurso.nombreCorto || tipoConcurso.nombre) : 'MINEDU';
+
+  const kpis = [
+    { label: 'Concurso Educativo', value: fullContestName, wRatio: 0.22, isContestName: true },
+    { label: 'Etapa', value: etapaLabel, wRatio: 0.12 },
+    { label: teamLabel, value: `${totalEquipos}`, wRatio: 0.13 },
+    { label: 'Estudiantes', value: `${totalEstudiantes}`, wRatio: 0.14 },
+    { label: 'Instituciones', value: `${uniqueColegios}`, wRatio: 0.16 },
+    { label: asesorLabel, value: `${totalTecnicos} pers.`, wRatio: 0.23 }
+  ];
+
+  let kpiX = margin;
+  kpis.forEach((k, idx) => {
+    const kw = contentW * k.wRatio;
+    if (idx > 0) {
+      doc.setDrawColor(217, 225, 234);
+      doc.setLineWidth(0.5);
+      doc.line(kpiX, curY + 4, kpiX, curY + kpiBoxH - 4);
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(95, 106, 123);
+    doc.text(k.label, kpiX + kw / 2, curY + 9, { align: 'center' });
+
+    doc.setFont('helvetica', 'bold');
+    if (k.isContestName) {
+      doc.setTextColor(11, 27, 54);
+      const testSize = doc.getTextWidth(k.value);
+      if (testSize > (kw - 6)) {
+        doc.setFontSize(6.5);
+        const splitVal = doc.splitTextToSize(k.value, kw - 4);
+        if (splitVal.length > 1) {
+          doc.text(splitVal.slice(0, 2), kpiX + kw / 2, curY + 18, { align: 'center', lineHeightFactor: 1.05 });
+        } else {
+          doc.text(k.value, kpiX + kw / 2, curY + 21, { align: 'center' });
+        }
+      } else {
+        doc.setFontSize(7.5);
+        doc.text(k.value, kpiX + kw / 2, curY + 21, { align: 'center' });
+      }
+    } else {
+      doc.setFontSize(8);
+      doc.setTextColor(11, 27, 54);
+      doc.text(k.value, kpiX + kw / 2, curY + 21, { align: 'center' });
+    }
+
+    kpiX += kw;
+  });
+
+  curY += kpiBoxH + 12;
+
+  // 6. Agrupar registros por Grupo de Competencia
+  const hasDiscConfig = (tipoConcurso ? tipoConcurso.tieneDisciplina === true : isJedpa);
+  const hasGenConfig = ((tipoConcurso && tipoConcurso.tieneGenero === true) || isJedpa);
+
+  const groupMap = new Map();
+  cleanRows.forEach(r => {
+    const et = (r.etapa || 'UGEL').trim().toUpperCase();
+    const rawDisc = (r.disciplina || '').trim().toUpperCase();
+    const isGenericDisc = !rawDisc || rawDisc === '—' || rawDisc === 'GENERAL' || rawDisc === 'SIN DISCIPLINA';
+    const di = (hasDiscConfig && !isGenericDisc) ? rawDisc : '';
+
+    const caRaw = (r.categoria || 'A').trim().toUpperCase().replace(/^CATEGOR[ÍI]A\s+/i, '');
+    const ca = caRaw || 'A';
+
+    const rawGen = formatGeneroDisplay(r.genero).trim().toUpperCase();
+    const isGenericGen = !rawGen || rawGen === '—' || rawGen === 'SIN GÉNERO';
+    const ge = (hasGenConfig && !isGenericGen) ? rawGen : '';
+
+    const catPart = `CATEGORÍA ${ca}`;
+    const gKeyParts = [catPart];
+    if (di) gKeyParts.push(di);
+    if (ge) gKeyParts.push(ge);
+
+    const groupKey = gKeyParts.join(' · ');
+    const fullGroupKey = `${et} · ${groupKey}`;
+
+    if (!groupMap.has(fullGroupKey)) {
+      groupMap.set(fullGroupKey, {
+        groupKey: groupKey,
+        fullGroupKey: fullGroupKey,
+        etapa: et,
+        disciplina: di,
+        categoria: ca,
+        genero: ge,
+        records: []
+      });
+    }
+    groupMap.get(fullGroupKey).records.push(r);
+  });
+
+  const sortedGroups = Array.from(groupMap.values()).sort((a, b) => a.fullGroupKey.localeCompare(b.fullGroupKey));
+
+  // 7. Renderizado de fichas por cada grupo con flujo continuo
+  for (const group of sortedGroups) {
+    // Ordenar equipos del grupo por puesto (1°, 2°, 3°...) y luego alfabético
+    group.records.sort((a, b) => {
+      const rkA = puestoRank(a.puesto);
+      const rkB = puestoRank(b.puesto);
+      if (rkA !== rkB) return rkA - rkB;
+      return (a.institucion || '').localeCompare(b.institucion || '', 'es');
+    });
+
+    const groupTeamsCount = group.records.length;
+    const groupStudentsCount = group.records.reduce((acc, r) => acc + (r.participantes || []).length, 0);
+    const bandH = 18;
+
+    // Dibujar fichas de equipos del grupo con flujo continuo
+    for (let rIdx = 0; rIdx < group.records.length; rIdx++) {
+      const r = group.records[rIdx];
+
+      // Ordenar estudiantes alfabéticamente
+      const rawParts = (r.participantes || []).slice().sort((a, b) => {
+        const nomA = `${a.apellidos || ''} ${a.nombres || ''}`.trim();
+        const nomB = `${b.apellidos || ''} ${b.nombres || ''}`.trim();
+        return nomA.localeCompare(nomB, 'es', { sensitivity: 'base' });
+      });
+
+      const ctEquipo = obtenerCuerpoTecnicoDeEquipo(r, downloadConfig.state);
+
+      // Filas dinámicas según configuración y datos reales
+      const kvRows = construirFilasFicha(tipoConcurso, r, {
+        mostrarModalidad: downloadConfig.mostrarModalidad !== false && !!r.modalidad
+      });
+
+      // a) Barra de encabezado de la ficha: CATEGORÍA {X} · {PUESTO} (y podio si aplica)
+      const podioFields = getPodioFields(tipoConcurso);
+      const catPartFicha = `CATEGORÍA ${(r.categoria || group.categoria || 'A').toUpperCase().replace(/^CATEGOR[ÍI]A\s+/i, '')}`;
+      const titleParts = [catPartFicha];
+
+      if (podioFields.includes('disciplina') && (r.disciplina || group.disciplina)) {
+        const dVal = (r.disciplina || group.disciplina).trim().toUpperCase();
+        if (dVal && dVal !== 'GENERAL' && dVal !== 'SIN DISCIPLINA' && dVal !== '—') {
+          titleParts.push(dVal);
+        }
+      }
+
+      if (podioFields.includes('genero') && r.genero) {
+        const gVal = formatGeneroDisplay(r.genero).trim().toUpperCase();
+        if (gVal && gVal !== 'SIN GÉNERO' && gVal !== '—') {
+          titleParts.push(gVal);
+        }
+      }
+
+      const pLabel = formatPuestoLabel(r.puesto);
+      if (pLabel && pLabel !== '—') {
+        titleParts.push(pLabel.toUpperCase());
+      }
+
+      const fichaTitle = titleParts.join('  ·  ');
+
+      // Reglas contra huérfanos:
+      // Si es el primer equipo del grupo, el bloque mínimo incluye:
+      // Franja de grupo (18 + 8) + Ficha Header (16) + Filas KV (kvRows.length * 13.5) + Encabezado de tabla (14.5) + 3 filas de participantes (3 * 13.5 = 40.5)
+      const minFichaRowsH = 16 + (kvRows.length * 13.5) + 14.5 + 40.5;
+      const estimatedFichaH = minFichaRowsH;
+      const isFirstOfGroup = (rIdx === 0);
+      const minNeededToStart = isFirstOfGroup ? (bandH + 8 + estimatedFichaH) : estimatedFichaH;
+
+      if (curY + minNeededToStart > (pageH - 42)) {
+        doc.addPage();
+        safeDrawHeader(doc.internal.getNumberOfPages());
+        curY = headerBottomY + 16;
+      }
+
+      // Si es el primer equipo del grupo, dibujar franja de grupo (#2E4A73 con acento dorado #E0A626)
+      if (isFirstOfGroup) {
+        doc.setFillColor(224, 166, 38); // Acento izquierdo #E0A626
+        doc.rect(margin, curY, 4, bandH, 'F');
+
+        doc.setFillColor(46, 74, 115); // Fondo azul pizarra #2E4A73
+        doc.rect(margin + 4, curY, contentW - 4, bandH, 'F');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(group.groupKey, margin + 12, curY + 12);
+
+        const teamUnitName = isJedpa ? 'equipo' : 'equipo / grupo';
+        const teamUnitPlural = isJedpa ? 'equipos' : 'equipos / grupos';
+        const groupCountLabel = `${groupTeamsCount} ${groupTeamsCount === 1 ? teamUnitName : teamUnitPlural} · ${groupStudentsCount} estudiante${groupStudentsCount === 1 ? '' : 's'}`;
+        doc.text(groupCountLabel, pageW - margin - 8, curY + 12, { align: 'right' });
+        curY += bandH + 8;
+      }
+
+      // Preparar Bloque Clave-Valor indivisible
+      const colW0 = 127;
+      const colW1 = 30;
+      const colW2 = 271;
+      const colW3 = 95.28;
+
+      const kvBody = [
+        [
+          {
+            content: fichaTitle,
+            colSpan: 4,
+            styles: {
+              fillColor: [18, 41, 76], // #12294C Azul marino estándar institucional
+              textColor: [255, 255, 255],
+              fontStyle: 'bold',
+              halign: 'center',
+              valign: 'middle',
+              fontSize: 8.5,
+              minCellHeight: 16
+            }
+          }
+        ]
+      ];
+
+      kvRows.forEach(row => {
+        kvBody.push([
+          {
+            content: row.label,
+            colSpan: 2,
+            styles: {
+              fillColor: [237, 242, 245], // #EDF2F5 Gris claro institucional
+              fontStyle: 'bold',
+              textColor: [11, 27, 54]
+            }
+          },
+          {
+            content: row.value,
+            colSpan: 2,
+            _isPuestoCell: !!row.isPuesto,
+            _puestoRank: row.puestoRank,
+            styles: {
+              fontStyle: row.isBold ? 'bold' : (row.isItalic ? 'italic' : 'normal'),
+              textColor: row.isMuted ? [148, 163, 184] : [11, 27, 54]
+            }
+          }
+        ]);
+      });
+
+      doc.autoTable({
+        body: kvBody,
+        startY: curY,
+        margin: { left: margin, right: margin, top: headerBottomY + 14, bottom: 42 },
+        theme: 'plain',
+        rowPageBreak: 'avoid',
+        styles: {
+          font: 'helvetica',
+          fontSize: 7.2,
+          cellPadding: { top: 2.4, bottom: 2.4, left: 4, right: 4 },
+          lineColor: [217, 225, 234], // #D9E1EA
+          lineWidth: 0.5,
+          textColor: [11, 27, 54]
+        },
+        columnStyles: {
+          0: { cellWidth: colW0 },
+          1: { cellWidth: colW1 },
+          2: { cellWidth: colW2 },
+          3: { cellWidth: colW3 }
+        },
+        didParseCell: (data) => {
+          if (data.cell.raw && data.cell.raw._isPuestoCell) {
+            data.cell.text = [''];
+          }
+        },
+        didDrawCell: (data) => {
+          if (data.cell.raw && data.cell.raw._isPuestoCell) {
+            const badgeX = data.cell.x + 6;
+            const badgeY = data.cell.y + (data.cell.height - 12) / 2;
+            dibujarInsigniaPuesto(doc, data.cell.raw.content, badgeX, badgeY, 84, 12);
+          }
+        }
+      });
+
+      curY = doc.lastAutoTable.finalY;
+
+      // Preparar lista unificada de integrantes (estudiantes y cuerpo técnico)
+      const itemsToRender = [];
+      if (rawParts.length === 0) {
+        itemsToRender.push({
+          isStudent: true,
+          studentIndex: 0,
+          studentTotal: 0,
+          emptyStudent: true,
+          fullName: 'Sin estudiantes registrados en este equipo',
+          dni: '—'
+        });
+      } else {
+        rawParts.forEach((p, idx) => {
+          const ape = (p.apellidos || '').trim().toUpperCase();
+          const nom = (p.nombres || '').trim().toUpperCase();
+          const fullName = `${ape}${ape && nom ? ', ' : ''}${nom}`.replace(/\s{2,}/g, ' ') || '—';
+          const dni = String(p.dni || '—').trim();
+          itemsToRender.push({
+            isStudent: true,
+            studentIndex: idx,
+            studentTotal: rawParts.length,
+            emptyStudent: false,
+            fullName,
+            dni
+          });
+        });
+      }
+
+      const defaultRolAsesor = isJedpa ? 'Cuerpo Técnico' : (concursoCfg.etiqueta_asesor_plural || 'Docente Asesor');
+      if (ctEquipo.length === 0) {
+        itemsToRender.push({
+          isCoach: true,
+          coachIndex: 0,
+          emptyCoach: true,
+          rolName: defaultRolAsesor,
+          fullName: `Sin ${defaultRolAsesor.toLowerCase()} registrado`,
+          dni: '—',
+          isCoachStart: true
+        });
+      } else {
+        ctEquipo.forEach((a, aIdx) => {
+          const rolName = (a.rol || defaultRolAsesor).trim();
+          const fullName = `${(a.apellidos || '').toUpperCase()} ${(a.nombres || '').toUpperCase()}`.trim().replace(/\s{2,}/g, ' ');
+          const dni = String(a.dni || '—').trim();
+          itemsToRender.push({
+            isCoach: true,
+            coachIndex: aIdx,
+            emptyCoach: false,
+            rolName,
+            fullName: fullName || '—',
+            dni,
+            isCoachStart: (aIdx === 0)
+          });
+        });
+      }
+
+      // Renderizado continuo por tramos de la tabla de integrantes
+      let startIdx = 0;
+      let isContinuation = false;
+
+      while (startIdx < itemsToRender.length) {
+        const remainingRows = itemsToRender.length - startIdx;
+        const availSpace = (pageH - 42) - curY - 14.5;
+        let rowsInChunk = Math.floor(availSpace / 13.5);
+
+        if (rowsInChunk >= remainingRows) {
+          rowsInChunk = remainingRows;
+        } else {
+          // Regla de viuda: no dejar exactamente 1 fila aislada en la página siguiente
+          if ((remainingRows - rowsInChunk) === 1 && rowsInChunk > 2) {
+            rowsInChunk--;
+          }
+          if (rowsInChunk < 2 && curY > (headerBottomY + 30)) {
+            doc.addPage();
+            safeDrawHeader(doc.internal.getNumberOfPages());
+            curY = headerBottomY + 16;
+            isContinuation = true;
+            continue;
+          }
+          rowsInChunk = Math.max(1, rowsInChunk);
+        }
+
+        const chunkSlice = itemsToRender.slice(startIdx, startIdx + rowsInChunk);
+
+        if (isContinuation) {
+          doc.setFillColor(18, 41, 76);
+          doc.rect(margin, curY, contentW, 16, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8.5);
+          doc.setTextColor(255, 255, 255);
+          doc.text(`${fichaTitle} (continuación)`, pageW / 2, curY + 11, { align: 'center' });
+          curY += 16;
+        }
+
+        const chunkStudents = chunkSlice.filter(it => it.isStudent);
+        const chunkBody = [];
+
+        chunkSlice.forEach((it, sIdx) => {
+          if (it.isStudent) {
+            if (it.emptyStudent) {
+              chunkBody.push([
+                { content: 'Estudiantes', styles: { fillColor: [237, 242, 245], fontStyle: 'bold', halign: 'center', valign: 'middle' } },
+                { content: '—', styles: { halign: 'center' } },
+                { content: it.fullName, colSpan: 2, styles: { fontStyle: 'italic', textColor: [148, 163, 184] } }
+              ]);
+            } else {
+              const studentLabel = it.studentTotal > 1 ? `Estudiantes (${it.studentTotal})` : 'Estudiante';
+              const rowBg = it.studentIndex % 2 === 0 ? [247, 250, 252] : [255, 255, 255];
+
+              if (sIdx === 0) {
+                chunkBody.push([
+                  {
+                    content: studentLabel,
+                    rowSpan: chunkStudents.length,
+                    styles: {
+                      fillColor: [237, 242, 245],
+                      fontStyle: 'bold',
+                      halign: 'center',
+                      valign: 'middle',
+                      textColor: [18, 41, 76]
+                    }
+                  },
+                  { content: String(it.studentIndex + 1), styles: { fillColor: rowBg, halign: 'center' } },
+                  { content: it.fullName, styles: { fillColor: rowBg, halign: 'left' } },
+                  { content: it.dni, styles: { fillColor: rowBg, halign: 'center' } }
+                ]);
+              } else {
+                chunkBody.push([
+                  { content: String(it.studentIndex + 1), styles: { fillColor: rowBg, halign: 'center' } },
+                  { content: it.fullName, styles: { fillColor: rowBg, halign: 'left' } },
+                  { content: it.dni, styles: { fillColor: rowBg, halign: 'center' } }
+                ]);
+              }
+            }
+          } else if (it.isCoach) {
+            if (it.emptyCoach) {
+              const coachRow = [
+                { content: it.rolName, styles: { fillColor: [253, 246, 227], fontStyle: 'bold', halign: 'center', textColor: [122, 90, 0] } },
+                { content: '—', styles: { fillColor: [253, 246, 227], halign: 'center', textColor: [148, 163, 184] } },
+                { content: it.fullName, colSpan: 2, styles: { fillColor: [253, 246, 227], fontStyle: 'italic', textColor: [148, 163, 184], halign: 'left' } }
+              ];
+              coachRow._isCuerpoTecnicoStart = it.isCoachStart;
+              chunkBody.push(coachRow);
+            } else {
+              const coachRow = [
+                {
+                  content: it.rolName,
+                  styles: {
+                    fillColor: [253, 246, 227],
+                    fontStyle: 'bold',
+                    halign: 'center',
+                    textColor: [122, 90, 0]
+                  }
+                },
+                {
+                  content: '—',
+                  styles: {
+                    fillColor: [253, 246, 227],
+                    halign: 'center',
+                    textColor: [148, 163, 184]
+                  }
+                },
+                {
+                  content: it.fullName,
+                  styles: {
+                    fillColor: [253, 246, 227],
+                    fontStyle: 'bold',
+                    textColor: [11, 27, 54],
+                    halign: 'left'
+                  }
+                },
+                {
+                  content: it.dni,
+                  styles: {
+                    fillColor: [253, 246, 227],
+                    halign: 'center',
+                    textColor: [11, 27, 54]
+                  }
+                }
+              ];
+              coachRow._isCuerpoTecnicoStart = it.isCoachStart;
+              chunkBody.push(coachRow);
+            }
+          }
+        });
+
+        doc.autoTable({
+          head: [
+            [
+              { content: 'CONDICIÓN', styles: { fillColor: [18, 41, 76], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 7.5 } },
+              { content: 'N°', styles: { fillColor: [18, 41, 76], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 7.5 } },
+              { content: 'APELLIDOS Y NOMBRES', styles: { fillColor: [18, 41, 76], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left', fontSize: 7.5 } },
+              { content: 'DNI / DOCUMENTO', styles: { fillColor: [18, 41, 76], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 7.5 } }
+            ]
+          ],
+          body: chunkBody,
+          startY: curY,
+          margin: { left: margin, right: margin, top: headerBottomY + 14, bottom: 42 },
+          theme: 'plain',
+          rowPageBreak: 'avoid',
+          styles: {
+            font: 'helvetica',
+            fontSize: 7.2,
+            cellPadding: { top: 2.4, bottom: 2.4, left: 4, right: 4 },
+            lineColor: [217, 225, 234], // #D9E1EA
+            lineWidth: 0.5,
+            textColor: [11, 27, 54]
+          },
+          columnStyles: {
+            0: { cellWidth: colW0 },
+            1: { cellWidth: colW1, halign: 'center' },
+            2: { cellWidth: colW2 },
+            3: { cellWidth: colW3, halign: 'center' }
+          },
+          didParseCell: (data) => {
+            if (data.cell && typeof data.cell.text === 'object' && Array.isArray(data.cell.text)) {
+              data.cell.text = data.cell.text.map(t => sanitizePdfText(t, 'jedpa_ficha'));
+            }
+            if (data.column.index === 3 && data.cell.raw && typeof data.cell.raw === 'object' && data.cell.raw.content) {
+              const val = String(data.cell.raw.content).trim();
+              if (val.length > 12) {
+                data.cell.styles.fontSize = 6.2;
+              }
+            }
+          },
+          didDrawCell: (data) => {
+            if (data.row && data.row.raw && data.row.raw._isCuerpoTecnicoStart) {
+              doc.setDrawColor(224, 166, 38); // #E0A626
+              doc.setLineWidth(1.2);
+              doc.line(data.cell.x, data.cell.y, data.cell.x + data.cell.width, data.cell.y);
+            }
+          }
+        });
+
+        curY = doc.lastAutoTable.finalY;
+        startIdx += rowsInChunk;
+
+        if (startIdx < itemsToRender.length) {
+          doc.addPage();
+          safeDrawHeader(doc.internal.getNumberOfPages());
+          curY = headerBottomY + 16;
+          isContinuation = true;
+        }
+      }
+
+      curY += 12; // Separación fija entre fichas
+    }
+  }
+
+  // 8. Bloque de firmas oficial
+  const defaultSignatures = isJedpa ? [
+    { cargo: 'Presidente(a) Comisión Organizadora', entidad: 'Comisión Organizadora JEDPA 2026', leyenda: 'Firma y Sello' },
+    { cargo: 'Especialista de Educación Física – AGEBRE', entidad: 'UGEL 03 – DRELM', leyenda: 'Firma y Sello' },
+    { cargo: 'V.° B.° Jefatura AGEBRE', entidad: 'UGEL 03', leyenda: 'Sello Institucional' }
+  ] : [
+    { cargo: `Comisión Organizadora — ${(tipoConcurso && (tipoConcurso.nombreCorto || tipoConcurso.nombre)) || 'Concursos'}`, entidad: 'UGEL 03 – DRELM', leyenda: 'Firma y Sello' },
+    { cargo: 'Especialista Responsable — AGEBRE', entidad: 'UGEL 03 – DRELM', leyenda: 'Firma y Sello' },
+    { cargo: 'V.° B.° Jefatura AGEBRE', entidad: 'UGEL 03', leyenda: 'Sello Institucional' }
+  ];
+  const signatures = (downloadConfig.signatures && downloadConfig.signatures.length > 0)
+    ? downloadConfig.signatures
+    : defaultSignatures;
+  const sinFirmas = downloadConfig.sinFirmas === true;
+
+  if (!sinFirmas && signatures && signatures.length > 0) {
+    const sigCount = Math.min(signatures.length, 3);
+    const rowHeight = 65;
+    const lugarFecha = downloadConfig.lugarFecha || `Lima, ${formatDate(getLimaDateStr())}`;
+    const sigBlockHeight = (lugarFecha ? 18 : 0) + rowHeight + 12;
+
+    if (curY + sigBlockHeight > pageH - 42) {
+      doc.addPage();
+      safeDrawHeader(doc.internal.getCurrentPageInfo ? doc.internal.getCurrentPageInfo().pageNumber : null);
+      curY = headerBottomY + 18;
+    } else {
+      curY += 8;
+    }
+
+    if (lugarFecha) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8);
+      doc.setTextColor(91, 107, 128);
+      doc.text(lugarFecha, margin, curY);
+      curY += 15;
+    }
+
+    const colW = (contentW - 20 * (sigCount - 1)) / sigCount;
+    signatures.slice(0, sigCount).forEach((sig, idx) => {
+      const x = margin + idx * (colW + 20);
+      const lineSigY = curY + 36;
+
+      doc.setDrawColor(138, 151, 168);
+      doc.setLineWidth(0.5);
+      doc.line(x + 10, lineSigY, x + colW - 10, lineSigY);
+
+      let textY = lineSigY + 9;
+      if (sig.nombre) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(11, 27, 54);
+        doc.text(formatearNombre(sig.nombre), x + colW / 2, textY, { align: 'center', maxWidth: colW - 10 });
+        textY += 9;
+      }
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(11, 27, 54);
+      const splitCargo = doc.splitTextToSize(sig.cargo || 'Responsable', colW - 10);
+      doc.text(splitCargo, x + colW / 2, textY, { align: 'center' });
+      textY += splitCargo.length * 8.5;
+
+      if (sig.entidad || sig.institucion) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(91, 107, 128);
+        doc.text(sig.entidad || sig.institucion, x + colW / 2, textY, { align: 'center', maxWidth: colW - 10 });
+      }
+    });
+
+    curY += rowHeight;
+  }
+
+  // 9. Pie de página en todas las hojas con aviso constructivo de datos faltantes
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    if (!drawnHeaderPages.has(i)) {
+      doc.setPage(i);
+      drawOfficialHeader(doc, pageW, margin, pageH, areaConfig);
+      drawnHeaderPages.add(i);
+    }
+  }
+
+  const emissionStr = getCurrentDateTimeStr();
+  const equiposSinPuesto = cleanRows.filter(r => !r.puesto).length;
+  const equiposSinRd = cleanRows.filter(r => !r.resolucionRef).length;
+  const faltantes = [];
+  if (equiposSinPuesto > 0) faltantes.push(`${equiposSinPuesto} equipo${equiposSinPuesto === 1 ? '' : 's'} sin puesto asignado`);
+  if (equiposSinRd > 0) faltantes.push(`${equiposSinRd} sin RD`);
+
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    dibujarPiePagina(doc, {
+      pageNumber: i,
+      totalPagesExp,
+      margin,
+      pageW,
+      pageH,
+      emissionStr,
+      docVerifCode,
+      faltantes,
+      qrDataUrl,
+      isLastPage: (i === pageCount),
+      marcaBorrador: downloadConfig.marcaBorrador
+    });
+  }
+
+  if (typeof doc.putTotalPages === 'function') {
+    doc.putTotalPages(totalPagesExp);
+  }
+
+  const cleanEtapaStr = sanitizeFilename(etapaLabel || 'UGEL');
+  const cleanDiscStr = filters.disciplina ? `_${sanitizeFilename(filters.disciplina.toUpperCase())}` : '';
+  const cleanCatStr = filters.categoria ? `_${sanitizeFilename(filters.categoria.toUpperCase())}` : '';
+  const cleanGenStr = filters.genero ? `_${sanitizeFilename(filters.genero.toUpperCase())}` : '';
+  const cleanDateStr = getLimaDateStr();
+  const contestPrefix = isJedpa
+    ? 'JEDPA'
+    : (tipoConcurso ? (tipoConcurso.nombreCorto || tipoConcurso.id || 'CONCURSO').toUpperCase().replace(/[^A-Z0-9]/g, '_') : 'CONCURSO');
+  const filename = downloadConfig.filename || `Consolidado_Actas_${contestPrefix}${cleanDiscStr}${cleanCatStr}${cleanGenStr}_${cleanDateStr}.pdf`;
+
+  doc.save(filename);
+}
+
+// Alias universal para fichas grupales en cualquier concurso educativo
+export const exportFichasGrupalesConcursoPdf = exportJedpaFichasPdf;
+
+/**
+ * Renderiza de manera continua los grupos de JEDPA dividiéndolos en tramos por página.
+ * - Una sola fila de título por grupo con conteo de participantes exclusivamente al inicio del grupo.
+ * - En páginas siguientes, las filas de participantes continúan directamente bajo el encabezado de columnas repetido.
+ * - No se repite la fila de grupo ni sufijos de continuacion en ninguna disciplina.
+ * - Columnas combinadas (Cat, Disciplina, Cuerpo Técnico, Etapa, Resolución si es común) repiten sus datos en la celda combinada de esa página.
+ * - Medición precisa de alturas y margen de seguridad para evitar saltos prematuros y eliminar espacios en blanco.
+ * - Si el cuerpo técnico es más alto que las filas de un tramo, se amplía minCellHeight equitativamente en vez de saltar de página.
+ * - Regla estricta contra filas huérfanas: el título nunca queda solo al final de una página (mínimo 2 filas o salto conjunto).
+ * - Garantía de encabezado institucional y cabecera de columnas en todas las páginas.
+ */
+async function renderJedpaContinuousTable({
+  doc,
+  curY,
+  pageW,
+  pageH,
+  margin,
+  CONTENT_WIDTH,
+  headerBottomY,
+  safeDrawHeader,
+  baseFont,
+  groupsData,
+  tableHeaders,
+  columnStyles,
+  tableStyles,
+  concursoCfg,
+  downloadConfig = {}
+}) {
+  const bottomMargin = 36;
+  const PAGE_BOTTOM = pageH - bottomMargin;
+  const TABLE_TOP_Y = headerBottomY + 14;
+  const TABLE_HEAD_HEIGHT = 20;
+  const GROUP_HEAD_HEIGHT = 18;
+  const SAFETY_BUFFER = 6;
+  const repetirDatos = (downloadConfig?.repetir_datos_en_continuacion !== false) && (concursoCfg?.repetir_datos_en_continuacion !== false);
+
+  let isFirstTableOnPage = true;
+  let availH = PAGE_BOTTOM - curY - TABLE_HEAD_HEIGHT;
+
+  // Pre-medir altura de cada fila en cada grupo con la tipografía y tamaño exactos
+  doc.setFont(baseFont || 'helvetica', 'normal');
+  doc.setFontSize(7.2);
+  const lh = 7.2 * 1.15;
+
+  groupsData.forEach(g => {
+    // Texto de cuerpo técnico del grupo
+    doc.setFontSize(6.8);
+    const ctLinesCount = doc.splitTextToSize(g.ctTextoGrupo || '', Math.max(10, columnStyles[5].cellWidth - 8)).length;
+    g._ctNeededH = Math.max(20, ctLinesCount * (6.8 * 1.15) + 5);
+
+    doc.setFontSize(7.2);
+    g.rows.forEach(r => {
+      const puestoText = formatPuestoLabel(r.puesto);
+      const ieText = r.codigoModular
+        ? `${(r.institucion || '—').toUpperCase()}\nCód. Mod.: ${formatCodigoModular(r.codigoModular)}`
+        : (r.institucion || '—').toUpperCase();
+
+      // Participante en formato compacto (nombre en 1 línea + DNI, sin línea en blanco entre atletas)
+      const partText = (r.participantes || []).map(p => {
+        const nom = formatPersonName(p);
+        const dni = p.dni ? `DNI ${p.dni}` : '';
+        return dni ? `${nom}\n${dni}` : nom;
+      }).filter(Boolean).join('\n') || 'Sin participante registrado';
+
+      let indAsestext = '';
+      if (r.tieneExcepcionCuerpoTecnico || !g.canSpanCuerpoTecnico) {
+        indAsestext = formatearCuerpoTecnicoTexto(r.asesores, { mayusculas: true, formato: 'multiline' });
+      }
+
+      const hasRes = Boolean(r.resolucionRef && r.resolucionRef !== '—' && String(r.resolucionRef).trim() !== '');
+      const resRefText = hasRes ? formatResolucionRef(r.resolucionRef) : 'Sin resolución registrada';
+
+      r._puestoText = puestoText;
+      r._ieText = ieText;
+      r._partText = partText;
+      r._indAsestext = indAsestext;
+      r._hasRes = hasRes;
+      r._resRefText = resRefText;
+
+      // Calcular altura estimada
+      const pLines = doc.splitTextToSize(puestoText, Math.max(10, columnStyles[0].cellWidth - 8)).length;
+      const ieLines = doc.splitTextToSize(ieText, Math.max(10, columnStyles[1].cellWidth - 8)).length;
+      const partLines = doc.splitTextToSize(partText, Math.max(10, columnStyles[4].cellWidth - 8)).length;
+      const resLines = doc.splitTextToSize(resRefText, Math.max(10, columnStyles[7].cellWidth - 8)).length;
+      let indAsLines = 1;
+      if (indAsestext) {
+        indAsLines = doc.splitTextToSize(indAsestext, Math.max(10, columnStyles[5].cellWidth - 8)).length;
+      }
+
+      const maxLines = Math.max(pLines, ieLines, partLines, resLines, indAsLines, 1);
+      r._unspannedHeight = Math.max(12, maxLines * lh + 5);
+    });
+  });
+
+  for (const g of groupsData) {
+    const numRows = g.rows.length;
+    let startIdx = 0;
+
+    while (startIdx < numRows) {
+      const remainingCount = numRows - startIdx;
+      const isFirstOfGroup = (startIdx === 0);
+      const headerH = isFirstOfGroup ? GROUP_HEAD_HEIGHT : 0;
+      const minRowsNeeded = isFirstOfGroup ? Math.min(2, remainingCount) : 1;
+
+      // Calcular altura mínima requerida para iniciar este grupo/tramo
+      const minSlice = g.rows.slice(startIdx, startIdx + minRowsNeeded);
+      const minSumH = minSlice.reduce((acc, r) => acc + r._unspannedHeight, 0);
+      const minTramoH = headerH + Math.max(minSumH, g.canSpanCuerpoTecnico ? g._ctNeededH : 0);
+
+      // Si no cabe el encabezado de grupo + al menos 2 filas (o el grupo unitario), pasar a nueva página
+      if (availH < minTramoH) {
+        doc.addPage();
+        safeDrawHeader(doc.internal.getNumberOfPages());
+        curY = TABLE_TOP_Y;
+        isFirstTableOnPage = true;
+        availH = PAGE_BOTTOM - TABLE_TOP_Y - TABLE_HEAD_HEIGHT;
+      }
+
+      // Determinar cuántas filas caben en este tramo
+      let count = 0;
+      for (let c = 1; c <= remainingCount; c++) {
+        const testSlice = g.rows.slice(startIdx, startIdx + c);
+        const sumH = testSlice.reduce((acc, r) => acc + r._unspannedHeight, 0);
+        const totalH = headerH + Math.max(sumH, g.canSpanCuerpoTecnico ? g._ctNeededH : 0);
+        if (totalH <= (availH - SAFETY_BUFFER)) {
+          count = c;
+        } else {
+          break;
+        }
+      }
+
+      // Regla estricta contra títulos huérfanos: si inicia el grupo y no caben al menos 2 filas
+      if (isFirstOfGroup && count < minRowsNeeded) {
+        doc.addPage();
+        safeDrawHeader(doc.internal.getNumberOfPages());
+        curY = TABLE_TOP_Y;
+        isFirstTableOnPage = true;
+        availH = PAGE_BOTTOM - TABLE_TOP_Y - TABLE_HEAD_HEIGHT;
+
+        count = 0;
+        for (let c = 1; c <= remainingCount; c++) {
+          const testSlice = g.rows.slice(startIdx, startIdx + c);
+          const sumH = testSlice.reduce((acc, r) => acc + r._unspannedHeight, 0);
+          const totalH = headerH + Math.max(sumH, g.canSpanCuerpoTecnico ? g._ctNeededH : 0);
+          if (totalH <= (availH - SAFETY_BUFFER)) {
+            count = c;
+          } else {
+            break;
+          }
+        }
+        count = Math.max(minRowsNeeded, count);
+      } else if (!isFirstOfGroup && count === 0) {
+        count = Math.max(1, count);
+      }
+
+      // Evitar dejar 1 sola fila huérfana en la página siguiente si quedan 3 o más en total
+      if (remainingCount - count === 1 && count > 2) {
+        count = count - 1;
+      }
+
+      const endIdx = startIdx + count;
+      const tramoRows = g.rows.slice(startIdx, endIdx);
+      const spanCount = tramoRows.length;
+      const tramoSumH = tramoRows.reduce((acc, r) => acc + r._unspannedHeight, 0);
+
+      // Fila de título de grupo: se dibuja UNA SOLA VEZ, al inicio del grupo (nunca en continuación)
+      let groupHeaderCell = null;
+      if (isFirstOfGroup) {
+        const titleStr = g.groupName.toUpperCase();
+        const countStr = g.rows.length === 1 ? '1 participante' : `${g.rows.length} participantes`;
+
+        groupHeaderCell = {
+          content: titleStr,
+          colSpan: 8,
+          isGroupHeader: true,
+          participantCountStr: countStr,
+          styles: {
+            fillColor: concursoCfg.color_fila_grupo || [47, 74, 116], // #2F4A74 Azul pizarra
+            textColor: concursoCfg.color_texto_fila_grupo || [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 9.5,
+            halign: 'left',
+            cellPadding: { top: 4, bottom: 4, left: 8, right: 8 }
+          }
+        };
+      }
+
+      // Verificar si en este tramo la resolución es idéntica
+      const firstTramoRes = (tramoRows[0].resolucionRef || '').trim();
+      const tramoSameRes = tramoRows.every(r => (r.resolucionRef || '').trim() === firstTramoRes);
+      const showCombined = (isFirstOfGroup || repetirDatos);
+
+      // Construir filas del tramo para autoTable
+      const tramoTableRows = [];
+      tramoRows.forEach((r, idx) => {
+        const rowCells = [
+          { content: r._puestoText, styles: { halign: 'center', fontStyle: 'bold' } },
+          { content: r._ieText, styles: { halign: 'left' } }
+        ];
+
+        // Resolución celda
+        let resRefCell;
+        if (r._hasRes) {
+          resRefCell = { content: formatResolucionRef(r.resolucionRef), styles: { halign: 'center' } };
+        } else {
+          resRefCell = { content: 'Sin resolución registrada', styles: { fontStyle: 'italic', textColor: [128, 138, 150], fontSize: 6.6, halign: 'center' } };
+        }
+
+        if (idx === 0) {
+          // Primera fila del tramo: celdas combinadas con rowSpan
+          if (g.sameCat && spanCount > 1) {
+            rowCells.push({ content: showCombined ? g.firstCat : '', rowSpan: spanCount, styles: { halign: 'center', valign: 'middle' } });
+          } else {
+            rowCells.push({ content: r.categoria || '—', styles: { halign: 'center' } });
+          }
+
+          if (g.sameDisc && spanCount > 1) {
+            rowCells.push({ content: showCombined ? g.firstDisc : '', rowSpan: spanCount, styles: { halign: 'left', valign: 'middle' } });
+          } else {
+            rowCells.push({ content: r.disciplina || r.tituloTrabajo || '—', styles: { halign: 'left' } });
+          }
+
+          rowCells.push({ content: r._partText, styles: { halign: 'left' } });
+
+          if (g.canSpanCuerpoTecnico && spanCount > 1) {
+            rowCells.push({ content: showCombined ? g.ctTextoGrupo : '', rowSpan: spanCount, styles: { halign: 'left', valign: 'middle', fontSize: 6.8 } });
+          } else {
+            rowCells.push({ content: r._indAsestext || g.ctTextoGrupo, styles: { halign: 'left', fontSize: 6.8 } });
+          }
+
+          if (g.sameEtapa && spanCount > 1) {
+            rowCells.push({ content: showCombined ? g.firstEtapa : '', rowSpan: spanCount, styles: { halign: 'center', valign: 'middle', fontStyle: 'bold' } });
+          } else {
+            rowCells.push({ content: r.etapa || 'UGEL', styles: { halign: 'center', fontStyle: 'bold' } });
+          }
+
+          if (tramoSameRes && spanCount > 1) {
+            resRefCell.rowSpan = spanCount;
+            if (resRefCell.styles) resRefCell.styles.valign = 'middle';
+            if (!showCombined) resRefCell.content = '';
+            rowCells.push(resRefCell);
+          } else {
+            rowCells.push(resRefCell);
+          }
+        } else {
+          // Filas subsecuentes del tramo: omitir celdas combinadas
+          if (!g.sameCat || spanCount <= 1) {
+            rowCells.push({ content: r.categoria || '—', styles: { halign: 'center' } });
+          }
+
+          if (!g.sameDisc || spanCount <= 1) {
+            rowCells.push({ content: r.disciplina || r.tituloTrabajo || '—', styles: { halign: 'left' } });
+          }
+
+          rowCells.push({ content: r._partText, styles: { halign: 'left' } });
+
+          if (!g.canSpanCuerpoTecnico || spanCount <= 1) {
+            rowCells.push({ content: r._indAsestext || g.ctTextoGrupo, styles: { halign: 'left', fontSize: 6.8 } });
+          }
+
+          if (!g.sameEtapa || spanCount <= 1) {
+            rowCells.push({ content: r.etapa || 'UGEL', styles: { halign: 'center', fontStyle: 'bold' } });
+          }
+
+          if (!tramoSameRes || spanCount <= 1) {
+            rowCells.push(resRefCell);
+          }
+        }
+
+        tramoTableRows.push(rowCells);
+      });
+
+      // El cuerpo de la tabla incluye la fila de grupo solo si es el inicio del grupo
+      const tableBody = isFirstOfGroup ? [[groupHeaderCell], ...tramoTableRows] : tramoTableRows;
+
+      // Si el cuerpo técnico es más alto que las filas de un tramo corto, aumentar altura mínima
+      const tramoMinCellH = (g.canSpanCuerpoTecnico && g._ctNeededH > tramoSumH && spanCount > 1)
+        ? Math.max(12, Math.ceil(g._ctNeededH / spanCount))
+        : 12;
+
+      // Dibujar este tramo con autoTable
+      doc.autoTable({
+        head: isFirstTableOnPage ? [tableHeaders] : [],
+        body: tableBody,
+        startY: curY,
+        margin: { left: margin, right: margin, top: TABLE_TOP_Y, bottom: bottomMargin },
+        tableWidth: CONTENT_WIDTH,
+        theme: 'plain',
+        rowPageBreak: 'avoid',
+        showHead: isFirstTableOnPage ? 'everyPage' : false,
+        styles: Object.assign({
+          font: baseFont,
+          fontSize: 7.2,
+          cellPadding: { top: 2.5, bottom: 2.5, left: 4, right: 4 },
+          lineColor: [227, 232, 239],
+          lineWidth: 0.5,
+          textColor: [15, 27, 45],
+          overflow: 'linebreak',
+          minCellHeight: tramoMinCellH
+        }, tableStyles || {}),
+        headStyles: {
+          fillColor: [18, 41, 77], // #12294D
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+          valign: 'middle',
+          fontSize: 8
+        },
+        alternateRowStyles: {
+          fillColor: [247, 249, 252] // #F7F9FC
+        },
+        columnStyles: columnStyles,
+        didDrawCell: (data) => {
+          if (data.cell && data.cell.raw && data.cell.raw.isGroupHeader) {
+            // Borde izquierdo dorado (#E0A526, 3 pt)
+            const bCol = concursoCfg.color_borde_fila_grupo || [224, 165, 38];
+            doc.setFillColor(bCol[0], bCol[1], bCol[2]);
+            doc.rect(data.cell.x, data.cell.y, 3, data.cell.height, 'F');
+
+            // Conteo a la derecha
+            if (data.cell.raw.participantCountStr) {
+              doc.setFont(baseFont || 'helvetica', 'normal');
+              doc.setFontSize(7.5);
+              doc.setTextColor(220, 232, 245);
+              doc.text(
+                data.cell.raw.participantCountStr,
+                data.cell.x + data.cell.width - 8,
+                data.cell.y + data.cell.height / 2 + 2.5,
+                { align: 'right' }
+              );
+            }
+          }
+        },
+        didParseCell: (data) => {
+          if (data.cell) {
+            if (Array.isArray(data.cell.text)) {
+              data.cell.text = data.cell.text.map(txt => {
+                verificarTextoPdf(txt, 'autoTable');
+                return sanitizePdfText(txt);
+              });
+            } else if (typeof data.cell.text === 'string') {
+              verificarTextoPdf(data.cell.text, 'autoTable');
+              data.cell.text = sanitizePdfText(data.cell.text);
+            }
+          }
+        },
+        didDrawPage: (data) => {
+          const pageNum = doc.internal.getNumberOfPages();
+          if (pageNum > 1) {
+            safeDrawHeader(pageNum);
+          }
+        }
+      });
+
+      curY = doc.lastAutoTable.finalY;
+      isFirstTableOnPage = false;
+      startIdx = endIdx;
+
+      if (startIdx < numRows) {
+        // El grupo continúa en la página siguiente (sin fila de subtítulo repetida)
+        doc.addPage();
+        safeDrawHeader(doc.internal.getNumberOfPages());
+        curY = TABLE_TOP_Y;
+        isFirstTableOnPage = true;
+        availH = PAGE_BOTTOM - TABLE_TOP_Y - TABLE_HEAD_HEIGHT;
+      } else {
+        // Grupo completado: actualizar espacio disponible en la página actual
+        availH = PAGE_BOTTOM - curY;
+      }
+    }
+  }
+
+  return curY + 14;
 }
 
 /**
@@ -3755,7 +5631,7 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
   const concursoCfg = getConcursoConfig(tipoConcurso);
   const isJedpa = (concursoCfg.id === 'jedpa');
   const concursoNombre = tipoConcurso ? tipoConcurso.nombre : 'CONCURSOS EDUCATIVOS ESCOLARES';
-  const title = `ACTA OFICIAL DE RESULTADOS — ${concursoNombre.toUpperCase()}`;
+  const title = getTituloConsolidadoConcurso(tipoConcurso);
 
   // Deduplicación preventiva de registros exactos para evitar conteos erróneos
   const cleanRows = deduplicateConcursoRows(filtered);
@@ -3763,18 +5639,38 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
 
   const formatoConcurso = getFormatoPdfConcurso(tipoConcurso);
 
-  // Formato Fichas por Categoría: EXCLUSIVO para JFEN (o concursos con formato_pdf_actas === 'fichas_por_categoria')
-  // Siempre y cuando el usuario no haya seleccionado explícitamente formato 'completo' (tabular) u 'orden_merito'
-  const debeUsarFichas = formatoConcurso === 'fichas_por_categoria' &&
+  // Formato Fichas por Categoría: EXCLUSIVO para JFEN (paleta morada institucional)
+  const isJfen = (concursoCfg.id === 'jfen' || (tipoConcurso && (tipoConcurso.id === 'jfen' || (tipoConcurso.nombre || '').toUpperCase().includes('JFEN') || (tipoConcurso.nombre || '').toUpperCase().includes('FLORALES'))));
+  const debeUsarFichasJfen = isJfen &&
+    (formatoConcurso === 'fichas_por_categoria' || downloadConfig.formatoConcurso === 'fichas') &&
     downloadConfig.formatoConcurso !== 'completo' &&
     downloadConfig.formatoConcurso !== 'orden_merito';
 
-  if (debeUsarFichas) {
+  if (debeUsarFichasJfen) {
     return await exportJfenFichasPdf(cleanRows, tipoConcurso, filters, downloadConfig);
   }
 
+  // Fichas por equipo / grupo (paleta azul estándar institucional):
+  // Aplica para JEDPA colectivo, Eureka, Crea y Emprende, El Perú Lee o cualquier concurso grupal / formato fichas
+  const esConcursoGrupal = (tipoConcurso && (tipoConcurso.tipoParticipacion === 'grupal' || tipoConcurso.modalidad === 'colectiva' || tipoConcurso.modalidad === 'grupal' || tipoConcurso.formato_pdf_actas === 'fichas_por_categoria'));
+  const sonTodosRegistrosGrupales = cleanRows.length > 0 && cleanRows.every(r =>
+    (Array.isArray(r.participantes) && r.participantes.length > 1) || esDisciplinaColectiva(r.disciplina, r, tipoConcurso)
+  );
+  const esFiltroColectivo = filters.disciplina && esDisciplinaColectiva(filters.disciplina, null, tipoConcurso);
+  const usuarioEligioFichas = downloadConfig.formatoConcurso === 'fichas_equipo' || downloadConfig.formatoConcurso === 'fichas' || formatoConcurso === 'fichas_por_categoria';
+
+  if (downloadConfig.formatoConcurso !== 'completo' && downloadConfig.formatoConcurso !== 'orden_merito') {
+    if (usuarioEligioFichas || esConcursoGrupal || (isJedpa && (sonTodosRegistrosGrupales || esFiltroColectivo))) {
+      return await exportJedpaFichasPdf(cleanRows, tipoConcurso, filters, downloadConfig);
+    }
+
+    if (sonTodosRegistrosGrupales && cleanRows.length > 0) {
+      return await exportJedpaFichasPdf(cleanRows, tipoConcurso, filters, downloadConfig);
+    }
+  }
+
   // Criterio unificado: contar instituciones por CÓDIGO MODULAR
-  const uniqueColegios = new Set(cleanRows.map(r => r.codigoModular || r.institucion).filter(Boolean)).size;
+  const uniqueColegios = new Set(cleanRows.map(r => formatCodigoModular(r.codigoModular) || r.institucion).filter(Boolean)).size;
 
   // Etapa real presente
   const etapasPresentes = [...new Set(cleanRows.map(r => r.etapa).filter(Boolean))];
@@ -3818,7 +5714,8 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
 
   // Nombre de columna de cuerpo técnico según configuración por concurso
   const asesoresColHeader = concursoCfg.etiqueta_columna_asesor || 'Docente Asesor';
-  const tableHeaders = ['Puesto', 'Institución Educativa', 'Categoría', 'Área / Disciplina', 'Participantes (DNI)', asesoresColHeader, 'Etapa', 'Resolución Ref.'];
+  const catColHeader = isJedpa ? 'Cat.' : 'Categoría';
+  const tableHeaders = ['Puesto', 'Institución Educativa', catColHeader, 'Área / Disciplina', 'Participantes (DNI)', asesoresColHeader, 'Etapa', 'Resolución Ref.'];
 
   // Agrupar filas por: Disciplina — Categoría (y Género cuando aplique)
   const groupsMap = new Map();
@@ -3833,9 +5730,9 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
     groupsMap.get(groupKey).push(r);
   });
 
-  // Dentro de cada grupo, ordenar por Puesto (1, 2, 3, menciones, sin puesto) y luego por Institución
-  const tableRows = [];
   const groupKeys = Array.from(groupsMap.keys()).sort((a, b) => a.localeCompare(b));
+  const jedpaGroupsData = [];
+  const tableRows = [];
 
   groupKeys.forEach(groupName => {
     const rowsInGroup = groupsMap.get(groupName).sort((a, b) => {
@@ -3844,24 +5741,8 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
       return (a.institucion || '').localeCompare(b.institucion || '');
     });
 
-    // Fila de subtítulo agrupador (full width)
-    tableRows.push([
-      {
-        content: groupName.toUpperCase(),
-        colSpan: 8,
-        styles: {
-          fillColor: [238, 241, 245], // #EEF1F5
-          textColor: [11, 27, 54],    // #0B1B36
-          fontStyle: 'bold',
-          fontSize: isJedpa ? 7.5 : 8,
-          halign: 'left',
-          cellPadding: isJedpa ? { top: 3.5, bottom: 3.5, left: 6, right: 6 } : { top: 5, bottom: 5, left: 8, right: 8 }
-        }
-      }
-    ]);
-
     if (isJedpa) {
-      // JEDPA: cuerpo técnico del grupo con celdas combinadas (rowSpan)
+      // JEDPA: Estructurar datos del grupo para renderizado continuo por tramos
       const ctInfo = obtenerCuerpoTecnicoGrupo(
         groupName,
         rowsInGroup,
@@ -3870,9 +5751,7 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
       );
       const ctTextoGrupo = formatearCuerpoTecnicoTexto(ctInfo.personas, { mayusculas: true, formato: 'multiline' });
 
-      // Verificar si las columnas comunes son idénticas en todas las filas del grupo
       const numRows = rowsInGroup.length;
-      const spanCount = numRows;
       const firstCat = rowsInGroup[0].categoria || '—';
       const sameCat = rowsInGroup.every(r => (r.categoria || '—') === firstCat);
 
@@ -3888,103 +5767,42 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
       const anyExcepcion = rowsInGroup.some(r => r.tieneExcepcionCuerpoTecnico);
       const canSpanCuerpoTecnico = !anyExcepcion && numRows > 1;
 
-      rowsInGroup.forEach((r, idx) => {
-        const ieText = r.codigoModular
-          ? `${(r.institucion || '—').toUpperCase()}\nCód. Mod.: ${r.codigoModular}`
-          : (r.institucion || '—').toUpperCase();
-
-        // Participante en formato compacto (nombre en 1 línea + DNI)
-        let partText = (r.participantes || []).map(p => {
-          const nom = formatPersonName(p);
-          const dni = p.dni ? `DNI ${p.dni}` : '';
-          return dni ? `${nom}\n${dni}` : nom;
-        }).filter(Boolean).join('\n\n') || 'Sin participante registrado';
-
-        let indAsestext = '';
-        if (r.tieneExcepcionCuerpoTecnico || !canSpanCuerpoTecnico) {
-          indAsestext = formatearCuerpoTecnicoTexto(r.asesores, { mayusculas: true, formato: 'multiline' });
-        }
-
-        const resRef = formatResolucionRef(r.resolucionRef);
-        const puestoText = formatPuestoLabel(r.puesto);
-
-        if (idx === 0) {
-          // Primera fila del grupo: celdas combinadas con rowSpan
-          const rowCells = [
-            { content: puestoText, styles: { halign: 'center', fontStyle: 'bold' } },
-            { content: ieText, styles: { halign: 'left' } }
-          ];
-
-          if (sameCat && spanCount > 1) {
-            rowCells.push({ content: firstCat, rowSpan: spanCount, styles: { halign: 'center', valign: 'middle' } });
-          } else {
-            rowCells.push({ content: r.categoria || '—', styles: { halign: 'center' } });
-          }
-
-          if (sameDisc && spanCount > 1) {
-            rowCells.push({ content: firstDisc, rowSpan: spanCount, styles: { halign: 'left', valign: 'middle' } });
-          } else {
-            rowCells.push({ content: r.disciplina || r.tituloTrabajo || '—', styles: { halign: 'left' } });
-          }
-
-          rowCells.push({ content: partText, styles: { halign: 'left' } });
-
-          if (canSpanCuerpoTecnico) {
-            rowCells.push({ content: ctTextoGrupo, rowSpan: spanCount, styles: { halign: 'left', valign: 'middle', fontSize: 6.8 } });
-          } else {
-            rowCells.push({ content: indAsestext || ctTextoGrupo, styles: { halign: 'left', fontSize: 6.8 } });
-          }
-
-          if (sameEtapa && spanCount > 1) {
-            rowCells.push({ content: firstEtapa, rowSpan: spanCount, styles: { halign: 'center', valign: 'middle', fontStyle: 'bold' } });
-          } else {
-            rowCells.push({ content: r.etapa || 'UGEL', styles: { halign: 'center', fontStyle: 'bold' } });
-          }
-
-          if (sameResRef && spanCount > 1) {
-            rowCells.push({ content: firstResRef, rowSpan: spanCount, styles: { halign: 'center', valign: 'middle' } });
-          } else {
-            rowCells.push({ content: resRef, styles: { halign: 'center' } });
-          }
-
-          tableRows.push(rowCells);
-        } else {
-          // Filas subsecuentes dentro del grupo: omitir celdas combinadas con rowSpan
-          const rowCells = [
-            { content: puestoText, styles: { halign: 'center', fontStyle: 'bold' } },
-            { content: ieText, styles: { halign: 'left' } }
-          ];
-
-          if (!sameCat || numRows <= 1) {
-            rowCells.push({ content: r.categoria || '—', styles: { halign: 'center' } });
-          }
-
-          if (!sameDisc || numRows <= 1) {
-            rowCells.push({ content: r.disciplina || r.tituloTrabajo || '—', styles: { halign: 'left' } });
-          }
-
-          rowCells.push({ content: partText, styles: { halign: 'left' } });
-
-          if (!canSpanCuerpoTecnico) {
-            rowCells.push({ content: indAsestext || ctTextoGrupo, styles: { halign: 'left', fontSize: 6.8 } });
-          }
-
-          if (!sameEtapa || numRows <= 1) {
-            rowCells.push({ content: r.etapa || 'UGEL', styles: { halign: 'center', fontStyle: 'bold' } });
-          }
-
-          if (!sameResRef || numRows <= 1) {
-            rowCells.push({ content: resRef, styles: { halign: 'center' } });
-          }
-
-          tableRows.push(rowCells);
-        }
+      jedpaGroupsData.push({
+        groupName,
+        rows: rowsInGroup,
+        ctInfo,
+        ctTextoGrupo,
+        sameCat,
+        firstCat,
+        sameDisc,
+        firstDisc,
+        sameEtapa,
+        firstEtapa,
+        sameResRef,
+        firstResRef,
+        canSpanCuerpoTecnico
       });
     } else {
+      // Fila de subtítulo agrupador (full width) para los demás concursos
+      tableRows.push([
+        {
+          content: groupName.toUpperCase(),
+          colSpan: 8,
+          styles: {
+            fillColor: [238, 241, 245], // #EEF1F5
+            textColor: [11, 27, 54],    // #0B1B36
+            fontStyle: 'bold',
+            fontSize: 8,
+            halign: 'left',
+            cellPadding: { top: 5, bottom: 5, left: 8, right: 8 }
+          }
+        }
+      ]);
+
       // Formato tabular tradicional para los demás concursos (100% retrocompatible)
       rowsInGroup.forEach(r => {
         const ieText = r.codigoModular
-          ? `${(r.institucion || '—').toUpperCase()}\nCód. Mod.: ${r.codigoModular}`
+          ? `${(r.institucion || '—').toUpperCase()}\nCód. Mod.: ${formatCodigoModular(r.codigoModular)}`
           : (r.institucion || '—').toUpperCase();
 
         let partText = (r.participantes || []).map(p => {
@@ -4017,7 +5835,17 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
     }
   });
 
-  const filename = `Acta_Resultados_${sanitizeFilename(concursoNombre)}_${getLimaDateStr()}.pdf`;
+  let filename = downloadConfig.filename;
+  if (!filename) {
+    if (isJedpa) {
+      const discPart = filters.disciplina ? `_${sanitizeFilename(filters.disciplina.toUpperCase())}` : '';
+      const catPart = filters.categoria ? `_${sanitizeFilename(filters.categoria.toUpperCase())}` : '';
+      const genPart = filters.genero ? `_${sanitizeFilename(filters.genero.toUpperCase())}` : '';
+      filename = `Consolidado_Actas_JEDPA${discPart}${catPart}${genPart}_${getLimaDateStr()}.pdf`;
+    } else {
+      filename = `Consolidado_Actas_${sanitizeFilename(concursoNombre)}_${getLimaDateStr()}.pdf`;
+    }
+  }
 
   const defaultSignatures = [
     { cargo: 'Coordinador(a) del Concurso', entidad: 'Comisión Organizadora UGEL 03', leyenda: 'Firma y Sello' },
@@ -4026,15 +5854,17 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
   ];
 
   // Configuración de anchos y paddings compactos
+  // JEDPA: Col 0 (50pt) para evitar partición de "Clasificado", Col 2 (35pt) con encabezado "Cat."
+  // Suma total: 50 + 155 + 35 + 80 + 195 + 130 + 38 + 87 = 770 pt (CONTENT_WIDTH exacto)
   const jedpaColumnStyles = {
-    0: { halign: 'center', cellWidth: 45, fontStyle: 'bold' },
-    1: { halign: 'left', cellWidth: 160 },
-    2: { halign: 'center', cellWidth: 40 },
+    0: { halign: 'center', cellWidth: 50, fontStyle: 'bold' },
+    1: { halign: 'left', cellWidth: 155 },
+    2: { halign: 'center', cellWidth: 35 },
     3: { halign: 'left', cellWidth: 80 },
-    4: { halign: 'left', cellWidth: 190 },
+    4: { halign: 'left', cellWidth: 195 },
     5: { halign: 'left', cellWidth: 130 },
-    6: { halign: 'center', cellWidth: 40, fontStyle: 'bold' },
-    7: { halign: 'center', cellWidth: 85 }
+    6: { halign: 'center', cellWidth: 38, fontStyle: 'bold' },
+    7: { halign: 'center', cellWidth: 87 }
   };
 
   const defaultColumnStyles = {
@@ -4050,13 +5880,43 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
 
   const tableStyles = isJedpa ? {
     fontSize: 7.2,
-    cellPadding: { top: 2.5, right: 4, bottom: 2.5, left: 4 },
+    cellPadding: { top: 2.5, bottom: 2.5, left: 4, right: 4 },
     minCellHeight: 12
   } : {
     fontSize: 7.5,
     cellPadding: { top: 4.5, right: 5, bottom: 4.5, left: 5 },
     minCellHeight: 14
   };
+
+  const renderCustomTable = isJedpa ? async ({
+    doc,
+    curY,
+    pageW,
+    pageH,
+    margin,
+    CONTENT_WIDTH,
+    headerBottomY,
+    safeDrawHeader,
+    baseFont
+  }) => {
+    return await renderJedpaContinuousTable({
+      doc,
+      curY,
+      pageW,
+      pageH,
+      margin,
+      CONTENT_WIDTH,
+      headerBottomY,
+      safeDrawHeader,
+      baseFont,
+      groupsData: jedpaGroupsData,
+      tableHeaders,
+      columnStyles: jedpaColumnStyles,
+      tableStyles,
+      concursoCfg,
+      downloadConfig
+    });
+  } : null;
 
   await createOfficialPdfDocument({
     title,
@@ -4065,7 +5925,8 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
     introParagraph,
     metaGrid,
     tableHeaders,
-    tableRows,
+    tableRows: isJedpa ? [] : tableRows,
+    renderCustomTable,
     columnStyles: isJedpa ? jedpaColumnStyles : defaultColumnStyles,
     tableStyles,
     signatures: downloadConfig.signatures || defaultSignatures,
@@ -4085,7 +5946,7 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
 export async function exportActaOrdenMeritoPdf(filtered, tipoConcurso, filters = {}, downloadConfig = {}) {
   const isLandscape = downloadConfig.orientation ? (downloadConfig.orientation === 'landscape') : true;
   const concursoNombre = tipoConcurso ? tipoConcurso.nombre : 'CONCURSOS EDUCATIVOS ESCOLARES';
-  const title = `ACTA DE ORDEN DE MÉRITO — ${concursoNombre.toUpperCase()}`;
+  const title = getTituloConsolidadoConcurso(tipoConcurso);
 
   // Filtrar exclusivamente puestos 1.°, 2.°, 3.°
   const cleanRows = deduplicateConcursoRows(filtered);
@@ -4098,7 +5959,7 @@ export async function exportActaOrdenMeritoPdf(filtered, tipoConcurso, filters =
     throw new Error('No se encontraron registros con 1.er, 2.° o 3.er puesto para generar el Acta de Orden de Mérito.');
   }
 
-  const uniqueColegios = new Set(podiumRows.map(r => r.codigoModular || r.institucion).filter(Boolean)).size;
+  const uniqueColegios = new Set(podiumRows.map(r => formatCodigoModular(r.codigoModular) || r.institucion).filter(Boolean)).size;
   const etapaLabel = filters.etapa || 'UGEL';
 
   const introParagraph = `En el marco de las bases generales de los Concursos Educativos Escolares 2026 promovidos por el Ministerio de Educación y la UGEL 03, se emite la presente Acta Oficial de Orden de Mérito (Podio Oficial de Ganadores) para ${concursoNombre} en la Etapa ${etapaLabel}. Se reconocen y proclaman formalmente a las delegaciones escolares que alcanzaron los primeros lugares en sus respectivas categorías y disciplinas.`;
@@ -4163,7 +6024,7 @@ export async function exportActaOrdenMeritoPdf(filtered, tipoConcurso, filters =
       tableRows.push([
         formatPuestoLabel(r.puesto),
         (r.institucion || '—').toUpperCase(),
-        r.codigoModular || '—',
+        formatCodigoModular(r.codigoModular),
         'UGEL 03\nDRELM',
         partText,
         asestext,
@@ -4179,7 +6040,7 @@ export async function exportActaOrdenMeritoPdf(filtered, tipoConcurso, filters =
     }
   ];
 
-  const filename = `Acta_Orden_Merito_${sanitizeFilename(concursoNombre)}_${getLimaDateStr()}.pdf`;
+  const filename = downloadConfig.filename || `Consolidado_Actas_Orden_Merito_${sanitizeFilename(concursoNombre)}_${getLimaDateStr()}.pdf`;
 
   const defaultSignatures = [
     { cargo: 'Coordinador(a) del Concurso', entidad: 'Comisión Organizadora UGEL 03', leyenda: 'Firma y Sello' },

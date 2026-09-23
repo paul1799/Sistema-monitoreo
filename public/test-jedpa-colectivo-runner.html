@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Verificación de Fichas Colectivas JEDPA</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; background: #0b1329; color: #f8fafc; }
+    h1 { color: #38bdf8; margin-bottom: 8px; font-size: 22px; }
+    p { color: #94a3b8; font-size: 14px; margin-top: 0; }
+    .card { background: #1e293b; border-radius: 8px; padding: 18px; margin-bottom: 16px; border: 1px solid #334155; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
+    .pass { background: #14532d; color: #4ade80; border: 1px solid #22c55e; }
+    .fail { background: #7f1d1d; color: #f87171; border: 1px solid #ef4444; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    th, td { border: 1px solid #334155; padding: 8px 12px; text-align: left; }
+    th { background: #0f172a; color: #cbd5e1; }
+    iframe { width: 100%; height: 600px; border: 1px solid #334155; border-radius: 6px; margin-top: 16px; background: #ffffff; }
+  </style>
+</head>
+<body>
+  <h1>Validación: Acta Oficial JEDPA — Ficha por Equipo (Disciplinas Colectivas)</h1>
+  <p>Caso de prueba: BÁSQUET · CATEGORÍA B · VARONES · I.E. Los Álamos (9 estudiantes + Delegado + Entrenador)</p>
+
+  <div id="status" class="card">Ejecutando generación de PDF...</div>
+
+  <div id="results" class="card" style="display:none;">
+    <h3>Resultados de Verificación de Requisitos</h3>
+    <table>
+      <thead>
+        <tr><th>Criterio</th><th>Estado</th><th>Detalle</th></tr>
+      </thead>
+      <tbody id="testRows"></tbody>
+    </table>
+    <div style="margin-top:16px;">
+      <button id="downloadPdfBtn" style="padding:10px 18px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px;">Descargar PDF Generado</button>
+    </div>
+    <div style="margin-top:20px;">
+      <h4 style="color:#e2e8f0;margin-bottom:8px;">Vista Previa del Documento:</h4>
+      <iframe id="pdfPreview"></iframe>
+    </div>
+  </div>
+
+  <script type="module">
+    import { exportConcursosReportPdf, exportJedpaFichasPdf, esDisciplinaColectiva, JEDPA_THEME } from './js/pdf-template.js';
+
+    window.testResults = [];
+    let generatedPdfBlob = null;
+    let generatedPdfDoc = null;
+    let savedPdfName = '';
+
+    function addAssert(name, passed, detail) {
+      window.testResults.push({ name, passed, detail });
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${name}</td><td><span class="badge ${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</span></td><td>${detail}</td>`;
+      document.getElementById('testRows').appendChild(tr);
+    }
+
+    async function runTest() {
+      try {
+        // Datos de prueba: I.E. Los Álamos en Básquet B Varones
+        const testRecord = {
+          id: 'jedpa_test_basquet_alamos',
+          tipoConcursoId: 'jedpa',
+          tipoConcursoNombre: 'Juegos Escolares Deportivos y Paradeportivos (JEDPA)',
+          disciplina: 'BÁSQUET',
+          modalidad: 'colectiva',
+          categoria: 'B',
+          genero: 'Varones',
+          etapa: 'UGEL',
+          institucion: 'LOS ÁLAMOS',
+          codigoModular: '1234567',
+          puesto: '1',
+          resolucionRef: 'R.D. 00342-2026-UGEL03',
+          participantes: [
+            { apellidos: 'ABARCA BENITES', nombres: 'SEBASTIÁN NICOLÁS', dni: '71234567' },
+            { apellidos: 'BARRERA CASTILLO', nombres: 'JOAQUÍN ANDRÉS', dni: '72345678' },
+            { apellidos: 'CÁRDENAS DELGADO', nombres: 'MATÍAS EDUARDO', dni: '73456789' },
+            { apellidos: 'ESPINOZA FLORES', nombres: 'RODRIGO ALONSO', dni: '74567890' },
+            { apellidos: 'GÓMEZ HERRERA', nombres: 'ÁLVARO DANIEL', dni: '75678901' },
+            { apellidos: 'LINARES MENDOZA', nombres: 'DIEGO IGNACIO', dni: '76789012' },
+            { apellidos: 'PAREDES QUISPE', nombres: 'THIAGO BENJAMÍN', dni: '77890123' },
+            { apellidos: 'RÍOS SALAZAR', nombres: 'MATEO VALENTÍN', dni: '78901234' },
+            { apellidos: 'ZAVALETA VARGAS', nombres: 'GABRIEL ALEJANDRO', dni: '79012345' }
+          ],
+          asesores: [
+            { rol: 'Entrenador', apellidos: 'TORRES VÁSQUEZ', nombres: 'MIGUEL ÁNGEL', dni: '08345678' },
+            { rol: 'Delegado', apellidos: 'HUAMÁN SÁNCHEZ', nombres: 'CARLOS ALBERTO', dni: '10234567' }
+          ]
+        };
+
+        // 1. Interceptar creación de doc para capturar Blob
+        const origJsPdf = window.jspdf.jsPDF;
+        let interceptedDoc = null;
+
+        window.jspdf.jsPDF = function(...args) {
+          interceptedDoc = new origJsPdf(...args);
+          const origSave = interceptedDoc.save;
+          interceptedDoc.save = function(name) {
+            savedPdfName = name;
+            generatedPdfBlob = interceptedDoc.output('blob');
+            generatedPdfDoc = interceptedDoc;
+            window.latestPdfBlob = generatedPdfBlob;
+            window.latestPdfDoc = interceptedDoc;
+            window.savedPdfName = savedPdfName;
+          };
+          return interceptedDoc;
+        };
+
+        const tipoConcurso = {
+          id: 'jedpa',
+          nombre: 'Juegos Escolares Deportivos y Paradeportivos (JEDPA)',
+          tipoParticipacion: 'mixto',
+          disciplinasDetalle: [
+            { nombre: 'BÁSQUET', modalidad: 'colectiva' }
+          ]
+        };
+
+        const filters = {
+          disciplina: 'BÁSQUET',
+          categoria: 'B',
+          genero: 'Varones',
+          etapa: 'UGEL'
+        };
+
+        const downloadConfig = {
+          formatoConcurso: 'fichas_equipo',
+          orientation: 'portrait'
+        };
+
+        // Ejecutar generación a través del router unificado exportConcursosReportPdf
+        await exportConcursosReportPdf([testRecord], tipoConcurso, filters, downloadConfig);
+
+        window.jspdf.jsPDF = origJsPdf; // restaurar
+
+        const totalPages = interceptedDoc ? interceptedDoc.internal.getNumberOfPages() : 0;
+        const pdfText = interceptedDoc ? interceptedDoc.output() : '';
+
+        // Asserts
+        addAssert(
+          'Detección automática de disciplina colectiva (BÁSQUET)',
+          esDisciplinaColectiva('BÁSQUET', testRecord, tipoConcurso) === true,
+          'esDisciplinaColectiva devuelve true para BÁSQUET'
+        );
+
+        addAssert(
+          'Generación en 1 página (diseño compacto sin desbordes)',
+          totalPages === 1,
+          `Se generaron ${totalPages} páginas (Meta: 1 página A4 Vertical)`
+        );
+
+        addAssert(
+          'Nombre del archivo con disciplina, categoría y género',
+          savedPdfName.includes('BASQUET') && savedPdfName.includes('B') && savedPdfName.includes('VARONES'),
+          `Nombre generado: ${savedPdfName}`
+        );
+
+        addAssert(
+          'Franja de grupo con conteo correcto (1 equipo · 9 estudiantes)',
+          pdfText.includes('1 equipo') && pdfText.includes('9 estudiantes'),
+          'Contador muestra "1 equipo · 9 estudiantes" en lugar de "1 participante"'
+        );
+
+        addAssert(
+          'Cabecera de ficha institucional Los Álamos',
+          pdfText.includes('LOS') && pdfText.includes('LAMOS') && pdfText.includes('1234567'),
+          'Nombre de la I.E. y código modular presentes en el bloque'
+        );
+
+        addAssert(
+          'Insignia de puesto 1.er Puesto (Campeón)',
+          pdfText.includes('1.er Puesto') || pdfText.includes('Campe'),
+          'Insignia dorada de 1.er Puesto asignada'
+        );
+
+        addAssert(
+          'Inclusión de los 9 estudiantes del equipo',
+          pdfText.includes('ABARCA') && pdfText.includes('ZAVALETA'),
+          'Estudiantes desde Abarca hasta Zavaleta presentes en la tabla'
+        );
+
+        addAssert(
+          'Cuerpo técnico incluido con Delegado y Entrenador',
+          pdfText.includes('HUAM') && pdfText.includes('TORRES'),
+          'Delegado Carlos Huamán y Entrenador Miguel Torres presentes'
+        );
+
+        addAssert(
+          'Bloque de firmas oficiales JEDPA (3 firmantes)',
+          pdfText.includes('Comisi') && pdfText.includes('Educaci') && pdfText.includes('AGEBRE'),
+          'Comisión Organizadora, Especialista de Educación Física y Jefatura AGEBRE presentes'
+        );
+
+        // Prueba 2: Concurso grupal no-JEDPA (Feria Escolar Eureka - 3 estudiantes + Docente Asesor + Título de proyecto)
+        const eurekaRecord = {
+          id: 'eureka_test_ie_7001',
+          tipoConcursoId: 'eureka',
+          tipoConcursoNombre: 'Feria Escolar Nacional de Ciencia y Tecnología Eureka',
+          disciplina: 'Soluciones Tecnológicas',
+          categoria: 'D',
+          etapa: 'UGEL',
+          institucion: 'I.E. 7001 SAN RAFAEL',
+          codigoModular: '0456789',
+          puesto: '1',
+          tituloTrabajo: 'Sistema Automatizado de Riego por Goteo Solar',
+          resolucionRef: 'R.D. 00342-2026-UGEL03',
+          participantes: [
+            { apellidos: 'ALVARADO CASTILLO', nombres: 'LUCÍA MARÍA', dni: '71000001' },
+            { apellidos: 'BENÍTEZ ROJAS', nombres: 'VALENTINA PAOLA', dni: '71000002' },
+            { apellidos: 'CASTRO VARGAS', nombres: 'CAMILO ANDRÉS', dni: '71000003' }
+          ],
+          asesores: [
+            { rol: 'Docente Asesor', apellidos: 'QUISPE MENDOZA', nombres: 'GLADYS ELENA', dni: '09887766' }
+          ]
+        };
+
+        const tipoEureka = {
+          id: 'eureka',
+          nombre: 'Feria Escolar Nacional de Ciencia y Tecnología Eureka',
+          tipoParticipacion: 'grupal',
+          tieneDisciplina: true,
+          tieneTituloTrabajo: true,
+          etiquetaDisciplina: 'Área de participación',
+          etiquetaTitulo: 'Título del proyecto'
+        };
+
+        window.jspdf.jsPDF = function(...args) {
+          interceptedDoc = new origJsPdf(...args);
+          const origSave = interceptedDoc.save;
+          interceptedDoc.save = function(name) {
+            savedPdfName = name;
+            generatedPdfBlob = interceptedDoc.output('blob');
+            generatedPdfDoc = interceptedDoc;
+          };
+          return interceptedDoc;
+        };
+
+        await exportConcursosReportPdf([eurekaRecord], tipoEureka, { etapa: 'UGEL' }, { orientation: 'portrait' });
+        const eurekaPdfText = interceptedDoc ? interceptedDoc.output() : '';
+
+        addAssert(
+          'Concurso grupal no-JEDPA (Eureka): enrutamiento automático a formato ficha',
+          eurekaPdfText.includes('EUREKA') || eurekaPdfText.includes('CIENCIA Y TECNOLOG'),
+          'Feria Eureka se genera automáticamente en formato ficha grupal'
+        );
+
+        addAssert(
+          'Concurso grupal (Eureka): título del proyecto en la ficha',
+          eurekaPdfText.includes('Sistema Automatizado') || eurekaPdfText.includes('Riego'),
+          'Título del proyecto visualizado correctamente en el bloque institucional'
+        );
+
+        addAssert(
+          'Concurso grupal (Eureka): rol Docente Asesor en integrantes',
+          eurekaPdfText.includes('Docente Asesor') && eurekaPdfText.includes('QUISPE'),
+          'Docente Asesor Gladys Quispe presente con línea dorada separadora'
+        );
+
+        window.jspdf.jsPDF = origJsPdf; // restaurar
+
+        // Renderizar vista previa y botón de descarga
+        document.getElementById('status').style.display = 'none';
+        document.getElementById('results').style.display = 'block';
+
+        if (generatedPdfBlob) {
+          const blobUrl = URL.createObjectURL(generatedPdfBlob);
+          document.getElementById('pdfPreview').src = blobUrl;
+          document.getElementById('downloadPdfBtn').onclick = () => {
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = savedPdfName || 'Acta_Resultados_JEDPA_BASQUET_B_VARONES.pdf';
+            a.click();
+          };
+        }
+
+        window.testCompleted = true;
+      } catch (err) {
+        console.error(err);
+        document.getElementById('status').innerHTML = `<span class="badge fail">ERROR</span> ${err.message}`;
+        window.testError = err.message;
+      }
+    }
+
+    window.onload = runTest;
+  </script>
+</body>
+</html>

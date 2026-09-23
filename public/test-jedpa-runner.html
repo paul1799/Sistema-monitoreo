@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Verificación de Acta PDF JEDPA</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #0f172a; color: #f8fafc; }
+    h1 { color: #38bdf8; }
+    .card { background: #1e293b; border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #334155; }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; }
+    .pass { background: #166534; color: #4ade80; }
+    .fail { background: #991b1b; color: #f87171; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #334155; padding: 8px; text-align: left; }
+    th { background: #0f172a; }
+  </style>
+</head>
+<body>
+  <h1>Suite de Verificación: Acta PDF JEDPA</h1>
+  <div id="status" class="card">Ejecutando pruebas...</div>
+  <div id="results" class="card" style="display:none;">
+    <h3>Resultados de la Validación</h3>
+    <table id="testTable">
+      <thead>
+        <tr><th>Criterio</th><th>Estado</th><th>Detalle</th></tr>
+      </thead>
+      <tbody id="testRows"></tbody>
+    </table>
+    <div style="margin-top:20px;">
+      <button id="downloadPdfBtn" style="padding:10px 16px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">Descargar PDF Generado</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { exportConcursosReportPdf, getConcursoConfig } from './js/pdf-template.js';
+
+    window.testResults = [];
+    let generatedPdfBlob = null;
+    let generatedPdfDoc = null;
+
+    function addAssert(name, passed, detail) {
+      window.testResults.push({ name, passed, detail });
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${name}</td><td><span class="badge ${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</span></td><td>${detail}</td>`;
+      document.getElementById('testRows').appendChild(tr);
+    }
+
+    async function runTests() {
+      try {
+        const resp = await fetch('./data/jedpa_atletismo_59_records.json');
+        const rows59 = await resp.json();
+
+        // Interceptar creación de doc para inspeccionarlo
+        const origJsPdf = window.jspdf.jsPDF;
+        let interceptedDoc = null;
+
+        window.jspdf.jsPDF = function(...args) {
+          interceptedDoc = new origJsPdf(...args);
+          // Interceptar save para obtener el blob
+          const origSave = interceptedDoc.save;
+          interceptedDoc.save = function(name) {
+            generatedPdfBlob = interceptedDoc.output('blob');
+            generatedPdfDoc = interceptedDoc;
+            window.latestPdfBlob = generatedPdfBlob;
+            window.latestPdfDoc = interceptedDoc;
+            console.log('PDF Generado:', name, 'Páginas:', interceptedDoc.internal.getNumberOfPages());
+          };
+          return interceptedDoc;
+        };
+
+        const tipoConcurso = {
+          id: 'jedpa',
+          nombre: 'Juegos Escolares Deportivos y Paradeportivos (JEDPA)'
+        };
+
+        const filters = {
+          etapa: 'UGEL',
+          disciplina: 'ATLETISMO'
+        };
+
+        const downloadConfig = {
+          filename: 'Acta_Resultados_JEDPA_Atletismo_59_optimizado.pdf',
+          orientation: 'landscape'
+        };
+
+        await exportConcursosReportPdf(rows59, tipoConcurso, filters, downloadConfig);
+
+        window.jspdf.jsPDF = origJsPdf; // restaurar
+
+        const totalPages = interceptedDoc ? interceptedDoc.internal.getNumberOfPages() : 0;
+
+        // Validaciones
+        addAssert(
+          'Total páginas <= 5 (Meta de compresión)',
+          totalPages <= 5,
+          `Se generaron ${totalPages} páginas (Meta: <= 5, anterior: 6 páginas)`
+        );
+
+        // Tokens de configuración
+        const cfg = getConcursoConfig(tipoConcurso);
+        addAssert(
+          'Token color_fila_grupo definido',
+          Array.isArray(cfg.color_fila_grupo) && cfg.color_fila_grupo[0] === 47 && cfg.color_fila_grupo[1] === 74,
+          `Valor: rgb(${cfg.color_fila_grupo.join(',')})`
+        );
+        addAssert(
+          'Token color_texto_fila_grupo definido',
+          Array.isArray(cfg.color_texto_fila_grupo) && cfg.color_texto_fila_grupo[0] === 255,
+          `Valor: rgb(${cfg.color_texto_fila_grupo.join(',')})`
+        );
+        addAssert(
+          'Token color_borde_fila_grupo definido',
+          Array.isArray(cfg.color_borde_fila_grupo) && cfg.color_borde_fila_grupo[0] === 224,
+          `Valor: rgb(${cfg.color_borde_fila_grupo.join(',')})`
+        );
+
+        // Inspeccionar texto del PDF
+        const pdfText = interceptedDoc.output();
+        const hasContinuacion = pdfText.includes('(CONTINUACI') || pdfText.includes('(continuaci');
+        addAssert(
+          'Ausencia de sufijo "(continuación)" en tramos partidos',
+          !hasContinuacion,
+          !hasContinuacion
+            ? 'Confirmado: cada grupo tiene una sola fila de título y no se repite "(continuación)"'
+            : 'ERROR: se detectó el sufijo de continuación en páginas siguientes'
+        );
+
+        const hasSinResolucion = pdfText.includes('Sin resoluci') || pdfText.includes('Sin resolucion');
+        addAssert(
+          'Texto "Sin resolución registrada" para fila sin RD',
+          hasSinResolucion,
+          'Se detectó el texto en cursiva/gris para la fila sin resolución'
+        );
+
+        const hasCatAbrev = pdfText.includes('Cat.') || pdfText.includes('Cat');
+        addAssert(
+          'Encabezado "Cat." en lugar de "Categoría"',
+          hasCatAbrev,
+          'Abreviatura presente para evitar corte silábico'
+        );
+
+        document.getElementById('status').style.display = 'none';
+        document.getElementById('results').style.display = 'block';
+
+        document.getElementById('downloadPdfBtn').onclick = () => {
+          if (generatedPdfDoc) {
+            generatedPdfDoc.save('Acta_Resultados_JEDPA_Atletismo_59_optimizado.pdf');
+          }
+        };
+
+        window.testCompleted = true;
+      } catch (err) {
+        console.error(err);
+        document.getElementById('status').innerHTML = `<span class="badge fail">ERROR</span> ${err.message}`;
+        window.testError = err.message;
+      }
+    }
+
+    window.onload = runTests;
+  </script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Visual Buscador Cuerpo Técnico</title>
+  <link rel="stylesheet" href="./css/style.css">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #0f172a; padding: 20px; color: #fff; }
+    #container { max-width: 1200px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <h1>Test Visual Buscador Cuerpo Técnico (JEDPA)</h1>
+  <button id="openModalBtn" class="btn" style="padding:10px 20px;font-size:14px">Abrir Modal de Consolidación</button>
+  <div id="mountPoint" style="margin-top:20px;"></div>
+
+  <script type="module">
+    import { openConsolidarCuerpoTecnicoModal } from './js/ui.js';
+
+    // Mock state con diversas disciplinas
+    const mockState = {
+      tiposConcurso: [
+        { id: 'jedpa', nombre: 'Juegos Escolares Deportivos y Paradeportivos (JEDPA)' }
+      ],
+      concursoCuerpoTecnico: [
+        {
+          id: 'UGEL__TENIS_DE_MESA__B__VARONES',
+          disciplina: 'TENIS DE MESA',
+          categoria: 'B',
+          genero: 'VARONES',
+          etapa: 'UGEL',
+          miembros: [
+            { rol: 'DELEGADO', apellidos: 'GÓMEZ PÉREZ', nombres: 'CARLOS ALBERTO', dni: '12345678' },
+            { rol: 'ENTRENADOR', apellidos: 'LÓPEZ DÍAZ', nombres: 'JUAN MANUEL', dni: '87654321' }
+          ]
+        }
+      ],
+      concursoRegistros: [
+        // BÁSQUET C VARONES
+        {
+          id: 'r1',
+          tipoConcursoId: 'jedpa',
+          etapa: 'UGEL',
+          disciplina: 'BÁSQUET',
+          categoria: 'C',
+          genero: 'VARONES',
+          asesores: [
+            { rol: 'Delegado', apellidos: 'CHAMORRO LEANDRO', nombres: 'AUGUSTO ALBERTO', dni: '09271379' },
+            { rol: 'Entrenador', apellidos: 'HERNANDEZ RAMIREZ', nombres: 'VICTOR JESUS', dni: '10403776' }
+          ]
+        },
+        // BÁSQUET B DAMAS
+        {
+          id: 'r2',
+          tipoConcursoId: 'jedpa',
+          etapa: 'UGEL',
+          disciplina: 'BÁSQUET',
+          categoria: 'B',
+          genero: 'DAMAS',
+          asesores: [
+            { rol: 'Delegado', apellidos: 'CAMPOS REYMUNDO', nombres: 'RICARDO ANTONIO', dni: '08566762' },
+            { rol: 'Entrenador', apellidos: 'LANDAVERRY GIL', nombres: 'VICTOR JULIO', dni: '70007905' }
+          ]
+        },
+        // ATLETISMO A DAMAS
+        {
+          id: 'r3',
+          tipoConcursoId: 'jedpa',
+          etapa: 'UGEL',
+          disciplina: 'ATLETISMO',
+          categoria: 'A',
+          genero: 'DAMAS',
+          asesores: [
+            { rol: 'Docente Asesor', apellidos: 'QUISPE FLORES', nombres: 'MARÍA ELENA', dni: '44556677' }
+          ]
+        },
+        // ATLETISMO B VARONES
+        {
+          id: 'r4',
+          tipoConcursoId: 'jedpa',
+          etapa: 'UGEL',
+          disciplina: 'ATLETISMO',
+          categoria: 'B',
+          genero: 'VARONES',
+          asesores: [
+            { rol: 'Entrenador', apellidos: 'TORRES VELA', nombres: 'JOSÉ LUIS', dni: '33445566' }
+          ]
+        },
+        // TENIS DE MESA B VARONES (Formalizado)
+        {
+          id: 'r5',
+          tipoConcursoId: 'jedpa',
+          etapa: 'UGEL',
+          disciplina: 'TENIS DE MESA',
+          categoria: 'B',
+          genero: 'VARONES',
+          asesores: []
+        },
+        // VOLEIBOL C DAMAS
+        {
+          id: 'r6',
+          tipoConcursoId: 'jedpa',
+          etapa: 'UGEL',
+          disciplina: 'VÓLEIBOL',
+          categoria: 'C',
+          genero: 'DAMAS',
+          asesores: [
+            { rol: 'Entrenador', apellidos: 'RODRIGUEZ PAZ', nombres: 'SOFÍA', dni: '22334455' }
+          ]
+        },
+        // FUTSAL B VARONES
+        {
+          id: 'r7',
+          tipoConcursoId: 'jedpa',
+          etapa: 'UGEL',
+          disciplina: 'FUTSAL',
+          categoria: 'B',
+          genero: 'VARONES',
+          asesores: [
+            { rol: 'Delegado', apellidos: 'NAVARRO CRUZ', nombres: 'CARLOS', dni: '11223344' }
+          ]
+        }
+      ]
+    };
+
+    const mockDbNs = {
+      collection: () => ({
+        doc: () => ({
+          set: async () => {},
+          delete: async () => {}
+        }),
+        add: async () => {}
+      }),
+      batch: () => ({
+        update: () => {},
+        commit: async () => {}
+      })
+    };
+
+    function openModal() {
+      openConsolidarCuerpoTecnicoModal(
+        mockDbNs,
+        mockState,
+        document.getElementById('mountPoint'),
+        true,
+        { displayName: 'Coordinador JEDPA', email: 'jedpa@ugel03.gob.pe' },
+        () => {}
+      );
+    }
+
+    document.getElementById('openModalBtn').addEventListener('click', openModal);
+
+    // Abrir automáticamente para inspección
+    window.addEventListener('DOMContentLoaded', () => {
+      openModal();
+    });
+  </script>
+</body>
+</html>
