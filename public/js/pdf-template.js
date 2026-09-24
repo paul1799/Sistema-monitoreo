@@ -589,7 +589,10 @@ export function formatearFiltrosSubtitulo(filters = {}, etapaLabel = 'UGEL') {
     filtrosArr.push(`Disciplina ${String(filters.disciplina).trim().toUpperCase()}`);
   }
   if (filters.categoria) {
-    filtrosArr.push(`Categoría ${String(filters.categoria).trim().toUpperCase()}`);
+    const cStr = Array.isArray(filters.categoria) ? filters.categoria.join(', ') : String(filters.categoria);
+    if (cStr.trim()) {
+      filtrosArr.push(`Categoría ${cStr.trim().toUpperCase()}`);
+    }
   }
   if (filters.genero) {
     filtrosArr.push(`Género ${String(filters.genero).trim().toUpperCase()}`);
@@ -3798,8 +3801,11 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
 
   // Categorías presentes
   const categoriasPresentes = [...new Set(cleanRows.map(r => (r.categoria || '').trim()).filter(Boolean))].sort();
-  const singleCategory = filters.categoria
-    ? filters.categoria.trim()
+  const catFilterStr = Array.isArray(filters.categoria)
+    ? (filters.categoria.length === 1 ? filters.categoria[0] : '')
+    : (filters.categoria || '');
+  const singleCategory = catFilterStr
+    ? catFilterStr.trim()
     : (categoriasPresentes.length === 1 ? categoriasPresentes[0] : null);
 
   // Disciplinas presentes
@@ -3838,7 +3844,10 @@ export async function exportJfenFichasPdf(filtered, tipoConcurso, filters = {}, 
 
   // Filtros aplicados no redundantes (solo los que no estén ya explícitos en el título)
   const remainingFilters = [];
-  if (!singleCategory && filters.categoria) remainingFilters.push(`Categoría: ${filters.categoria}`);
+  if (!singleCategory && filters.categoria) {
+    const catStr = Array.isArray(filters.categoria) ? filters.categoria.join(', ') : String(filters.categoria);
+    if (catStr.trim()) remainingFilters.push(`Categoría: ${catStr.trim()}`);
+  }
   if (!singleDisciplina && filters.disciplina) remainingFilters.push(`Disciplina: ${filters.disciplina}`);
   if (filters.query) remainingFilters.push(`Búsqueda: "${filters.query}"`);
 
@@ -5233,7 +5242,8 @@ export async function exportJedpaFichasPdf(filtered, tipoConcurso, filters = {},
 
   const cleanEtapaStr = sanitizeFilename(etapaLabel || 'UGEL');
   const cleanDiscStr = filters.disciplina ? `_${sanitizeFilename(filters.disciplina.toUpperCase())}` : '';
-  const cleanCatStr = filters.categoria ? `_${sanitizeFilename(filters.categoria.toUpperCase())}` : '';
+  const catStrVal = filters.categoria ? (Array.isArray(filters.categoria) ? filters.categoria.join('_') : String(filters.categoria)) : '';
+  const cleanCatStr = catStrVal ? `_${sanitizeFilename(catStrVal.toUpperCase())}` : '';
   const cleanGenStr = filters.genero ? `_${sanitizeFilename(filters.genero.toUpperCase())}` : '';
   const cleanDateStr = getLimaDateStr();
   const contestPrefix = isJedpa
@@ -5839,7 +5849,8 @@ export async function exportConcursosReportPdf(filtered, tipoConcurso, filters =
   if (!filename) {
     if (isJedpa) {
       const discPart = filters.disciplina ? `_${sanitizeFilename(filters.disciplina.toUpperCase())}` : '';
-      const catPart = filters.categoria ? `_${sanitizeFilename(filters.categoria.toUpperCase())}` : '';
+      const catStrVal2 = filters.categoria ? (Array.isArray(filters.categoria) ? filters.categoria.join('_') : String(filters.categoria)) : '';
+      const catPart = catStrVal2 ? `_${sanitizeFilename(catStrVal2.toUpperCase())}` : '';
       const genPart = filters.genero ? `_${sanitizeFilename(filters.genero.toUpperCase())}` : '';
       filename = `Consolidado_Actas_JEDPA${discPart}${catPart}${genPart}_${getLimaDateStr()}.pdf`;
     } else {

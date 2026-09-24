@@ -2039,6 +2039,208 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   color: var(--navy-900);
 }
 
+/* ==========================================================================
+   Filtro Multiselección de Categorías (Dropdown con Checkboxes)
+   ========================================================================== */
+.catMultiSelectWrap {
+  position: relative;
+  width: 100%;
+}
+.catMultiSelectBtn {
+  width: 100%;
+  height: 42px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: var(--ink);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  gap: 6px;
+  box-sizing: border-box;
+}
+.catMultiSelectBtn:hover, .catMultiSelectBtn:focus, .catMultiSelectBtn.active {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31, 95, 168, 0.12);
+}
+.catMultiSelectBtn.disabled {
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.catMultiSelectBtnLabel {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13.5px;
+}
+.catMultiSelectBadge {
+  background: var(--primary, #1f5fa8);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+.catMultiSelectBtnIcon {
+  font-size: 11px;
+  color: var(--ink-soft);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+.catMultiSelectBtn.active .catMultiSelectBtnIcon {
+  transform: rotate(180deg);
+}
+
+.catMultiSelectDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  min-width: 250px;
+  max-width: 340px;
+  background: #ffffff;
+  border: 1px solid var(--line-strong, #cbd5e1);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(11, 27, 54, 0.18);
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.catMultiSelectSearch {
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--line);
+}
+.catMultiSelectSearch input {
+  width: 100%;
+  height: 32px;
+  padding: 5px 9px;
+  font-size: 12.5px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  outline: none;
+  box-sizing: border-box;
+}
+.catMultiSelectSearch input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(31, 95, 168, 0.15);
+}
+.catMultiSelectHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f1f5f9;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.catMultiSelectAllLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--navy-900);
+  font-size: 12.5px;
+}
+.catMultiSelectAllLabel input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--primary, #1f5fa8);
+  cursor: pointer;
+}
+.catClearLink {
+  background: none;
+  border: none;
+  color: var(--primary, #1f5fa8);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+.catClearLink:hover {
+  color: var(--navy-900);
+}
+.catMultiSelectList {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.catMultiSelectOption {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  user-select: none;
+  transition: background 0.1s ease;
+}
+.catMultiSelectOption:hover {
+  background: #f1f5f9;
+}
+.catMultiSelectOption.selected {
+  background: #eef2ff;
+  color: var(--navy-900);
+  font-weight: 600;
+}
+.catMultiSelectOption input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--primary, #1f5fa8);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.catOptionText {
+  flex: 1;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.3;
+}
+.catOptionCount {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.catMultiSelectFooter {
+  padding: 7px 12px;
+  background: #f8fafc;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.catSelectedSummary {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.catCloseBtn {
+  font-size: 11.5px !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+}
+
 /* Fila de chips de filtros activos y contador */
 .jedpaActiveFiltersRow {
   display: flex;
@@ -2653,5 +2855,765 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   align-items: center;
   gap: 6px;
 }
+
+/* =========================================================================
+   REDISEÑO: REGISTRAR FICHA, PLANTILLAS Y EDITOR CON VISTA PREVIA EN VIVO
+   ========================================================================= */
+
+/* Subpestañas internas de "Registrar ficha" */
+.regSubNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--line);
+  padding-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.regSubNavBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-600);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.regSubNavBtn:hover {
+  background: #FFFFFF;
+  color: var(--navy-900);
+  border-color: #CBD5E1;
+}
+
+.regSubNavBtn.active {
+  background: var(--navy-900);
+  color: #FFFFFF;
+  border-color: var(--navy-900);
+  box-shadow: var(--shadow-sm);
+}
+
+.regSubNavBtn .adminBadge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(224, 165, 38, 0.2);
+  color: #B45309;
+  text-transform: uppercase;
+}
+.regSubNavBtn.active .adminBadge {
+  background: rgba(255, 255, 255, 0.2);
+  color: #FDF3D8;
+}
+
+/* Barra de Búsqueda y Filtros Rápidos */
+.fichaFilterBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+.fichaSearchWrap {
+  flex: 1;
+  min-width: 240px;
+  position: relative;
+}
+
+.fichaSearchInput {
+  width: 100%;
+  padding: 8px 12px 8px 34px;
+  font-size: 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: #FFFFFF;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.fichaSearchInput:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(31, 95, 168, 0.15);
+}
+
+.fichaSearchIcon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-400);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.fichaFilterSelect {
+  padding: 8px 12px;
+  font-size: 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: #FFFFFF;
+  color: var(--text-900);
+  cursor: pointer;
+  outline: none;
+}
+.fichaFilterSelect:focus {
+  border-color: var(--primary);
+}
+
+.fichaClearFiltersBtn {
+  font-size: 12px;
+  color: var(--primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px 6px;
+}
+
+/* Lista de Tarjetas de Ficha */
+.fichaCardsList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.fichaCard {
+  display: flex;
+  align-items: stretch;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  cursor: pointer;
+}
+
+.fichaCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: #CBD5E1;
+}
+
+.fichaCard:focus-within {
+  border-color: var(--primary);
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.fichaCardColorStripe {
+  width: 7px;
+  flex-shrink: 0;
+  transition: width 0.15s ease;
+}
+.fichaCard:hover .fichaCardColorStripe {
+  width: 9px;
+}
+
+.fichaCardMain {
+  flex: 1;
+  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.fichaCardIconWrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+}
+
+.fichaCardContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.fichaCardTitle {
+  font-family: var(--serif);
+  font-size: 16.5px;
+  font-weight: 700;
+  color: var(--navy-900);
+  margin: 0 0 6px 0;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.fichaCardDesc {
+  font-size: 13px;
+  color: var(--text-600);
+  line-height: 1.5;
+  margin: 0 0 10px 0;
+  word-break: break-word;
+}
+
+.fichaCardDescMore {
+  color: var(--blue-600);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  margin-left: 6px;
+  font-size: 12px;
+}
+
+.fichaCardBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.fichaBadge {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-900);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fichaBadgeModalidad {
+  background: #EFF6FF;
+  border-color: #BFDBFE;
+  color: #1E40AF;
+  font-weight: 700;
+}
+
+.fichaBadgeEscala {
+  background: #F5F3FF;
+  border-color: #DDD6FE;
+  color: #6D28D9;
+}
+
+.fichaBadgeCount {
+  background: #ECFDF5;
+  border-color: #A7F3D0;
+  color: #047857;
+}
+
+.fichaBadgeItems {
+  background: #F8FAFC;
+  border-color: #E2E8F0;
+  color: var(--text-600);
+}
+
+.fichaCardActs {
+  padding: 16px 20px 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.btnRegistrarFichaAction {
+  padding: 9px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  background: var(--primary);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.btnRegistrarFichaAction:hover {
+  background: var(--navy-800);
+  transform: translateY(-1px);
+}
+
+/* Banner de Ficha Activa (con botón Cambiar Ficha) */
+.fichaActiveHeaderBar {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-left-width: 6px;
+  border-radius: var(--radius);
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+  flex-wrap: wrap;
+}
+
+.fichaActiveInfo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
+}
+
+.fichaActiveIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.fichaActiveDetails {
+  min-width: 0;
+}
+
+.fichaActiveDetails h3 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  color: var(--navy-900);
+  line-height: 1.3;
+}
+
+.fichaActiveBackBtn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy-900);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.fichaActiveBackBtn:hover {
+  background: #FFFFFF;
+  border-color: var(--navy-900);
+}
+
+/* Paleta de Colores en el Editor */
+.colorSwatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.colorSwatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 0 0 1px #CBD5E1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: #FFFFFF;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+}
+.colorSwatch:hover {
+  transform: scale(1.15);
+}
+.colorSwatch.active {
+  box-shadow: 0 0 0 2.5px var(--navy-900);
+  transform: scale(1.1);
+}
+
+/* Editor Split-Screen con Vista Previa */
+.builderSplitGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.builderEditorPane {
+  min-width: 0;
+}
+
+.builderPreviewPane {
+  min-width: 0;
+}
+
+.builderPreviewSticky {
+  position: sticky;
+  top: 115px;
+  max-height: calc(100vh - 135px);
+  overflow-y: auto;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+}
+
+.builderPreviewHeader {
+  background: var(--navy-900);
+  color: #FFFFFF;
+  padding: 12px 16px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.builderPreviewHeaderTitle {
+  font-size: 13.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.builderPreviewTabs {
+  display: flex;
+  gap: 6px;
+}
+
+.builderPreviewTabBtn {
+  background: rgba(255, 255, 255, 0.15);
+  color: #FFFFFF;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.builderPreviewTabBtn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+.builderPreviewTabBtn.active {
+  background: #FFFFFF;
+  color: var(--navy-900);
+  font-weight: 700;
+}
+
+.builderPreviewBody {
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+  background: #F8FAFC;
+}
+
+/* Validaciones y Alertas de Vista Previa */
+.previewValidationList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.previewValItem {
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  color: #B91C1C;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  transition: background 0.15s ease;
+}
+.previewValItem:hover {
+  background: #FEE2E2;
+  text-decoration: underline;
+}
+
+/* Mini Card en Vista Previa */
+.previewMiniCard {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-left-width: 6px;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.previewMiniCardHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.previewMiniCardHead .miniIcon {
+  font-size: 20px;
+}
+.previewMiniCardHead h4 {
+  margin: 0;
+  font-size: 14px;
+  font-family: var(--serif);
+  color: var(--navy-900);
+}
+
+/* Hoja de Documento en Vista Previa */
+.previewDocSheet {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.previewDocHeader {
+  text-align: center;
+  border-bottom: 2px solid var(--navy-900);
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+.previewDocHeader h2 {
+  font-size: 14px;
+  font-family: var(--serif);
+  margin: 4px 0;
+  color: var(--navy-900);
+  text-transform: uppercase;
+}
+.previewDocHeader .sub {
+  font-size: 11px;
+  color: var(--text-600);
+}
+
+.previewDocMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+  font-size: 11.5px;
+}
+
+.previewDocTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+  margin-bottom: 16px;
+}
+.previewDocTable th {
+  background: var(--navy-900);
+  color: #FFFFFF;
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 600;
+}
+.previewDocTable td {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  vertical-align: top;
+}
+.previewDocTable tr.secRow td {
+  background: var(--surface-2);
+  font-weight: 700;
+  color: var(--navy-900);
+}
+
+.previewFirmasGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+.previewFirmaBox {
+  border: 1px dashed #94A3B8;
+  border-radius: 6px;
+  padding: 24px 6px 8px;
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--text-600);
+  background: #FAFAFA;
+}
+.previewFirmaBox .fCargo {
+  font-weight: 700;
+  color: var(--navy-900);
+  margin-bottom: 2px;
+}
+
+/* Modo Formulario en Vista Previa */
+.previewFormSheet {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.previewTestBanner {
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  color: #1E40AF;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.previewSecBlock {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  background: #FFFFFF;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.previewSecBlock:hover {
+  border-color: var(--primary);
+}
+.previewSecHead {
+  background: var(--surface-2);
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--navy-900);
+  border-bottom: 1px solid var(--border);
+}
+
+.previewItemRow {
+  padding: 8px 12px;
+  border-bottom: 1px solid #F1F5F9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.previewItemRow:hover {
+  background: #F8FAFC;
+}
+.previewItemRow:last-child {
+  border-bottom: none;
+}
+.previewItemText {
+  font-size: 12px;
+  color: var(--text-900);
+  flex: 1;
+}
+.previewItemRadios {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.previewItemRadios label {
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+}
+
+/* Resaltado dinámico al hacer clic en vista previa */
+.itemHighlightFlash {
+  animation: itemFlash 1.6s ease;
+}
+@keyframes itemFlash {
+  0% { background: #FEF08A; box-shadow: 0 0 0 3px #FACC15; }
+  100% { background: transparent; box-shadow: none; }
+}
+
+/* Toggle móvil para editor / vista previa */
+.builderMobileToggle {
+  display: none;
+  position: sticky;
+  top: 70px;
+  z-index: 20;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 1024px) {
+  .builderSplitGrid {
+    grid-template-columns: 1fr;
+  }
+  .builderMobileToggle {
+    display: flex;
+    gap: 8px;
+  }
+  .builderMobileToggle button {
+    flex: 1;
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .builderPreviewSticky {
+    position: static;
+    max-height: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .fichaCard {
+    flex-direction: column;
+  }
+  .fichaCardColorStripe {
+    width: 100%;
+    height: 6px;
+  }
+  .fichaCardMain {
+    padding: 14px;
+  }
+  .fichaCardActs {
+    padding: 0 14px 14px 14px;
+    align-self: flex-start;
+    width: 100%;
+  }
+  .btnRegistrarFichaAction {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 
 

@@ -13,6 +13,7 @@ import {
   setupNavigation,
   viewDashboard,
   renderRegistrarTab,
+  setRegistrarSubTab,
   renderConsolidadoTab,
   renderColegiosTab,
   renderAlertasTab,
@@ -80,6 +81,10 @@ function getFichaType(id) {
 /* ============================= NAVIGATE HELPER ============================= */
 /** Cambia de pestaña programáticamente (usado desde botones "Editar" en Consolidado) */
 function navigate(tab) {
+  if (tab === 'tipos') {
+    tab = 'registrar';
+    if (isAdmin()) setRegistrarSubTab('plantillas');
+  }
   state.activeTab = tab;
   forceResetBodyScroll();
   window.scrollTo({ top: 0, behavior: 'instant' });
@@ -148,7 +153,7 @@ function render() {
       }
       break;
     case 'registrar':
-      renderRegistrarTab(c, state, getFichaType, dbNs, currentUser, navigate);
+      renderRegistrarTab(c, state, getFichaType, dbNs, currentUser, navigate, isAdmin());
       break;
     case 'consolidado':
       renderConsolidadoTab(c, state, getFichaType, dbNs, isAdmin(), navigate, currentUser);
@@ -163,7 +168,9 @@ function render() {
       renderAlertasTab(c, state, getFichaType);
       break;
     case 'tipos':
-      isAdmin() ? renderTiposTab(c, state, getFichaType, dbNs, isAdmin(), currentUser) : renderForbidden(c);
+      state.activeTab = 'registrar';
+      if (isAdmin()) setRegistrarSubTab('plantillas');
+      renderRegistrarTab(c, state, getFichaType, dbNs, currentUser, navigate, isAdmin());
       break;
     case 'usuarios':
       isAdmin() ? renderUsuariosTab(c, state, dbNs, currentUser) : renderForbidden(c);
@@ -255,7 +262,7 @@ function startListeners() {
   dbNs.collection('areasFirma').onSnapshot(snap => {
     state.areasFirma = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     state.areasFirma.sort((a, b) => (a.orden || 99) - (b.orden || 99));
-    if (state.activeTab === 'tipos') {
+    if (state.activeTab === 'tipos' || state.activeTab === 'registrar') {
       render();
     }
   }, err => {
@@ -266,7 +273,7 @@ function startListeners() {
   dbNs.collection('plantillasFirmantes').onSnapshot(snap => {
     state.plantillasFirmantes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     state.plantillasFirmantes.sort((a, b) => (a.orden || 99) - (b.orden || 99));
-    if (state.activeTab === 'tipos') {
+    if (state.activeTab === 'tipos' || state.activeTab === 'registrar') {
       render();
     }
   }, err => {

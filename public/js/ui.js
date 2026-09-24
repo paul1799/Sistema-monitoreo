@@ -1535,51 +1535,408 @@ export function viewDashboard(state, getFichaType, renderFn) {
     '<div class="panel"><h3>Actividad reciente</h3><div class="tblWrap"><table><thead><tr><th>Fecha</th><th>Institución</th><th>Tipo de ficha</th><th>Visita</th><th>%</th><th>Estado</th></tr></thead><tbody>' + recent + '</tbody></table></div></div>';
 }
 
-/* ============================= REGISTRAR TAB ============================= */
+/* ============================= REGISTRAR TAB & PALETA ============================= */
+export const FICHA_PALETTE = [
+  { id: 'blue',    name: 'Azul Institucional', hex: '#1E40AF', bg: '#EFF6FF', border: '#93C5FD' },
+  { id: 'emerald', name: 'Verde Esmeralda',    hex: '#047857', bg: '#ECFDF5', border: '#6EE7B7' },
+  { id: 'purple',  name: 'Púrpura',            hex: '#6D28D9', bg: '#F5F3FF', border: '#C4B5FD' },
+  { id: 'amber',   name: 'Ámbar Dorado',       hex: '#B45309', bg: '#FFFBEB', border: '#FCD34D' },
+  { id: 'crimson', name: 'Rojo Carmesí',       hex: '#B91C1C', bg: '#FEF2F2', border: '#FCA5A5' },
+  { id: 'teal',    name: 'Turquesa Oscuro',    hex: '#0F766E', bg: '#F0FDFA', border: '#5EEAD4' },
+  { id: 'indigo',  name: 'Índigo',             hex: '#4338CA', bg: '#EEF2FF', border: '#A5B4FC' },
+  { id: 'cyan',    name: 'Cian Profundo',      hex: '#0E7490', bg: '#ECFEFF', border: '#67E8F9' },
+  { id: 'rose',    name: 'Rosa Palo',          hex: '#BE185D', bg: '#FDF2F8', border: '#F472B6' },
+  { id: 'slate',   name: 'Gris Pizarra',       hex: '#334155', bg: '#F8FAFC', border: '#94A3B8' },
+];
+
+/** Asigna o deduce un color accesible y consistente para un tipo de ficha */
+export function getFichaColor(ft, index = 0) {
+  if (ft && ft.color) {
+    const hex = String(ft.color).trim();
+    const found = FICHA_PALETTE.find(p => p.hex.toLowerCase() === hex.toLowerCase() || p.id === hex.toLowerCase());
+    if (found) return found;
+    return { id: 'custom', name: 'Personalizado', hex: hex, bg: '#F8FAFC', border: hex };
+  }
+  // Asignación determinística por ID o nombre si aún no tiene color guardado
+  let hash = 0;
+  const str = (ft && (ft.id || ft.nombre)) ? String(ft.id || ft.nombre) : String(index);
+  for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) & 0xffffffff;
+  const idx = Math.abs(hash) % FICHA_PALETTE.length;
+  return FICHA_PALETTE[idx];
+}
+
+/** Deduce la modalidad o nivel institucional a partir del nombre o metadatos de la ficha */
+export function getFichaModalidad(ft) {
+  if (ft && ft.modalidad && String(ft.modalidad).trim()) return String(ft.modalidad).trim();
+  const text = ((ft && ft.nombre) || '' + ' ' + ((ft && ft.descripcion) || '')).toUpperCase();
+  if (text.includes('CEBE') && text.includes('PRITE')) return 'CEBE / PRITE';
+  if (text.includes('CEBE')) return 'CEBE';
+  if (text.includes('PRITE')) return 'PRITE';
+  if (text.includes('JEC')) return 'JEC';
+  if (text.includes('DIRECTIVO')) return 'Directivos';
+  if (text.includes('DOCENTE') || text.includes('RÚBRICA') || text.includes('RUBRICA') || text.includes('AULA')) return 'Docentes';
+  if (text.includes('TUTORÍA') || text.includes('TUTORIA')) return 'Tutoría (JEC)';
+  if (text.includes('EBR')) return 'EBR';
+  if (text.includes('EBA')) return 'EBA';
+  return 'General';
+}
+
+let registrarSubTab = 'registrar'; // 'registrar' | 'plantillas' | 'areas'
+export function setRegistrarSubTab(tab) {
+  registrarSubTab = ['registrar', 'plantillas', 'areas'].includes(tab) ? tab : 'registrar';
+}
+export function getRegistrarSubTab() { return registrarSubTab; }
+
 let regSelectedTypeId = null;
 let regCompromisos = [];
 let regBuiltFor = null;
 let regSelectedColegioId = null;
 
-export function renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate) {
-  if (state.fichaTypes.length === 0) {
-    container.innerHTML = '<div class="pageHead"><h2>Registrar ficha</h2></div>' +
-      '<div class="empty"><h4>Aún no hay tipos de ficha</h4><p>Crea tu primer tipo de ficha en la pestaña "Tipos de ficha" para poder empezar a registrar visitas de monitoreo.</p></div>';
-    return;
-  }
-  if (regSelectedTypeId && !getFichaType(regSelectedTypeId)) regSelectedTypeId = null;
+let fichaListSearchQuery = '';
+let fichaListFilterEscala = '';
+let fichaListFilterModalidad = '';
+let fichaDescExpanded = {};
 
-  // Si venimos en modo edición, preseleccionar el tipo de ficha
+export function renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, isAdmin = false) {
+  if (state) _appState = state;
+  const actualIsAdmin = !!(isAdmin || (currentUser && currentUser.role === 'admin') || (state && state.roles && currentUser && state.roles.some(r => r.email === currentUser.email && r.role === 'admin')));
+
+  // Si no es admin, no permitir acceso a plantillas ni a áreas
+  if (!actualIsAdmin && registrarSubTab !== 'registrar') {
+    registrarSubTab = 'registrar';
+  }
+
+  // Si venimos en modo edición desde consolidado/reportes, preseleccionar la ficha y forzar subtab registrar
   if (editingSubmissionData && editingSubmissionData.fichaTypeId && !regSelectedTypeId) {
     regSelectedTypeId = editingSubmissionData.fichaTypeId;
+    registrarSubTab = 'registrar';
   }
 
-  const opts = state.fichaTypes.map(ft =>
-    '<option value="' + ft.id + '"' + (ft.id === regSelectedTypeId ? ' selected' : '') + '>' + esc(ft.nombre) + '</option>'
-  ).join('');
+  // Generador de navegación por subpestañas (solo visible si es Admin)
+  const subNavHtml = actualIsAdmin ? `
+    <nav class="regSubNav" id="registrarSubNav">
+      <button type="button" class="regSubNavBtn ${registrarSubTab === 'registrar' ? 'active' : ''}" data-reg-sub="registrar">
+        📋 Registrar visita
+      </button>
+      <button type="button" class="regSubNavBtn ${registrarSubTab === 'plantillas' ? 'active' : ''}" data-reg-sub="plantillas">
+        ⚙️ Plantillas de ficha <span class="adminBadge">Admin</span>
+      </button>
+      <button type="button" class="regSubNavBtn ${registrarSubTab === 'areas' ? 'active' : ''}" data-reg-sub="areas">
+        ✍️ Áreas y firmantes <span class="adminBadge">Admin</span>
+      </button>
+    </nav>
+  ` : '';
 
-  const editBanner = editingSubmissionId
-    ? '<div class="banner" style="background:var(--accent-tint);border-color:var(--accent);color:#8A6410">✏️ Modo edición — estás corrigiendo una ficha ya registrada. Al guardar se actualizará en Firestore.</div>'
-    : '';
+  // 1. Subpestaña: ÁREAS Y FIRMANTES
+  if (registrarSubTab === 'areas') {
+    renderAreasYFirmantesView(container, state, dbNs, actualIsAdmin, currentUser, getFichaType, subNavHtml, navigate);
+    return;
+  }
 
-  container.innerHTML = '' +
-    '<div class="pageHead">' +
-    '<h2>' + (editingSubmissionId ? 'Corregir ficha registrada' : 'Registrar ficha') + '</h2>' +
-    '<p>' + (editingSubmissionId ? 'Modifica los datos y guarda para actualizar la ficha en la base de datos.' : 'Selecciona el tipo de ficha y completa los datos de la visita de monitoreo.') + '</p>' +
-    '</div>' +
-    editBanner +
-    '<div class="panel"><div class="field" style="max-width:420px;">' +
-    '<label for="ftSelect">Tipo de ficha</label>' +
-    '<select id="ftSelect"><option value="">— Selecciona un tipo —</option>' + opts + '</select>' +
-    '</div></div>' +
-    '<div id="regFormHost"></div>';
+  // 2. Subpestaña: PLANTILLAS DE FICHA
+  if (registrarSubTab === 'plantillas') {
+    renderPlantillasManagementView(container, state, getFichaType, dbNs, actualIsAdmin, currentUser, navigate, subNavHtml);
+    return;
+  }
 
-  document.getElementById('ftSelect').addEventListener('change', (e) => {
-    regSelectedTypeId = e.target.value || null;
-    regBuiltFor = null;
+  // 3. Subpestaña: REGISTRAR (Lista visual o Formulario si hay ficha elegida)
+  if (regSelectedTypeId && !getFichaType(regSelectedTypeId)) {
+    regSelectedTypeId = null;
+  }
+
+  // CASO 3.A: Una ficha está seleccionada -> Mostrar encabezado activo + formulario
+  if (regSelectedTypeId) {
+    const ft = getFichaType(regSelectedTypeId);
+    const color = getFichaColor(ft);
+    const mod = getFichaModalidad(ft);
+
+    const editBanner = editingSubmissionId
+      ? '<div class="banner" style="background:var(--accent-tint);border-color:var(--accent);color:#8A6410;margin-bottom:16px">✏️ Modo edición — estás corrigiendo una ficha ya registrada. Al guardar se actualizará en Firestore.</div>'
+      : '';
+
+    container.innerHTML = `
+      <div class="pageHead">
+        <h2>${editingSubmissionId ? 'Corregir ficha registrada' : 'Registrar ficha'}</h2>
+        <p>${editingSubmissionId ? 'Modifica los datos y guarda para actualizar la ficha en la base de datos.' : 'Completa los datos de la visita de monitoreo según la ficha seleccionada.'}</p>
+      </div>
+      ${subNavHtml}
+      <div class="fichaActiveHeaderBar" style="border-left-color:${color.hex};">
+        <div class="fichaActiveInfo">
+          <div class="fichaActiveIcon" style="background:${color.bg};color:${color.hex};">
+            ${esc(ft.icono || '📋')}
+          </div>
+          <div class="fichaActiveDetails">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <span class="fichaBadge fichaBadgeModalidad">${esc(mod)}</span>
+              <span class="fichaBadge fichaBadgeEscala">⚖️ ${esc(RESPONSE_LABELS[ft.tipoRespuesta] || ft.tipoRespuesta)}</span>
+              <span class="fichaBadge fichaBadgeItems">📑 ${(ft.secciones || []).length} secciones</span>
+              <span class="fichaBadge fichaBadgeItems">🔢 ${(ft.secciones || []).reduce((a, s) => a + (s.items || []).length, 0)} ítems</span>
+            </div>
+            <h3 style="margin:4px 0 0 0;font-family:var(--serif);font-size:16px;color:var(--navy-900)">${esc(ft.nombre)}</h3>
+          </div>
+        </div>
+        <button type="button" class="fichaActiveBackBtn" id="btnCambiarFicha" title="Regresar para elegir otra ficha">
+          ← Cambiar ficha
+        </button>
+      </div>
+      ${editBanner}
+      <div id="regFormHost"></div>
+    `;
+
+    // Conectar subpestañas
+    if (actualIsAdmin) {
+      container.querySelectorAll('[data-reg-sub]').forEach(b => {
+        b.onclick = () => {
+          registrarSubTab = b.dataset.regSub;
+          renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);
+        };
+      });
+    }
+
+    // Botón Cambiar Ficha
+    const cambiarBtn = document.getElementById('btnCambiarFicha');
+    if (cambiarBtn) {
+      cambiarBtn.onclick = () => {
+        regSelectedTypeId = null;
+        editingSubmissionId = null;
+        editingSubmissionData = null;
+        renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);
+      };
+    }
+
     buildRegForm(state, getFichaType, dbNs, currentUser, navigate);
+    return;
+  }
+
+  // CASO 3.B: Ninguna ficha seleccionada -> Mostrar Lista Visual de Fichas (reemplazo del select)
+  const allTypes = state.fichaTypes || [];
+
+  if (allTypes.length === 0) {
+    container.innerHTML = `
+      <div class="pageHead">
+        <h2>Registrar ficha</h2>
+        <p>Elige la ficha que vas a aplicar en tu visita de monitoreo.</p>
+      </div>
+      ${subNavHtml}
+      <div class="empty">
+        <h4>Aún no hay tipos de ficha disponibles</h4>
+        <p>${actualIsAdmin ? 'Crea la primera plantilla de ficha para comenzar a registrar visitas.' : 'Aún no hay fichas disponibles, consulta con el administrador.'}</p>
+        ${actualIsAdmin ? '<button type="button" class="btn" id="btnCreateFirstFicha" style="margin-top:12px">+ Crear primer tipo de ficha</button>' : ''}
+      </div>
+    `;
+
+    if (actualIsAdmin) {
+      container.querySelectorAll('[data-reg-sub]').forEach(b => {
+        b.onclick = () => {
+          registrarSubTab = b.dataset.regSub;
+          renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);
+        };
+      });
+      const createFirst = document.getElementById('btnCreateFirstFicha');
+      if (createFirst) {
+        createFirst.onclick = () => {
+          builderState = blankBuilder();
+          builderEditingId = null;
+          builderIsDirty = false;
+          tiposView = 'builder';
+          registrarSubTab = 'plantillas';
+          renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);
+        };
+      }
+    }
+    return;
+  }
+
+  // Obtener todas las modalidades y escalas disponibles para los filtros rápidos
+  const modalidadesSet = new Set();
+  allTypes.forEach(ft => modalidadesSet.add(getFichaModalidad(ft)));
+  const modalidadesList = Array.from(modalidadesSet).sort();
+
+  const escalasSet = new Set();
+  allTypes.forEach(ft => escalasSet.add(ft.tipoRespuesta));
+  const escalasList = Array.from(escalasSet);
+
+  // Filtrar según búsqueda y filtros activos
+  const filteredTypes = allTypes.filter(ft => {
+    if (fichaListSearchQuery) {
+      const q = normalizeText(fichaListSearchQuery);
+      const name = normalizeText(ft.nombre || '');
+      const desc = normalizeText(ft.descripcion || '');
+      const mod = normalizeText(getFichaModalidad(ft) || '');
+      if (!name.includes(q) && !desc.includes(q) && !mod.includes(q)) return false;
+    }
+    if (fichaListFilterEscala && ft.tipoRespuesta !== fichaListFilterEscala) return false;
+    if (fichaListFilterModalidad && normalizeText(getFichaModalidad(ft)) !== normalizeText(fichaListFilterModalidad)) return false;
+    return true;
   });
-  buildRegForm(state, getFichaType, dbNs, currentUser, navigate);
+
+  const cardsHtml = filteredTypes.length === 0 ? `
+    <div class="empty" style="padding:32px 20px">
+      <h4>No se encontraron fichas de monitoreo</h4>
+      <p>No hay fichas que coincidan con "${esc(fichaListSearchQuery || fichaListFilterEscala || fichaListFilterModalidad)}".</p>
+      <button type="button" class="btn secondary small" id="btnClearFichaFilters" style="margin-top:8px">Restablecer filtros</button>
+    </div>
+  ` : filteredTypes.map((ft, idx) => {
+    const color = getFichaColor(ft, idx);
+    const mod = getFichaModalidad(ft);
+    const count = (state.submissions || []).filter(s => s.fichaTypeId === ft.id).length;
+    const totalItems = (ft.secciones || []).reduce((a, s) => a + (s.items || []).length, 0);
+    const totalSecs = (ft.secciones || []).length;
+    const descText = (ft.descripcion || '').trim();
+    const isExpanded = !!fichaDescExpanded[ft.id];
+    const isLongDesc = descText.length > 140;
+
+    let displayDesc = descText || 'Ficha oficial de monitoreo y acompañamiento institucional.';
+    if (isLongDesc && !isExpanded) {
+      displayDesc = descText.slice(0, 130) + '…';
+    }
+
+    return `
+      <div class="fichaCard" data-select-card="${esc(ft.id)}" tabindex="0" role="button" aria-label="Registrar visita para ${esc(ft.nombre)}">
+        <div class="fichaCardColorStripe" style="background:${color.hex};"></div>
+        <div class="fichaCardMain">
+          <div class="fichaCardIconWrap" style="background:${color.bg};color:${color.hex};">
+            ${esc(ft.icono || '📋')}
+          </div>
+          <div class="fichaCardContent">
+            <h3 class="fichaCardTitle">${esc(ft.nombre)}</h3>
+            <p class="fichaCardDesc">
+              ${esc(displayDesc)}
+              ${isLongDesc ? `<span class="fichaCardDescMore" data-toggle-desc="${esc(ft.id)}">${isExpanded ? 'ver menos' : 'ver más'}</span>` : ''}
+            </p>
+            <div class="fichaCardBadges">
+              <span class="fichaBadge fichaBadgeModalidad">${esc(mod)}</span>
+              <span class="fichaBadge fichaBadgeItems">📑 ${totalSecs} ${totalSecs === 1 ? 'sección' : 'secciones'}</span>
+              <span class="fichaBadge fichaBadgeItems">🔢 ${totalItems} ítems</span>
+              <span class="fichaBadge fichaBadgeEscala">⚖️ ${esc(RESPONSE_LABELS[ft.tipoRespuesta] || ft.tipoRespuesta)}</span>
+              <span class="fichaBadge fichaBadgeCount">📊 ${count} ${count === 1 ? 'ficha registrada' : 'fichas registradas'}</span>
+            </div>
+          </div>
+        </div>
+        <div class="fichaCardActs">
+          <button type="button" class="btnRegistrarFichaAction" data-select-btn="${esc(ft.id)}">
+            Registrar ficha →
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="pageHead">
+      <h2>Registrar ficha</h2>
+      <p>Elige la ficha que vas a aplicar en tu visita de monitoreo.</p>
+    </div>
+    ${subNavHtml}
+    <div class="fichaFilterBar">
+      <div class="fichaSearchWrap">
+        <span class="fichaSearchIcon">🔍</span>
+        <input type="text" class="fichaSearchInput" id="fichaSearchInp" placeholder="Buscar por nombre, palabras clave, modalidad..." value="${esc(fichaListSearchQuery)}">
+      </div>
+      <select class="fichaFilterSelect" id="fichaFilterModalidad">
+        <option value="">Todas las modalidades</option>
+        ${modalidadesList.map(m => `<option value="${esc(m)}" ${fichaListFilterModalidad === m ? 'selected' : ''}>${esc(m)}</option>`).join('')}
+      </select>
+      <select class="fichaFilterSelect" id="fichaFilterEscala">
+        <option value="">Todas las escalas</option>
+        ${escalasList.map(k => `<option value="${esc(k)}" ${fichaListFilterEscala === k ? 'selected' : ''}>${esc(RESPONSE_LABELS[k] || k)}</option>`).join('')}
+      </select>
+      ${(fichaListSearchQuery || fichaListFilterEscala || fichaListFilterModalidad) ? `
+        <button type="button" class="fichaClearFiltersBtn" id="btnClearFilters">✕ Limpiar filtros</button>
+      ` : ''}
+    </div>
+    <div class="fichaCardsList">
+      ${cardsHtml}
+    </div>
+  `;
+
+  // Conectar subpestañas
+  if (actualIsAdmin) {
+    container.querySelectorAll('[data-reg-sub]').forEach(b => {
+      b.onclick = () => {
+        registrarSubTab = b.dataset.regSub;
+        renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);
+      };
+    });
+  }
+
+  // Conectar buscador
+  const searchInp = document.getElementById('fichaSearchInp');
+  if (searchInp) {
+    searchInp.oninput = (e) => {
+      fichaListSearchQuery = e.target.value;
+      renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);
+      const newInp = document.getElementById('fichaSearchInp');
+      if (newInp) {
+        newInp.focus();
+        newInp.selectionStart = newInp.selectionEnd = newInp.value.length;
+      }
+    };
+  }
+
+  // Conectar filtros de select
+  const selMod = document.getElementById('fichaFilterModalidad');
+  if (selMod) {
+    selMod.onchange = (e) => {
+      fichaListFilterModalidad = e.target.value;
+      renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);
+    };
+  }
+  const selEsc = document.getElementById('fichaFilterEscala');
+  if (selEsc) {
+    selEsc.onchange = (e) => {
+      fichaListFilterEscala = e.target.value;
+      renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);
+    };
+  }
+
+  const clearBtn = document.getElementById('btnClearFilters') || document.getElementById('btnClearFichaFilters');
+  if (clearBtn) {
+    clearBtn.onclick = () => {
+      fichaListSearchQuery = '';
+      fichaListFilterEscala = '';
+      fichaListFilterModalidad = '';
+      renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);
+    };
+  }
+
+  // Toggle "ver más" de descripciones
+  container.querySelectorAll('[data-toggle-desc]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.toggleDesc;
+      fichaDescExpanded[id] = !fichaDescExpanded[id];
+      renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);
+    };
+  });
+
+  // Selección de ficha para registrar
+  const selectFicha = (id) => {
+    regSelectedTypeId = id;
+    regBuiltFor = null;
+    renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  container.querySelectorAll('[data-select-card]').forEach(card => {
+    card.onclick = (e) => {
+      if (e.target.closest('[data-toggle-desc]')) return;
+      selectFicha(card.dataset.selectCard);
+    };
+    card.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        selectFicha(card.dataset.selectCard);
+      }
+    };
+  });
+
+  container.querySelectorAll('[data-select-btn]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      selectFicha(btn.dataset.selectBtn);
+    };
+  });
 }
 
 function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
@@ -4195,13 +4552,21 @@ export function normalizeExtras(extras) {
   }).filter(Boolean);
 }
 
+let plantillasSearchQuery = '';
+let builderPreviewMode = 'formulario'; // 'formulario' | 'documento'
+let builderMobileTab = 'editor'; // 'editor' | 'preview'
+let builderIsDirty = false;
+let builderTestAnswers = {};
+
 function blankBuilder() {
   return {
     nombre: '',
     descripcion: '',
     icono: '📋',
+    color: FICHA_PALETTE[0].hex,
+    modalidad: 'General',
     tipoRespuesta: 'si_no',
-    secciones: [{ nombre: '', items: [{ id: genId(), texto: '' }] }],
+    secciones: [{ nombre: 'Sección 1: Planificación y Gestión', items: [{ id: genId(), texto: '' }] }],
     extras: [
       { id: genId(), label: 'UGEL', tipo: 'texto', required: false },
       { id: genId(), label: 'RED / REI', tipo: 'texto', required: false },
@@ -4213,6 +4578,7 @@ function blankBuilder() {
 }
 
 function syncBuilderFromDom(container, bs) {
+  if (!bs) return;
   const icoEl = document.getElementById('b_icono');
   if (icoEl) bs.icono = icoEl.value;
   const nomEl = document.getElementById('b_nombre');
@@ -4221,6 +4587,13 @@ function syncBuilderFromDom(container, bs) {
   if (descEl) bs.descripcion = descEl.value;
   const tipoEl = document.getElementById('b_tipo');
   if (tipoEl) bs.tipoRespuesta = tipoEl.value;
+  const modEl = document.getElementById('b_modalidad');
+  if (modEl) bs.modalidad = modEl.value;
+
+  const activeColorEl = container.querySelector('.colorSwatch.active');
+  if (activeColorEl && activeColorEl.dataset.color) {
+    bs.color = activeColorEl.dataset.color;
+  }
 
   // Sincronizar secciones e ítems
   container.querySelectorAll('[data-secname]').forEach(inp => {
@@ -4248,71 +4621,281 @@ function syncBuilderFromDom(container, bs) {
     const eIdx = +chk.dataset.extrareq;
     if (bs.extras[eIdx]) bs.extras[eIdx].required = chk.checked;
   });
+
+  builderIsDirty = true;
 }
 
-let tiposSubTab = 'fichas'; // 'fichas' | 'areas'
+/** Duplica un tipo de ficha existente creando una copia limpia con nuevos identificadores */
+export async function duplicateFichaType(ft, dbNs, state, onDone) {
+  if (!dbNs) { showToast('Sin conexión a la base de datos.'); return; }
+  try {
+    const copyName = `${ft.nombre} (Copia)`;
+    const newColor = getFichaColor(ft).hex;
+    const newModalidad = getFichaModalidad(ft);
+    const clonedSecciones = (ft.secciones || []).map(s => ({
+      nombre: s.nombre || '',
+      items: (s.items || []).map(it => ({ id: genId(), texto: it.texto || '' }))
+    }));
+    const clonedExtras = (ft.extras || []).map(ex => ({ ...ex, id: genId() }));
+    const payload = {
+      nombre: copyName,
+      descripcion: ft.descripcion || '',
+      icono: ft.icono || '📋',
+      tipoRespuesta: ft.tipoRespuesta || 'si_no',
+      color: newColor,
+      modalidad: newModalidad,
+      secciones: clonedSecciones,
+      extras: clonedExtras,
+      createdAt: Date.now()
+    };
+    await dbNs.collection('fichaTypes').add(payload);
+    showToast(`✓ Ficha duplicada como "${copyName}"`);
+    if (onDone) onDone();
+  } catch (err) {
+    console.error(err);
+    showToast('Error al duplicar la ficha: ' + err.message);
+  }
+}
 
-export function renderTiposTab(container, state, getFichaType, dbNs, isAdmin = true, currentUser = null) {
-  if (tiposSubTab === 'areas') {
-    renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser, getFichaType);
+/** Cuadro de diálogo modal accesible con advertencia de impacto antes de eliminar */
+export function confirmDeleteFichaType(ft, state, dbNs, onDeleted) {
+  const count = (state.submissions || []).filter(s => s.fichaTypeId === ft.id).length;
+  const modalWrap = document.createElement('div');
+  modalWrap.className = 'downloadModalOverlay';
+  modalWrap.innerHTML = `
+    <div class="downloadModalCard" style="max-width:500px">
+      <div class="downloadModalHeader" style="background:#B91C1C;color:#FFFFFF">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:20px">🗑️</span>
+          <h3 style="color:#FFFFFF;margin:0">Eliminar tipo de ficha</h3>
+        </div>
+        <button type="button" class="downloadModalClose" id="m_del_close" style="color:#FFF">✕</button>
+      </div>
+      <div class="downloadModalBody" style="padding:20px">
+        <p style="font-size:14px;margin-top:0">
+          ¿Estás seguro de que deseas eliminar la plantilla <strong>"${esc(ft.nombre)}"</strong>?
+        </p>
+        ${count > 0 ? `
+          <div style="background:#FEF2F2;border:1.5px solid #FCA5A5;border-radius:8px;padding:12px;margin:14px 0;font-size:12.5px;color:#991B1B;line-height:1.45">
+            <strong>⚠️ Atención: Existen ${count} visita(s) registradas con esta ficha.</strong><br>
+            Las fichas ya registradas se conservarán en los reportes históricos y en el sistema, pero ya no podrán registrarse nuevas visitas ni editarse con esta plantilla.
+          </div>
+        ` : `
+          <p style="font-size:12.5px;color:var(--text-600);margin-bottom:0">Esta plantilla no tiene visitas asociadas. Esta acción no se puede deshacer.</p>
+        `}
+      </div>
+      <div class="downloadModalFooter" style="display:flex;justify-content:flex-end;gap:10px">
+        <button type="button" class="btn secondary" id="m_del_cancel">Cancelar</button>
+        <button type="button" class="btn danger" id="m_del_confirm">Sí, eliminar ficha</button>
+      </div>
+    </div>
+  `;
+  lockBodyScroll();
+  document.body.appendChild(modalWrap);
+  const close = () => {
+    modalWrap.remove();
+    unlockBodyScroll();
+  };
+  modalWrap.querySelector('#m_del_close').onclick = close;
+  modalWrap.querySelector('#m_del_cancel').onclick = close;
+  modalWrap.querySelector('#m_del_confirm').onclick = async () => {
+    const btn = modalWrap.querySelector('#m_del_confirm');
+    btn.disabled = true;
+    btn.textContent = 'Eliminando...';
+    try {
+      await dbNs.collection('fichaTypes').doc(ft.id).delete();
+      showToast('✓ Tipo de ficha eliminado.');
+      close();
+      if (onDeleted) onDeleted();
+    } catch (err) {
+      console.error(err);
+      showToast('Error al eliminar: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Sí, eliminar ficha';
+    }
+  };
+}
+
+export function renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml) {
+  if (tiposView === 'builder') {
+    renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
     return;
   }
 
-  if (tiposView === 'list') {
-    const cards = state.fichaTypes.map(ft => {
-      const count = state.submissions.filter(s => s.fichaTypeId === ft.id).length;
-      const totalItems = ft.secciones.reduce((a, s) => a + s.items.length, 0);
-      return '<div class="tipoCard">' +
-        '<div class="ti"><h4>' + (ft.icono || '📋') + ' ' + esc(ft.nombre) + '</h4><p>' + esc(ft.descripcion || 'Sin descripción.') + '</p>' +
-        '<div class="meta">' + ft.secciones.length + ' secciones · ' + totalItems + ' ítems · ' + RESPONSE_LABELS[ft.tipoRespuesta] + ' · ' + count + ' fichas registradas</div></div>' +
-        '<div class="acts"><button class="btn secondary small" data-edit="' + ft.id + '">Editar</button><button class="btn danger small" data-del="' + ft.id + '">Eliminar</button></div>' +
-        '</div>';
-    }).join('') || '<div class="empty"><h4>Aún no has creado tipos de ficha</h4><p>Crea el primero para empezar a registrar visitas de monitoreo.</p></div>';
+  const allTypes = state.fichaTypes || [];
+  const filtered = allTypes.filter(ft => {
+    if (plantillasSearchQuery) {
+      const q = normalizeText(plantillasSearchQuery);
+      const name = normalizeText(ft.nombre || '');
+      const desc = normalizeText(ft.descripcion || '');
+      const mod = normalizeText(getFichaModalidad(ft) || '');
+      if (!name.includes(q) && !desc.includes(q) && !mod.includes(q)) return false;
+    }
+    return true;
+  });
 
-    container.innerHTML = '' +
-      '<div class="pageHead"><h2>Tipos de ficha y Catálogos</h2><p>Define la estructura de cada ficha y las áreas oficiales que firman los documentos.</p></div>' +
-      '<div style="display:flex;gap:8px;margin-bottom:18px;border-bottom:2px solid var(--line);padding-bottom:10px">' +
-      '<button type="button" class="btn small" id="subTabFichas">📋 Plantillas de Ficha</button>' +
-      '<button type="button" class="btn secondary small" id="subTabAreas">✍️ Áreas y Firmantes</button>' +
-      '</div>' +
-      '<button class="btn" id="newTipoBtn" style="margin-bottom:16px">+ Nuevo tipo de ficha</button>' +
-      cards;
+  const cardsHtml = filtered.length === 0 ? `
+    <div class="empty" style="padding:32px 20px">
+      <h4>${allTypes.length === 0 ? 'Aún no hay plantillas de ficha' : 'No se encontraron plantillas'}</h4>
+      <p>${allTypes.length === 0 ? 'Crea la primera plantilla de ficha para comenzar a registrar visitas.' : `No hay resultados para "${esc(plantillasSearchQuery)}".`}</p>
+      ${allTypes.length === 0 ? '<button type="button" class="btn" id="btnCreateNewFtEmpty" style="margin-top:10px">+ Nuevo tipo de ficha</button>' : ''}
+    </div>
+  ` : filtered.map((ft, idx) => {
+    const color = getFichaColor(ft, idx);
+    const mod = getFichaModalidad(ft);
+    const count = (state.submissions || []).filter(s => s.fichaTypeId === ft.id).length;
+    const totalItems = (ft.secciones || []).reduce((a, s) => a + (s.items || []).length, 0);
+    const totalSecs = (ft.secciones || []).length;
+    const descText = (ft.descripcion || '').trim();
+    const isExpanded = !!fichaDescExpanded[ft.id];
+    const isLongDesc = descText.length > 140;
+    let displayDesc = descText || 'Sin descripción adicional.';
+    if (isLongDesc && !isExpanded) displayDesc = descText.slice(0, 130) + '…';
 
-    document.getElementById('subTabFichas').onclick = () => {
-      tiposSubTab = 'fichas';
-      renderTiposTab(container, state, getFichaType, dbNs, isAdmin, currentUser);
+    return `
+      <div class="fichaCard" style="cursor:default">
+        <div class="fichaCardColorStripe" style="background:${color.hex};"></div>
+        <div class="fichaCardMain">
+          <div class="fichaCardIconWrap" style="background:${color.bg};color:${color.hex};">
+            ${esc(ft.icono || '📋')}
+          </div>
+          <div class="fichaCardContent">
+            <h3 class="fichaCardTitle">${esc(ft.nombre)}</h3>
+            <p class="fichaCardDesc">
+              ${esc(displayDesc)}
+              ${isLongDesc ? `<span class="fichaCardDescMore" data-toggle-desc="${esc(ft.id)}">${isExpanded ? 'ver menos' : 'ver más'}</span>` : ''}
+            </p>
+            <div class="fichaCardBadges">
+              <span class="fichaBadge fichaBadgeModalidad">${esc(mod)}</span>
+              <span class="fichaBadge fichaBadgeItems">📑 ${totalSecs} ${totalSecs === 1 ? 'sección' : 'secciones'}</span>
+              <span class="fichaBadge fichaBadgeItems">🔢 ${totalItems} ítems</span>
+              <span class="fichaBadge fichaBadgeEscala">⚖️ ${esc(RESPONSE_LABELS[ft.tipoRespuesta] || ft.tipoRespuesta)}</span>
+              <span class="fichaBadge fichaBadgeCount">📊 ${count} ${count === 1 ? 'ficha registrada' : 'fichas registradas'}</span>
+            </div>
+          </div>
+        </div>
+        <div class="fichaCardActs" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button type="button" class="btn secondary small" data-edit-ft="${esc(ft.id)}" title="Editar estructura de la ficha">
+            ✏️ Editar
+          </button>
+          <button type="button" class="btn secondary small" data-dup-ft="${esc(ft.id)}" title="Duplicar como nueva ficha">
+            📋 Duplicar
+          </button>
+          <button type="button" class="btn danger small" data-del-ft="${esc(ft.id)}" title="Eliminar ficha">
+            🗑️ Eliminar
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="pageHead">
+      <h2>Plantillas de Ficha</h2>
+      <p>Gestiona, crea, edita y duplica los tipos de ficha de monitoreo oficial.</p>
+    </div>
+    ${subNavHtml}
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">
+      <div class="fichaSearchWrap" style="max-width:380px">
+        <span class="fichaSearchIcon">🔍</span>
+        <input type="text" class="fichaSearchInput" id="plantillasSearchInp" placeholder="Filtrar plantillas..." value="${esc(plantillasSearchQuery)}">
+      </div>
+      <button type="button" class="btn" id="btnNewFichaType">
+        ＋ Nuevo tipo de ficha
+      </button>
+    </div>
+    <div class="fichaCardsList">
+      ${cardsHtml}
+    </div>
+  `;
+
+  // Attach subnav events
+  container.querySelectorAll('[data-reg-sub]').forEach(b => {
+    b.onclick = () => {
+      registrarSubTab = b.dataset.regSub;
+      renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, isAdmin);
     };
-    document.getElementById('subTabAreas').onclick = () => {
-      tiposSubTab = 'areas';
-      renderTiposTab(container, state, getFichaType, dbNs, isAdmin, currentUser);
-    };
+  });
 
-    document.getElementById('newTipoBtn').addEventListener('click', () => {
-      builderState = blankBuilder(); builderEditingId = null; tiposView = 'builder'; renderTiposTab(container, state, getFichaType, dbNs, isAdmin, currentUser);
-    });
-    container.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => {
-      const ft = getFichaType(b.dataset.edit);
+  // Attach search
+  const sInp = document.getElementById('plantillasSearchInp');
+  if (sInp) {
+    sInp.oninput = (e) => {
+      plantillasSearchQuery = e.target.value;
+      renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+      const newInp = document.getElementById('plantillasSearchInp');
+      if (newInp) {
+        newInp.focus();
+        newInp.selectionStart = newInp.selectionEnd = newInp.value.length;
+      }
+    };
+  }
+
+  // "+ Nuevo tipo de ficha"
+  const newBtn = document.getElementById('btnNewFichaType') || document.getElementById('btnCreateNewFtEmpty');
+  if (newBtn) {
+    newBtn.onclick = () => {
+      builderState = blankBuilder();
+      builderEditingId = null;
+      builderIsDirty = false;
+      tiposView = 'builder';
+      renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    };
+  }
+
+  // Toggle "ver más"
+  container.querySelectorAll('[data-toggle-desc]').forEach(btn => {
+    btn.onclick = (e) => {
+      const id = btn.dataset.toggleDesc;
+      fichaDescExpanded[id] = !fichaDescExpanded[id];
+      renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    };
+  });
+
+  // Editar
+  container.querySelectorAll('[data-edit-ft]').forEach(btn => {
+    btn.onclick = () => {
+      const ft = getFichaType(btn.dataset.editFt);
+      if (!ft) return;
       builderState = JSON.parse(JSON.stringify(ft));
       builderState.extras = normalizeExtras(builderState.extras);
-      builderEditingId = ft.id; tiposView = 'builder'; renderTiposTab(container, state, getFichaType, dbNs, isAdmin, currentUser);
-    }));
-    container.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
-      const count = state.submissions.filter(s => s.fichaTypeId === b.dataset.del).length;
-      const msg = count > 0
-        ? 'Este tipo de ficha tiene ' + count + ' fichas registradas. Las fichas ya guardadas no se eliminarán. ¿Eliminar de todas formas?'
-        : '¿Eliminar este tipo de ficha?';
-      if (!confirm(msg)) return;
-      try { await dbNs.collection('fichaTypes').doc(b.dataset.del).delete(); showToast('Tipo de ficha eliminado.'); }
-      catch (err) { console.error(err); showToast('No se pudo eliminar.'); }
-    }));
-    return;
-  }
-  renderBuilder(container, state, getFichaType, dbNs);
+      builderEditingId = ft.id;
+      builderIsDirty = false;
+      tiposView = 'builder';
+      renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    };
+  });
+
+  // Duplicar
+  container.querySelectorAll('[data-dup-ft]').forEach(btn => {
+    btn.onclick = () => {
+      const ft = getFichaType(btn.dataset.dupFt);
+      if (ft) duplicateFichaType(ft, dbNs, state, () => {
+        renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+      });
+    };
+  });
+
+  // Eliminar
+  container.querySelectorAll('[data-del-ft]').forEach(btn => {
+    btn.onclick = () => {
+      const ft = getFichaType(btn.dataset.delFt);
+      if (ft) confirmDeleteFichaType(ft, state, dbNs, () => {
+        renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+      });
+    };
+  });
+}
+
+/** Compatibilidad hacia atrás para llamadas externas a renderTiposTab */
+export function renderTiposTab(container, state, getFichaType, dbNs, isAdmin = true, currentUser = null) {
+  setRegistrarSubTab('plantillas');
+  renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, null, isAdmin);
 }
 
 let currentAreaReportTab = 'concursos'; // 'concursos' | 'consolidado' | 'individual' | 'avance'
 
-function renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser, getFichaType) {
+function renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser, getFichaType, subNavHtml = '', navigate = null) {
   const areas = (state.areasFirma && state.areasFirma.length > 0)
     ? state.areasFirma
     : DEFAULT_AREAS;
@@ -4388,13 +4971,10 @@ function renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser,
 
   container.innerHTML = `
     <div class="pageHead">
-      <h2>Catálogo de Áreas y Firmantes Oficiales</h2>
+      <h2>Áreas y Firmantes Oficiales</h2>
       <p>Administra las áreas de la UGEL 03, sus descripciones para membrete y las plantillas de firmantes por tipo de reporte.</p>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:18px;border-bottom:2px solid var(--line);padding-bottom:10px">
-      <button type="button" class="btn secondary small" id="subTabFichas">📋 Plantillas de Ficha</button>
-      <button type="button" class="btn small" id="subTabAreas">✍️ Áreas y Firmantes</button>
-    </div>
+    ${subNavHtml || ''}
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         ${REPORT_TYPES.map(t => `
@@ -4412,19 +4992,19 @@ function renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser,
     <div id="modalAreaHost"></div>
   `;
 
-  document.getElementById('subTabFichas').onclick = () => {
-    tiposSubTab = 'fichas';
-    renderTiposTab(container, state, getFichaType, dbNs, isAdmin, currentUser);
-  };
-  document.getElementById('subTabAreas').onclick = () => {
-    tiposSubTab = 'areas';
-    renderTiposTab(container, state, getFichaType, dbNs, isAdmin, currentUser);
-  };
+  if (subNavHtml) {
+    container.querySelectorAll('[data-reg-sub]').forEach(b => {
+      b.onclick = () => {
+        registrarSubTab = b.dataset.regSub;
+        renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, isAdmin);
+      };
+    });
+  }
 
   container.querySelectorAll('[data-rtab]').forEach(b => {
     b.onclick = () => {
       currentAreaReportTab = b.dataset.rtab;
-      renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser, getFichaType);
+      renderAreasYFirmantesView(container, state, dbNs, isAdmin, currentUser, getFichaType, subNavHtml, navigate);
     };
   });
 
@@ -4843,128 +5423,670 @@ function openFirmantesEditorModal(area, tipoReporte, dbNs, state, container, isA
   modalWrap.querySelector('#m_f_close').onclick = close;
 }
 
-function renderBuilder(container, state, getFichaType, dbNs) {
+export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin = true, currentUser = null, navigate = null, subNavHtml = '') {
   const bs = builderState;
   bs.extras = normalizeExtras(bs.extras);
+  if (!bs.color) {
+    bs.color = (FICHA_PALETTE[0] || {}).hex || '#1E40AF';
+  }
+  if (!bs.modalidad) {
+    bs.modalidad = 'General';
+  }
 
-  const seccionesHtml = bs.secciones.map((sec, si) => {
-    const itemsHtml = sec.items.map((it, ii) =>
-      '<div class="listRow itemDefRow">' +
-      '<input type="text" placeholder="Texto del ítem / indicador" value="' + esc(it.texto) + '" data-sec="' + si + '" data-item="' + ii + '">' +
+  const existingCount = builderEditingId
+    ? (state.submissions || []).filter(s => s.fichaTypeId === builderEditingId).length
+    : 0;
+
+  const MODALIDADES = ['General', 'JEC', 'CEBE', 'PRITE', 'EBR', 'Directivos', 'Docentes', 'Tutoría'];
+
+  // Generar HTML de Secciones para el editor
+  const seccionesHtml = (bs.secciones || []).map((sec, si) => {
+    const itemsHtml = (sec.items || []).map((it, ii) =>
+      '<div class="listRow itemDefRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+      '<span style="font-size:11px;font-weight:600;color:var(--ink-soft);min-width:26px">#' + (si + 1) + '.' + (ii + 1) + '</span>' +
+      '<input type="text" placeholder="Texto del ítem / indicador de monitoreo *" value="' + esc(it.texto) + '" data-sec="' + si + '" data-item="' + ii + '" style="flex:1">' +
       '<button type="button" class="iconBtn" data-rmitem="' + si + '|' + ii + '" title="Quitar ítem">✕</button>' +
       '</div>'
     ).join('');
 
     const isFirst = si === 0;
-    const isLast = si === bs.secciones.length - 1;
+    const isLast = si === (bs.secciones || []).length - 1;
 
-    return '<fieldset class="secCard" draggable="true" data-sec-idx="' + si + '">' +
-      '<legend>' +
-      '<span class="secCardHandle" title="Arrastra para mover la sección">⠿</span> ' +
-      '<span class="secOrderBadge">#' + (si + 1) + '</span> ' +
-      '<input type="text" placeholder="Nombre de la sección / dimensión" value="' + esc(sec.nombre) + '" data-secname="' + si + '" style="font-family:var(--serif);font-weight:600;border:none;border-bottom:1px solid var(--line-strong);padding:2px 4px;width:280px;background:transparent">' +
+    return '<fieldset class="secCard" draggable="true" data-sec-idx="' + si + '" style="margin-bottom:14px;border:1px solid var(--line);border-radius:var(--radius);padding:14px">' +
+      '<legend style="padding:0 8px;font-weight:700;display:flex;align-items:center;gap:6px">' +
+      '<span class="secCardHandle" title="Arrastra para mover la sección" style="cursor:grab">⠿</span> ' +
+      '<span class="secOrderBadge" style="background:var(--primary);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px">#' + (si + 1) + '</span> ' +
+      '<input type="text" placeholder="Nombre de la sección / dimensión *" value="' + esc(sec.nombre) + '" data-secname="' + si + '" style="font-family:inherit;font-weight:600;border:none;border-bottom:1.5px solid var(--line-strong);padding:3px 6px;width:320px;background:transparent">' +
       '</legend>' +
       '<div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px dashed var(--line)">' +
-      '<span style="font-size:12px;color:var(--ink-soft);margin-right:auto">Mover posición de sección:</span>' +
-      '<button type="button" class="btn secondary small" data-movesec="' + si + '|up"' + (isFirst ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección arriba">▲ Subir sección</button>' +
-      '<button type="button" class="btn secondary small" data-movesec="' + si + '|down"' + (isLast ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección abajo">▼ Bajar sección</button>' +
+      '<span style="font-size:12px;color:var(--ink-soft);margin-right:auto">Mover posición:</span>' +
+      '<button type="button" class="btn secondary small" data-movesec="' + si + '|up"' + (isFirst ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección arriba">▲ Subir</button>' +
+      '<button type="button" class="btn secondary small" data-movesec="' + si + '|down"' + (isLast ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección abajo">▼ Bajar</button>' +
       '</div>' +
       itemsHtml +
-      '<div style="margin-top:8px"><button type="button" class="linklike" data-additem="' + si + '">+ Agregar ítem</button></div>' +
-      '<div style="margin-top:12px;padding-top:8px;border-top:1px solid var(--line);display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
-      '<button type="button" class="btn secondary small" data-movesec="' + si + '|up"' + (isFirst ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección arriba">▲ Subir sección</button>' +
-      '<button type="button" class="btn secondary small" data-movesec="' + si + '|down"' + (isLast ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección abajo">▼ Bajar sección</button>' +
-      '<button type="button" class="btn danger small" data-rmsec="' + si + '" style="margin-left:auto">Quitar sección</button>' +
+      '<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">' +
+      '<button type="button" class="btn secondary small" data-additem="' + si + '">＋ Agregar ítem</button>' +
+      '<button type="button" class="btn danger small" data-rmsec="' + si + '">🗑️ Quitar sección</button>' +
       '</div>' +
       '</fieldset>';
-  }).join('');
+  }).join('') || '<p class="helpText" style="padding:10px;border:1px dashed var(--line);border-radius:6px">Sin secciones. Agrega la primera sección para esta ficha.</p>';
 
-  const extrasHtml = bs.extras.map((ex, i) => {
+  // Generar HTML de Extras de cabecera
+  const extrasHtml = (bs.extras || []).map((ex, i) => {
     const isFirst = i === 0;
-    const isLast = i === bs.extras.length - 1;
-    return '<div class="extraDefRow" data-extra-idx="' + i + '">' +
-      '<span class="secOrderBadge" style="margin-right:2px">#' + (i + 1) + '</span>' +
-      '<input type="text" class="extraLabelInp" placeholder="Etiqueta del campo (ej: Director(a), N° tutores, ¿Es JEC?)" value="' + esc(ex.label) + '" data-extralabel="' + i + '">' +
-      '<select class="extraTipoSel" data-extratipo="' + i + '">' +
+    const isLast = i === (bs.extras || []).length - 1;
+    return '<div class="extraDefRow" data-extra-idx="' + i + '" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px;background:var(--surface-2);border-radius:6px">' +
+      '<span class="secOrderBadge" style="font-size:11px;font-weight:700">#' + (i + 1) + '</span>' +
+      '<input type="text" class="extraLabelInp" placeholder="Etiqueta del campo (ej: Director(a), Teléfono)" value="' + esc(ex.label) + '" data-extralabel="' + i + '" style="flex:1">' +
+      '<select class="extraTipoSel" data-extratipo="' + i + '" style="max-width:130px">' +
       '<option value="texto"' + (ex.tipo === 'texto' ? ' selected' : '') + '>Texto corto</option>' +
       '<option value="numero"' + (ex.tipo === 'numero' ? ' selected' : '') + '>Número</option>' +
       '<option value="fecha"' + (ex.tipo === 'fecha' ? ' selected' : '') + '>Fecha</option>' +
       '<option value="si_no"' + (ex.tipo === 'si_no' ? ' selected' : '') + '>Sí / No</option>' +
       '</select>' +
-      '<label class="extraReqLabel" title="Marcar si es obligatorio para registrar la ficha">' +
-      '<input type="checkbox" data-extrareq="' + i + '"' + (ex.required ? ' checked' : '') + '> Obligatorio' +
+      '<label class="extraReqLabel" style="font-size:11.5px;display:flex;align-items:center;gap:4px;cursor:pointer">' +
+      '<input type="checkbox" data-extrareq="' + i + '"' + (ex.required ? ' checked' : '') + '> Req.' +
       '</label>' +
-      '<div class="extraActs">' +
-      '<button type="button" class="iconBtn small" data-moveextra="' + i + '|up"' + (isFirst ? ' disabled' : '') + ' title="Subir campo">▲</button>' +
-      '<button type="button" class="iconBtn small" data-moveextra="' + i + '|down"' + (isLast ? ' disabled' : '') + ' title="Bajar campo">▼</button>' +
-      '<button type="button" class="iconBtn small" data-rmextra="' + i + '" title="Quitar campo">✕</button>' +
+      '<div class="extraActs" style="display:flex;gap:4px">' +
+      '<button type="button" class="iconBtn small" data-moveextra="' + i + '|up"' + (isFirst ? ' disabled' : '') + ' title="Subir">▲</button>' +
+      '<button type="button" class="iconBtn small" data-moveextra="' + i + '|down"' + (isLast ? ' disabled' : '') + ' title="Bajar">▼</button>' +
+      '<button type="button" class="iconBtn small" data-rmextra="' + i + '" title="Quitar">✕</button>' +
       '</div>' +
       '</div>';
-  }).join('') || '<p class="helpText" style="margin-top:0">Sin campos personalizados de cabecera.</p>';
+  }).join('') || '<p class="helpText">Sin campos personalizados de cabecera.</p>';
 
-  container.innerHTML = '' +
-    '<div class="pageHead"><h2>' + (builderEditingId ? 'Editar tipo de ficha' : 'Nuevo tipo de ficha') + '</h2></div>' +
-    '<div class="panel">' +
-    '<div class="fieldGrid">' +
-    '<div class="field"><label>Icono (emoji)</label><input type="text" id="b_icono" value="' + esc(bs.icono) + '" maxlength="4" style="max-width:80px"></div>' +
-    '<div class="field" style="grid-column:span 2"><label>Nombre de la ficha *</label><input type="text" id="b_nombre" value="' + esc(bs.nombre) + '" placeholder="Ej: Ficha de Monitoreo a la Gestión Escolar"></div>' +
-    '</div>' +
-    '<div class="field"><label>Descripción</label><textarea id="b_desc" placeholder="Breve descripción de para qué se usa esta ficha">' + esc(bs.descripcion) + '</textarea></div>' +
-    '<div class="field" style="max-width:340px"><label>Escala de respuesta de los ítems</label>' +
-    '<select id="b_tipo">' + Object.keys(RESPONSE_LABELS).map(k => '<option value="' + k + '"' + (k === bs.tipoRespuesta ? ' selected' : '') + '>' + RESPONSE_LABELS[k] + '</option>').join('') + '</select>' +
-    '<p class="helpText">Se aplicará a todos los ítems de esta ficha.</p>' +
-    '</div>' +
-    '</div>' +
-    '<div class="panel"><h3>Datos generales de la ficha <small>campos de cabecera configurables</small></h3>' +
-    '<div style="background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--ink-soft);line-height:1.4">' +
-    '<strong>Campos fijos obligatorios:</strong> <em>Institución educativa</em>, <em>Fecha</em> y <em>N° de visita</em> siempre están presentes en todas las fichas.<br>' +
-    'Agrega a continuación los campos de cabecera específicos para este tipo de ficha (UGEL, Código modular, Director, Coordinador, Teléfono, ¿Es JEC?, etc.).' +
-    '</div>' +
-    '<div id="extrasList">' + extrasHtml + '</div>' +
-    '<button type="button" class="btn secondary small" id="addExtraBtn" style="margin-top:4px">+ Agregar campo de cabecera</button>' +
-    '</div>' +
-    '<div class="panel"><h3>Secciones e ítems</h3>' + seccionesHtml +
-    '<button type="button" class="btn secondary small" id="addSecBtn">+ Agregar sección</button>' +
-    '</div>' +
-    '<div style="display:flex;gap:10px;margin-top:16px">' +
-    '<button class="btn" id="saveTipoBtn">Guardar tipo de ficha</button>' +
-    '<button class="btn secondary" id="cancelTipoBtn">Cancelar</button>' +
-    '</div>';
+  // Render Layout Completo: Editor + Vista Previa Sticky
+  container.innerHTML = `
+    <div class="pageHead" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2>${builderEditingId ? 'Editar tipo de ficha' : 'Nuevo tipo de ficha'}</h2>
+        <p>Configura la estructura, indicadores y escala de valoración con vista previa en tiempo real.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="dirtyIndicator" style="display:${builderIsDirty ? 'inline-flex' : 'none'};align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--amber-700);background:var(--amber-50);border:1px solid var(--amber-200);border-radius:12px;padding:3px 10px">
+          ● Cambios sin guardar
+        </span>
+        <div class="builderMobileToggle" id="builderMobileToggle">
+          <button type="button" class="btn secondary small ${builderMobileTab === 'editor' ? 'active' : ''}" id="btnShowEditorMobile">✏️ Editor</button>
+          <button type="button" class="btn secondary small ${builderMobileTab === 'preview' ? 'active' : ''}" id="btnShowPreviewMobile">👁️ Vista previa</button>
+        </div>
+      </div>
+    </div>
 
-  document.getElementById('b_icono').addEventListener('input', e => bs.icono = e.target.value);
-  document.getElementById('b_nombre').addEventListener('input', e => bs.nombre = e.target.value);
-  document.getElementById('b_desc').addEventListener('input', e => bs.descripcion = e.target.value);
-  document.getElementById('b_tipo').addEventListener('change', e => bs.tipoRespuesta = e.target.value);
-  container.querySelectorAll('[data-secname]').forEach(inp => inp.addEventListener('input', () => { bs.secciones[+inp.dataset.secname].nombre = inp.value; }));
-  container.querySelectorAll('[data-sec][data-item]').forEach(inp => inp.addEventListener('input', () => { bs.secciones[+inp.dataset.sec].items[+inp.dataset.item].texto = inp.value; }));
-  container.querySelectorAll('[data-extralabel]').forEach(inp => inp.addEventListener('input', () => { bs.extras[+inp.dataset.extralabel].label = inp.value; }));
-  container.querySelectorAll('[data-extratipo]').forEach(sel => sel.addEventListener('change', () => { bs.extras[+sel.dataset.extratipo].tipo = sel.value; }));
-  container.querySelectorAll('[data-extrareq]').forEach(chk => chk.addEventListener('change', () => { bs.extras[+chk.dataset.extrareq].required = chk.checked; }));
+    ${subNavHtml || ''}
 
+    <div class="builderSplitGrid">
+      <!-- PANEL IZQUIERDO: FORMULARIO DEL EDITOR -->
+      <div class="builderEditorPane ${builderMobileTab === 'preview' ? 'mobileHidden' : ''}" id="builderEditorPane">
+        
+        <!-- Panel 1: Datos Generales -->
+        <div class="panel">
+          <h3 style="margin-top:0">Datos Generales de la Ficha</h3>
+          <div class="fieldGrid">
+            <div class="field" style="max-width:110px">
+              <label for="b_icono">Ícono</label>
+              <input type="text" id="b_icono" value="${esc(bs.icono || '📋')}" maxlength="4" style="text-align:center;font-size:18px">
+            </div>
+            <div class="field" style="grid-column:span 2">
+              <label for="b_nombre">Nombre completo de la ficha *</label>
+              <input type="text" id="b_nombre" value="${esc(bs.nombre)}" placeholder="Ej: Ficha de Monitoreo a la Gestión Escolar">
+            </div>
+          </div>
+
+          <div class="field" style="margin-top:10px">
+            <label for="b_desc">Descripción institucional</label>
+            <textarea id="b_desc" rows="2" placeholder="Breve descripción del propósito de la ficha">${esc(bs.descripcion || '')}</textarea>
+          </div>
+
+          <div class="fieldGrid" style="margin-top:10px">
+            <div class="field">
+              <label for="b_modalidad">Nivel / Modalidad educativa</label>
+              <select id="b_modalidad">
+                ${MODALIDADES.map(m => `<option value="${m}"${(bs.modalidad === m) ? ' selected' : ''}>${m}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field">
+              <label for="b_tipo">Escala de respuesta</label>
+              <select id="b_tipo">
+                ${Object.keys(RESPONSE_LABELS).map(k => `<option value="${k}"${(k === bs.tipoRespuesta) ? ' selected' : ''}>${RESPONSE_LABELS[k]}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <!-- Paleta de Color Institucional -->
+          <div class="field" style="margin-top:12px">
+            <label style="margin-bottom:6px;display:block">Color distintivo de la ficha:</label>
+            <div class="colorSwatches" id="colorSwatchesList">
+              ${FICHA_PALETTE.map(c => `
+                <button type="button" class="colorSwatch ${(bs.color && bs.color.toLowerCase() === c.hex.toLowerCase()) ? 'active' : ''}" data-color="${c.hex}" style="background:${c.hex}" title="${c.name}"></button>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 2: Campos de Cabecera Configurables -->
+        <div class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <h3 style="margin:0">Campos de Cabecera <small style="font-weight:normal;color:var(--ink-soft)">(adicionales a I.E., Fecha y N° Visita)</small></h3>
+            <button type="button" class="btn secondary small" id="addExtraBtn">＋ Agregar campo</button>
+          </div>
+          <div id="extrasList">${extrasHtml}</div>
+        </div>
+
+        <!-- Panel 3: Secciones e Ítems -->
+        <div class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 style="margin:0">Secciones e Indicadores de Monitoreo</h3>
+            <button type="button" class="btn secondary small" id="addSecBtn">＋ Agregar sección</button>
+          </div>
+          <div id="seccionesList">${seccionesHtml}</div>
+        </div>
+
+        <!-- Panel 4: Acciones Guardar / Cancelar -->
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:20px 0 40px">
+          <button type="button" class="btn" id="saveTipoBtn">💾 Guardar ficha</button>
+          <button type="button" class="btn secondary" id="saveDraftBtn">📝 Guardar borrador</button>
+          <button type="button" class="btn secondary" id="cancelTipoBtn">Cancelar</button>
+        </div>
+
+      </div>
+
+      <!-- PANEL DERECHO: VISTA PREVIA EN VIVO STICKY -->
+      <div class="builderPreviewPane ${builderMobileTab === 'editor' ? 'mobileHidden' : ''}" id="builderPreviewPane">
+        <div class="builderPreviewSticky">
+          <div class="builderPreviewHeader" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:12px">
+            <div>
+              <h4 style="margin:0;font-size:14px;font-weight:700">Vista previa en tiempo real</h4>
+              <span style="font-size:11.5px;color:var(--ink-soft)">Se actualiza automáticamente al escribir</span>
+            </div>
+            <div class="builderPreviewTabs">
+              <button type="button" class="builderPreviewTab ${builderPreviewMode === 'formulario' ? 'active' : ''}" data-preview-mode="formulario">📋 Formulario</button>
+              <button type="button" class="builderPreviewTab ${builderPreviewMode === 'documento' ? 'active' : ''}" data-preview-mode="documento">📄 Documento</button>
+            </div>
+          </div>
+
+          <!-- Contenedor dinámico de la vista previa -->
+          <div id="builderPreviewContent"></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Función que genera el HTML de la vista previa en vivo
+  function buildPreviewInnerHtml() {
+    const totalSecs = (bs.secciones || []).length;
+    const totalItems = (bs.secciones || []).reduce((acc, s) => acc + (s.items || []).length, 0);
+
+    // Detección de campos incompletos para avisos de corrección
+    const errors = [];
+    if (!bs.nombre || !bs.nombre.trim()) {
+      errors.push({ msg: 'Falta ingresar el nombre de la ficha', target: '#b_nombre' });
+    }
+    if (!bs.secciones || bs.secciones.length === 0) {
+      errors.push({ msg: 'Debes agregar al menos una sección', target: '#addSecBtn' });
+    } else {
+      bs.secciones.forEach((sec, si) => {
+        if (!sec.nombre || !sec.nombre.trim()) {
+          errors.push({ msg: `La sección #${si + 1} no tiene título`, target: `[data-secname="${si}"]` });
+        }
+        if (!sec.items || sec.items.length === 0) {
+          errors.push({ msg: `La sección #${si + 1} ("${sec.nombre || 'Sin nombre'}") no tiene ítems`, target: `[data-additem="${si}"]` });
+        } else {
+          sec.items.forEach((it, ii) => {
+            if (!it.texto || !it.texto.trim()) {
+              errors.push({ msg: `El ítem #${ii + 1} en la sección #${si + 1} está vacío`, target: `[data-sec="${si}"][data-item="${ii}"]` });
+            }
+          });
+        }
+      });
+    }
+
+    // Mini tarjeta de lista
+    const curColor = bs.color || FICHA_PALETTE[0].hex;
+    const curPal = FICHA_PALETTE.find(p => p.hex.toLowerCase() === curColor.toLowerCase()) || { hex: curColor, bg: curColor + '18' };
+
+    const miniCardHtml = `
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-400);margin-bottom:6px">Así se verá en la lista de fichas:</div>
+      <div class="fichaCard previewMiniCard" style="margin-bottom:14px;box-shadow:none;border:1px solid var(--line);cursor:default">
+        <div class="fichaCardColorStripe" style="background:${curPal.hex};"></div>
+        <div class="fichaCardMain" style="padding:10px 14px">
+          <div class="fichaCardIconWrap" style="background:${curPal.bg};color:${curPal.hex};width:38px;height:38px;font-size:20px">
+            ${esc(bs.icono || '📋')}
+          </div>
+          <div class="fichaCardContent">
+            <h4 class="fichaCardTitle" style="font-size:14px">${esc(bs.nombre || 'Nombre de la ficha')}</h4>
+            <p class="fichaCardDesc" style="font-size:12px">${esc(bs.descripcion || 'Sin descripción.')}</p>
+            <div class="fichaCardBadges" style="margin-top:6px">
+              <span class="fichaBadge fichaBadgeModalidad">${esc(bs.modalidad || 'General')}</span>
+              <span class="fichaBadge fichaBadgeItems">📑 ${totalSecs} ${totalSecs === 1 ? 'sección' : 'secciones'}</span>
+              <span class="fichaBadge fichaBadgeItems">🔢 ${totalItems} ítems</span>
+              <span class="fichaBadge fichaBadgeEscala">⚖️ ${esc(RESPONSE_LABELS[bs.tipoRespuesta] || bs.tipoRespuesta)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Avisos de validación
+    const validationBoxHtml = errors.length > 0 ? `
+      <div class="previewValidationBox" style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:10px 14px;margin-bottom:14px">
+        <div style="font-weight:700;font-size:12px;color:#92400E;margin-bottom:6px">⚠️ Campos incompletos (${errors.length}) — Haz clic para corregir:</div>
+        <ul style="margin:0;padding-left:18px;font-size:12px;color:#B45309">
+          ${errors.map(err => `
+            <li style="margin-bottom:3px">
+              <a href="javascript:void(0)" class="previewValItem" data-target="${esc(err.target)}" style="color:#B45309;text-decoration:underline">
+                ${esc(err.msg)}
+              </a>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    ` : `
+      <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:#065F46;display:flex;align-items:center;gap:6px">
+        <span>✓</span> <strong>Estructura completa y consistente.</strong> Lista para registrar visitas.
+      </div>
+    `;
+
+    const statsBarHtml = `
+      <div style="display:flex;gap:12px;font-size:12px;color:var(--text-600);margin-bottom:14px;padding:6px 10px;background:var(--surface-2);border-radius:6px;border:1px solid var(--line)">
+        <span>📑 <strong>${totalSecs}</strong> ${totalSecs === 1 ? 'sección' : 'secciones'}</span>
+        <span>🔢 <strong>${totalItems}</strong> ítems</span>
+        <span>⚖️ <strong>${esc(RESPONSE_LABELS[bs.tipoRespuesta] || bs.tipoRespuesta)}</strong></span>
+      </div>
+    `;
+
+    const impactAlertHtml = (existingCount > 0) ? `
+      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:#1E40AF;line-height:1.4">
+        ℹ️ <strong>Atención:</strong> Esta plantilla tiene <strong>${existingCount}</strong> visita(s) registradas históricamente. Modificar ítems se aplicará a nuevas visitas.
+      </div>
+    ` : '';
+
+    // Renderizar modo específico (Formulario o Documento)
+    let modeContentHtml = '';
+
+    if (builderPreviewMode === 'formulario') {
+      // Modo Formulario de Registro
+      let answeredCount = 0;
+      let currentScore = 0;
+      let maxScore = 0;
+
+      (bs.secciones || []).forEach(sec => {
+        (sec.items || []).forEach(it => {
+          const ans = builderTestAnswers[it.id];
+          if (ans !== undefined && ans !== null && ans !== '') {
+            answeredCount++;
+            if (bs.tipoRespuesta === 'si_no') {
+              maxScore += 1;
+              if (ans === 'si' || ans === '1') currentScore += 1;
+            } else if (bs.tipoRespuesta === 'escala1_3') {
+              maxScore += 3;
+              currentScore += Number(ans) || 0;
+            } else if (bs.tipoRespuesta === 'escala1_4' || bs.tipoRespuesta === 'rubrica1_4') {
+              maxScore += 4;
+              currentScore += Number(ans) || 0;
+            } else if (bs.tipoRespuesta === 'escala1_5') {
+              maxScore += 5;
+              currentScore += Number(ans) || 0;
+            }
+          }
+        });
+      });
+      const pctScore = maxScore > 0 ? Math.round((currentScore / maxScore) * 100) : 0;
+
+      const testScoreBar = totalItems > 0 ? `
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-700)">Simulación de Calificación en vivo:</div>
+            <div style="font-size:11.5px;color:var(--text-500)">Respondidos: ${answeredCount} de ${totalItems} | Puntaje: <strong>${currentScore}</strong> / ${maxScore || totalItems}</div>
+          </div>
+          <div style="text-align:right">
+            <span style="font-size:20px;font-weight:800;color:var(--primary)">${pctScore}%</span>
+          </div>
+        </div>
+      ` : '';
+
+      modeContentHtml = `
+        <div class="previewFormSheet" style="background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface-2);border:1px dashed var(--line);border-radius:6px;padding:8px 12px;margin-bottom:14px">
+            <div style="font-size:12px;color:var(--text-600)">🧪 <strong>Modo prueba:</strong> Marca respuestas para probar el formulario sin guardar datos.</div>
+            <button type="button" class="btn secondary small" id="btnResetTest" style="padding:2px 8px;font-size:11px">Limpiar prueba</button>
+          </div>
+
+          ${testScoreBar}
+
+          <!-- Simulación de cabecera de visita -->
+          <div style="background:var(--surface-2);border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:12px">
+            <div style="font-weight:700;color:var(--text-700);margin-bottom:6px">Datos de la visita (Simulación):</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div><strong>I.E.:</strong> <span style="color:var(--text-500)">I.E. 1153 Alfonso Ugarte</span></div>
+              <div><strong>Fecha:</strong> <span style="color:var(--text-500)">2026-09-24</span></div>
+              <div><strong>N° Visita:</strong> <span style="color:var(--text-500)">Visita 1</span></div>
+              ${(bs.extras || []).map(ex => `
+                <div><strong>${esc(ex.label)}:</strong> <span style="color:var(--text-400)">[${esc(ex.tipo)}]</span></div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Secciones e ítems interactivos -->
+          ${(bs.secciones || []).map((sec, si) => `
+            <div style="margin-bottom:16px;border:1px solid var(--line);border-radius:6px;overflow:hidden">
+              <div style="background:var(--surface-3);padding:8px 12px;display:flex;align-items:center;justify-content:space-between">
+                <span style="font-weight:700;font-size:12.5px;color:var(--ink)">
+                  #${si + 1}: ${esc(sec.nombre || 'Sección sin título')}
+                </span>
+                <a href="javascript:void(0)" class="previewValItem" data-target="[data-secname='${si}']" style="font-size:11px;color:var(--primary);text-decoration:underline">
+                  ✏️ Editar sección
+                </a>
+              </div>
+              <div style="padding:8px 12px">
+                ${(sec.items || []).map((it, ii) => {
+                  const ans = builderTestAnswers[it.id] || '';
+                  return `
+                    <div style="padding:8px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px">
+                      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                        <span style="font-size:12px;color:var(--ink);font-weight:500">
+                          <strong style="color:var(--primary)">${si + 1}.${ii + 1}</strong> ${esc(it.texto || 'Ítem sin texto')}
+                        </span>
+                        <a href="javascript:void(0)" class="previewValItem" data-target="[data-sec='${si}'][data-item='${ii}']" style="font-size:11px;color:var(--ink-soft)" title="Ir a editar este ítem">
+                          ✏️
+                        </a>
+                      </div>
+                      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11.5px">
+                        ${renderItemResponseInputs(it, bs.tipoRespuesta, ans)}
+                      </div>
+                    </div>
+                  `;
+                }).join('') || '<p style="font-size:11.5px;color:var(--text-400);margin:4px 0">Sin ítems en esta sección.</p>'}
+              </div>
+            </div>
+          `).join('') || '<p style="font-size:12px;color:var(--text-400)">Sin secciones agregadas.</p>'}
+        </div>
+      `;
+    } else {
+      // Modo Documento Oficial Impreso
+      modeContentHtml = `
+        <div class="previewDocSheet" style="background:#FFFFFF;border:1px solid var(--line-strong);border-radius:6px;padding:20px;font-family:var(--sans);color:#1F2937">
+          <div style="text-align:center;border-bottom:2px solid #1E3A8A;padding-bottom:10px;margin-bottom:14px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#4B5563;text-transform:uppercase">Ministerio de Educación · DRE Lima Metropolitana</div>
+            <div style="font-size:13px;font-weight:800;letter-spacing:0.5px;color:#1E3A8A;margin:2px 0">UNIDAD DE GESTIÓN EDUCATIVA LOCAL N° 03</div>
+            <div style="font-size:10.5px;color:#6B7280">Panel de Monitoreo y Acompañamiento Pedagógico 2026</div>
+            <h3 style="font-size:15px;font-weight:800;margin:10px 0 4px;color:#1E40AF;text-transform:uppercase">${esc(bs.nombre || 'NOMBRE DE LA FICHA')}</h3>
+            <div style="font-size:11px;font-weight:600;color:#4B5563">Modalidad: ${esc(bs.modalidad || 'General')} · Escala: ${esc(RESPONSE_LABELS[bs.tipoRespuesta] || bs.tipoRespuesta)}</div>
+          </div>
+
+          <!-- Metadatos de Cabecera Oficial -->
+          <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:11px">
+            <tr>
+              <td style="border:1px solid #D1D5DB;padding:4px 8px;background:#F3F4F6;font-weight:700;width:25%">Institución Educativa:</td>
+              <td style="border:1px solid #D1D5DB;padding:4px 8px;width:40%">[Nombre de la I.E.]</td>
+              <td style="border:1px solid #D1D5DB;padding:4px 8px;background:#F3F4F6;font-weight:700;width:15%">Cód. Modular:</td>
+              <td style="border:1px solid #D1D5DB;padding:4px 8px">[0123456]</td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #D1D5DB;padding:4px 8px;background:#F3F4F6;font-weight:700">Red Educativa:</td>
+              <td style="border:1px solid #D1D5DB;padding:4px 8px">[REI 01]</td>
+              <td style="border:1px solid #D1D5DB;padding:4px 8px;background:#F3F4F6;font-weight:700">Fecha / N° Visita:</td>
+              <td style="border:1px solid #D1D5DB;padding:4px 8px">[DD/MM/AAAA · Visita 1]</td>
+            </tr>
+            ${(bs.extras || []).map(ex => `
+              <tr>
+                <td style="border:1px solid #D1D5DB;padding:4px 8px;background:#F3F4F6;font-weight:700">${esc(ex.label)}:</td>
+                <td colspan="3" style="border:1px solid #D1D5DB;padding:4px 8px;color:#6B7280">[${esc(ex.tipo)}]</td>
+              </tr>
+            `).join('')}
+          </table>
+
+          <!-- Tabla de Dimensiones e Indicadores -->
+          <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:10.5px">
+            <thead>
+              <tr style="background:#1E3A8A;color:#FFFFFF">
+                <th style="border:1px solid #1E3A8A;padding:5px;width:32px;text-align:center">N°</th>
+                <th style="border:1px solid #1E3A8A;padding:5px;text-align:left">Dimensión / Criterio / Indicador</th>
+                <th style="border:1px solid #1E3A8A;padding:5px;width:100px;text-align:center">Valoración</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(bs.secciones || []).map((sec, si) => `
+                <tr style="background:#F9FAFB;font-weight:700">
+                  <td style="border:1px solid #E5E7EB;padding:4px;text-align:center;color:#1E3A8A">#${si + 1}</td>
+                  <td colspan="2" style="border:1px solid #E5E7EB;padding:4px;text-transform:uppercase;color:#111827">${esc(sec.nombre || 'Sección sin título')}</td>
+                </tr>
+                ${(sec.items || []).map((it, ii) => `
+                  <tr>
+                    <td style="border:1px solid #E5E7EB;padding:4px;text-align:center;color:#6B7280">${si + 1}.${ii + 1}</td>
+                    <td style="border:1px solid #E5E7EB;padding:4px">${esc(it.texto || 'Ítem sin texto')}</td>
+                    <td style="border:1px solid #E5E7EB;padding:4px;text-align:center;color:#9CA3AF">[____]</td>
+                  </tr>
+                `).join('')}
+              `).join('')}
+            </tbody>
+          </table>
+
+          <!-- Bloque de Firmas Institucionales -->
+          <div style="display:flex;justify-content:space-around;gap:20px;margin-top:24px;padding-top:16px">
+            <div style="flex:1;text-align:center">
+              <div style="border-top:1px dashed #4B5563;width:75%;margin:0 auto 4px"></div>
+              <div style="font-size:10.5px;font-weight:700;color:#111827">Firma y Sello del Director(a)</div>
+              <div style="font-size:9.5px;color:#6B7280">Institución Educativa</div>
+            </div>
+            <div style="flex:1;text-align:center">
+              <div style="border-top:1px dashed #4B5563;width:75%;margin:0 auto 4px"></div>
+              <div style="font-size:10.5px;font-weight:700;color:#111827">Firma y Sello del Especialista</div>
+              <div style="font-size:9.5px;color:#6B7280">UGEL 03 · DRELM</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return miniCardHtml + validationBoxHtml + statsBarHtml + impactAlertHtml + modeContentHtml;
+  }
+
+  // Helper para generar opciones de respuesta interactivas en modo prueba
+  function renderItemResponseInputs(it, tipoRespuesta, curVal) {
+    if (tipoRespuesta === 'si_no') {
+      return `
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="test_${it.id}" value="si" ${curVal === 'si' ? 'checked' : ''} data-test-item="${it.id}"> Sí</label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="test_${it.id}" value="no" ${curVal === 'no' ? 'checked' : ''} data-test-item="${it.id}"> No</label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${it.id}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${it.id}"> N/A</label>
+      `;
+    }
+    if (tipoRespuesta === 'escala1_3') {
+      return [1, 2, 3].map(v => `
+        <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="test_${it.id}" value="${v}" ${String(curVal) === String(v) ? 'checked' : ''} data-test-item="${it.id}"> ${v}</label>
+      `).join('') + `<label style="display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${it.id}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${it.id}"> N/A</label>`;
+    }
+    if (tipoRespuesta === 'rubrica1_4') {
+      const lvls = ['I', 'II', 'III', 'IV'];
+      return lvls.map((lvl, idx) => `
+        <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="test_${it.id}" value="${idx + 1}" ${String(curVal) === String(idx + 1) ? 'checked' : ''} data-test-item="${it.id}"> Nivel ${lvl}</label>
+      `).join('') + `<label style="display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${it.id}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${it.id}"> N/A</label>`;
+    }
+    if (tipoRespuesta === 'escala1_5') {
+      return [1, 2, 3, 4, 5].map(v => `
+        <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="test_${it.id}" value="${v}" ${String(curVal) === String(v) ? 'checked' : ''} data-test-item="${it.id}"> ${v}</label>
+      `).join('') + `<label style="display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${it.id}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${it.id}"> N/A</label>`;
+    }
+    // Default escala 1-4
+    return [1, 2, 3, 4].map(v => `
+      <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="test_${it.id}" value="${v}" ${String(curVal) === String(v) ? 'checked' : ''} data-test-item="${it.id}"> ${v}</label>
+    `).join('') + `<label style="display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${it.id}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${it.id}"> N/A</label>`;
+  }
+
+  // Actualiza únicamente la vista previa sin tocar los inputs del editor (evita perder el foco al escribir)
+  function updatePreviewOnly() {
+    const previewBox = document.getElementById('builderPreviewContent');
+    if (!previewBox) return;
+    previewBox.innerHTML = buildPreviewInnerHtml();
+    attachPreviewEvents();
+
+    const di = document.getElementById('dirtyIndicator');
+    if (di) di.style.display = builderIsDirty ? 'inline-flex' : 'none';
+  }
+
+  // Eventos dentro de la vista previa
+  function attachPreviewEvents() {
+    const previewBox = document.getElementById('builderPreviewContent');
+    if (!previewBox) return;
+
+    // Clic en avisos o enlaces de edición para saltar al campo del editor
+    previewBox.querySelectorAll('.previewValItem').forEach(link => {
+      link.onclick = (e) => {
+        e.preventDefault();
+        const targetSel = link.dataset.target;
+        if (!targetSel) return;
+
+        // Si estamos en móvil y mostrando vista previa, alternar a editor
+        if (builderMobileTab === 'preview') {
+          builderMobileTab = 'editor';
+          const ep = document.getElementById('builderEditorPane');
+          const pp = document.getElementById('builderPreviewPane');
+          const bEd = document.getElementById('btnShowEditorMobile');
+          const bPr = document.getElementById('btnShowPreviewMobile');
+          if (ep && pp) {
+            ep.classList.remove('mobileHidden');
+            pp.classList.add('mobileHidden');
+          }
+          if (bEd && bPr) {
+            bEd.classList.add('active');
+            bPr.classList.remove('active');
+          }
+        }
+
+        const targetEl = container.querySelector(targetSel);
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (targetEl.focus) targetEl.focus();
+          targetEl.classList.add('itemHighlightFlash');
+          setTimeout(() => targetEl.classList.remove('itemHighlightFlash'), 1600);
+        }
+      };
+    });
+
+    // Modo prueba: radios interactivos
+    previewBox.querySelectorAll('[data-test-item]').forEach(radio => {
+      radio.onchange = (e) => {
+        const itemId = e.target.dataset.testItem;
+        builderTestAnswers[itemId] = e.target.value;
+        updatePreviewOnly();
+      };
+    });
+
+    // Limpiar prueba
+    const btnReset = previewBox.querySelector('#btnResetTest');
+    if (btnReset) {
+      btnReset.onclick = () => {
+        builderTestAnswers = {};
+        updatePreviewOnly();
+      };
+    }
+  }
+
+  // Renderizar la vista previa inicial
+  updatePreviewOnly();
+
+  // Listeners de pestañas de vista previa (Formulario / Documento)
+  container.querySelectorAll('.builderPreviewTab').forEach(tabBtn => {
+    tabBtn.onclick = () => {
+      builderPreviewMode = tabBtn.dataset.previewMode;
+      container.querySelectorAll('.builderPreviewTab').forEach(b => b.classList.toggle('active', b === tabBtn));
+      updatePreviewOnly();
+    };
+  });
+
+  // Mobile Toggle: Editor vs Vista previa
+  const bEd = document.getElementById('btnShowEditorMobile');
+  const bPr = document.getElementById('btnShowPreviewMobile');
+  if (bEd && bPr) {
+    bEd.onclick = () => {
+      builderMobileTab = 'editor';
+      document.getElementById('builderEditorPane').classList.remove('mobileHidden');
+      document.getElementById('builderPreviewPane').classList.add('mobileHidden');
+      bEd.classList.add('active');
+      bPr.classList.remove('active');
+    };
+    bPr.onclick = () => {
+      builderMobileTab = 'preview';
+      document.getElementById('builderEditorPane').classList.add('mobileHidden');
+      document.getElementById('builderPreviewPane').classList.remove('mobileHidden');
+      bEd.classList.remove('active');
+      bPr.classList.add('active');
+    };
+  }
+
+  // Paleta de colores
+  container.querySelectorAll('.colorSwatch').forEach(swatch => {
+    swatch.onclick = () => {
+      bs.color = swatch.dataset.color;
+      builderIsDirty = true;
+      container.querySelectorAll('.colorSwatch').forEach(s => s.classList.toggle('active', s.dataset.color === bs.color));
+      updatePreviewOnly();
+    };
+  });
+
+  // Eventos de entrada en vivo con debounce ligero para no bloquear
+  let syncTimer = null;
+  const onLiveInput = () => {
+    builderIsDirty = true;
+    syncBuilderFromDom(container, bs);
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => {
+      updatePreviewOnly();
+    }, 180);
+  };
+
+  const bIco = document.getElementById('b_icono');
+  if (bIco) bIco.addEventListener('input', onLiveInput);
+  const bNom = document.getElementById('b_nombre');
+  if (bNom) bNom.addEventListener('input', onLiveInput);
+  const bDesc = document.getElementById('b_desc');
+  if (bDesc) bDesc.addEventListener('input', onLiveInput);
+  const bMod = document.getElementById('b_modalidad');
+  if (bMod) bMod.addEventListener('change', () => { bs.modalidad = bMod.value; builderIsDirty = true; updatePreviewOnly(); });
+  const bTip = document.getElementById('b_tipo');
+  if (bTip) bTip.addEventListener('change', () => { bs.tipoRespuesta = bTip.value; builderIsDirty = true; updatePreviewOnly(); });
+
+  container.querySelectorAll('[data-secname]').forEach(inp => inp.addEventListener('input', onLiveInput));
+  container.querySelectorAll('[data-sec][data-item]').forEach(inp => inp.addEventListener('input', onLiveInput));
+  container.querySelectorAll('[data-extralabel]').forEach(inp => inp.addEventListener('input', onLiveInput));
+  container.querySelectorAll('[data-extratipo]').forEach(sel => sel.addEventListener('change', onLiveInput));
+  container.querySelectorAll('[data-extrareq]').forEach(chk => chk.addEventListener('change', onLiveInput));
+
+  // Agregar Ítem
   container.querySelectorAll('[data-additem]').forEach(b => b.addEventListener('click', () => {
     syncBuilderFromDom(container, bs);
     bs.secciones[+b.dataset.additem].items.push({ id: genId(), texto: '' });
-    renderBuilder(container, state, getFichaType, dbNs);
+    builderIsDirty = true;
+    renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
   }));
 
+  // Quitar Ítem
   container.querySelectorAll('[data-rmitem]').forEach(b => b.addEventListener('click', () => {
     syncBuilderFromDom(container, bs);
     const [si, ii] = b.dataset.rmitem.split('|').map(Number);
     bs.secciones[si].items.splice(ii, 1);
-    renderBuilder(container, state, getFichaType, dbNs);
+    builderIsDirty = true;
+    renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
   }));
 
+  // Quitar Sección
   container.querySelectorAll('[data-rmsec]').forEach(b => b.addEventListener('click', () => {
     syncBuilderFromDom(container, bs);
     bs.secciones.splice(+b.dataset.rmsec, 1);
-    renderBuilder(container, state, getFichaType, dbNs);
+    builderIsDirty = true;
+    renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
   }));
 
-  document.getElementById('addSecBtn').addEventListener('click', () => {
-    syncBuilderFromDom(container, bs);
-    bs.secciones.push({ nombre: '', items: [{ id: genId(), texto: '' }] });
-    renderBuilder(container, state, getFichaType, dbNs);
-  });
+  // Agregar Sección
+  const addSecBtn = document.getElementById('addSecBtn');
+  if (addSecBtn) {
+    addSecBtn.addEventListener('click', () => {
+      syncBuilderFromDom(container, bs);
+      bs.secciones.push({ nombre: '', items: [{ id: genId(), texto: '' }] });
+      builderIsDirty = true;
+      renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    });
+  }
 
   // Reordenar secciones con botones ▲ ▼
   container.querySelectorAll('[data-movesec]').forEach(b => b.addEventListener('click', () => {
@@ -4977,12 +6099,13 @@ function renderBuilder(container, state, getFichaType, dbNs) {
       const temp = bs.secciones[si];
       bs.secciones[si] = bs.secciones[target];
       bs.secciones[target] = temp;
-      renderBuilder(container, state, getFichaType, dbNs);
+      builderIsDirty = true;
+      renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
       const targetCard = container.querySelector('fieldset.secCard[data-sec-idx="' + target + '"]');
       if (targetCard) {
         targetCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        targetCard.classList.add('secMovedHighlight');
-        setTimeout(() => targetCard.classList.remove('secMovedHighlight'), 1200);
+        targetCard.classList.add('itemHighlightFlash');
+        setTimeout(() => targetCard.classList.remove('itemHighlightFlash'), 1400);
       }
     }
   }));
@@ -5016,7 +6139,8 @@ function renderBuilder(container, state, getFichaType, dbNs) {
         syncBuilderFromDom(container, bs);
         const [moved] = bs.secciones.splice(draggedSecIdx, 1);
         bs.secciones.splice(targetIdx, 0, moved);
-        renderBuilder(container, state, getFichaType, dbNs);
+        builderIsDirty = true;
+        renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
       }
     });
   });
@@ -5031,58 +6155,173 @@ function renderBuilder(container, state, getFichaType, dbNs) {
       const temp = bs.extras[ei];
       bs.extras[ei] = bs.extras[target];
       bs.extras[target] = temp;
-      renderBuilder(container, state, getFichaType, dbNs);
+      builderIsDirty = true;
+      renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
     }
   }));
 
-  document.getElementById('addExtraBtn').addEventListener('click', () => {
-    syncBuilderFromDom(container, bs);
-    bs.extras.push({ id: genId(), label: '', tipo: 'texto', required: false });
-    renderBuilder(container, state, getFichaType, dbNs);
-  });
+  // Agregar campo de cabecera
+  const addExtraBtn = document.getElementById('addExtraBtn');
+  if (addExtraBtn) {
+    addExtraBtn.addEventListener('click', () => {
+      syncBuilderFromDom(container, bs);
+      bs.extras.push({ id: genId(), label: '', tipo: 'texto', required: false });
+      builderIsDirty = true;
+      renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    });
+  }
 
+  // Quitar campo de cabecera
   container.querySelectorAll('[data-rmextra]').forEach(b => b.addEventListener('click', () => {
     syncBuilderFromDom(container, bs);
     bs.extras.splice(+b.dataset.rmextra, 1);
-    renderBuilder(container, state, getFichaType, dbNs);
+    builderIsDirty = true;
+    renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
   }));
 
-  document.getElementById('cancelTipoBtn').addEventListener('click', () => {
-    tiposView = 'list';
-    renderTiposTab(container, state, getFichaType, dbNs);
-  });
-
-  document.getElementById('saveTipoBtn').addEventListener('click', async () => {
-    syncBuilderFromDom(container, bs);
-    if (!bs.nombre.trim()) { showToast('Ponle un nombre a la ficha.'); return; }
-    bs.secciones = bs.secciones.filter(s => s.nombre.trim() || s.items.some(i => i.texto.trim()));
-    bs.secciones.forEach(s => s.items = s.items.filter(i => i.texto.trim()));
-    bs.extras = bs.extras.filter(e => e.label.trim());
-    if (bs.secciones.length === 0 || bs.secciones.every(s => s.items.length === 0)) { showToast('Agrega al menos un ítem.'); return; }
-    if (!dbNs) { showToast('No hay conexión a la base de datos.'); return; }
-    const payload = {
-      nombre: bs.nombre.trim(),
-      descripcion: bs.descripcion.trim(),
-      icono: bs.icono || '📋',
-      tipoRespuesta: bs.tipoRespuesta,
-      secciones: bs.secciones,
-      extras: bs.extras,
-    };
-    try {
-      if (builderEditingId) {
-        await dbNs.collection('fichaTypes').doc(builderEditingId).set(payload);
-        showToast('Tipo de ficha actualizado.');
-      } else {
-        await dbNs.collection('fichaTypes').add(payload);
-        showToast('Tipo de ficha creado.');
+  // Cancelar con confirmación de cambios pendientes
+  const cancelBtn = document.getElementById('cancelTipoBtn');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      if (builderIsDirty) {
+        const ok = confirm('Tienes cambios sin guardar en la ficha. ¿Deseas descartarlos y salir?');
+        if (!ok) return;
       }
+      builderIsDirty = false;
       tiposView = 'list';
-      renderTiposTab(document.getElementById('tabContent'), state, getFichaType, dbNs);
-    } catch (err) {
-      console.error(err);
-      showToast('No se pudo guardar.');
-    }
-  });
+      renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    });
+  }
+
+  // Guardar Borrador
+  const draftBtn = document.getElementById('saveDraftBtn');
+  if (draftBtn) {
+    draftBtn.addEventListener('click', async () => {
+      syncBuilderFromDom(container, bs);
+      if (!bs.nombre || !bs.nombre.trim()) {
+        showToast('Asigna al menos un nombre para guardar el borrador.');
+        const el = document.getElementById('b_nombre');
+        if (el) el.focus();
+        return;
+      }
+      draftBtn.disabled = true;
+      draftBtn.textContent = 'Guardando...';
+      const payload = {
+        nombre: bs.nombre.trim(),
+        descripcion: (bs.descripcion || '').trim(),
+        icono: (bs.icono || '📋').trim(),
+        color: bs.color || FICHA_PALETTE[0].hex,
+        modalidad: bs.modalidad || 'General',
+        tipoRespuesta: bs.tipoRespuesta || 'si_no',
+        secciones: bs.secciones,
+        extras: bs.extras,
+        esBorrador: true,
+        updatedAt: Date.now()
+      };
+      try {
+        if (builderEditingId) {
+          await dbNs.collection('fichaTypes').doc(builderEditingId).set(payload, { merge: true });
+          showToast('✓ Borrador de ficha actualizado.');
+        } else {
+          payload.createdAt = Date.now();
+          const docRef = await dbNs.collection('fichaTypes').add(payload);
+          builderEditingId = docRef.id;
+          showToast('✓ Borrador guardado exitosamente.');
+        }
+        builderIsDirty = false;
+        const di = document.getElementById('dirtyIndicator');
+        if (di) di.style.display = 'none';
+        updatePreviewOnly();
+      } catch (err) {
+        console.error(err);
+        showToast('No se pudo guardar el borrador: ' + err.message);
+      } finally {
+        draftBtn.disabled = false;
+        draftBtn.textContent = '📝 Guardar borrador';
+      }
+    });
+  }
+
+  // Guardar Ficha Completa
+  const saveBtn = document.getElementById('saveTipoBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      syncBuilderFromDom(container, bs);
+      if (!bs.nombre || !bs.nombre.trim()) {
+        showToast('Falta asignar el nombre de la ficha.');
+        const el = document.getElementById('b_nombre');
+        if (el) {
+          el.focus();
+          el.classList.add('itemHighlightFlash');
+          setTimeout(() => el.classList.remove('itemHighlightFlash'), 1500);
+        }
+        return;
+      }
+
+      const validSections = (bs.secciones || [])
+        .filter(s => s.nombre.trim() || s.items.some(i => i.texto.trim()))
+        .map(s => ({
+          nombre: s.nombre.trim() || 'Sección',
+          items: (s.items || []).filter(i => i.texto.trim()).map(i => ({ id: i.id || genId(), texto: i.texto.trim() }))
+        }));
+
+      const totalValidItems = validSections.reduce((acc, s) => acc + s.items.length, 0);
+      if (validSections.length === 0 || totalValidItems === 0) {
+        showToast('La ficha debe tener al menos una sección con un ítem.');
+        return;
+      }
+
+      if (existingCount > 0) {
+        const ok = confirm(`Atención: Esta plantilla tiene ${existingCount} visita(s) registradas.\n\nLos cambios en los indicadores se aplicarán a las nuevas visitas que se registren. ¿Deseas guardar los cambios?`);
+        if (!ok) return;
+      }
+
+      if (!dbNs) {
+        showToast('No hay conexión a la base de datos.');
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Guardando...';
+
+      const payload = {
+        nombre: bs.nombre.trim(),
+        descripcion: (bs.descripcion || '').trim(),
+        icono: (bs.icono || '📋').trim(),
+        color: bs.color || FICHA_PALETTE[0].hex,
+        modalidad: bs.modalidad || 'General',
+        tipoRespuesta: bs.tipoRespuesta || 'si_no',
+        secciones: validSections,
+        extras: (bs.extras || []).filter(e => e.label.trim()),
+        esBorrador: false,
+        updatedAt: Date.now()
+      };
+
+      try {
+        if (builderEditingId) {
+          await dbNs.collection('fichaTypes').doc(builderEditingId).set(payload, { merge: true });
+          showToast('✓ Tipo de ficha actualizado exitosamente.');
+        } else {
+          payload.createdAt = Date.now();
+          await dbNs.collection('fichaTypes').add(payload);
+          showToast('✓ Tipo de ficha creado exitosamente.');
+        }
+        builderIsDirty = false;
+        tiposView = 'list';
+        renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+      } catch (err) {
+        console.error(err);
+        showToast('No se pudo guardar la ficha: ' + err.message);
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 Guardar ficha';
+      }
+    });
+  }
+}
+
+/** Compatibilidad con el nombre anterior renderBuilder */
+export function renderBuilder(container, state, getFichaType, dbNs, isAdmin = true, currentUser = null, navigate = null, subNavHtml = '') {
+  return renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
 }
 
 /* =========================================================================
@@ -6137,7 +7376,7 @@ let concursoSelectedColegioId = null;
 let concursoFilters = {
   tipoId: '',
   etapa: '',
-  categoria: '',
+  categoria: [],
   genero: '',
   disciplina: '',
   arte: '',
@@ -6146,6 +7385,32 @@ let concursoFilters = {
 };
 let concursoVistaJfen = 'fichas'; // 'fichas' | 'tabla' (predeterminada en 'fichas' para JFEN)
 let concursoExpandedId = null;
+let concursoCategoryDropdownOpen = false;
+let concursoCategorySearchText = '';
+let concursoCategoryListScrollTop = 0;
+
+export function getSelectedCategorias() {
+  if (Array.isArray(concursoFilters.categoria)) {
+    return concursoFilters.categoria;
+  }
+  if (typeof concursoFilters.categoria === 'string' && concursoFilters.categoria.trim()) {
+    if (concursoFilters.categoria.includes(',')) {
+      return concursoFilters.categoria.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return [concursoFilters.categoria.trim()];
+  }
+  return [];
+}
+
+export function setSelectedCategorias(cats) {
+  if (!cats || cats.length === 0) {
+    concursoFilters.categoria = [];
+  } else if (Array.isArray(cats)) {
+    concursoFilters.categoria = [...new Set(cats.map(c => String(c).trim()).filter(Boolean))];
+  } else {
+    concursoFilters.categoria = [String(cats).trim()];
+  }
+}
 
 export function renderConcursosTab(container, state, dbNs, isAdmin, currentUser, navigate) {
   // Asegurar que state.tiposConcurso y state.concursoRegistros existan
@@ -7653,6 +8918,9 @@ function syncConcursoFiltersToUrl(filters, isJedpa, isJfen) {
     if (filters.tipoId) url.searchParams.set('concurso', filters.tipoId);
     else url.searchParams.delete('concurso');
 
+    const curCats = getSelectedCategorias();
+    const catUrlVal = curCats.length > 0 ? curCats.join(',') : '';
+
     if (isJedpa) {
       if (filters.etapa) url.searchParams.set('etapa', filters.etapa);
       else url.searchParams.delete('etapa');
@@ -7660,7 +8928,7 @@ function syncConcursoFiltersToUrl(filters, isJedpa, isJfen) {
       if (filters.disciplina) url.searchParams.set('disciplina', filters.disciplina);
       else url.searchParams.delete('disciplina');
 
-      if (filters.categoria) url.searchParams.set('categoria', filters.categoria);
+      if (catUrlVal) url.searchParams.set('categoria', catUrlVal);
       else url.searchParams.delete('categoria');
 
       if (filters.genero) url.searchParams.set('genero', filters.genero);
@@ -7672,7 +8940,7 @@ function syncConcursoFiltersToUrl(filters, isJedpa, isJfen) {
       if (filters.etapa) url.searchParams.set('etapa', filters.etapa);
       else url.searchParams.delete('etapa');
 
-      if (filters.categoria) url.searchParams.set('categoria', filters.categoria);
+      if (catUrlVal) url.searchParams.set('categoria', catUrlVal);
       else url.searchParams.delete('categoria');
 
       if (filters.arte) url.searchParams.set('arte', filters.arte);
@@ -7688,7 +8956,7 @@ function syncConcursoFiltersToUrl(filters, isJedpa, isJfen) {
     } else {
       if (filters.etapa) url.searchParams.set('etapa', filters.etapa);
       else url.searchParams.delete('etapa');
-      if (filters.categoria) url.searchParams.set('categoria', filters.categoria);
+      if (catUrlVal) url.searchParams.set('categoria', catUrlVal);
       else url.searchParams.delete('categoria');
       if (filters.genero) url.searchParams.set('genero', filters.genero);
       else url.searchParams.delete('genero');
@@ -7715,7 +8983,16 @@ function restoreConcursoFiltersFromUrl(tipos) {
     }
     if (params.has('etapa')) concursoFilters.etapa = params.get('etapa');
     if (params.has('disciplina')) concursoFilters.disciplina = params.get('disciplina');
-    if (params.has('categoria')) concursoFilters.categoria = params.get('categoria');
+    if (params.has('categoria')) {
+      const pVal = params.get('categoria');
+      if (pVal) {
+        concursoFilters.categoria = pVal.includes(',')
+          ? pVal.split(',').map(s => s.trim()).filter(Boolean)
+          : [pVal.trim()];
+      } else {
+        concursoFilters.categoria = [];
+      }
+    }
     if (params.has('genero')) concursoFilters.genero = params.get('genero');
     if (params.has('arte')) concursoFilters.arte = params.get('arte');
     if (params.has('modalidad')) concursoFilters.modalidad = params.get('modalidad');
@@ -7723,7 +9000,232 @@ function restoreConcursoFiltersFromUrl(tipos) {
   } catch (e) { }
 }
 
-function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate) {
+function renderCategoryMultiSelectMarkup(contextId, categoriaOptions, selectedCats = []) {
+  const items = (categoriaOptions || []).filter(o => !o.isAll);
+  const totalOptions = items.length;
+  const isAll = selectedCats.length === 0;
+
+  let btnText = 'Todas';
+  let btnTitle = 'Todas las categorías seleccionadas';
+  if (!isAll) {
+    const rawLabels = selectedCats.map(c => {
+      const norm = normalizeFilterValue(c);
+      const opt = items.find(o => o.value === norm);
+      return opt ? opt.rawLabel : c;
+    });
+    btnTitle = rawLabels.join(', ');
+    if (rawLabels.length === 1) {
+      btnText = rawLabels[0];
+    } else {
+      const joined = rawLabels.join(', ');
+      btnText = (joined.length <= 22) ? joined : `${selectedCats.length} seleccionadas`;
+    }
+  }
+
+  const badgeHtml = (!isAll && selectedCats.length > 0)
+    ? `<span class="catMultiSelectBadge">${selectedCats.length}</span>`
+    : '';
+
+  const isOpen = concursoCategoryDropdownOpen;
+  const showSearch = totalOptions > 4;
+
+  const optionsHtml = items.map(o => {
+    const isChecked = selectedCats.some(c => normalizeFilterValue(c) === o.value);
+    return `
+      <label class="catMultiSelectOption ${isChecked ? 'selected' : ''}" data-val="${esc(o.value)}">
+        <input type="checkbox" class="catOptionCheckbox" value="${esc(o.value)}" ${isChecked ? 'checked' : ''}>
+        <span class="catOptionText">${esc(o.rawLabel)}</span>
+        <span class="catOptionCount">(${o.count})</span>
+      </label>
+    `;
+  }).join('') || '<div style="padding:12px;font-size:12.5px;color:var(--ink-soft);text-align:center;font-style:italic">Sin opciones de categoría</div>';
+
+  const summaryText = isAll
+    ? 'Mostrando todas'
+    : `${selectedCats.length} de ${totalOptions} categoría${selectedCats.length === 1 ? '' : 's'}`;
+
+  return `
+    <div class="catMultiSelectWrap" id="wrap_cf_categoria">
+      <button type="button" class="catMultiSelectBtn ${isOpen ? 'active' : ''} ${totalOptions === 0 ? 'disabled' : ''}" id="btn_cf_categoria" aria-haspopup="listbox" aria-expanded="${isOpen ? 'true' : 'false'}" title="${esc(btnTitle)}" ${totalOptions === 0 ? 'disabled' : ''}>
+        <span class="catMultiSelectBtnLabel" id="txt_cf_categoria">${esc(btnText)}</span>
+        <div style="display:flex;align-items:center;gap:5px">
+          ${badgeHtml}
+          <span class="catMultiSelectBtnIcon">▾</span>
+        </div>
+      </button>
+      <div class="catMultiSelectDropdown" id="drop_cf_categoria" style="display:${isOpen ? 'flex' : 'none'}" role="listbox">
+        ${showSearch ? `
+          <div class="catMultiSelectSearch">
+            <input type="search" placeholder="Buscar categoría..." id="input_cf_categoria_search" value="${esc(concursoCategorySearchText || '')}" autocomplete="off">
+          </div>
+        ` : ''}
+        <div class="catMultiSelectHeader">
+          <label class="catMultiSelectAllLabel">
+            <input type="checkbox" id="chk_cf_categoria_all" ${isAll ? 'checked' : ''}>
+            <span><strong>Todas las categorías</strong></span>
+          </label>
+          ${!isAll ? `<button type="button" class="catClearLink" id="link_cf_categoria_clear">Limpiar</button>` : ''}
+        </div>
+        <div class="catMultiSelectList" id="list_cf_categoria">
+          ${optionsHtml}
+        </div>
+        <div class="catMultiSelectFooter">
+          <span class="catSelectedSummary">${esc(summaryText)}</span>
+          <button type="button" class="btn small primary catCloseBtn" id="btn_cf_categoria_close">Listo ✓</button>
+        </div>
+      </div>
+      <input type="hidden" id="cf_categoria" value="${esc(selectedCats.join(','))}">
+    </div>
+  `;
+}
+
+function setupCategoryMultiSelectEvents(host, state, dbNs, isAdmin, currentUser, container, navigate) {
+  const wrap = document.getElementById('wrap_cf_categoria');
+  if (!wrap) return;
+
+  const btn = document.getElementById('btn_cf_categoria');
+  const drop = document.getElementById('drop_cf_categoria');
+  const inputSearch = document.getElementById('input_cf_categoria_search');
+  const list = document.getElementById('list_cf_categoria');
+  const chkAll = document.getElementById('chk_cf_categoria_all');
+  const linkClear = document.getElementById('link_cf_categoria_clear');
+  const btnClose = document.getElementById('btn_cf_categoria_close');
+
+  if (btn && drop) {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = drop.style.display !== 'none';
+      if (isOpen) {
+        drop.style.display = 'none';
+        btn.setAttribute('aria-expanded', 'false');
+        btn.classList.remove('active');
+        concursoCategoryDropdownOpen = false;
+      } else {
+        drop.style.display = 'flex';
+        btn.setAttribute('aria-expanded', 'true');
+        btn.classList.add('active');
+        concursoCategoryDropdownOpen = true;
+        if (inputSearch) {
+          inputSearch.value = concursoCategorySearchText || '';
+          filterCatOptions(concursoCategorySearchText || '');
+          inputSearch.focus();
+        }
+      }
+    });
+  }
+
+  wrap.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (drop && drop.style.display !== 'none') {
+        drop.style.display = 'none';
+        btn?.setAttribute('aria-expanded', 'false');
+        btn?.classList.remove('active');
+        concursoCategoryDropdownOpen = false;
+        btn?.focus();
+      }
+    }
+  });
+
+  function filterCatOptions(q) {
+    if (!list) return;
+    const normQ = normalizeFilterValue(q);
+    const opts = list.querySelectorAll('.catMultiSelectOption');
+    opts.forEach(opt => {
+      const text = normalizeFilterValue(opt.textContent);
+      opt.style.display = (!normQ || text.includes(normQ)) ? 'flex' : 'none';
+    });
+  }
+
+  if (inputSearch) {
+    inputSearch.addEventListener('input', (e) => {
+      concursoCategorySearchText = e.target.value;
+      filterCatOptions(e.target.value);
+    });
+    if (concursoCategorySearchText) {
+      filterCatOptions(concursoCategorySearchText);
+    }
+  }
+
+  if (chkAll) {
+    chkAll.addEventListener('change', (e) => {
+      e.stopPropagation();
+      setSelectedCategorias([]);
+      concursoCategoryDropdownOpen = true;
+      if (list) concursoCategoryListScrollTop = list.scrollTop;
+      renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    });
+  }
+
+  if (linkClear) {
+    linkClear.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setSelectedCategorias([]);
+      concursoCategoryDropdownOpen = true;
+      if (list) concursoCategoryListScrollTop = list.scrollTop;
+      renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    });
+  }
+
+  if (list) {
+    list.querySelectorAll('.catOptionCheckbox').forEach(chk => {
+      chk.addEventListener('change', (e) => {
+        e.stopPropagation();
+        const val = chk.value;
+        const checked = chk.checked;
+        let cur = getSelectedCategorias();
+        const norm = normalizeFilterValue(val);
+        if (checked) {
+          if (!cur.some(c => normalizeFilterValue(c) === norm)) {
+            cur.push(val);
+          }
+        } else {
+          cur = cur.filter(c => normalizeFilterValue(c) !== norm);
+        }
+        setSelectedCategorias(cur);
+        concursoCategoryDropdownOpen = true;
+        concursoCategoryListScrollTop = list.scrollTop;
+        renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+      });
+    });
+
+    if (concursoCategoryListScrollTop && concursoCategoryDropdownOpen) {
+      list.scrollTop = concursoCategoryListScrollTop;
+    }
+  }
+
+  if (btnClose) {
+    btnClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (drop) drop.style.display = 'none';
+      if (btn) {
+        btn.setAttribute('aria-expanded', 'false');
+        btn.classList.remove('active');
+        btn.focus();
+      }
+      concursoCategoryDropdownOpen = false;
+    });
+  }
+}
+
+if (typeof window !== 'undefined' && !window._concursoCatDropdownOutsideInit) {
+  window._concursoCatDropdownOutsideInit = true;
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#wrap_cf_categoria')) {
+      const drop = document.getElementById('drop_cf_categoria');
+      const btn = document.getElementById('btn_cf_categoria');
+      if (drop && drop.style.display !== 'none') {
+        drop.style.display = 'none';
+        if (btn) {
+          btn.setAttribute('aria-expanded', 'false');
+          btn.classList.remove('active');
+        }
+        concursoCategoryDropdownOpen = false;
+      }
+    }
+  });
+}
+
+export function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate) {
   const tipos = state.tiposConcurso || [];
   const regs = state.concursoRegistros || [];
 
@@ -7796,19 +9298,26 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       }
     }
 
-    // 3. CATEGORÍA
+    // 3. CATEGORÍA (Multiselect)
     categoriaOptions = getFacetOptions(disciplinaRows, 'categoria', 'Todas', 'Sin categoría');
-    if (concursoFilters.categoria && !categoriaOptions.some(o => o.value === concursoFilters.categoria)) {
-      concursoFilters.categoria = '';
-      showToast('Categoría reiniciada: no hay registros con esa combinación.');
+    let selectedCats = getSelectedCategorias();
+    if (selectedCats.length > 0) {
+      const validCats = selectedCats.filter(c => c === '__empty__' || categoriaOptions.some(o => o.value === normalizeFilterValue(c)));
+      if (validCats.length !== selectedCats.length) {
+        selectedCats = validCats;
+        setSelectedCategorias(selectedCats);
+        if (selectedCats.length === 0) {
+          showToast('Categoría reiniciada: no hay registros con esa combinación.');
+        }
+      }
     }
     let categoriaRows = disciplinaRows;
-    if (concursoFilters.categoria) {
-      if (concursoFilters.categoria === '__empty__') {
-        categoriaRows = disciplinaRows.filter(r => !r.categoria || r.categoria.trim() === '' || r.categoria.trim() === '—');
-      } else {
-        categoriaRows = disciplinaRows.filter(r => normalizeFilterValue(r.categoria) === concursoFilters.categoria);
-      }
+    if (selectedCats.length > 0) {
+      categoriaRows = disciplinaRows.filter(r => {
+        const norm = normalizeFilterValue(r.categoria);
+        if (!norm) return selectedCats.includes('__empty__');
+        return selectedCats.some(c => normalizeFilterValue(c) === norm);
+      });
     }
 
     // 4. GÉNERO
@@ -7872,19 +9381,26 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       }
     }
 
-    // 2. CATEGORÍA
+    // 2. CATEGORÍA (Multiselect)
     categoriaOptions = getFacetOptions(etapaRows, 'categoria', 'Todas las categorías', 'Sin categoría');
-    if (concursoFilters.categoria && !categoriaOptions.some(o => o.value === concursoFilters.categoria)) {
-      concursoFilters.categoria = '';
-      showToast('Categoría reiniciada: no hay registros con esa combinación.');
+    let selectedCats = getSelectedCategorias();
+    if (selectedCats.length > 0) {
+      const validCats = selectedCats.filter(c => c === '__empty__' || categoriaOptions.some(o => o.value === normalizeFilterValue(c)));
+      if (validCats.length !== selectedCats.length) {
+        selectedCats = validCats;
+        setSelectedCategorias(selectedCats);
+        if (selectedCats.length === 0) {
+          showToast('Categoría reiniciada: no hay registros con esa combinación.');
+        }
+      }
     }
     let categoriaRows = etapaRows;
-    if (concursoFilters.categoria) {
-      if (concursoFilters.categoria === '__empty__') {
-        categoriaRows = etapaRows.filter(r => !r.categoria || r.categoria.trim() === '' || r.categoria.trim() === '—');
-      } else {
-        categoriaRows = etapaRows.filter(r => normalizeFilterValue(r.categoria) === concursoFilters.categoria);
-      }
+    if (selectedCats.length > 0) {
+      categoriaRows = etapaRows.filter(r => {
+        const norm = normalizeFilterValue(r.categoria);
+        if (!norm) return selectedCats.includes('__empty__');
+        return selectedCats.some(c => normalizeFilterValue(c) === norm);
+      });
     }
 
     // 3. ARTE
@@ -7963,12 +9479,50 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       });
       baseRows = filtered.slice();
     }
+    etapaRows = baseRows;
     if (concursoFilters.etapa) {
       filtered = filtered.filter(r => (r.etapa || '').toUpperCase() === concursoFilters.etapa.toUpperCase());
+      etapaRows = filtered.slice();
     }
-    if (concursoFilters.categoria) {
-      const catFilt = concursoFilters.categoria.trim().toLowerCase();
-      filtered = filtered.filter(r => (r.categoria || '').trim().toLowerCase() === catFilt);
+
+    categoriaOptions = getFacetOptions(etapaRows, 'categoria', 'Todas las categorías', 'Sin categoría');
+    if (tipo && Array.isArray(tipo.categorias) && tipo.categorias.length > 0) {
+      const existingVals = new Set(categoriaOptions.map(o => o.value));
+      const definedOpts = [];
+      tipo.categorias.forEach(catName => {
+        const norm = normalizeFilterValue(catName);
+        if (!existingVals.has(norm)) {
+          definedOpts.push({
+            value: norm,
+            label: `${catName} (0)`,
+            rawLabel: catName,
+            count: 0
+          });
+        }
+      });
+      categoriaOptions.push(...definedOpts);
+
+      const normOrder = tipo.categorias.map(c => normalizeFilterValue(c));
+      const allOpt = categoriaOptions[0];
+      const items = categoriaOptions.slice(1);
+      items.sort((a, b) => {
+        const idxA = normOrder.indexOf(a.value);
+        const idxB = normOrder.indexOf(b.value);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.rawLabel.localeCompare(b.rawLabel, undefined, { numeric: true });
+      });
+      categoriaOptions = [allOpt, ...items];
+    }
+
+    let selectedCats = getSelectedCategorias();
+    if (selectedCats.length > 0) {
+      filtered = filtered.filter(r => {
+        const norm = normalizeFilterValue(r.categoria);
+        if (!norm) return selectedCats.includes('__empty__');
+        return selectedCats.some(c => normalizeFilterValue(c) === norm);
+      });
     }
     if (concursoFilters.genero) {
       const genFilt = concursoFilters.genero.trim().toLowerCase();
@@ -8097,9 +9651,13 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       const opt = disciplinaOptions.find(o => o.value === concursoFilters.disciplina);
       chips.push({ key: 'disciplina', label: `Disciplina: ${opt ? opt.rawLabel : concursoFilters.disciplina}` });
     }
-    if (concursoFilters.categoria) {
-      const opt = categoriaOptions.find(o => o.value === concursoFilters.categoria);
-      chips.push({ key: 'categoria', label: `Categoría: ${opt ? opt.rawLabel : concursoFilters.categoria}` });
+    const curCats = getSelectedCategorias();
+    if (curCats.length > 0) {
+      curCats.forEach(c => {
+        const norm = normalizeFilterValue(c);
+        const opt = categoriaOptions.find(o => o.value === norm);
+        chips.push({ key: `categoria:${norm}`, label: `Categoría: ${opt ? opt.rawLabel : c}` });
+      });
     }
     if (concursoFilters.genero) {
       const opt = generoOptions.find(o => o.value === concursoFilters.genero);
@@ -8110,9 +9668,13 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       const opt = etapaOptions.find(o => o.value === concursoFilters.etapa);
       chips.push({ key: 'etapa', label: `Etapa: ${opt ? opt.rawLabel : concursoFilters.etapa}` });
     }
-    if (concursoFilters.categoria) {
-      const opt = categoriaOptions.find(o => o.value === concursoFilters.categoria);
-      chips.push({ key: 'categoria', label: `Categoría: ${opt ? opt.rawLabel : concursoFilters.categoria}` });
+    const curCats = getSelectedCategorias();
+    if (curCats.length > 0) {
+      curCats.forEach(c => {
+        const norm = normalizeFilterValue(c);
+        const opt = categoriaOptions.find(o => o.value === norm);
+        chips.push({ key: `categoria:${norm}`, label: `Categoría: ${opt ? opt.rawLabel : c}` });
+      });
     }
     if (concursoFilters.arte) {
       const opt = arteOptions.find(o => o.value === concursoFilters.arte);
@@ -8128,7 +9690,14 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     }
   } else {
     if (concursoFilters.etapa) chips.push({ key: 'etapa', label: `Etapa: ${concursoFilters.etapa}` });
-    if (concursoFilters.categoria) chips.push({ key: 'categoria', label: `Categoría: ${concursoFilters.categoria}` });
+    const curCats = getSelectedCategorias();
+    if (curCats.length > 0) {
+      curCats.forEach(c => {
+        const norm = normalizeFilterValue(c);
+        const opt = (categoriaOptions || []).find(o => o.value === norm);
+        chips.push({ key: `categoria:${norm}`, label: `Categoría: ${opt ? opt.rawLabel : c}` });
+      });
+    }
     if (concursoFilters.genero) chips.push({ key: 'genero', label: `Género: ${concursoFilters.genero}` });
     if (concursoFilters.disciplina) chips.push({ key: 'disciplina', label: `Disciplina: ${concursoFilters.disciplina}` });
   }
@@ -8155,9 +9724,16 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       const dOpt = disciplinaOptions.find(o => o.value === concursoFilters.disciplina);
       tableTitleParts.push(dOpt ? dOpt.rawLabel : concursoFilters.disciplina);
     }
-    if (concursoFilters.categoria) {
-      const cOpt = categoriaOptions.find(o => o.value === concursoFilters.categoria);
-      tableTitleParts.push(`Categoría ${cOpt ? cOpt.rawLabel : concursoFilters.categoria}`);
+    const curCats = getSelectedCategorias();
+    if (curCats.length === 1) {
+      const cOpt = categoriaOptions.find(o => o.value === normalizeFilterValue(curCats[0]));
+      tableTitleParts.push(`Categoría ${cOpt ? cOpt.rawLabel : curCats[0]}`);
+    } else if (curCats.length > 1) {
+      const names = curCats.map(c => {
+        const cOpt = categoriaOptions.find(o => o.value === normalizeFilterValue(c));
+        return cOpt ? cOpt.rawLabel : c;
+      });
+      tableTitleParts.push(`Categorías: ${names.join(', ')}`);
     }
     if (concursoFilters.genero) {
       const gOpt = generoOptions.find(o => o.value === concursoFilters.genero);
@@ -8168,9 +9744,16 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       const eOpt = etapaOptions.find(o => o.value === concursoFilters.etapa);
       tableTitleParts.push(`Etapa ${eOpt ? eOpt.rawLabel : concursoFilters.etapa}`);
     }
-    if (concursoFilters.categoria) {
-      const cOpt = categoriaOptions.find(o => o.value === concursoFilters.categoria);
-      tableTitleParts.push(`Categoría ${cOpt ? cOpt.rawLabel : concursoFilters.categoria}`);
+    const curCats = getSelectedCategorias();
+    if (curCats.length === 1) {
+      const cOpt = categoriaOptions.find(o => o.value === normalizeFilterValue(curCats[0]));
+      tableTitleParts.push(`Categoría ${cOpt ? cOpt.rawLabel : curCats[0]}`);
+    } else if (curCats.length > 1) {
+      const names = curCats.map(c => {
+        const cOpt = categoriaOptions.find(o => o.value === normalizeFilterValue(c));
+        return cOpt ? cOpt.rawLabel : c;
+      });
+      tableTitleParts.push(`Categorías: ${names.join(', ')}`);
     }
     if (concursoFilters.arte) {
       const aOpt = arteOptions.find(o => o.value === concursoFilters.arte);
@@ -8179,6 +9762,21 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     if (concursoFilters.disciplina) {
       const dOpt = disciplinaOptions.find(o => o.value === concursoFilters.disciplina);
       tableTitleParts.push(dOpt ? dOpt.rawLabel : concursoFilters.disciplina);
+    }
+  } else {
+    if (concursoFilters.etapa) {
+      tableTitleParts.push(`Etapa ${concursoFilters.etapa}`);
+    }
+    const curCats = getSelectedCategorias();
+    if (curCats.length === 1) {
+      const cOpt = (categoriaOptions || []).find(o => o.value === normalizeFilterValue(curCats[0]));
+      tableTitleParts.push(`Categoría ${cOpt ? cOpt.rawLabel : curCats[0]}`);
+    } else if (curCats.length > 1) {
+      const names = curCats.map(c => {
+        const cOpt = (categoriaOptions || []).find(o => o.value === normalizeFilterValue(c));
+        return cOpt ? cOpt.rawLabel : c;
+      });
+      tableTitleParts.push(`Categorías: ${names.join(', ')}`);
     }
   }
   const dynamicTableTitle = 'Resultados consolidados: ' + tableTitleParts.join(' · ');
@@ -8478,15 +10076,10 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
               </div>
             </div>
 
-            <!-- 3. CATEGORÍA -->
+            <!-- 3. CATEGORÍA (Multiselect) -->
             <div class="jedpaFilterField">
-              <label for="cf_categoria">3. Categoría</label>
-              <select id="cf_categoria" ${categoriaOptions.length <= 1 ? 'disabled' : ''}>
-                ${categoriaOptions.length <= 1
-        ? '<option value="">Sin opciones</option>'
-        : categoriaOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.categoria ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
-      }
-              </select>
+              <label for="btn_cf_categoria">3. Categoría</label>
+              ${renderCategoryMultiSelectMarkup('jedpa', categoriaOptions, getSelectedCategorias())}
             </div>
 
             <!-- 4. GÉNERO -->
@@ -8560,15 +10153,10 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
               </select>
             </div>
 
-            <!-- 2. CATEGORÍA -->
+            <!-- 2. CATEGORÍA (Multiselect) -->
             <div class="jedpaFilterField">
-              <label for="cf_categoria">2. Categoría</label>
-              <select id="cf_categoria" ${categoriaOptions.length <= 1 ? 'disabled' : ''}>
-                ${categoriaOptions.length <= 1
-                  ? '<option value="">Sin opciones</option>'
-                  : categoriaOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.categoria ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
-                }
-              </select>
+              <label for="btn_cf_categoria">2. Categoría</label>
+              ${renderCategoryMultiSelectMarkup('jfen', categoriaOptions, getSelectedCategorias())}
             </div>
 
             <!-- 3. ARTE -->
@@ -8639,14 +10227,6 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     `;
   } else {
     // Barra de filtros estándar para los demás concursos
-    const availableCats = tipo
-      ? (tipo.categorias || [])
-      : Array.from(new Set(regs.map(r => r.categoria).filter(Boolean))).sort();
-
-    const catOpts = availableCats.map(c =>
-      '<option value="' + esc(c) + '"' + ((concursoFilters.categoria || '').toLowerCase() === c.toLowerCase() ? ' selected' : '') + '>' + esc(c) + '</option>'
-    ).join('');
-
     filterBarHtml = `
       <div class="panel">
         <div class="filterBar" style="margin-bottom:0">
@@ -8664,12 +10244,9 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
               ${['UGEL', 'DRELM', 'MACROREGIONAL', 'NACIONAL'].map(e => `<option value="${e}" ${e === concursoFilters.etapa ? 'selected' : ''}>${e}</option>`).join('')}
             </select>
           </div>
-          <div class="field" style="flex:1;min-width:140px">
-            <label for="cf_categoria">Categoría</label>
-            <select id="cf_categoria">
-              <option value="">Todas</option>
-              ${catOpts}
-            </select>
+          <div class="field" style="flex:1.2;min-width:160px">
+            <label for="btn_cf_categoria">Categoría</label>
+            ${renderCategoryMultiSelectMarkup('standard', categoriaOptions, getSelectedCategorias())}
           </div>
           ${(tipo && tipo.tieneGenero) ? `
             <div class="field" style="flex:1;min-width:120px">
@@ -8808,11 +10385,13 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     concursoFilters.tipoId = e.target.value;
     concursoFilters.etapa = '';
     concursoFilters.disciplina = '';
-    concursoFilters.categoria = '';
+    concursoFilters.categoria = [];
     concursoFilters.genero = '';
     concursoFilters.arte = '';
     concursoFilters.modalidad = '';
     concursoFilters.query = '';
+    concursoCategoryDropdownOpen = false;
+    concursoCategorySearchText = '';
     renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
   });
 
@@ -8824,13 +10403,7 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
     });
   }
 
-  const fCategoria = document.getElementById('cf_categoria');
-  if (fCategoria) {
-    fCategoria.addEventListener('change', (e) => {
-      concursoFilters.categoria = e.target.value;
-      renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
-    });
-  }
+  setupCategoryMultiSelectEvents(host, state, dbNs, isAdmin, currentUser, container, navigate);
 
   const filGen = document.getElementById('cf_genero');
   if (filGen) {
@@ -8931,7 +10504,17 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
   host.querySelectorAll('[data-chip-clear]').forEach(b => {
     b.addEventListener('click', () => {
       const field = b.dataset.chipClear;
-      if (field && concursoFilters[field] !== undefined) {
+      if (field && field.startsWith('categoria:')) {
+        const catNorm = field.substring('categoria:'.length);
+        const cur = getSelectedCategorias().filter(c => normalizeFilterValue(c) !== catNorm);
+        setSelectedCategorias(cur);
+        concursoCategoryDropdownOpen = false;
+        renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+      } else if (field === 'categoria') {
+        setSelectedCategorias([]);
+        concursoCategoryDropdownOpen = false;
+        renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+      } else if (field && concursoFilters[field] !== undefined) {
         concursoFilters[field] = '';
         renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
       }
@@ -8955,12 +10538,14 @@ function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, 
       tipoId: concursoFilters.tipoId, // Conserva el tipo de concurso
       etapa: '',
       disciplina: '',
-      categoria: '',
+      categoria: [],
       genero: '',
       arte: '',
       modalidad: '',
       query: ''
     };
+    concursoCategoryDropdownOpen = false;
+    concursoCategorySearchText = '';
     renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
   });
 
