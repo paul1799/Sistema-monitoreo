@@ -32,7 +32,21 @@ import {
   PALETA_ESTANDAR,
   formatCodigoModular,
   JEDPA_THEME
-} from './pdf-template.js?v=20260923_v8';
+} from './pdf-template.js?v=20260924_v5';
+
+import {
+  isFichaEbrGestionEscolar,
+  renderEbrGestionForm,
+  collectEbrGestionFormData,
+  preloadEbrFormState,
+  resetEbrFormState
+} from './ebr-gestion.js?v=20260924_v5';
+
+import {
+  syncDirectivosFromFicha,
+  getDirectivosForColegio,
+  getDirectivosActivosForColegio
+} from './directorio.js?v=20260924_v5';
 
 /* ============================= CONSTANTES COMPARTIDAS ============================= */
 export const RESPONSE_OPTIONS = {
@@ -1955,6 +1969,20 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     regSelectedColegioId = null;
   }
 
+  // Interceptar Ficha "Monitoreo y Asistencia Técnica a la Gestión Escolar – UGEL 03 EBR"
+  if (isFichaEbrGestionEscolar(ft)) {
+    if (editingSubmissionData) {
+      preloadEbrFormState(editingSubmissionData, ft);
+    }
+    renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData);
+    host.onsubmit = async (e) => {
+      if (e.target && e.target.id === 'regForm') {
+        await onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate);
+      }
+    };
+    return;
+  }
+
   const isDirectivo = (ft.tipoRespuesta === 'nivel_1_4') || (ft.id === 'ft_directivo') || (ft.nombre || '').toLowerCase().includes('directivo');
   const normExtras = normalizeExtras(ft.extras);
 
@@ -2337,6 +2365,9 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     instInput.value = c.ie || '';
     regSelectedColegioId = c.id;
 
+    const directivos = getDirectivosActivosForColegio(state, c.id, c.codigoLocal, c.codigoModular);
+    const dirActivo = directivos.director;
+
     // Auto-completar campos de cabecera configurados que correspondan al colegio
     normExtras.forEach((ex, i) => {
       const lower = (ex.label || '').toLowerCase();
@@ -2346,9 +2377,13 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
       } else if (lower.includes('rei') || lower.includes('red')) {
         matchVal = c.rei;
       } else if (lower.includes('director') && (lower.includes('nombre') || !lower.includes('dni'))) {
-        matchVal = c.director && c.director.nombre ? c.director.nombre : '';
+        matchVal = dirActivo ? dirActivo.apellidosNombres : (c.director && c.director.nombre ? c.director.nombre : '');
       } else if (lower.includes('director') && lower.includes('dni')) {
-        matchVal = c.director && c.director.dni ? c.director.dni : '';
+        matchVal = dirActivo ? dirActivo.dni : (c.director && c.director.dni ? c.director.dni : '');
+      } else if (lower.includes('director') && (lower.includes('tel') || lower.includes('cel'))) {
+        matchVal = dirActivo ? dirActivo.telefono : (c.director && c.director.telefono ? c.director.telefono : '');
+      } else if (lower.includes('director') && lower.includes('correo')) {
+        matchVal = dirActivo ? dirActivo.correo : (c.director && c.director.correo ? c.director.correo : '');
       } else if (lower.includes('ugel')) {
         matchVal = c.dependencia || 'UGEL 03';
       } else if (lower.includes('modalidad')) {
@@ -2711,6 +2746,60 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       throw new Error('No se encontró la configuración del tipo de ficha seleccionado.');
     }
 
+    // Interceptar guardado de Ficha "Monitoreo y Asistencia Técnica a la Gestión Escolar – UGEL 03 EBR"
+    if (isFichaEbrGestionEscolar(ft)) {
+      const ebrData = collectEbrGestionFormData(form || document.getElementById('regFormHost'), ft, isEdit);
+      let submissionToken = isEdit ? editingSubmissionId : ((form && form.dataset.submissionId) || genId());
+      if (form) form.dataset.submissionId = submissionToken;
+
+      const docData = {
+        ...ebrData,
+        createdAt: isEdit ? (editingSubmissionData?.createdAt || Date.now()) : Date.now(),
+        updatedAt: Date.now()
+      };
+
+      if (isEdit) {
+        await dbNs.collection('submissions').doc(editingSubmissionId).set(docData, { merge: true });
+        showToast('✓ Ficha EBR actualizada correctamente.');
+      } else {
+        await dbNs.collection('submissions').doc(submissionToken).set(docData);
+        showToast('✓ Ficha EBR registrada correctamente.');
+      }
+
+      // Sincronizar directorio de directivos
+      try {
+        const syncRes = await syncDirectivosFromFicha(dbNs, { id: isEdit ? editingSubmissionId : submissionToken, ...docData }, activeState, currentUser);
+        if (syncRes && syncRes.summary) {
+          showToast(`Ficha guardada. Directorio actualizado.`);
+        }
+      } catch (syncErr) {
+        console.warn('Error sincronizando directorio desde ficha EBR:', syncErr);
+      }
+
+      if (!isEdit && activeState.submissions) {
+        const existingIdx = activeState.submissions.findIndex(s => s.id === submissionToken);
+        if (existingIdx >= 0) {
+          activeState.submissions[existingIdx] = { id: submissionToken, ...docData };
+        } else {
+          activeState.submissions.unshift({ id: submissionToken, ...docData });
+        }
+      }
+
+      if (form) form.dataset.submissionId = '';
+      editingSubmissionId = null;
+      editingSubmissionData = null;
+      resetEbrFormState();
+      regBuiltFor = null;
+      regSelectedTypeId = null;
+      regCompromisos = [];
+      regSelectedColegioId = null;
+
+      if (navigate) {
+        navigate('consolidado');
+      }
+      return;
+    }
+
     const isDirectivo = (ft.tipoRespuesta === 'nivel_1_4') || (ft.id === 'ft_directivo') || (ft.nombre || '').toLowerCase().includes('directivo');
 
     let firstErrorEl = null;
@@ -2975,6 +3064,16 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
     } else {
       await dbNs.collection('submissions').doc(submissionToken).set(docData);
       showToast('Ficha registrada correctamente.');
+    }
+
+    // Sincronizar directorio de directivos
+    try {
+      const syncRes = await syncDirectivosFromFicha(dbNs, { id: isEdit ? editingSubmissionId : submissionToken, ...docData }, activeState, currentUser);
+      if (syncRes && syncRes.summary) {
+        showToast(`Ficha guardada. Directorio actualizado.`);
+      }
+    } catch (syncErr) {
+      console.warn('Error sincronizando directorio desde ficha:', syncErr);
     }
 
     // Actualizar cache local para respuesta instantánea de KPIs y tablas
@@ -4012,10 +4111,27 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
 
   container.querySelectorAll('tr[data-colrow]').forEach(tr => {
     tr.addEventListener('click', (e) => {
-      if (e.target.closest('[data-coledit],[data-coldel]')) return;
+      if (e.target.closest('[data-coledit],[data-coldel],.lnkVerEnDirectorio')) return;
       const id = tr.dataset.colrow;
       colExpanded = colExpanded === id ? null : id;
       renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser);
+    });
+  });
+
+  container.querySelectorAll('.lnkVerEnDirectorio').forEach(lnk => {
+    lnk.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const q = lnk.dataset.ieSearch || '';
+      const dirBtn = document.querySelector('.navbtn[data-tab="directorio"]');
+      if (dirBtn) dirBtn.click();
+      setTimeout(() => {
+        const inp = document.getElementById('dir_fil_q');
+        if (inp) {
+          inp.value = q;
+          inp.dispatchEvent(new Event('input'));
+        }
+      }, 60);
     });
   });
 
@@ -4395,24 +4511,42 @@ async function commitColegiosImport(state, dbNs, container, getFichaType, isAdmi
 }
 
 function renderColegioProfile(c, subs, typeStats) {
-  const dirInfo = c.director && c.director.nombre
-    ? '<div class="sectionTitle" style="margin-top:8px">Director(a)</div>' +
-    '<div style="font-size:12.5px;margin-bottom:4px">' +
-    '<strong>' + esc(c.director.nombre) + '</strong>' +
-    (c.director.dni ? ' · DNI: ' + esc(c.director.dni) : '') +
-    (c.director.telefono ? ' · ☎ ' + esc(c.director.telefono) : '') +
-    (c.director.correo ? ' · ✉ ' + esc(c.director.correo) : '') +
-    '</div>'
-    : '';
-  const subDirInfo = c.subDirector && c.subDirector.nombre
-    ? '<div class="sectionTitle" style="margin-top:8px">Sub-director(a)</div>' +
-    '<div style="font-size:12.5px;margin-bottom:4px">' +
-    '<strong>' + esc(c.subDirector.nombre) + '</strong>' +
-    (c.subDirector.dni ? ' · DNI: ' + esc(c.subDirector.dni) : '') +
-    (c.subDirector.telefono ? ' · ☎ ' + esc(c.subDirector.telefono) : '') +
-    (c.subDirector.correo ? ' · ✉ ' + esc(c.subDirector.correo) : '') +
-    '</div>'
-    : '';
+  const directivos = getDirectivosActivosForColegio(activeState, c.id, c.codigoLocal, c.codigoModular);
+  const dir = directivos.director;
+  const subdirs = directivos.subdirectores || [];
+
+  let directivosHtml = '<div class="sectionTitle" style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">' +
+    '<span>Directivos</span>' +
+    '<a href="#directorio" class="lnkVerEnDirectorio" data-ie-search="' + esc(c.ie) + '" style="font-size:11.5px;font-weight:600;color:var(--primary);text-decoration:none;cursor:pointer">📋 Ver en Directorio →</a>' +
+    '</div>';
+
+  if (dir) {
+    directivosHtml += '<div style="font-size:12.5px;margin-bottom:4px">' +
+      '<span class="badge st-logrado" style="font-size:10.5px;margin-right:4px">Director(a)</span> ' +
+      '<strong>' + esc(dir.apellidosNombres) + '</strong>' +
+      (dir.dni ? ' · DNI: ' + esc(dir.dni) : '') +
+      (dir.telefono ? ' · ☎ ' + esc(dir.telefono) : '') +
+      (dir.correo ? ' · ✉ ' + esc(dir.correo) : '') +
+      (dir.condicion ? ' · (' + esc(dir.condicion) + ')' : '') +
+      '</div>';
+  } else {
+    directivosHtml += '<div style="font-size:12px;color:var(--ink-soft);margin-bottom:4px"><em>Director(a) sin registrar</em></div>';
+  }
+
+  if (subdirs.length) {
+    subdirs.forEach(sd => {
+      directivosHtml += '<div style="font-size:12.5px;margin-bottom:4px">' +
+        '<span class="badge" style="font-size:10.5px;margin-right:4px;background:var(--accent-tint);color:var(--accent-dark)">Subdirector(a)</span> ' +
+        '<strong>' + esc(sd.apellidosNombres) + '</strong>' +
+        (sd.dni ? ' · DNI: ' + esc(sd.dni) : '') +
+        (sd.telefono ? ' · ☎ ' + esc(sd.telefono) : '') +
+        (sd.correo ? ' · ✉ ' + esc(sd.correo) : '') +
+        (sd.condicion ? ' · (' + esc(sd.condicion) + ')' : '') +
+        (sd.avisoRevision ? ' · <span class="badge st-inicio" style="font-size:10px">⚠ ' + esc(sd.avisoRevision) + '</span>' : '') +
+        '</div>';
+    });
+  }
+
   const info = ['modalidad', 'nivelServicio', 'turnos', 'dependencia', 'direccion'].map(f =>
     c[f] ? '<div style="font-size:12.5px;margin-bottom:3px"><strong>' + esc(COLEGIO_FIELD_LABELS[f]) + ':</strong> ' + esc(c[f]) + '</div>' : ''
   ).join('');
@@ -4424,7 +4558,7 @@ function renderColegioProfile(c, subs, typeStats) {
   ).join('');
   return '' +
     (info ? '<div class="sectionTitle" style="margin-top:0">Datos del padrón</div>' + info : '') +
-    dirInfo + subDirInfo +
+    directivosHtml +
     '<div class="sectionTitle">Monitoreos por tipo de ficha</div>' + typeRows +
     (recent ? '<div class="sectionTitle">Últimas visitas</div><ul style="margin:0;padding-left:18px">' + recent + '</ul>' : '');
 }

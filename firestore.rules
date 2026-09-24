@@ -55,6 +55,13 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // --- Directorio de directivos: sincronizado con colegios y fichas ---
+    match /directivos/{docId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+
     // --- Directorio de responsables / especialistas: cualquiera con sesión lee, solo admin lo administra ---
     match /responsables/{docId} {
       allow read: if signedIn();

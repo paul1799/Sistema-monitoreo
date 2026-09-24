@@ -20,6 +20,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <!-- SheetJS para leer/escribir archivos Excel (.xlsx) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- ExcelJS para exportar archivos Excel con estilos, colores y formatos exactos (.xlsx) -->
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 
   <!-- Tipografía Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,7 +31,7 @@
     rel="stylesheet">
 
   <!-- Hoja de estilos de la aplicación -->
-  <link rel="stylesheet" href="./css/style.css?v=20260921_v2">
+  <link rel="stylesheet" href="./css/style.css?v=20260924_v4">
 </head>
 
 <body>
@@ -40,7 +42,8 @@
       <div class="loginBrand">
         <div class="ico">🏛️</div>
         <h1>Sistematización de Fichas de Monitoreo</h1>
-        <p>Un solo lugar para registrar visitas, dar seguimiento a los colegios de tu REI y compartir reportes de avance con todo el equipo de especialistas.</p>
+        <p>Un solo lugar para registrar visitas, dar seguimiento a los colegios de tu REI y compartir reportes de avance
+          con todo el equipo de especialistas.</p>
         <ul class="loginFeatures">
           <li><span class="dot"></span> Registra fichas por institución y tipo de monitoreo</li>
           <li><span class="dot"></span> Cruza el padrón de colegios con las visitas realizadas</li>
@@ -79,11 +82,11 @@
         <div class="topBrand">
           <div class="topLogo">
             <svg width="34" height="34" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="36" height="36" rx="8" fill="#12294D"/>
-              <path d="M18 5L8 10V18C8 24.5 12.3 30.5 18 32C23.7 30.5 28 24.5 28 18V10L18 5Z" fill="#E0A526"/>
-              <path d="M18 7L10 11V18C10 23.5 13.5 28.5 18 30C22.5 28.5 26 23.5 26 18V11L18 7Z" fill="#0B1B36"/>
-              <path d="M18 12L21 16L18 20L15 16L18 12Z" fill="#FFFFFF"/>
-              <circle cx="18" cy="23" r="2" fill="#E0A526"/>
+              <rect width="36" height="36" rx="8" fill="#12294D" />
+              <path d="M18 5L8 10V18C8 24.5 12.3 30.5 18 32C23.7 30.5 28 24.5 28 18V10L18 5Z" fill="#E0A526" />
+              <path d="M18 7L10 11V18C10 23.5 13.5 28.5 18 30C22.5 28.5 26 23.5 26 18V11L18 7Z" fill="#0B1B36" />
+              <path d="M18 12L21 16L18 20L15 16L18 12Z" fill="#FFFFFF" />
+              <circle cx="18" cy="23" r="2" fill="#E0A526" />
             </svg>
           </div>
           <div class="topTitles">
@@ -139,6 +142,7 @@
         <button class="navbtn" data-tab="consolidado"><span class="ic">▤</span> Reportes</button>
         <button class="navbtn" data-tab="concursos"><span class="ic">🏆</span> Concursos</button>
         <button class="navbtn" data-tab="colegios"><span class="ic">🏫</span> Colegios</button>
+        <button class="navbtn" data-tab="directorio"><span class="ic">📋</span> Directorio</button>
         <button class="navbtn" data-tab="alertas"><span class="ic">⚠</span> Alertas</button>
         <button class="navbtn" data-tab="responsables"><span class="ic">👥</span> Responsables</button>
         <button class="navbtn" data-tab="usuarios" data-admin-only="1"><span class="ic">◈</span> Usuarios</button>
@@ -183,7 +187,7 @@
   <div id="toast" class="toast"></div>
 
   <!-- ===== MÓDULO PRINCIPAL (ES6 Modules) ===== -->
-  <script type="module" src="./js/app.js?v=20260923_v7"></script>
+  <script type="module" src="./js/app.js?v=20260924_v5"></script>
 
 </body>
 

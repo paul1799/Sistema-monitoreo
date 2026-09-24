@@ -26,7 +26,11 @@ import {
   computeStats,
   forceResetBodyScroll,
   setAppState,
-} from './ui.js?v=20260923_v7';
+} from './ui.js?v=20260924_v5';
+
+import {
+  renderDirectorioTab
+} from './directorio.js?v=20260924_v5';
 
 /* ============================= MANEJADORES GLOBALES DE ERROR ============================= */
 if (typeof window !== 'undefined') {
@@ -58,6 +62,7 @@ const state = {
   submissions:       [],  // {id, fichaTypeId, ...}
   roles:             [],  // {id(=uid), email, role, createdAt}  — solo admin
   colegios:          [],  // {id, rei, codigoLocal, ie, ...}
+  directivos:        [],  // {id, colegioId, codigoLocal, cargo, apellidosNombres, dni, telefono, correo, condicion, estado, fuente, historial, ...}
   responsables:      [],  // {id, red, distrito, especialista, nombresApellidos, cargo, modalidad, celular, correo}
   tiposConcurso:     [],  // {id, nombre, tipoParticipacion, tieneGenero, tieneDisciplina, tieneTituloTrabajo, categorias, ...}
   concursoRegistros: [],  // {id, tipoConcursoId, etapa, categoria, institucion, participantes, asesores, ...}
@@ -164,6 +169,9 @@ function render() {
     case 'colegios':
       renderColegiosTab(c, state, getFichaType, dbNs, isAdmin(), currentUser);
       break;
+    case 'directorio':
+      renderDirectorioTab(c, state, dbNs, isAdmin(), currentUser, navigate);
+      break;
     case 'alertas':
       renderAlertasTab(c, state, getFichaType);
       break;
@@ -215,6 +223,16 @@ function startListeners() {
   }, err => {
     console.error('colegios snapshot error', err);
     showToast('Error leyendo el padrón: [' + (err.code || 'error') + '] ' + err.message);
+  });
+
+  dbNs.collection('directivos').onSnapshot(snap => {
+    state.directivos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (state.activeTab === 'directorio' || state.activeTab === 'colegios') {
+      render();
+    }
+  }, err => {
+    console.error('directivos snapshot error', err);
+    showToast('Error leyendo el directorio: [' + (err.code || 'error') + '] ' + err.message);
   });
 
   dbNs.collection('responsables').onSnapshot(snap => {
