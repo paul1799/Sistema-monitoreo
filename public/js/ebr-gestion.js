@@ -5,8 +5,8 @@
    de docentes R1–R5, I–IV), cálculo en tiempo real, validaciones y modelo de datos.
    ========================================================================= */
 
-import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui.js?v=20260924_v5';
-import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260924_v5';
+import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui.js?v=20260925_v8';
+import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260925_v8';
 
 /** Rúbricas oficiales de observación de aula (MINEDU) */
 export const RUBRICAS_OBSERVACION_AULA = [
@@ -346,6 +346,8 @@ export function isFichaEbrGestionEscolar(ft) {
   if (!ft) return false;
   if (ft.id === 'ft_gestion_ugel03_ebr') return true;
   const n = normalizeText(ft.nombre || '');
+  // Excluir la ficha de 1er momento (diagnostico) que tambien menciona gestion escolar EBR
+  if (n.includes('1er momento') || n.includes('1.er momento') || n.includes('diagnostico') || ft.id === 'ft_ebr_gestion_1er') return false;
   return n.includes('gestion escolar') && (n.includes('ebr') || n.includes('ugel 03 ebr') || n.includes('ugel 03'));
 }
 
@@ -516,8 +518,25 @@ export function preloadEbrFormState(sub, ft) {
 
   // Respuestas y observaciones
   (sub.respuestas || []).forEach(r => {
-    ebrFormState.respuestas[r.id] = r.valor || '';
-    if (r.observaciones) ebrFormState.observacionesItems[r.id] = r.observaciones;
+    if (!r) return;
+    const v = r.valor || '';
+    if (r.id) {
+      ebrFormState.respuestas[r.id] = v;
+      const normId = String(r.id).replace(/^ge\d*_/, 'ge_');
+      ebrFormState.respuestas[normId] = v;
+      const v2Id = normId.replace(/^ge_/, 'ge2_');
+      ebrFormState.respuestas[v2Id] = v;
+      const v1Id = normId.replace(/^ge_/, 'ge1_');
+      ebrFormState.respuestas[v1Id] = v;
+    }
+    if (r.num) {
+      ebrFormState.respuestas[`num_${r.num}`] = v;
+    }
+    if (r.observaciones) {
+      ebrFormState.observacionesItems[r.id] = r.observaciones;
+      const normId = String(r.id).replace(/^ge\d*_/, 'ge_');
+      ebrFormState.observacionesItems[normId] = r.observaciones;
+    }
   });
 
   // Proyectos de innovación
@@ -540,10 +559,11 @@ export function preloadEbrFormState(sub, ft) {
     };
   }
 
-  // Compromisos
-  ebrFormState.compromisoDirector = sub.compromisoDirector || '';
-  ebrFormState.compromisoMonitor = sub.compromisoMonitor || '';
-  ebrFormState.compromisosAdicionales = (sub.compromisos || []).filter(c => c.responsable !== 'Director(a) de la IE' && c.responsable !== 'Monitor / Especialista');
+  // Compromisos (soporta tanto objeto { directivo, especialista } como array o campos planos)
+  ebrFormState.compromisoDirector = sub.compromisoDirector || (sub.compromisos && typeof sub.compromisos === 'object' && !Array.isArray(sub.compromisos) ? (sub.compromisos.directivo || '') : '') || '';
+  ebrFormState.compromisoMonitor = sub.compromisoMonitor || (sub.compromisos && typeof sub.compromisos === 'object' && !Array.isArray(sub.compromisos) ? (sub.compromisos.especialista || '') : '') || '';
+  const rawComps = Array.isArray(sub.compromisos) ? sub.compromisos : (Array.isArray(sub.compromisosList) ? sub.compromisosList : []);
+  ebrFormState.compromisosAdicionales = rawComps.filter(c => c && c.responsable !== 'Director(a) de la IE' && c.responsable !== 'Monitor / Especialista');
 }
 
 /**
@@ -851,8 +871,9 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
   const seccionesAspectosHtml = seccionesActuales.map((sec, sIdx) => {
     const itemsHtml = (sec.items || []).map(it => {
       globalItemIndex++;
-      const currentVal = ebrFormState.respuestas[it.id] || '';
-      const currentObs = ebrFormState.observacionesItems[it.id] || '';
+      const normItId = String(it.id).replace(/^ge\d*_/, 'ge_');
+      const currentVal = ebrFormState.respuestas[it.id] || ebrFormState.respuestas[normItId] || (it.num ? ebrFormState.respuestas['num_' + it.num] : '') || '';
+      const currentObs = ebrFormState.observacionesItems[it.id] || ebrFormState.observacionesItems[normItId] || '';
 
       const tieneProyectos = it.tieneProyectosList === true;
       const proyectosHtml = tieneProyectos ? `
@@ -1397,6 +1418,20 @@ export function syncAllEbrFormDataFromDom(host) {
   if (cDir) ebrFormState.compromisoDirector = cDir.value;
   const cEsp = host.querySelector('#ebr_comp_especialista');
   if (cEsp) ebrFormState.compromisoMonitor = cEsp.value;
+
+  const elComp = host.querySelector('#compList');
+  if (elComp) {
+    elComp.querySelectorAll('.compRow').forEach((row, i) => {
+      if (ebrFormState.compromisosAdicionales[i]) {
+        const t = row.querySelector('[data-f="texto"]');
+        const r = row.querySelector('[data-f="responsable"]');
+        const p = row.querySelector('[data-f="plazo"]');
+        if (t) ebrFormState.compromisosAdicionales[i].texto = t.value;
+        if (r) ebrFormState.compromisosAdicionales[i].responsable = r.value;
+        if (p) ebrFormState.compromisosAdicionales[i].plazo = p.value;
+      }
+    });
+  }
 }
 
 /** Retrocompatibilidad para callers de syncCommonFieldsFromDom */
@@ -1834,6 +1869,17 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
     };
   });
 
+  // Renderizar y vincular compromisos adicionales
+  renderEbrCompList(host);
+  const addCompBtn = host.querySelector('#addCompBtn');
+  if (addCompBtn) {
+    addCompBtn.onclick = () => {
+      syncAllEbrFormDataFromDom(host);
+      ebrFormState.compromisosAdicionales.push({ texto: '', responsable: '', plazo: '' });
+      renderEbrCompList(host);
+    };
+  }
+
   // Cancelar formulario
   const cancelBtn = host.querySelector('#cancelFormBtn');
   if (cancelBtn) {
@@ -1844,6 +1890,44 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       }
     };
   }
+}
+
+/**
+ * Renderiza la lista dinámica de compromisos adicionales en el formulario EBR
+ */
+function renderEbrCompList(host) {
+  const el = host.querySelector('#compList');
+  if (!el) return;
+  const list = ebrFormState.compromisosAdicionales || [];
+  if (list.length === 0) {
+    el.innerHTML = '<p class="helpText" style="margin:4px 0 8px;font-size:12px;color:var(--ink-soft)">No hay compromisos adicionales registrados.</p>';
+    return;
+  }
+  el.innerHTML = list.map((c, i) => `
+    <div class="compRow" style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+      <input type="text" placeholder="Compromiso..." style="flex:2" value="${esc(c.texto || '')}" data-ebr-comp="${i}" data-f="texto">
+      <input type="text" placeholder="Responsable..." style="flex:1" value="${esc(c.responsable || '')}" data-ebr-comp="${i}" data-f="responsable">
+      <input type="date" title="Plazo (fecha límite)" style="max-width:140px" value="${esc(c.plazo || '')}" data-ebr-comp="${i}" data-f="plazo">
+      <button type="button" class="iconBtn" data-rm-ebr-comp="${i}" title="Quitar">✕</button>
+    </div>
+  `).join('');
+
+  el.querySelectorAll('input[data-ebr-comp]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const idx = +inp.dataset.ebrComp;
+      if (ebrFormState.compromisosAdicionales[idx]) {
+        ebrFormState.compromisosAdicionales[idx][inp.dataset.f] = inp.value;
+      }
+    });
+  });
+
+  el.querySelectorAll('[data-rm-ebr-comp]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = +btn.dataset.rmEbrComp;
+      ebrFormState.compromisosAdicionales.splice(idx, 1);
+      renderEbrCompList(host);
+    });
+  });
 }
 
 /**

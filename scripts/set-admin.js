@@ -10,7 +10,8 @@
  * Uso:
  *   node set-admin.js correo@ejemplo.com
  */
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 const serviceAccount = require('./serviceAccountKey.json');
 
 const email = process.argv[2];
@@ -19,11 +20,13 @@ if (!email) {
   process.exit(1);
 }
 
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-const db = admin.firestore();
+const { getAuth } = require('firebase-admin/auth');
+const app = initializeApp({ credential: cert(serviceAccount) });
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 async function main() {
-  const user = await admin.auth().getUserByEmail(email).catch(() => null);
+  const user = await auth.getUserByEmail(email).catch(() => null);
   if (!user) {
     console.error('No encontré ningún usuario con ese correo. Esa persona debe haber iniciado sesión en el sistema web AL MENOS UNA VEZ antes de poder asignarle un rol.');
     process.exit(1);

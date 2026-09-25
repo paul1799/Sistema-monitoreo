@@ -187,7 +187,9 @@
   <div id="toast" class="toast"></div>
 
   <!-- ===== MÓDULO PRINCIPAL (ES6 Modules) ===== -->
-  <script type="module" src="./js/app.js?v=20260924_v5"></script>
+  <!-- Fase 1: precarga del motor de cálculo puro -->
+  <link rel="modulepreload" href="./js/calcEngine.js?v=20260925_v8">
+  <script type="module" src="./js/app.js?v=20260925_v8"></script>
 
 </body>
 

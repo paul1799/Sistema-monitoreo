@@ -12,7 +12,9 @@
  * Puedes correrlo de nuevo más adelante para cambiar una contraseña: si el
  * correo ya existe, solo actualiza su contraseña y su rol.
  */
-const admin = require("firebase-admin");
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+const { getFirestore } = require('firebase-admin/firestore');
 const serviceAccount = require("./serviceAccountKey.json");
 
 // -----------------------------------------------------------------------
@@ -27,9 +29,9 @@ const ACCOUNTS = [
 ];
 // -----------------------------------------------------------------------
 
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-const auth = admin.auth();
-const db = admin.firestore();
+const app = initializeApp({ credential: cert(serviceAccount) });
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 async function main() {
   for (const acc of ACCOUNTS) {

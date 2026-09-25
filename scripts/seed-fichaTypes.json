@@ -91,7 +91,16 @@
         "nombre": "Conservación y control"
       }
     ],
-    "tipoRespuesta": "si_no"
+    "tipoRespuesta": "si_no",
+    "regla_nivel": {
+      "tipo": "porcentaje",
+      "umbrales": [
+        { "nivel": "Logrado",     "min": 85, "estado_panel": "Logrado"    },
+        { "nivel": "En proceso",  "min": 70, "estado_panel": "En proceso" },
+        { "nivel": "Por mejorar", "min":  0, "estado_panel": "Inicio"     }
+      ]
+    },
+    "version": { "anio": 2026, "momento": null, "estado": "publicada" }
   },
   "ft_coord_tutoria_jec": {
     "descripcion": "Evalúa el cumplimiento de las funciones del coordinador de tutoría: planificación, visitas de aula, reuniones colegiadas, tutoría individual y trabajo con familias.",
@@ -216,7 +225,16 @@
         "nombre": "Reuniones de trabajo con el equipo directivo"
       }
     ],
-    "tipoRespuesta": "escala_1_3"
+    "tipoRespuesta": "escala_1_3",
+    "regla_nivel": {
+      "tipo": "porcentaje",
+      "umbrales": [
+        { "nivel": "Logrado",     "min": 85, "estado_panel": "Logrado"    },
+        { "nivel": "En proceso",  "min": 70, "estado_panel": "En proceso" },
+        { "nivel": "Por mejorar", "min":  0, "estado_panel": "Inicio"     }
+      ]
+    },
+    "version": { "anio": 2026, "momento": null, "estado": "publicada" }
   },
   "ft_msejec_2do": {
     "descripcion": "Verifica la implementación de los componentes pedagógico, de gestión y de soporte del Modelo de Servicio Educativo Jornada Escolar Completa.",
@@ -374,7 +392,18 @@
         "nombre": "Componente de soporte"
       }
     ],
-    "tipoRespuesta": "si_no"
+    "tipoRespuesta": "si_no",
+    "regla_nivel": {
+      "tipo": "conteo",
+      "cuenta": "si",
+      "nota": "Regla oficial MSE JEC: 24–31 Sí = Lograda; 12–23 = Parcial; 0–11 = Incipiente",
+      "rangos": [
+        { "nivel": "Implementación lograda",    "min": 24, "max": 31, "estado_panel": "Logrado"    },
+        { "nivel": "Implementación parcial",    "min": 12, "max": 23, "estado_panel": "En proceso" },
+        { "nivel": "Implementación incipiente", "min":  0, "max": 11, "estado_panel": "Inicio"     }
+      ]
+    },
+    "version": { "anio": 2026, "momento": "2do", "estado": "publicada" }
   },
   "ft_gestion_cebe": {
     "descripcion": "Monitorea el acompañamiento a la práctica docente, fortalecimiento docente, evaluación de aprendizajes, uso de materiales, Plan Lector, enfoque ambiental e innovación educativa en los CEBE.",
@@ -561,7 +590,16 @@
         "nombre": "Innovación educativa"
       }
     ],
-    "tipoRespuesta": "ips"
+    "tipoRespuesta": "ips",
+    "regla_nivel": {
+      "tipo": "porcentaje",
+      "umbrales": [
+        { "nivel": "Logrado",     "min": 85, "estado_panel": "Logrado"    },
+        { "nivel": "En proceso",  "min": 70, "estado_panel": "En proceso" },
+        { "nivel": "Por mejorar", "min":  0, "estado_panel": "Inicio"     }
+      ]
+    },
+    "version": { "anio": 2026, "momento": null, "estado": "publicada" }
   },
   "ft_rubricas_aula": {
     "descripcion": "Registra el nivel de logro del desempeño docente observado en el aula, según las rúbricas de observación de aula de MINEDU.",
@@ -608,7 +646,18 @@
         "nombre": "Rúbricas de observación de aula (MINEDU)"
       }
     ],
-    "tipoRespuesta": "nivel_1_4"
+    "tipoRespuesta": "nivel_1_4",
+    "regla_nivel": {
+      "tipo": "porcentaje",
+      "nota": "Rúbricas MINEDU: I=25%, II=50%, III=75%, IV=100%",
+      "umbrales": [
+        { "nivel": "Nivel IV (Cumplimiento integral)",         "min": 90, "estado_panel": "Logrado"    },
+        { "nivel": "Nivel III (Cumplimiento de la mayoría)",   "min": 70, "estado_panel": "En proceso" },
+        { "nivel": "Nivel II (Cumplimiento parcial)",          "min": 45, "estado_panel": "En proceso" },
+        { "nivel": "Nivel I (No evidencia cumplimiento)",      "min":  0, "estado_panel": "Inicio"     }
+      ]
+    },
+    "version": { "anio": 2026, "momento": null, "estado": "publicada" }
   },
   "ft_gestion_ugel03_ebr": {
     "descripcion": "Monitorea el cumplimiento de la Política Regional 01 (Instituciones Educativas que Aseguran Aprendizajes) en IE de Educación Básica Regular.",
@@ -747,7 +796,17 @@
         "nombre": "Otros aspectos"
       }
     ],
-    "tipoRespuesta": "ips"
+    "tipoRespuesta": "ips",
+    "regla_nivel": {
+      "tipo": "porcentaje",
+      "nota": "Escala Inicio(0)/Proceso(0.5)/Logrado(1) — pesos D1 opción b",
+      "umbrales": [
+        { "nivel": "Logrado",     "min": 85, "estado_panel": "Logrado"    },
+        { "nivel": "En proceso",  "min": 70, "estado_panel": "En proceso" },
+        { "nivel": "Por mejorar", "min":  0, "estado_panel": "Inicio"     }
+      ]
+    },
+    "version": { "anio": 2026, "momento": "2do", "estado": "publicada" }
   },
   "ft_directivo": {
     "nombre": "Ficha de monitoreo al directivo de IE",
@@ -884,6 +943,15 @@
           }
         ]
       }
-    ]
+    ],
+    "regla_nivel": {
+      "tipo": "porcentaje",
+      "umbrales": [
+        { "nivel": "Logrado",     "min": 85, "estado_panel": "Logrado"    },
+        { "nivel": "En proceso",  "min": 70, "estado_panel": "En proceso" },
+        { "nivel": "Por mejorar", "min":  0, "estado_panel": "Inicio"     }
+      ]
+    },
+    "version": { "anio": 2026, "momento": null, "estado": "publicada" }
   }
 }

@@ -2,6 +2,10 @@
    ui.js — Manejo del DOM, eventos, renderizado de vistas, pestañas y modales.
    ========================================================================= */
 
+/* ── Fase 1: Motor de cálculo puro (sin DOM) ───────────────────────────── */
+import { calcScore, estadoPorRegla } from './calcEngine.js?v=20260925_v1';
+import * as RepDatos from './reportes-datos.js?v=20260925';
+
 import { AI_SCAN_ENDPOINT } from './firebase-config.js?v=20260918_v8';
 import {
   createOfficialPdfDocument,
@@ -32,21 +36,23 @@ import {
   PALETA_ESTANDAR,
   formatCodigoModular,
   JEDPA_THEME
-} from './pdf-template.js?v=20260924_v5';
+} from './pdf-template.js?v=20260925_v8';
 
 import {
   isFichaEbrGestionEscolar,
   renderEbrGestionForm,
   collectEbrGestionFormData,
   preloadEbrFormState,
-  resetEbrFormState
-} from './ebr-gestion.js?v=20260924_v5';
+  resetEbrFormState,
+  EBR_GESTION_VISITA_1_SECCIONES,
+  EBR_GESTION_VISITA_2_SECCIONES
+} from './ebr-gestion.js?v=20260925_v8';
 
 import {
   syncDirectivosFromFicha,
   getDirectivosForColegio,
   getDirectivosActivosForColegio
-} from './directorio.js?v=20260924_v5';
+} from './directorio.js?v=20260925_v8';
 
 /* ============================= CONSTANTES COMPARTIDAS ============================= */
 export const RESPONSE_OPTIONS = {
@@ -147,17 +153,26 @@ export function showToast(msg) {
 }
 export function scoreValue(tipo, v) {
   if (v === undefined || v === null || v === '' || v === 'na') return null;
-  if (tipo === 'si_no') return v === 'si' ? 1 : (v === 'no' ? 0 : null);
-  if (tipo === 'escala_1_3') return Math.max(0, Math.min(1, (Number(v)) / 3));
-  if (tipo === 'nivel_1_4') return Math.max(0, Math.min(1, (Number(v)) / 4));
-  if (tipo === 'ips') return v === 'logrado' ? 1 : (v === 'proceso' ? 0.5 : (v === 'inicio' ? 0 : null));
+  const vClean = String(v).trim().toLowerCase();
+  if (tipo === 'si_no') return vClean === 'si' || vClean === 'sí' ? 1 : (vClean === 'no' ? 0 : null);
+  if (tipo === 'escala_1_3') return Math.max(0, Math.min(1, (Number(vClean)) / 3));
+  if (tipo === 'nivel_1_4') return Math.max(0, Math.min(1, (Number(vClean)) / 4));
+  if (tipo === 'ips') return vClean === 'logrado' ? 1 : (vClean === 'proceso' ? 0.5 : (vClean === 'inicio' ? 0 : null));
   return null;
 }
-export function statusFromPct(pct) {
-  if (pct === null || pct === undefined) return { label: 'Sin datos', cls: 'st-none' };
-  if (pct >= 85) return { label: 'Logrado', cls: 'st-logrado' };
-  if (pct >= 70) return { label: 'En proceso', cls: 'st-proceso' };
-  return { label: 'Por mejorar', cls: 'st-inicio' };
+/**
+ * Devuelve { label, cls } para mostrar el estado de una ficha.
+ * Si se pasa fichaType como segundo argumento, usa su regla_nivel (si existe).
+ * Compatible con todos los call-sites existentes (un argumento).
+ *
+ * @param {number|null} pct - Porcentaje calculado
+ * @param {Object|null} [fichaType] - Opcional: documento fichaType con regla_nivel
+ * @param {number} [conteo_si] - Opcional: conteo absoluto de respuestas "si"
+ */
+export function statusFromPct(pct, fichaType, conteo_si) {
+  const regla = (fichaType && fichaType.regla_nivel) ? fichaType.regla_nivel : null;
+  const estado = estadoPorRegla({ pct: pct ?? null, conteo_si: conteo_si || 0 }, regla);
+  return { label: estado.nivel, cls: estado.cls };
 }
 export function colorForPct(pct) {
   if (pct === null || pct === undefined) return 'var(--neutral)';
@@ -225,34 +240,76 @@ export function stackedBar(counts, total, tipoRespuesta) {
   return '<div class="segbar" style="height:12px">' + segs + '</div>';
 }
 
+/**
+ * Calcula el puntaje de una ficha registrada.
+ * Usa calcEngine para soportar reglas de nivel por plantilla (Fase 1).
+ * El contrato de retorno es retrocompatible: siempre devuelve { pct, secciones }.
+ * Ahora agrega también { estado, conteo_si } para nuevos consumidores.
+ *
+ * @param {{ respuestas: Array }} sub - Ficha registrada (submission)
+ * @param {Object} ft - fichaType
+ * @returns {{ pct: number|null, secciones: Array, estado: Object, conteo_si: number }}
+ */
 export function computeStats(sub, ft) {
-  if (!ft || !sub.respuestas) return { pct: null, secciones: [] };
-  const valMap = {};
-  sub.respuestas.forEach(r => valMap[r.id] = r.valor);
-  let totalScore = 0, count = 0;
-  const secciones = ft.secciones.map(sec => {
-    let s = 0, c = 0;
-    sec.items.forEach(it => {
-      const sc = scoreValue(ft.tipoRespuesta, valMap[it.id]);
-      if (sc !== null) { s += sc; c++; totalScore += sc; count++; }
-    });
-    return { nombre: sec.nombre, pct: c ? Math.round((s / c) * 100) : null, answered: c, total: sec.items.length };
-  });
-  return { pct: count ? Math.round((totalScore / count) * 100) : null, secciones };
+  if (!ft || !sub || !sub.respuestas) {
+    return {
+      pct: null,
+      secciones: [],
+      estado: { label: 'Sin datos', cls: 'st-none' },
+      conteo_si: 0,
+    };
+  }
+  // Para la ficha EBR Gestion Escolar, usar las secciones del motor especializado
+  // porque los IDs de items (ge1_1, ge1_2...) difieren de los del fichaType en Firestore (ge_1, ge_2...)
+  let ftForCalc = ft;
+  if (isFichaEbrGestionEscolar(ft) && sub.respuestas && sub.respuestas.length > 0) {
+    const visita = sub.visita || 1;
+    const seccionesEbr = visita === 2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
+    ftForCalc = { ...ft, secciones: seccionesEbr, tipoRespuesta: 'ips', escala: 'IPL' };
+  }
+  const result = calcScore(sub.respuestas, ftForCalc);
+  return {
+    pct: result.pct,
+    secciones: result.secciones,
+    conteo_si: result.conteo_si,
+    // Mapeamos { nivel, estado_panel, cls } → { label, cls } para compatibilidad
+    estado: { label: result.estado.nivel, cls: result.estado.cls },
+  };
 }
 
 export function computeItemAgg(subs, ft) {
-  return ft.secciones.map(sec => {
-    const items = sec.items.map(it => {
+  let activeFt = ft;
+  if (isFichaEbrGestionEscolar(ft)) {
+    const hasV2 = (subs || []).some(s => Number(s.visita) === 2);
+    const seccionesEbr = hasV2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
+    activeFt = { ...ft, secciones: (ft && ft.secciones && ft.secciones.length === seccionesEbr.length) ? ft.secciones : seccionesEbr, tipoRespuesta: 'ips' };
+  }
+  const tipoResp = activeFt?.tipoRespuesta || 'ips';
+  return (activeFt?.secciones || []).map(sec => {
+    const items = (sec.items || []).map(it => {
       const counts = {};
       let scoreSum = 0, scoreCnt = 0, total = 0;
-      subs.forEach(s => {
-        const r = (s.respuestas || []).find(x => x.id === it.id);
+      (subs || []).forEach(s => {
+        const r = (s.respuestas || []).find(x => {
+          if (!x) return false;
+          if (x.id === it.id) return true;
+          const normX = String(x.id || '').replace(/^ge\d*_/, 'ge_');
+          const normIt = String(it.id || '').replace(/^ge\d*_/, 'ge_');
+          if (normX && normIt && normX === normIt) return true;
+          if (x.num && it.num && Number(x.num) === Number(it.num)) {
+            if (x.seccion && sec.nombre && normalizeText(x.seccion) === normalizeText(sec.nombre)) return true;
+          }
+          if (x.texto && it.texto && normalizeText(x.texto) === normalizeText(it.texto)) return true;
+          return false;
+        });
         if (r) {
-          counts[r.valor] = (counts[r.valor] || 0) + 1;
-          total++;
-          const sc = scoreValue(ft.tipoRespuesta, r.valor);
-          if (sc !== null) { scoreSum += sc; scoreCnt++; }
+          const vClean = String(r.valor || '').trim().toLowerCase();
+          if (vClean) {
+            counts[vClean] = (counts[vClean] || 0) + 1;
+            total++;
+            const sc = scoreValue(tipoResp, vClean);
+            if (sc !== null) { scoreSum += sc; scoreCnt++; }
+          }
         }
       });
       return { texto: it.texto, id: it.id, counts, total, pct: scoreCnt ? Math.round(scoreSum / scoreCnt * 100) : null };
@@ -633,7 +690,7 @@ export function openDownloadConfigModal({
       if (!turnoVisitado || turnoVisitado === '—' || turnoVisitado.trim() === '') anomalies.sinTurnoVisitado++;
       const monitorDni = s.monitorDni || getExtraVal('dni del monitor');
       if (!monitorDni || monitorDni === '—' || monitorDni.trim() === '') anomalies.sinMonitorDni++;
-      if (!s.compromisoDirector && !s.compromisoMonitor && (!s.compromisos || s.compromisos.length === 0)) anomalies.sinCompromisos++;
+      if (!s.compromisoDirector && !s.compromisoMonitor && (!s.compromisos || (Array.isArray(s.compromisos) ? s.compromisos.length === 0 : true))) anomalies.sinCompromisos++;
       const resps = s.respuestas || [];
       if (resps.length === 0) anomalies.sinRespuestas++;
       const hasEvid = resps.some(r => r.evidencia && r.evidencia !== '—' && r.evidencia.trim() !== '');
@@ -1551,16 +1608,16 @@ export function viewDashboard(state, getFichaType, renderFn) {
 
 /* ============================= REGISTRAR TAB & PALETA ============================= */
 export const FICHA_PALETTE = [
-  { id: 'blue',    name: 'Azul Institucional', hex: '#1E40AF', bg: '#EFF6FF', border: '#93C5FD' },
-  { id: 'emerald', name: 'Verde Esmeralda',    hex: '#047857', bg: '#ECFDF5', border: '#6EE7B7' },
-  { id: 'purple',  name: 'Púrpura',            hex: '#6D28D9', bg: '#F5F3FF', border: '#C4B5FD' },
-  { id: 'amber',   name: 'Ámbar Dorado',       hex: '#B45309', bg: '#FFFBEB', border: '#FCD34D' },
-  { id: 'crimson', name: 'Rojo Carmesí',       hex: '#B91C1C', bg: '#FEF2F2', border: '#FCA5A5' },
-  { id: 'teal',    name: 'Turquesa Oscuro',    hex: '#0F766E', bg: '#F0FDFA', border: '#5EEAD4' },
-  { id: 'indigo',  name: 'Índigo',             hex: '#4338CA', bg: '#EEF2FF', border: '#A5B4FC' },
-  { id: 'cyan',    name: 'Cian Profundo',      hex: '#0E7490', bg: '#ECFEFF', border: '#67E8F9' },
-  { id: 'rose',    name: 'Rosa Palo',          hex: '#BE185D', bg: '#FDF2F8', border: '#F472B6' },
-  { id: 'slate',   name: 'Gris Pizarra',       hex: '#334155', bg: '#F8FAFC', border: '#94A3B8' },
+  { id: 'blue', name: 'Azul Institucional', hex: '#1E40AF', bg: '#EFF6FF', border: '#93C5FD' },
+  { id: 'emerald', name: 'Verde Esmeralda', hex: '#047857', bg: '#ECFDF5', border: '#6EE7B7' },
+  { id: 'purple', name: 'Púrpura', hex: '#6D28D9', bg: '#F5F3FF', border: '#C4B5FD' },
+  { id: 'amber', name: 'Ámbar Dorado', hex: '#B45309', bg: '#FFFBEB', border: '#FCD34D' },
+  { id: 'crimson', name: 'Rojo Carmesí', hex: '#B91C1C', bg: '#FEF2F2', border: '#FCA5A5' },
+  { id: 'teal', name: 'Turquesa Oscuro', hex: '#0F766E', bg: '#F0FDFA', border: '#5EEAD4' },
+  { id: 'indigo', name: 'Índigo', hex: '#4338CA', bg: '#EEF2FF', border: '#A5B4FC' },
+  { id: 'cyan', name: 'Cian Profundo', hex: '#0E7490', bg: '#ECFEFF', border: '#67E8F9' },
+  { id: 'rose', name: 'Rosa Palo', hex: '#BE185D', bg: '#FDF2F8', border: '#F472B6' },
+  { id: 'slate', name: 'Gris Pizarra', hex: '#334155', bg: '#F8FAFC', border: '#94A3B8' },
 ];
 
 /** Asigna o deduce un color accesible y consistente para un tipo de ficha */
@@ -2214,12 +2271,17 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
         <textarea id="f_comp_monitor" placeholder="Compromisos de asistencia técnica, acompañamiento y soporte..." style="min-height:75px"></textarea>
       </div>
       <div class="sectionTitle" style="margin-top:16px">Compromisos específicos adicionales</div>
+      <div class="sectionTitle" style="margin-top:16px">Compromisos pendientes anteriores</div>
+      <div id="prevCompList"></div>
       <div id="compList"></div>
       <button type="button" class="btn secondary small" id="addCompBtn" style="margin-top:10px">+ Agregar compromiso adicional</button>
     </div>
   ` : `
     <div class="panel">
       <div class="sectionHeaderTitle">COMPROMISOS DE MEJORA</div>
+      <div class="sectionTitle" style="margin-top:0">Compromisos pendientes anteriores</div>
+      <div id="prevCompList"></div>
+      <div class="sectionTitle" style="margin-top:16px">Nuevos compromisos</div>
       <div id="compList"></div>
       <button type="button" class="btn secondary small" id="addCompBtn" style="margin-top:10px">+ Agregar compromiso</button>
     </div>
@@ -2376,9 +2438,9 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
         matchVal = c.codigoLocal || c.codigoModular;
       } else if (lower.includes('rei') || lower.includes('red')) {
         matchVal = c.rei;
-      } else if (lower.includes('director') && (lower.includes('nombre') || !lower.includes('dni'))) {
+      } else if (lower.includes('director') && !lower.includes('docente') && (lower.includes('nombre') || !lower.includes('dni'))) {
         matchVal = dirActivo ? dirActivo.apellidosNombres : (c.director && c.director.nombre ? c.director.nombre : '');
-      } else if (lower.includes('director') && lower.includes('dni')) {
+      } else if (lower.includes('director') && !lower.includes('docente') && lower.includes('dni')) {
         matchVal = dirActivo ? dirActivo.dni : (c.director && c.director.dni ? c.director.dni : '');
       } else if (lower.includes('director') && (lower.includes('tel') || lower.includes('cel'))) {
         matchVal = dirActivo ? dirActivo.telefono : (c.director && c.director.telefono ? c.director.telefono : '');
@@ -2396,7 +2458,15 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
 
       if (matchVal !== null && matchVal !== undefined && ex.tipo !== 'si_no') {
         const inp = document.querySelector('[data-extra-id="' + ex.id + '"]') || document.querySelector('[data-extra-idx="' + i + '"]');
-        if (inp && !inp.value) inp.value = matchVal;
+        if (inp && !inp.value) {
+          if (inp.type === 'number' && isNaN(Number(matchVal))) {
+            console.warn('Skipping assignment: cannot assign string to number input', matchVal);
+          } else if (inp.type === 'date' && !matchVal.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            console.warn('Skipping assignment: cannot assign string to date input', matchVal);
+          } else {
+            inp.value = matchVal;
+          }
+        }
       }
 
       // Mapeo inteligente para Condición de directivo si el padrón indica NOMBRADO / DESIGNADO
@@ -2467,6 +2537,47 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
         (c.distrito ? ' · ' + c.distrito : '') +
         (c.director && c.director.nombre ? ' · Dir: ' + c.director.nombre : '') + '.';
     }
+    renderPrevCompromisos(c.ie);
+  };
+
+  const renderPrevCompromisos = (ieName) => {
+    const el = document.getElementById('prevCompList');
+    if (!el) return;
+    const allC = state.compromisos || [];
+    const pending = allC.filter(c => c.institucion === ieName && c.estado !== 'Cumplido' && c.estado !== 'Anulado');
+    
+    if (pending.length === 0) {
+      el.innerHTML = '<p class="helpText" style="margin-top:0">No hay compromisos pendientes anteriores para esta institución.</p>';
+      return;
+    }
+    
+    el.innerHTML = '<ul style="padding-left:18px;margin-top:0">' + pending.map(c => 
+      '<li style="margin-bottom:8px;font-size:13.5px">' +
+      '<strong>' + esc(c.responsable || 'Responsable') + ':</strong> ' + esc(c.texto) + 
+      ' <br><span style="color:var(--ink-soft);font-size:12px">Plazo: ' + (c.plazo ? fmtDate(c.plazo) : 'N/A') + '</span>' +
+      ' <button type="button" class="btn btn-sm secondary btnClosePrevComp" style="padding:2px 6px;margin-left:8px" data-cid="' + esc(c.id) + '">Marcar Cumplido ✓</button>' +
+      '</li>'
+    ).join('') + '</ul>';
+
+    el.querySelectorAll('.btnClosePrevComp').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('¿Marcar este compromiso previo como cumplido?')) return;
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+        try {
+          const batch = dbNs.batch();
+          batch.update(dbNs.collection('compromisos').doc(btn.dataset.cid), { estado: 'Cumplido', updatedAt: Date.now() });
+          await batch.commit();
+          showToast('Compromiso previo marcado como cumplido.');
+          renderPrevCompromisos(ieName);
+        } catch (err) {
+          console.error(err);
+          showToast('Error al actualizar el compromiso.');
+          btn.disabled = false;
+          btn.textContent = 'Cumplido ✓';
+        }
+      });
+    });
   };
 
   instInput.addEventListener('input', showDropdown);
@@ -2579,7 +2690,7 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
         if (document.getElementById('f_comp_director') && d.compromisoDirector) document.getElementById('f_comp_director').value = d.compromisoDirector;
         if (document.getElementById('f_comp_monitor') && d.compromisoMonitor) document.getElementById('f_comp_monitor').value = d.compromisoMonitor;
 
-        regCompromisos = [...(d.compromisos || [])];
+        regCompromisos = [...(Array.isArray(d.compromisos) ? d.compromisos : Array.isArray(d.compromisosList) ? d.compromisosList : [])];
         regSelectedColegioId = d.colegioId || null;
         renderCompList();
 
@@ -2708,7 +2819,7 @@ function renderCompList() {
     '<div class="compRow">' +
     '<input type="text" placeholder="Compromiso" value="' + esc(c.texto) + '" data-comp="' + i + '" data-f="texto">' +
     '<input type="text" placeholder="Responsable" value="' + esc(c.responsable) + '" data-comp="' + i + '" data-f="responsable">' +
-    '<input type="text" placeholder="Plazo" style="max-width:120px" value="' + esc(c.plazo) + '" data-comp="' + i + '" data-f="plazo">' +
+    '<input type="date" title="Plazo (fecha límite obligatoria)" style="max-width:140px" value="' + esc(c.plazo) + '" data-comp="' + i + '" data-f="plazo" required>' +
     '<button type="button" class="iconBtn" data-rmcomp="' + i + '" title="Quitar">✕</button>' +
     '</div>'
   ).join('');
@@ -2754,6 +2865,7 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
 
       const docData = {
         ...ebrData,
+        createdBy: isEdit ? (editingSubmissionData?.createdBy || currentUser.uid) : currentUser.uid,
         createdAt: isEdit ? (editingSubmissionData?.createdAt || Date.now()) : Date.now(),
         updatedAt: Date.now()
       };
@@ -2971,7 +3083,7 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
     }
 
     if (matchedCol) {
-      if (!ugelVal) ugelVal = matchedCol.dependencia || 'UGEL 03';
+      if (!ugelVal || ugelVal.toLowerCase().includes('sector educ')) { ugelVal = matchedCol.dependencia || 'UGEL 03'; if (ugelVal.toLowerCase().includes('sector educ')) ugelVal = 'UGEL 03'; }
       if (!redVal) redVal = matchedCol.rei || '';
       if (!codigoVal) codigoVal = matchedCol.codigoLocal || matchedCol.codigoModular || '';
       if (!directorVal && matchedCol.director && matchedCol.director.nombre) directorVal = matchedCol.director.nombre;
@@ -2980,7 +3092,7 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       if (!nivelAtencionVal && matchedCol.nivelServicio) nivelAtencionVal = matchedCol.nivelServicio;
       if (!turnoAtencionVal && matchedCol.turnos) turnoAtencionVal = matchedCol.turnos;
     }
-    if (!ugelVal) ugelVal = 'UGEL 03';
+    if (!ugelVal || ugelVal.toLowerCase().includes('sector educ')) ugelVal = 'UGEL 03';
     if (!redVal) redVal = 'No aplica';
 
     // Recolectar Síntesis por dimensión si es directivo
@@ -3054,17 +3166,48 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       observaciones: document.getElementById('f_observaciones') ? document.getElementById('f_observaciones').value.trim() : '',
       compromisos: allCompromisos,
       esBorrador: esBorrador,
+      createdBy: isEdit ? (editingSubmissionData?.createdBy || currentUser.uid) : currentUser.uid,
       createdAt: isEdit ? (editingSubmissionData.createdAt || Date.now()) : Date.now(),
       updatedAt: Date.now()
     };
 
-    if (isEdit) {
+    const targetId = isEdit ? editingSubmissionId : submissionToken;
+    const batch = dbNs.batch();
+    batch.set(dbNs.collection('submissions').doc(targetId), docData);
+
+    allCompromisos.forEach((comp, idx) => {
+      if (comp.plazo && comp.plazo.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const compId = targetId + '_c' + idx;
+        const cData = {
+          fichaId: targetId,
+          institucion: instVal,
+          ugel: ugelVal,
+          red: redVal,
+          responsableFicha: responsableVal,
+          responsableFichaDni: monitorDniVal,
+          texto: comp.texto,
+          responsable: comp.responsable,
+          plazo: comp.plazo,
+          createdBy: currentUser.uid,
+          updatedAt: Date.now()
+        };
+        if (!isEdit) {
+          cData.estado = 'Pendiente';
+          cData.createdAt = Date.now();
+        }
+        batch.set(dbNs.collection('compromisos').doc(compId), cData, { merge: true });
+      }
+    });
+
+    await batch.commit();
+    showToast(isEdit ? 'Ficha actualizada correctamente.' : 'Ficha registrada correctamente.');
+    /*if (false) {
       await dbNs.collection('submissions').doc(editingSubmissionId).set(docData);
       showToast('Ficha actualizada correctamente.');
     } else {
       await dbNs.collection('submissions').doc(submissionToken).set(docData);
       showToast('Ficha registrada correctamente.');
-    }
+    }*/
 
     // Sincronizar directorio de directivos
     try {
@@ -3456,6 +3599,36 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
       '</div>';
   }
 
+  // --- FASE 4: 9 Gráficos y Sugerencias ---
+  let fase4Html = '';
+  if (!isAllMode && ft) {
+    const criticosDS = RepDatos.getRankingCriticosDataset(statsList, ft);
+    const heatmapDS = RepDatos.getMapaCalorDataset(statsList, ft);
+    const sugerencias = RepDatos.getSugerencias(statsList, ft, criticosDS);
+    
+    let sugHtml = '';
+    if (sugerencias.length > 0) {
+      sugHtml = '<div class="panel" style="background:#FEF3C7;border:1px solid #F59E0B;border-left:4px solid #D97706;padding:16px;">' +
+        '<h3 style="color:#B45309;margin-top:0">💡 Sugerencias Automáticas</h3>' +
+        '<ul style="margin-bottom:0;color:#92400E;padding-left:20px">' + 
+        sugerencias.map(s => '<li><strong>' + s.tipo + ':</strong> ' + s.mensaje + '</li>').join('') + 
+        '</ul></div>';
+    }
+
+    let criticosHtml = '<div class="panel"><h3>Top 5 Ítems Críticos (No/Inicio)</h3>';
+    if (criticosDS.length > 0) {
+      criticosHtml += criticosDS.slice(0, 5).map(c => 
+        '<div class="barRow"><div class="name" style="max-width:300px;white-space:normal;line-height:1.2;font-size:11px">' + c.texto + '</div>' +
+        '<div class="barTrack"><div class="barFill danger" style="width:' + c.pctCritico + '%"></div></div><div class="val">' + c.pctCritico + '%</div></div>'
+      ).join('');
+    } else {
+      criticosHtml += '<p class="helpText">No hay ítems críticos detectados.</p>';
+    }
+    criticosHtml += '</div>';
+    
+    fase4Html = sugHtml + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">' + criticosHtml + '</div>';
+  }
+
   const visAgg = {};
   statsList.forEach(x => { const v = x.s.visita || 1; if (!visAgg[v]) visAgg[v] = { sum: 0, cnt: 0 }; if (x.st.pct !== null) { visAgg[v].sum += x.st.pct; visAgg[v].cnt++; } });
   const visRows = Object.keys(visAgg).sort((a, b) => a - b).map(v => { const a = visAgg[v]; const avg = a.cnt ? Math.round(a.sum / a.cnt) : null; return '<div class="barRow"><div class="name">Visita ' + v + '</div>' + bar(avg) + '<div class="val">' + (avg === null ? '—' : avg + '%') + '</div></div>'; }).join('') || '<p class="helpText">Sin datos suficientes.</p>';
@@ -3688,7 +3861,7 @@ function buildDetail(s) {
     }
     return '<div style="font-size:12.5px;margin-bottom:4px"><strong>' + esc(x.label) + ':</strong> ' + valHtml + '</div>';
   }).join('');
-  const comps = (s.compromisos || []).map(c => '<li style="margin-bottom:4px">' + esc(c.texto) + (c.responsable ? ' — <em>' + esc(c.responsable) + '</em>' : '') + (c.plazo ? ' <span style="color:var(--ink-soft)">(' + esc(c.plazo) + ')</span>' : '') + '</li>').join('');
+  const comps = (Array.isArray(s.compromisos) ? s.compromisos : Array.isArray(s.compromisosList) ? s.compromisosList : []).map(c => '<li style="margin-bottom:4px">' + esc(c.texto) + (c.responsable ? ' — <em>' + esc(c.responsable) + '</em>' : '') + (c.plazo ? ' <span style="color:var(--ink-soft)">(' + esc(c.plazo) + ')</span>' : '') + '</li>').join('');
 
   // Info heredada para fichas anteriores
   const legacyInfo = [];
@@ -3716,7 +3889,7 @@ async function exportCsv(ft, statsList) {
   const rows = statsList.map(x => {
     const s = x.s, st = x.st;
     const extras = (s.extras || []).map(e => e.label + ': ' + e.value).join(' | ');
-    const comps = (s.compromisos || []).map(c => c.texto).join(' | ');
+    const comps = (Array.isArray(s.compromisos) ? s.compromisos : Array.isArray(s.compromisosList) ? s.compromisosList : []).map(c => c.texto).join(' | ');
     return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, s.responsable, s.director, (st.pct === null ? '' : st.pct), statusFromPct(st.pct).label, extras, s.observaciones, comps];
   });
   downloadCsv((ft.nombre || 'reporte').replace(/[^a-z0-9]+/gi, '_').toLowerCase() + '.csv', header, rows);
@@ -5914,8 +6087,8 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
               </div>
               <div style="padding:8px 12px">
                 ${(sec.items || []).map((it, ii) => {
-                  const ans = builderTestAnswers[it.id] || '';
-                  return `
+        const ans = builderTestAnswers[it.id] || '';
+        return `
                     <div style="padding:8px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px">
                       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
                         <span style="font-size:12px;color:var(--ink);font-weight:500">
@@ -5930,7 +6103,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
                       </div>
                     </div>
                   `;
-                }).join('') || '<p style="font-size:11.5px;color:var(--text-400);margin:4px 0">Sin ítems en esta sección.</p>'}
+      }).join('') || '<p style="font-size:11.5px;color:var(--text-400);margin:4px 0">Sin ítems en esta sección.</p>'}
               </div>
             </div>
           `).join('') || '<p style="font-size:12px;color:var(--text-400)">Sin secciones agregadas.</p>'}
@@ -6737,7 +6910,7 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
       '<div><strong>Área / Especialidad:</strong> ' + esc(r.especialista || '—') + '</div>' +
       '<div><strong>Cargo oficial:</strong> ' + esc(r.cargo || '—') + '</div>' +
       '<div><strong>Modalidad:</strong> ' + modalidadBadge(r.modalidad) + '</div>' +
-      '<div><strong>N° Celular:</strong> ' + (r.celular ? '<a href="tel:' + esc(r.celular) + '">📞 ' + esc(r.celular) + '</a>' : '—') + '</div>' +
+      '<div><strong>N° Celular:</strong> ' + (r.celular ? (isAdmin ? '<a href="tel:' + esc(r.celular) + '">📞 ' + esc(r.celular) + '</a>' : '📞 ***' + esc(r.celular).slice(-3)) : '—') + '</div>' +
       '<div><strong>Correo:</strong> ' + (r.correo ? '<a href="mailto:' + esc(r.correo) + '">✉ ' + esc(r.correo) + '</a>' : '—') + '</div>' +
       '<div><strong>Fichas registradas:</strong> <span class="badge ' + (subsCount ? 'st-logrado' : 'st-none') + '">' + subsCount + ' ficha(s)</span></div>' +
       '</div>' +
@@ -6751,7 +6924,7 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
       '<td>' + esc(r.nombresApellidos || '—') + '</td>' +
       '<td>' + esc(r.cargo || '—') + '</td>' +
       '<td>' + modalidadBadge(r.modalidad) + '</td>' +
-      '<td>' + (r.celular ? '<a href="tel:' + esc(r.celular) + '" style="color:inherit;text-decoration:none">📞 ' + esc(r.celular) + '</a>' : '<span style="color:var(--ink-soft)">—</span>') + '</td>' +
+      '<td>' + (r.celular ? (isAdmin ? '<a href="tel:' + esc(r.celular) + '" style="color:inherit;text-decoration:none">📞 ' + esc(r.celular) + '</a>' : '📞 ***' + esc(r.celular).slice(-3)) : '<span style="color:var(--ink-soft)">—</span>') + '</td>' +
       '<td>' + (r.correo ? '<a href="mailto:' + esc(r.correo) + '" style="color:var(--primary);text-decoration:none">✉ ' + esc(r.correo) + '</a>' : '<span style="color:var(--ink-soft)">—</span>') + '</td>' +
       (isAdmin ? '<td><button class="iconBtn" data-respenit="' + esc(r.id) + '" title="Editar">✎</button> <button class="iconBtn" data-respdel="' + esc(r.id) + '" title="Eliminar">✕</button></td>' : '<td></td>') +
       '</tr>' +
@@ -7579,10 +7752,10 @@ export function renderConcursosTab(container, state, dbNs, isAdmin, currentUser,
 
   // Definir sub-pestañas disponibles
   const subTabs = [
-    { id: 'registrar',      label: '➕ Registrar participante' },
-    { id: 'consolidado',    label: '📊 Ver consolidado' },
+    { id: 'registrar', label: '➕ Registrar participante' },
+    { id: 'consolidado', label: '📊 Ver consolidado' },
     { id: 'asignar_podios', label: '🏆 Asignar puestos' },
-    { id: 'asistente',      label: '🔤 Revisar nombres' },
+    { id: 'asistente', label: '🔤 Revisar nombres' },
   ];
   if (isAdmin) {
     subTabs.push({ id: 'tipos', label: '⚙ Tipos de concurso' });
@@ -7643,10 +7816,10 @@ function renderAsistenteSeparacionNombres(host, state, dbNs, isAdmin, currentUse
   regs.forEach(reg => {
     const personas = [
       ...(reg.participantes || []).map((p, i) => ({ ...p, _regId: reg.id, _tipo: 'participantes', _idx: i, _regInst: reg.institucion || '', _regConc: reg.tipoConcursoNombre || reg.tipoConcurso || '' })),
-      ...(reg.asesores      || []).map((a, i) => ({ ...a, _regId: reg.id, _tipo: 'asesores',      _idx: i, _regInst: reg.institucion || '', _regConc: reg.tipoConcursoNombre || reg.tipoConcurso || '' }))
+      ...(reg.asesores || []).map((a, i) => ({ ...a, _regId: reg.id, _tipo: 'asesores', _idx: i, _regInst: reg.institucion || '', _regConc: reg.tipoConcursoNombre || reg.tipoConcurso || '' }))
     ];
     personas.forEach(p => {
-      const nombres   = (p.nombres   || '').trim();
+      const nombres = (p.nombres || '').trim();
       const apellidos = (p.apellidos || '').trim();
       if (!apellidos && nombres) {
         const prop = proponerSeparacionNombre(p);
@@ -7658,8 +7831,8 @@ function renderAsistenteSeparacionNombres(host, state, dbNs, isAdmin, currentUse
   if (heredados.length === 0) {
     host.innerHTML =
       '<div class="empty">' +
-        '<h4>✅ Sin nombres heredados por revisar</h4>' +
-        '<p>Todos los registros tienen Nombres y Apellidos separados correctamente.</p>' +
+      '<h4>✅ Sin nombres heredados por revisar</h4>' +
+      '<p>Todos los registros tienen Nombres y Apellidos separados correctamente.</p>' +
       '</div>';
     return;
   }
@@ -7673,53 +7846,53 @@ function renderAsistenteSeparacionNombres(host, state, dbNs, isAdmin, currentUse
     const confianzaLabel = prop.confianza === 'alta' ? '⬆ Confianza alta' : '⚠ Revisar manualmente';
     return '<div class="sepItem ' + confianzaClass + '" data-sep-idx="' + idx + '">' +
       '<div class="sepItemHead">' +
-        '<span class="badge" style="background:var(--surface-2);font-size:11px">' + esc(p._regConc) + '</span>' +
-        '<span class="badge" style="background:var(--surface-2);font-size:11px">' + esc(p._regInst) + '</span>' +
-        '<span class="badge ' + confianzaClass + '-badge" style="font-size:11px">' + confianzaLabel + '</span>' +
-        '<span style="margin-left:auto;font-size:11px;color:var(--ink-soft)">' + (p._tipo === 'participantes' ? 'Participante' : 'Asesor') + ' #' + (p._idx + 1) + '</span>' +
+      '<span class="badge" style="background:var(--surface-2);font-size:11px">' + esc(p._regConc) + '</span>' +
+      '<span class="badge" style="background:var(--surface-2);font-size:11px">' + esc(p._regInst) + '</span>' +
+      '<span class="badge ' + confianzaClass + '-badge" style="font-size:11px">' + confianzaLabel + '</span>' +
+      '<span style="margin-left:auto;font-size:11px;color:var(--ink-soft)">' + (p._tipo === 'participantes' ? 'Participante' : 'Asesor') + ' #' + (p._idx + 1) + '</span>' +
       '</div>' +
       '<div class="sepItemBody">' +
-        '<div class="sepOriginal">' +
-          '<label>Texto original (campo nombres)</label>' +
-          '<span class="sepOriginalText">' + esc(p.nombres || '') + '</span>' +
-        '</div>' +
-        '<div class="personNameGrid">' +
-          '<div class="field">' +
-            '<label for="sep_nom_' + idx + '">NOMBRES *</label>' +
-            '<input type="text" id="sep_nom_' + idx + '" class="sepInputNom" value="' + esc(prop.nombres) + '" data-sep-idx="' + idx + '" autocapitalize="words">' +
-            '<span class="fieldHelp">Solo los nombres de pila</span>' +
-          '</div>' +
-          '<div class="field">' +
-            '<label for="sep_ap_' + idx + '">APELLIDOS *</label>' +
-            '<input type="text" id="sep_ap_' + idx + '" class="sepInputAp" value="' + esc(prop.apellidos) + '" data-sep-idx="' + idx + '" autocapitalize="words">' +
-            '<span class="fieldHelp">Apellido paterno y materno</span>' +
-          '</div>' +
-        '</div>' +
-        (prop.nota ? '<span class="fieldWarn">' + esc(prop.nota) + '</span>' : '') +
-        '<div class="sepActions">' +
-          '<button type="button" class="btn small sepGuardarBtn" data-sep-idx="' + idx + '">💾 Guardar separación</button>' +
-          '<button type="button" class="btn secondary small sepOmitirBtn" data-sep-idx="' + idx + '">Omitir</button>' +
-        '</div>' +
+      '<div class="sepOriginal">' +
+      '<label>Texto original (campo nombres)</label>' +
+      '<span class="sepOriginalText">' + esc(p.nombres || '') + '</span>' +
       '</div>' +
-    '</div>';
+      '<div class="personNameGrid">' +
+      '<div class="field">' +
+      '<label for="sep_nom_' + idx + '">NOMBRES *</label>' +
+      '<input type="text" id="sep_nom_' + idx + '" class="sepInputNom" value="' + esc(prop.nombres) + '" data-sep-idx="' + idx + '" autocapitalize="words">' +
+      '<span class="fieldHelp">Solo los nombres de pila</span>' +
+      '</div>' +
+      '<div class="field">' +
+      '<label for="sep_ap_' + idx + '">APELLIDOS *</label>' +
+      '<input type="text" id="sep_ap_' + idx + '" class="sepInputAp" value="' + esc(prop.apellidos) + '" data-sep-idx="' + idx + '" autocapitalize="words">' +
+      '<span class="fieldHelp">Apellido paterno y materno</span>' +
+      '</div>' +
+      '</div>' +
+      (prop.nota ? '<span class="fieldWarn">' + esc(prop.nota) + '</span>' : '') +
+      '<div class="sepActions">' +
+      '<button type="button" class="btn small sepGuardarBtn" data-sep-idx="' + idx + '">💾 Guardar separación</button>' +
+      '<button type="button" class="btn secondary small sepOmitirBtn" data-sep-idx="' + idx + '">Omitir</button>' +
+      '</div>' +
+      '</div>' +
+      '</div>';
   };
 
   host.innerHTML =
     '<div class="panel">' +
-      '<h3>🔤 Asistente de separación de nombres</h3>' +
-      '<p style="color:var(--ink-soft);font-size:13.5px;margin-bottom:16px">' +
-        'Se encontraron <strong>' + heredados.length + '</strong> personas con el nombre completo en un solo campo.<br>' +
-        'Revisa y guarda la separación Nombres / Apellidos registro por registro.<br>' +
-        '<strong>Ningún cambio se aplica automáticamente</strong> — cada uno requiere tu confirmación.' +
-      '</p>' +
-      (altaConfianza.length > 0 && isAdmin
-        ? '<div class="sepBulkBar">' +
-            '<span>' + altaConfianza.length + ' de confianza alta listos para revisar</span>' +
-          '</div>'
-        : '') +
-      '<div id="sepList">' +
-        heredados.map((h, i) => renderItem(h, i)).join('') +
-      '</div>' +
+    '<h3>🔤 Asistente de separación de nombres</h3>' +
+    '<p style="color:var(--ink-soft);font-size:13.5px;margin-bottom:16px">' +
+    'Se encontraron <strong>' + heredados.length + '</strong> personas con el nombre completo en un solo campo.<br>' +
+    'Revisa y guarda la separación Nombres / Apellidos registro por registro.<br>' +
+    '<strong>Ningún cambio se aplica automáticamente</strong> — cada uno requiere tu confirmación.' +
+    '</p>' +
+    (altaConfianza.length > 0 && isAdmin
+      ? '<div class="sepBulkBar">' +
+      '<span>' + altaConfianza.length + ' de confianza alta listos para revisar</span>' +
+      '</div>'
+      : '') +
+    '<div id="sepList">' +
+    heredados.map((h, i) => renderItem(h, i)).join('') +
+    '</div>' +
     '</div>';
 
   // Guardar separación individual
@@ -7730,12 +7903,12 @@ function renderAsistenteSeparacionNombres(host, state, dbNs, isAdmin, currentUse
       if (!h) return;
 
       const nomInput = document.getElementById('sep_nom_' + idx);
-      const apInput  = document.getElementById('sep_ap_'  + idx);
-      const nomVal   = (nomInput?.value || '').trim();
-      const apVal    = (apInput?.value  || '').trim();
+      const apInput = document.getElementById('sep_ap_' + idx);
+      const nomVal = (nomInput?.value || '').trim();
+      const apVal = (apInput?.value || '').trim();
 
       if (!nomVal || nomVal.length < 2) { showToast('Ingresa los Nombres (mínimo 2 caracteres).'); return; }
-      if (!apVal  || apVal.length  < 2) { showToast('Ingresa los Apellidos (mínimo 2 caracteres).'); return; }
+      if (!apVal || apVal.length < 2) { showToast('Ingresa los Apellidos (mínimo 2 caracteres).'); return; }
 
       btn.disabled = true;
       btn.textContent = 'Guardando...';
@@ -7745,7 +7918,7 @@ function renderAsistenteSeparacionNombres(host, state, dbNs, isAdmin, currentUse
         if (!reg) throw new Error('Registro no encontrado');
 
         const lista = JSON.parse(JSON.stringify(reg[h.persona._tipo] || []));
-        lista[h.persona._idx].nombres   = nomVal;
+        lista[h.persona._idx].nombres = nomVal;
         lista[h.persona._idx].apellidos = apVal;
 
         await dbNs.collection('concursoRegistros').doc(h.persona._regId).update({ [h.persona._tipo]: lista });
@@ -7818,7 +7991,7 @@ function formatPuestoBadge(puesto) {
 function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, container, navigate) {
   // Si no hay tipos de concurso en el catálogo
   if (state.tiposConcurso.length === 0) {
-    host.innerHTML = '<div class="empty">' +
+    host.innerHTML = fase4Html + '<div class="empty">' +
       '<h4>Aún no hay tipos de concurso configurados</h4>' +
       '<p>Para comenzar a registrar ganadores y participantes, se debe cargar el catálogo de concursos oficiales.</p>' +
       (isAdmin
@@ -8548,18 +8721,18 @@ function renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, con
     try {
       // ---- Validar participantes ----
       concursoParticipantes.forEach((p, idx) => {
-        p.nombres   = (p.nombres   || '').trim().replace(/\s{2,}/g, ' ');
+        p.nombres = (p.nombres || '').trim().replace(/\s{2,}/g, ' ');
         p.apellidos = (p.apellidos || '').trim().replace(/\s{2,}/g, ' ');
-        p.dni       = (p.dni       || '').trim();
+        p.dni = (p.dni || '').trim();
         if (!p.rol) {
           const sel = document.querySelector(`.personRow[data-pidx="${idx}"] select[data-pfield="rol"]`);
           p.rol = (sel && sel.value) ? sel.value : partRoles[0];
         }
       });
       concursoAsesores.forEach((a, idx) => {
-        a.nombres   = (a.nombres   || '').trim().replace(/\s{2,}/g, ' ');
+        a.nombres = (a.nombres || '').trim().replace(/\s{2,}/g, ' ');
         a.apellidos = (a.apellidos || '').trim().replace(/\s{2,}/g, ' ');
-        a.dni       = (a.dni       || '').trim();
+        a.dni = (a.dni || '').trim();
         if (!a.rol) {
           const sel = document.querySelector(`.personRow[data-aidx="${idx}"] select[data-afield="rol"]`);
           a.rol = (sel && sel.value) ? sel.value : asesRoles[0];
@@ -10298,9 +10471,9 @@ export function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, curren
               <label for="cf_arte">3. Arte / Área</label>
               <select id="cf_arte" ${arteOptions.length <= 1 ? 'disabled' : ''}>
                 ${arteOptions.length <= 1
-                  ? '<option value="">Sin opciones</option>'
-                  : arteOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.arte ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
-                }
+        ? '<option value="">Sin opciones</option>'
+        : arteOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.arte ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
+      }
               </select>
             </div>
 
@@ -10309,9 +10482,9 @@ export function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, curren
               <label for="cf_disciplina">4. Disciplina</label>
               <select id="cf_disciplina" ${disciplinaOptions.length <= 1 ? 'disabled' : ''}>
                 ${disciplinaOptions.length <= 1
-                  ? '<option value="">Sin opciones</option>'
-                  : disciplinaOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.disciplina ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
-                }
+        ? '<option value="">Sin opciones</option>'
+        : disciplinaOptions.map(o => `<option value="${esc(o.value)}" ${o.value === concursoFilters.disciplina ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
+      }
               </select>
             </div>
 
@@ -10839,7 +11012,7 @@ export function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, curren
       } else {
         const personas = [
           ...(r.participantes || []).map(p => ({ ...p, _tipo: 'Participante' })),
-          ...(r.asesores     || []).map(a => ({ ...a, _tipo: 'Asesor/Entrenador' }))
+          ...(r.asesores || []).map(a => ({ ...a, _tipo: 'Asesor/Entrenador' }))
         ];
         if (personas.length === 0) {
           rows.push([...base, '', '', '', '', '', '', r.resolucionRef || '', r.fecha || '']);
@@ -10850,8 +11023,8 @@ export function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, curren
               ...base,
               p._tipo,
               (p.apellidos || '').trim(),
-              (p.nombres   || '').trim(),
-              (p.dni       || '').trim(),
+              (p.nombres || '').trim(),
+              (p.dni || '').trim(),
               p.rol || '',
               esHeredado ? (p.nombres || '').trim() : '',
               r.resolucionRef || '',
@@ -12221,41 +12394,67 @@ async function backfillSubmissionsUgelRed(dbNs, state) {
     let newRed = sub.red;
     let newCod = sub.codigoModular;
 
-    if (!newUgel || newUgel === '—') {
-      newUgel = 'UGEL 03';
-      needUpdate = true;
+    let matched = null;
+    if (sub.colegioId) {
+      matched = colegios.find(c => c.id === sub.colegioId);
+    }
+    if (!matched && sub.institucion) {
+      matched = colMap.get(normalizeText(sub.institucion));
     }
 
-    if (!newRed || newRed === '—') {
-      let matched = null;
-      if (sub.colegioId) {
-        matched = colegios.find(c => c.id === sub.colegioId);
-      }
-      if (!matched && sub.institucion) {
-        matched = colMap.get(normalizeText(sub.institucion));
-      }
-      if (matched && matched.rei) {
-        newRed = matched.rei;
+    if (matched) {
+      let padronUgel = matched.dependencia || 'UGEL 03';
+      if (padronUgel.toLowerCase().includes('sector educ')) padronUgel = 'UGEL 03';
+      
+      const padronRed = matched.rei || 'No aplica';
+      const padronCod = matched.codigoLocal || matched.codigoModular || '';
+
+      if (newUgel !== padronUgel) { newUgel = padronUgel; needUpdate = true; }
+      if (newRed !== padronRed) { newRed = padronRed; needUpdate = true; }
+      if (padronCod && newCod !== padronCod) { newCod = padronCod; needUpdate = true; }
+    } else {
+      if (!newUgel || newUgel === '—' || newUgel.toLowerCase().includes('sector educ')) {
+        newUgel = 'UGEL 03';
         needUpdate = true;
-      } else if (!newRed) {
-        newRed = 'No aplica';
+      }
+      if (!newRed || newRed === '—') {
+        newRed = 'No aplica';
         needUpdate = true;
       }
     }
 
-    if (!newCod) {
-      let matched = null;
-      if (sub.colegioId) {
-        matched = colegios.find(c => c.id === sub.colegioId);
-      }
-      if (!matched && sub.institucion) {
-        matched = colMap.get(normalizeText(sub.institucion));
-      }
-      if (matched && (matched.codigoLocal || matched.codigoModular)) {
-        newCod = matched.codigoLocal || matched.codigoModular;
-        needUpdate = true;
-      }
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     if (needUpdate) {
       const docRef = dbNs.collection('submissions').doc(sub.id);
@@ -12601,9 +12800,9 @@ export function openConsolidarCuerpoTecnicoModal(dbNs, state, container, isAdmin
         if (d.id === detDocId || d.id === legacyId) return true;
         if (d.id === g.groupKey || d.grupoKey === g.groupKey) return true;
         return norm(d.etapa || 'UGEL') === norm(g.etapa || 'UGEL') &&
-               norm(d.disciplina || '') === norm(g.disciplina || '') &&
-               normCat(d.categoria || '') === normCat(g.categoria || '') &&
-               normGen(d.genero || d.rama || '') === normGen(g.genero || '');
+          norm(d.disciplina || '') === norm(g.disciplina || '') &&
+          normCat(d.categoria || '') === normCat(g.categoria || '') &&
+          normGen(d.genero || d.rama || '') === normGen(g.genero || '');
       });
 
       const existingMembers = existingDoc && (

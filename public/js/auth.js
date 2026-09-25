@@ -77,6 +77,9 @@ export function setupAuthListeners(auth, firestoreDb, { onLogin, onLogout }) {
     btn.disabled = true;
     btn.textContent = 'Ingresando...';
     try {
+      if (!email.toLowerCase().endsWith('@ugel03.gob.pe')) {
+        throw { code: 'auth/invalid-domain' };
+      }
       await signInWithEmailAndPassword(auth, email, password);
     } catch (e) {
       console.error(e);
@@ -87,6 +90,8 @@ export function setupAuthListeners(auth, firestoreDb, { onLogin, onLogout }) {
         msg = 'Demasiados intentos. Espera un momento y vuelve a intentar.';
       else if (e.code === 'auth/invalid-email')
         msg = 'Ese correo no es válido.';
+      else if (e.code === 'auth/invalid-domain')
+        msg = 'Solo se permiten correos institucionales (@ugel03.gob.pe).';
       document.getElementById('loginError').textContent = msg;
     } finally {
       btn.disabled = false;

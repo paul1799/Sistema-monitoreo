@@ -42,10 +42,19 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // --- Fichas registradas: cualquiera con sesión lee, crea y actualiza; solo admin borra ---
+    // --- Fichas registradas: cualquiera con sesión lee, crea (si es el autor) y actualiza (si es el autor); solo admin borra ---
     match /submissions/{docId} {
       allow read: if signedIn();
-      allow create, update: if signedIn();
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow update: if signedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // --- Seguimiento de compromisos: cualquiera con sesión lee, crea (si es el autor) y actualiza (si es el autor); solo admin borra ---
+    match /compromisos/{docId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow update: if signedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
       allow delete: if isAdmin();
     }
 

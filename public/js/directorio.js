@@ -7,7 +7,7 @@
    Exportación fiel de plantilla oficial E2_Directorio_de_Directores_por_IE
    ========================================================================= */
 
-import { esc, showToast, genId, fmtDate } from './ui.js?v=20260924_v5';
+import { esc, showToast, genId, fmtDate } from './ui.js?v=20260925_v8';
 
 /* =========================================================================
    1. UTILIDADES Y NORMALIZACIÓN
@@ -326,7 +326,7 @@ export function getDirectivosActivosForColegio(state, colegioId, codigoLocal, co
  * 5. Fichas con fecha antigua: no sobrescriben datos más recientes; solo completan campos vacíos.
  * 6. Normalización: nombres en MAYÚSCULAS, correo en minúsculas, códigos/DNI como string.
  */
-export async function syncDirectivosFromFicha(dbNs, fichaPayload, activeState, currentUser) {
+export async function syncDirectivosFromFicha(dbNs, fichaPayload, activeState, currentUser, resoluciones = {}) {
   if (!dbNs || !fichaPayload) return { success: false, summary: '' };
 
   const userEmail = (currentUser && currentUser.email) || 'sistema';
@@ -428,6 +428,11 @@ export async function syncDirectivosFromFicha(dbNs, fichaPayload, activeState, c
   // A. PROCESAR DIRECTOR(A)
   // -------------------------------------------------------------
   let activeDirector = existingDirectivos.find(d => d.cargo === 'Director' && d.estado === 'activo');
+
+  if (resoluciones.director === 'SOLO_VISITA') {
+    changesSummary.push('Director(a): Ignorado por opción Solo Visita');
+    fichaDir = null;
+  }
 
   if (fichaDir && fichaDir.apellidosNombres) {
     if (!activeDirector) {
@@ -544,8 +549,14 @@ export async function syncDirectivosFromFicha(dbNs, fichaPayload, activeState, c
       } else {
         // Es un DIRECTOR NUEVO (DNI o nombre distinto):
         // 1. Marcar el anterior como 'anterior'
+        let newState = 'anterior';
+        if (resoluciones.director === 'ENCARGATURA') {
+          newState = 'activo'; // Mantiene el original activo
+          // No actualizar el estado del original a anterior
+        }
+
         const prevDirectorUpdate = {
-          estado: 'anterior',
+          estado: newState,
           actualizadoPor: userEmail,
           actualizadoEn: timestamp,
           historial: [
@@ -560,7 +571,9 @@ export async function syncDirectivosFromFicha(dbNs, fichaPayload, activeState, c
             }
           ]
         };
-        await dbNs.collection('directivos').doc(activeDirector.id).update(prevDirectorUpdate);
+        if (resoluciones.director !== 'ENCARGATURA') {
+          await dbNs.collection('directivos').doc(activeDirector.id).update(prevDirectorUpdate);
+        }
         Object.assign(activeDirector, prevDirectorUpdate);
 
         // 2. Crear nuevo director activo
@@ -575,7 +588,7 @@ export async function syncDirectivosFromFicha(dbNs, fichaPayload, activeState, c
           correo: fichaDir.correo,
           condicion: fichaDir.condicion,
           nivelACargo: '',
-          estado: 'activo',
+          estado: resoluciones.director === 'ENCARGATURA' ? 'encargado' : 'activo',
           avisoRevision: false,
           fuente: fuenteObj,
           actualizadoPor: userEmail,
@@ -1308,8 +1321,8 @@ function openDirectorioDetailModal(colegio, state, dbNs, isAdmin, currentUser, o
           <span class="badge st-logrado" style="font-weight:700">Director(a) Activo(a)</span>
           <h4 style="margin:6px 0 3px;font-size:15px">${esc(directorActivo.apellidosNombres)}</h4>
           <div style="font-size:12.5px;color:var(--ink-soft);line-height:1.5">
-            <strong>DNI:</strong> ${directorActivo.dni ? esc(directorActivo.dni) : '<span style="color:var(--danger)">Sin DNI</span>'} ·
-            <strong>Teléfono:</strong> ${directorActivo.telefono ? esc(directorActivo.telefono) : '—'} ·
+            <strong>DNI:</strong> ${directorActivo.dni ? esc(isAdmin ? directorActivo.dni : '***' + directorActivo.dni.slice(-3)) : '<span style="color:var(--danger)">Sin DNI</span>'} ·
+            <strong>Teléfono:</strong> ${directorActivo.telefono ? esc(isAdmin ? directorActivo.telefono : '***' + directorActivo.telefono.slice(-3)) : '—'} ·
             <strong>Correo:</strong> ${directorActivo.correo ? esc(directorActivo.correo) : '—'} ·
             <strong>Condición:</strong> ${directorActivo.condicion || '—'}
           </div>
@@ -1341,8 +1354,8 @@ function openDirectorioDetailModal(colegio, state, dbNs, isAdmin, currentUser, o
           ${sd.avisoRevision ? `<span class="badge st-inicio" style="margin-left:4px">⚠ ${esc(sd.avisoRevision)}</span>` : ''}
           <h4 style="margin:4px 0 2px;font-size:14px">${esc(sd.apellidosNombres)}</h4>
           <div style="font-size:12px;color:var(--ink-soft)">
-            <strong>DNI:</strong> ${sd.dni ? esc(sd.dni) : '<span style="color:var(--danger)">Sin DNI</span>'} ·
-            <strong>Teléfono:</strong> ${sd.telefono ? esc(sd.telefono) : '—'} ·
+            <strong>DNI:</strong> ${sd.dni ? esc(isAdmin ? sd.dni : '***' + sd.dni.slice(-3)) : '<span style="color:var(--danger)">Sin DNI</span>'} ·
+            <strong>Teléfono:</strong> ${sd.telefono ? esc(isAdmin ? sd.telefono : '***' + sd.telefono.slice(-3)) : '—'} ·
             <strong>Correo:</strong> ${sd.correo ? esc(sd.correo) : '—'} ·
             <strong>Condición:</strong> ${sd.condicion || '—'}
           </div>
@@ -1363,8 +1376,8 @@ function openDirectorioDetailModal(colegio, state, dbNs, isAdmin, currentUser, o
     <tr style="font-size:12px">
       <td><span class="badge st-none">${esc(an.cargo)}</span></td>
       <td><strong>${esc(an.apellidosNombres)}</strong></td>
-      <td><code>${esc(an.dni || '—')}</code></td>
-      <td>${esc(an.telefono || '—')}</td>
+      <td><code>${esc(an.dni ? (isAdmin ? an.dni : '***' + an.dni.slice(-3)) : '—')}</code></td>
+      <td>${esc(an.telefono ? (isAdmin ? an.telefono : '***' + an.telefono.slice(-3)) : '—')}</td>
       <td>${esc(an.correo || '—')}</td>
       <td><span class="helpText" style="margin:0">${fmtDate(an.actualizadoEn)}</span></td>
     </tr>
@@ -2396,4 +2409,61 @@ function openDirectorioImportModal(state, dbNs, currentUser, onSuccess) {
     showToast(`✓ Importación completada: ${processed} instituciones procesadas.`);
     if (onSuccess) onSuccess();
   };
+}
+
+export async function detectDirectivoChanges(dbNs, fichaPayload, activeState) {
+  const colegioId = fichaPayload.colegioId || '';
+  const codigoLocal = cleanTextCode(fichaPayload.ie?.codigoLocal || fichaPayload.codigoModular || fichaPayload.codigoLocal || '');
+  const institucion = (fichaPayload.institucion || '').trim();
+
+  let matchedColegio = null;
+  if (activeState && activeState.colegios) {
+    matchedColegio = activeState.colegios.find(c => 
+      (colegioId && c.id === colegioId) ||
+      (codigoLocal && c.codigoLocal === codigoLocal) ||
+      (institucion && normalizeStr(c.ie) === normalizeStr(institucion))
+    );
+  }
+
+  const effectiveColId = matchedColegio ? matchedColegio.id : colegioId;
+  const effectiveCodLocal = matchedColegio ? cleanTextCode(matchedColegio.codigoLocal) : codigoLocal;
+
+  let fichaDir = null;
+  if (fichaPayload.director && (fichaPayload.director.nombres || fichaPayload.director.nombre)) {
+    const rawNom = fichaPayload.director.nombres || fichaPayload.director.nombre || '';
+    if (!isPlaceholderDirectivo(rawNom)) {
+      fichaDir = { apellidosNombres: normalizeStr(rawNom), dni: cleanTextCode(fichaPayload.director.dni || fichaPayload.directorDni || '') };
+    }
+  } else if (fichaPayload.directorDni || fichaPayload.director) {
+    const rawNom = typeof fichaPayload.director === 'string' ? fichaPayload.director : '';
+    if (!isPlaceholderDirectivo(rawNom)) {
+      fichaDir = { apellidosNombres: normalizeStr(rawNom), dni: cleanTextCode(fichaPayload.directorDni || '') };
+    }
+  }
+
+  let existingDirectivos = [];
+  try {
+    const snap = await dbNs.collection('directivos').where('codigoLocal', '==', effectiveCodLocal).get();
+    if (!snap.empty) {
+      existingDirectivos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+  } catch (err) {}
+
+  const activeDirector = existingDirectivos.find(d => d.cargo === 'Director' && d.estado === 'activo');
+  const conflicts = [];
+
+  if (fichaDir && fichaDir.apellidosNombres && activeDirector) {
+    const samePerson = (fichaDir.dni && activeDirector.dni && fichaDir.dni === activeDirector.dni) ||
+                       (normalizeStr(fichaDir.apellidosNombres) === normalizeStr(activeDirector.apellidosNombres));
+    if (!samePerson) {
+      conflicts.push({
+        cargo: 'director',
+        actualName: activeDirector.apellidosNombres,
+        actualDni: activeDirector.dni,
+        newName: fichaDir.apellidosNombres,
+        newDni: fichaDir.dni
+      });
+    }
+  }
+  return conflicts;
 }

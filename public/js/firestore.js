@@ -95,6 +95,11 @@ export function makeDbAdapter(firestoreDb) {
           b.delete(r);
           return this;
         },
+        update(docWrapper, data) {
+          const r = docWrapper._ref || (typeof docWrapper === 'string' ? doc(firestoreDb, docWrapper) : docWrapper);
+          b.update(r, data);
+          return this;
+        },
         commit() {
           return b.commit();
         }

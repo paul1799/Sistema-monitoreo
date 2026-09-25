@@ -16,7 +16,6 @@ import {
   setRegistrarSubTab,
   renderConsolidadoTab,
   renderColegiosTab,
-  renderAlertasTab,
   renderTiposTab,
   renderUsuariosTab,
   renderResponsablesTab,
@@ -26,11 +25,11 @@ import {
   computeStats,
   forceResetBodyScroll,
   setAppState,
-} from './ui.js?v=20260924_v5';
+} from './ui.js?v=20260925_v8';
 
-import {
-  renderDirectorioTab
-} from './directorio.js?v=20260924_v5';
+import { renderDirectorioTab } from './directorio.js?v=20260925_v8';
+
+import { renderAlertasTab, getAlertCount } from './alertas.js';
 
 /* ============================= MANEJADORES GLOBALES DE ERROR ============================= */
 if (typeof window !== 'undefined') {
@@ -67,6 +66,7 @@ const state = {
   tiposConcurso:     [],  // {id, nombre, tipoParticipacion, tieneGenero, tieneDisciplina, tieneTituloTrabajo, categorias, ...}
   concursoRegistros: [],  // {id, tipoConcursoId, etapa, categoria, institucion, participantes, asesores, ...}
   concursoCuerpoTecnico: [], // {id, grupoKey, tipoConcursoId, etapa, categoria, disciplina, genero, personas, bitacora, ...}
+  compromisos:       [],  // {id, fichaId, institucion, ugel, responsable, texto, plazo, estado, ...}
   areasFirma:        [],  // {id, nombre, sigla, descripcionEncabezado, logo, activa, esPredeterminada}
   plantillasFirmantes: [], // {id, areaId, tipoReporte, orden, cargo, nombreOpcional, entidad, leyenda}
   preferenciasDescarga: [], // {usuarioId, tipoReporte, areaId, firmantesJson, opcionesJson}
@@ -123,14 +123,7 @@ function render() {
   // Actualizar contador de alertas en la campana
   const bellBadge = document.getElementById('topBellBadge');
   if (bellBadge && state.submissions) {
-    let alertCount = 0;
-    state.submissions.forEach(s => {
-      const ft = getFichaType(s.fichaTypeId);
-      if (ft) {
-        const st = computeStats(s, ft);
-        if (st.pct !== null && st.pct < 70) alertCount++;
-      }
-    });
+    const alertCount = getAlertCount(state, getFichaType);
     if (alertCount > 0) {
       bellBadge.textContent = alertCount > 99 ? '99+' : alertCount;
       bellBadge.style.display = 'inline-block';
@@ -173,7 +166,7 @@ function render() {
       renderDirectorioTab(c, state, dbNs, isAdmin(), currentUser, navigate);
       break;
     case 'alertas':
-      renderAlertasTab(c, state, getFichaType);
+      renderAlertasTab(c, state, getFichaType, dbNs, currentUser, isAdmin());
       break;
     case 'tipos':
       state.activeTab = 'registrar';
@@ -296,6 +289,16 @@ function startListeners() {
     }
   }, err => {
     console.error('plantillasFirmantes snapshot error', err);
+  });
+
+  // Compromisos de mejora
+  dbNs.collection('compromisos').onSnapshot(snap => {
+    state.compromisos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (state.activeTab === 'alertas' || state.activeTab === 'registrar' || state.activeTab === 'dashboard') {
+      render();
+    }
+  }, err => {
+    console.error('compromisos snapshot error', err);
   });
 
   if (isAdmin()) {

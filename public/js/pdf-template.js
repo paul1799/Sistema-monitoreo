@@ -11,7 +11,7 @@ import {
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES,
   migrateLegacyEbrTotals
-} from './ebr-gestion.js?v=20260924_v5';
+} from './ebr-gestion.js?v=20260925_v8';
 
 /**
  * Obtiene la instancia de jsPDF desde window.jspdf

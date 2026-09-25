@@ -1,0 +1,479 @@
+{
+  "ft_ebr_gestion_1er": {
+    "nombre": "Gestión Escolar EBR — 1.er momento (Diagnóstico)",
+    "descripcion": "Monitorea el cumplimiento de la Política Regional 01 en IE de Educación Básica Regular en el primer momento del año (diagnóstico inicial: planificación y condiciones).",
+    "icono": "🏫",
+    "tipoRespuesta": "ips",
+    "escala": "IPL_NA",
+    "regla_nivel": {
+      "tipo": "porcentaje",
+      "umbrales": [
+        { "nivel": "Logrado",     "min": 85, "estado_panel": "Logrado"    },
+        { "nivel": "En proceso",  "min": 70, "estado_panel": "En proceso" },
+        { "nivel": "Por mejorar", "min":  0, "estado_panel": "Inicio"     }
+      ]
+    },
+    "version": { "anio": 2026, "momento": "1er", "estado": "publicada" },
+    "extras": [
+      { "id": "ex_especialista", "label": "Especialista monitor(a)", "tipo": "texto" },
+      { "id": "ex_fecha",        "label": "Fecha de visita",         "tipo": "fecha" },
+      { "id": "ex_visita",       "label": "N.° de visita",           "tipo": "numero" }
+    ],
+    "bloques": [
+      {
+        "tipo": "datos_ie",
+        "titulo": "Datos de la Institución Educativa",
+        "campos": [
+          { "id": "ex_ie",            "label": "Institución Educativa",   "tipo": "ie_autocomplete", "required": true },
+          { "id": "ex_codigo_local",  "label": "Código Local",            "tipo": "texto" },
+          { "id": "ex_rei",           "label": "REI / RED",               "tipo": "texto" },
+          { "id": "ex_ugel",          "label": "UGEL",                    "tipo": "texto", "valor_fijo": "UGEL 03" },
+          { "id": "ex_distrito",      "label": "Distrito",                "tipo": "texto" },
+          { "id": "ex_nivel",         "label": "Nivel",                   "tipo": "texto" },
+          { "id": "ex_modalidad",     "label": "Modalidad",               "tipo": "texto" }
+        ]
+      },
+      {
+        "tipo": "persona",
+        "titulo": "Directivo de la I.E.",
+        "subtitulo": "Quien atiende la visita",
+        "campos": [
+          { "id": "dir_nombre",    "label": "Apellidos y nombres",      "tipo": "texto",   "required": true },
+          { "id": "dir_cargo",     "label": "Cargo",                    "tipo": "select",  "opciones": ["Director(a)", "Subdirector(a)", "Director(a) encargado(a)"] },
+          { "id": "dir_dni",       "label": "DNI",                      "tipo": "dni" },
+          { "id": "dir_condicion", "label": "Condición",                "tipo": "select",  "opciones": ["Nombrado(a)", "Contratado(a)", "Designado(a)", "Encargado(a)"] }
+        ]
+      },
+      {
+        "tipo": "items_valorables",
+        "titulo": "I. Monitoreo y acompañamiento",
+        "escala": "IPL_NA",
+        "con_hallazgos": true,
+        "secciones": [
+          {
+            "nombre": "Monitoreo y acompañamiento a la práctica pedagógica",
+            "numRomano": "I",
+            "items": [
+              { "id": "ge1_1", "texto": "La IE cuenta con un plan anual de monitoreo y acompañamiento a la práctica pedagógica, aprobado y comunicado a los docentes.", "evidencia": "Documento de plan visado/firmado." },
+              { "id": "ge1_2", "texto": "El plan de monitoreo incluye cronograma de visitas a aula para cada docente con fechas y responsables definidos.", "evidencia": "Cronograma con firmas." },
+              { "id": "ge1_3", "texto": "Se han realizado al menos dos (2) visitas de monitoreo a aula en el primer trimestre del año.", "evidencia": "Fichas de visita firmadas." }
+            ]
+          },
+          {
+            "nombre": "Fortalecimiento de las competencias docentes",
+            "numRomano": "II",
+            "items": [
+              { "id": "ge1_4", "texto": "La IE cuenta con diagnóstico de necesidades formativas docentes elaborado en el primer trimestre.", "evidencia": "Diagnóstico documentado." },
+              { "id": "ge1_5", "texto": "Se ha planificado al menos una (1) acción de fortalecimiento docente que responde a las necesidades identificadas.", "evidencia": "Plan de formación / taller planificado." }
+            ]
+          },
+          {
+            "nombre": "Evaluación de los aprendizajes y retroalimentación",
+            "numRomano": "III",
+            "items": [
+              { "id": "ge1_6", "texto": "Los docentes tienen planificadas evaluaciones de proceso que permiten identificar el nivel de logro de los estudiantes.", "evidencia": "Unidades de aprendizaje con criterios de evaluación." },
+              { "id": "ge1_7", "texto": "La IE cuenta con acuerdos colegiados sobre estrategias de retroalimentación formativa.", "evidencia": "Actas de reunión colegiada." },
+              { "id": "ge1_8", "texto": "Se utilizan instrumentos de evaluación que responden a los propósitos de aprendizaje establecidos en las unidades didácticas.", "evidencia": "Instrumentos de evaluación o rúbricas." },
+              { "id": "ge1_9", "texto": "Se cuenta con registros actualizados de los aprendizajes de los estudiantes (registro auxiliar, carpeta de evidencias u otros).", "evidencia": "Registros auxiliares revisados." }
+            ]
+          },
+          {
+            "nombre": "Materiales educativos",
+            "numRomano": "IV",
+            "items": [
+              { "id": "ge1_10", "texto": "Los materiales educativos entregados por el MINEDU han sido distribuidos oportunamente a los docentes y estudiantes.", "evidencia": "Lista de distribución firmada." },
+              { "id": "ge1_11", "texto": "Los docentes conocen los materiales educativos disponibles y los incorporan en su planificación.", "evidencia": "Unidades con materiales referenciados." },
+              { "id": "ge1_12", "texto": "Se evidencia el uso pedagógico de los materiales durante las actividades de aprendizaje.", "evidencia": "Portafolios docentes / observación." },
+              { "id": "ge1_13", "texto": "Los materiales educativos están en condiciones adecuadas de conservación y acceso para los estudiantes.", "evidencia": "Inventario y estado de materiales." },
+              { "id": "ge1_14", "texto": "Los materiales cuentan con adaptaciones o complementos para atender la diversidad del aula.", "evidencia": "Materiales adaptados en portafolios." },
+              { "id": "ge1_15", "texto": "La IE cuenta con un registro del préstamo y devolución de materiales no fungibles.", "evidencia": "Cuaderno de control de préstamo." },
+              { "id": "ge1_16", "texto": "Se han atendido oportunamente las observaciones de la Contraloría o UGEL respecto a materiales.", "evidencia": "Documentos de subsanación.", "puede_nc": true }
+            ]
+          },
+          {
+            "nombre": "Otros aspectos",
+            "numRomano": "V",
+            "items": [
+              { "id": "ge1_17", "texto": "La IE tiene conformado y en funcionamiento el Comité de Gestión de Condiciones Operativas (CGCO).", "evidencia": "Acta de conformación." },
+              { "id": "ge1_18", "texto": "La IE cuenta con el Plan Anual de Trabajo (PAT) aprobado y difundido a la comunidad educativa.", "evidencia": "PAT firmado y comunicado." },
+              { "id": "ge1_19", "texto": "El Consejo Educativo Institucional (CONEI) está funcionando y tiene actas del presente año.", "evidencia": "Actas de CONEI 2026." }
+            ]
+          }
+        ]
+      },
+      {
+        "tipo": "matriz_rubricas",
+        "titulo": "Monitoreo a docentes — Rúbricas de Observación de Aula (MINEDU)",
+        "subtitulo": "Registre el nivel observado (I–IV) para cada docente y cada rúbrica.",
+        "monitoreos": [
+          { "id": "m1", "label": "1.er monitoreo (diagnóstico)" }
+        ],
+        "num_docentes_default": 6,
+        "rubricas": [
+          { "id": "R1", "corto": "R1", "nombre": "Involucra activamente a los estudiantes en el proceso de aprendizaje" },
+          { "id": "R2", "corto": "R2", "nombre": "Promueve el razonamiento, la creatividad y/o el pensamiento crítico" },
+          { "id": "R3", "corto": "R3", "nombre": "Evalúa el progreso de los aprendizajes para retroalimentar a los estudiantes y adecuar la enseñanza" },
+          { "id": "R4", "corto": "R4", "nombre": "Propicia un ambiente de respeto y proximidad" },
+          { "id": "R5", "corto": "R5", "nombre": "Regula positivamente el comportamiento de los estudiantes" }
+        ]
+      },
+      {
+        "tipo": "compromisos",
+        "titulo": "Compromisos de mejora",
+        "tipos": [
+          { "id": "director", "label": "Compromisos del Director(a)" },
+          { "id": "monitor",  "label": "Compromisos del Monitor(a) / Especialista AGEBRE" }
+        ]
+      },
+      {
+        "tipo": "texto_libre",
+        "titulo": "Observaciones generales",
+        "placeholder": "Escribir aquí observaciones adicionales de la visita..."
+      }
+    ],
+    "secciones": [
+      {
+        "nombre": "Monitoreo y acompañamiento",
+        "items": [
+          { "id": "ge1_1", "texto": "La IE cuenta con un plan anual de monitoreo y acompañamiento a la práctica pedagógica, aprobado y comunicado a los docentes." },
+          { "id": "ge1_2", "texto": "El plan de monitoreo incluye cronograma de visitas a aula para cada docente con fechas y responsables definidos." },
+          { "id": "ge1_3", "texto": "Se han realizado al menos dos (2) visitas de monitoreo a aula en el primer trimestre del año." }
+        ]
+      },
+      {
+        "nombre": "Fortalecimiento docente",
+        "items": [
+          { "id": "ge1_4", "texto": "La IE cuenta con diagnóstico de necesidades formativas docentes elaborado en el primer trimestre." },
+          { "id": "ge1_5", "texto": "Se ha planificado al menos una (1) acción de fortalecimiento docente que responde a las necesidades identificadas." }
+        ]
+      },
+      {
+        "nombre": "Evaluación y retroalimentación",
+        "items": [
+          { "id": "ge1_6", "texto": "Los docentes tienen planificadas evaluaciones de proceso que permiten identificar el nivel de logro de los estudiantes." },
+          { "id": "ge1_7", "texto": "La IE cuenta con acuerdos colegiados sobre estrategias de retroalimentación formativa." },
+          { "id": "ge1_8", "texto": "Se utilizan instrumentos de evaluación que responden a los propósitos de aprendizaje." },
+          { "id": "ge1_9", "texto": "Se cuenta con registros actualizados de los aprendizajes de los estudiantes." }
+        ]
+      },
+      {
+        "nombre": "Materiales educativos",
+        "items": [
+          { "id": "ge1_10", "texto": "Los materiales educativos entregados por el MINEDU han sido distribuidos oportunamente." },
+          { "id": "ge1_11", "texto": "Los docentes conocen los materiales disponibles y los incorporan en su planificación." },
+          { "id": "ge1_12", "texto": "Se evidencia el uso pedagógico de los materiales durante las actividades de aprendizaje." },
+          { "id": "ge1_13", "texto": "Los materiales están en condiciones adecuadas de conservación y acceso." },
+          { "id": "ge1_14", "texto": "Los materiales cuentan con adaptaciones para atender la diversidad del aula." },
+          { "id": "ge1_15", "texto": "La IE cuenta con un registro del préstamo y devolución de materiales no fungibles." },
+          { "id": "ge1_16", "texto": "Se han atendido oportunamente las observaciones de la Contraloría o UGEL respecto a materiales." }
+        ]
+      },
+      {
+        "nombre": "Otros aspectos",
+        "items": [
+          { "id": "ge1_17", "texto": "La IE tiene conformado y en funcionamiento el Comité de Gestión de Condiciones Operativas (CGCO)." },
+          { "id": "ge1_18", "texto": "La IE cuenta con el Plan Anual de Trabajo (PAT) aprobado y difundido." },
+          { "id": "ge1_19", "texto": "El Consejo Educativo Institucional (CONEI) está funcionando y tiene actas del presente año." }
+        ]
+      }
+    ]
+  },
+
+  "ft_prite_gestion": {
+    "nombre": "Gestión Escolar PRITE — Monitoreo Multi-Visita",
+    "descripcion": "Monitorea la gestión pedagógica en Programas de Intervención Temprana (PRITE). Cubre tres momentos de visita a lo largo del año.",
+    "icono": "👶",
+    "tipoRespuesta": "ips",
+    "escala": "IPL_NA",
+    "regla_nivel": {
+      "tipo": "porcentaje",
+      "umbrales": [
+        { "nivel": "Logrado",     "min": 85, "estado_panel": "Logrado"    },
+        { "nivel": "En proceso",  "min": 70, "estado_panel": "En proceso" },
+        { "nivel": "Por mejorar", "min":  0, "estado_panel": "Inicio"     }
+      ]
+    },
+    "version": { "anio": 2026, "momento": null, "estado": "publicada" },
+    "visitas": [1, 2, 3],
+    "extras": [
+      { "id": "ex_especialista", "label": "Especialista monitor(a)", "tipo": "texto" },
+      { "id": "ex_fecha",        "label": "Fecha de visita",         "tipo": "fecha" },
+      { "id": "ex_visita",       "label": "N.° de visita",           "tipo": "numero" }
+    ],
+    "bloques": [
+      {
+        "tipo": "datos_ie",
+        "titulo": "Datos del PRITE",
+        "campos": [
+          { "id": "ex_ie",           "label": "Nombre del PRITE",           "tipo": "ie_autocomplete", "required": true },
+          { "id": "ex_codigo_local", "label": "Código Local",               "tipo": "texto" },
+          { "id": "ex_rei",          "label": "REI / RED",                   "tipo": "texto" },
+          { "id": "ex_ugel",         "label": "UGEL",                       "tipo": "texto", "valor_fijo": "UGEL 03" },
+          { "id": "ex_distrito",     "label": "Distrito",                   "tipo": "texto" }
+        ]
+      },
+      {
+        "tipo": "persona",
+        "titulo": "Coordinador(a) del PRITE",
+        "campos": [
+          { "id": "coord_nombre",    "label": "Apellidos y nombres",    "tipo": "texto", "required": true },
+          { "id": "coord_dni",       "label": "DNI",                    "tipo": "dni" },
+          { "id": "coord_condicion", "label": "Condición",              "tipo": "select", "opciones": ["Nombrado(a)", "Contratado(a)"] }
+        ]
+      },
+      {
+        "tipo": "items_multi_visita",
+        "titulo": "Ítems de monitoreo — tres momentos de visita",
+        "escala": "IPL_NA",
+        "visitas": [1, 2, 3],
+        "secciones": [
+          {
+            "nombre": "I. Atención temprana y planificación",
+            "items": [
+              { "id": "prite_1", "texto": "El PRITE cuenta con un padrón actualizado de niños(as) atendidos con sus diagnósticos y planes de intervención individualizados." },
+              { "id": "prite_2", "texto": "Se realiza la evaluación inicial de cada niño(a) para identificar sus necesidades y potencialidades." },
+              { "id": "prite_3", "texto": "Los planes de intervención individualizados (PII) están elaborados con participación de los profesionales del equipo." },
+              { "id": "prite_4", "texto": "Se realizan sesiones de atención temprana con la frecuencia establecida en el PII de cada niño(a)." }
+            ]
+          },
+          {
+            "nombre": "II. Trabajo con familias",
+            "items": [
+              { "id": "prite_5", "texto": "Se desarrollan talleres de orientación a familias sobre la crianza y estimulación del desarrollo del niño(a)." },
+              { "id": "prite_6", "texto": "Las familias participan activamente en las sesiones de atención y reciben orientaciones para la intervención en el hogar." },
+              { "id": "prite_7", "texto": "Se registran los compromisos asumidos por las familias y se hace seguimiento de su cumplimiento." }
+            ]
+          },
+          {
+            "nombre": "III. Coordinación intersectorial",
+            "items": [
+              { "id": "prite_8",  "texto": "El PRITE coordina con el sector salud (establecimientos de salud de la jurisdicción) para la derivación y atención oportuna." },
+              { "id": "prite_9",  "texto": "Se realizan acciones de sensibilización y detección temprana en coordinación con establecimientos de salud y municipios." },
+              { "id": "prite_10", "texto": "Existe un protocolo de coordinación intersectorial documentado y en aplicación." }
+            ]
+          },
+          {
+            "nombre": "IV. Registro y documentación",
+            "items": [
+              { "id": "prite_11", "texto": "Se llevan registros individuales de la evolución de cada niño(a) (bitácoras, informes de avance)." },
+              { "id": "prite_12", "texto": "Se reportan periódicamente los avances del PRITE a la UGEL (informes de gestión, actas, estadísticas)." },
+              { "id": "prite_13", "texto": "El PRITE cuenta con expedientes completos de cada niño(a) atendido." }
+            ]
+          },
+          {
+            "nombre": "V. Condiciones y recursos",
+            "items": [
+              { "id": "prite_14", "texto": "El PRITE cuenta con los materiales de estimulación necesarios para la atención de los niños(as)." },
+              { "id": "prite_15", "texto": "Las instalaciones del PRITE reúnen condiciones de seguridad y accesibilidad para los niños(as) con discapacidad." },
+              { "id": "prite_16", "texto": "El equipo multidisciplinario está completo (psicólogo, fisioterapeuta, docente de educación especial, u otros según necesidad)." }
+            ]
+          }
+        ]
+      },
+      {
+        "tipo": "compromisos",
+        "titulo": "Compromisos de mejora",
+        "tipos": [
+          { "id": "coordinador", "label": "Compromisos del Coordinador(a) del PRITE" },
+          { "id": "monitor",     "label": "Compromisos del Monitor(a) / Especialista AGEBRE" }
+        ]
+      },
+      {
+        "tipo": "texto_libre",
+        "titulo": "Observaciones generales",
+        "placeholder": "Observaciones adicionales de la visita al PRITE..."
+      }
+    ],
+    "secciones": [
+      {
+        "nombre": "Atención temprana y planificación",
+        "items": [
+          { "id": "prite_1",  "texto": "El PRITE cuenta con un padrón actualizado de niños(as) atendidos con sus diagnósticos y planes de intervención individualizados." },
+          { "id": "prite_2",  "texto": "Se realiza la evaluación inicial de cada niño(a) para identificar sus necesidades y potencialidades." },
+          { "id": "prite_3",  "texto": "Los planes de intervención individualizados (PII) están elaborados con participación de los profesionales del equipo." },
+          { "id": "prite_4",  "texto": "Se realizan sesiones de atención temprana con la frecuencia establecida en el PII de cada niño(a)." }
+        ]
+      },
+      {
+        "nombre": "Trabajo con familias",
+        "items": [
+          { "id": "prite_5",  "texto": "Se desarrollan talleres de orientación a familias sobre la crianza y estimulación del desarrollo del niño(a)." },
+          { "id": "prite_6",  "texto": "Las familias participan activamente en las sesiones y reciben orientaciones para la intervención en el hogar." },
+          { "id": "prite_7",  "texto": "Se registran los compromisos asumidos por las familias y se hace seguimiento de su cumplimiento." }
+        ]
+      },
+      {
+        "nombre": "Coordinación intersectorial",
+        "items": [
+          { "id": "prite_8",  "texto": "El PRITE coordina con el sector salud para la derivación y atención oportuna." },
+          { "id": "prite_9",  "texto": "Se realizan acciones de sensibilización y detección temprana en coordinación con salud y municipios." },
+          { "id": "prite_10", "texto": "Existe un protocolo de coordinación intersectorial documentado y en aplicación." }
+        ]
+      },
+      {
+        "nombre": "Registro y documentación",
+        "items": [
+          { "id": "prite_11", "texto": "Se llevan registros individuales de la evolución de cada niño(a)." },
+          { "id": "prite_12", "texto": "Se reportan periódicamente los avances del PRITE a la UGEL." },
+          { "id": "prite_13", "texto": "El PRITE cuenta con expedientes completos de cada niño(a) atendido." }
+        ]
+      },
+      {
+        "nombre": "Condiciones y recursos",
+        "items": [
+          { "id": "prite_14", "texto": "El PRITE cuenta con los materiales de estimulación necesarios." },
+          { "id": "prite_15", "texto": "Las instalaciones reúnen condiciones de seguridad y accesibilidad para niños(as) con discapacidad." },
+          { "id": "prite_16", "texto": "El equipo multidisciplinario está completo según necesidad." }
+        ]
+      }
+    ]
+  },
+
+  "ft_cebe_lectora": {
+    "nombre": "Experiencia Lectora — CEBE (Plan Lector y Lectura Compartida)",
+    "descripcion": "Monitorea la implementación de la Experiencia Lectora y el Plan Lector en los Centros de Educación Básica Especial (CEBE). Cubre tres momentos de visita.",
+    "icono": "📖",
+    "tipoRespuesta": "ips",
+    "escala": "IPL_NA",
+    "regla_nivel": {
+      "tipo": "porcentaje",
+      "umbrales": [
+        { "nivel": "Logrado",     "min": 85, "estado_panel": "Logrado"    },
+        { "nivel": "En proceso",  "min": 70, "estado_panel": "En proceso" },
+        { "nivel": "Por mejorar", "min":  0, "estado_panel": "Inicio"     }
+      ]
+    },
+    "version": { "anio": 2026, "momento": null, "estado": "publicada" },
+    "visitas": [1, 2, 3],
+    "extras": [
+      { "id": "ex_especialista", "label": "Especialista monitor(a)", "tipo": "texto" },
+      { "id": "ex_fecha",        "label": "Fecha de visita",         "tipo": "fecha" },
+      { "id": "ex_visita",       "label": "N.° de visita",           "tipo": "numero" }
+    ],
+    "bloques": [
+      {
+        "tipo": "datos_ie",
+        "titulo": "Datos del CEBE",
+        "campos": [
+          { "id": "ex_ie",           "label": "Nombre del CEBE",            "tipo": "ie_autocomplete", "required": true },
+          { "id": "ex_codigo_local", "label": "Código Local",               "tipo": "texto" },
+          { "id": "ex_rei",          "label": "REI / RED",                  "tipo": "texto" },
+          { "id": "ex_ugel",         "label": "UGEL",                       "tipo": "texto", "valor_fijo": "UGEL 03" },
+          { "id": "ex_distrito",     "label": "Distrito",                   "tipo": "texto" }
+        ]
+      },
+      {
+        "tipo": "persona",
+        "titulo": "Director(a) del CEBE",
+        "campos": [
+          { "id": "dir_nombre",    "label": "Apellidos y nombres",    "tipo": "texto", "required": true },
+          { "id": "dir_dni",       "label": "DNI",                    "tipo": "dni" },
+          { "id": "dir_condicion", "label": "Condición",              "tipo": "select", "opciones": ["Nombrado(a)", "Contratado(a)", "Designado(a)"] }
+        ]
+      },
+      {
+        "tipo": "items_multi_visita",
+        "titulo": "Ítems de monitoreo — Plan Lector y Experiencia Lectora",
+        "escala": "IPL_NA",
+        "visitas": [1, 2, 3],
+        "secciones": [
+          {
+            "nombre": "I. Planificación e institucionalización del Plan Lector",
+            "items": [
+              { "id": "lect_1", "texto": "El CEBE cuenta con un Plan Lector institucional 2026 aprobado por el directivo y difundido a los docentes." },
+              { "id": "lect_2", "texto": "El Plan Lector incluye estrategias adaptadas a las necesidades de los estudiantes con discapacidad (braille, pictogramas, lectura fácil, etc.)." },
+              { "id": "lect_3", "texto": "Cada aula/ciclo tiene planificadas actividades de lectura compartida con una frecuencia mínima de dos (2) sesiones semanales." }
+            ]
+          },
+          {
+            "nombre": "II. Implementación de la Experiencia Lectora",
+            "items": [
+              { "id": "lect_4", "texto": "Los docentes implementan la lectura compartida con estrategias pertinentes para el nivel y la discapacidad de sus estudiantes." },
+              { "id": "lect_5", "texto": "Se utilizan textos variados (cuentos, poemas, noticias, informativos) adecuados al nivel y características de los estudiantes." },
+              { "id": "lect_6", "texto": "Los docentes promueven la comprensión lectora mediante preguntas, discusión, representación o expresión alternativa." },
+              { "id": "lect_7", "texto": "Se utilizan apoyos augmentativos y alternativos de comunicación (AAC) cuando los estudiantes lo requieren." }
+            ]
+          },
+          {
+            "nombre": "III. Espacios y materiales de lectura",
+            "items": [
+              { "id": "lect_8",  "texto": "El CEBE cuenta con un espacio destinado a la biblioteca o rincón de lectura accesible para todos los estudiantes." },
+              { "id": "lect_9",  "texto": "Los materiales de lectura están adaptados y son accesibles (braille, libros con pictogramas, textos en lectura fácil, audiolibros)." },
+              { "id": "lect_10", "texto": "Se cuenta con materiales de lectura en número suficiente para las actividades de lectura compartida." }
+            ]
+          },
+          {
+            "nombre": "IV. Participación de familias",
+            "items": [
+              { "id": "lect_11", "texto": "Se han realizado talleres o reuniones con familias para orientarlos sobre cómo apoyar la lectura en el hogar." },
+              { "id": "lect_12", "texto": "Las familias acceden a materiales de lectura del CEBE para llevar a casa (préstamo de libros)." }
+            ]
+          },
+          {
+            "nombre": "V. Seguimiento y evaluación",
+            "items": [
+              { "id": "lect_13", "texto": "El directivo realiza seguimiento de la implementación del Plan Lector e identifica avances y dificultades." },
+              { "id": "lect_14", "texto": "Se registra y sistematiza la información sobre la práctica lectora (fichas de registro, portafolios de lectura u otros)." },
+              { "id": "lect_15", "texto": "Se realizan ajustes al Plan Lector a partir del seguimiento y las necesidades identificadas.", "puede_nc": true }
+            ]
+          }
+        ]
+      },
+      {
+        "tipo": "compromisos",
+        "titulo": "Compromisos de mejora",
+        "tipos": [
+          { "id": "director", "label": "Compromisos del Director(a) del CEBE" },
+          { "id": "monitor",  "label": "Compromisos del Monitor(a) / Especialista AGEBRE" }
+        ]
+      },
+      {
+        "tipo": "texto_libre",
+        "titulo": "Observaciones generales",
+        "placeholder": "Observaciones adicionales de la visita al CEBE..."
+      }
+    ],
+    "secciones": [
+      {
+        "nombre": "Planificación e institucionalización del Plan Lector",
+        "items": [
+          { "id": "lect_1", "texto": "El CEBE cuenta con un Plan Lector institucional 2026 aprobado y difundido." },
+          { "id": "lect_2", "texto": "El Plan Lector incluye estrategias adaptadas a las necesidades de los estudiantes con discapacidad." },
+          { "id": "lect_3", "texto": "Cada aula/ciclo tiene planificadas actividades de lectura compartida (≥ 2 sesiones semanales)." }
+        ]
+      },
+      {
+        "nombre": "Implementación de la Experiencia Lectora",
+        "items": [
+          { "id": "lect_4", "texto": "Los docentes implementan la lectura compartida con estrategias pertinentes para el nivel y la discapacidad." },
+          { "id": "lect_5", "texto": "Se utilizan textos variados adecuados al nivel y características de los estudiantes." },
+          { "id": "lect_6", "texto": "Los docentes promueven la comprensión lectora mediante preguntas, discusión o expresión alternativa." },
+          { "id": "lect_7", "texto": "Se utilizan apoyos augmentativos y alternativos de comunicación (AAC) cuando se requiere." }
+        ]
+      },
+      {
+        "nombre": "Espacios y materiales de lectura",
+        "items": [
+          { "id": "lect_8",  "texto": "El CEBE cuenta con un espacio de biblioteca/rincón de lectura accesible." },
+          { "id": "lect_9",  "texto": "Los materiales de lectura están adaptados y son accesibles (braille, pictogramas, audiolibros)." },
+          { "id": "lect_10", "texto": "Se cuenta con materiales de lectura en número suficiente." }
+        ]
+      },
+      {
+        "nombre": "Participación de familias",
+        "items": [
+          { "id": "lect_11", "texto": "Se han realizado talleres o reuniones con familias para orientarlos sobre cómo apoyar la lectura en el hogar." },
+          { "id": "lect_12", "texto": "Las familias acceden a materiales de lectura del CEBE para llevar a casa." }
+        ]
+      },
+      {
+        "nombre": "Seguimiento y evaluación",
+        "items": [
+          { "id": "lect_13", "texto": "El directivo realiza seguimiento de la implementación del Plan Lector." },
+          { "id": "lect_14", "texto": "Se registra y sistematiza la información sobre la práctica lectora." },
+          { "id": "lect_15", "texto": "Se realizan ajustes al Plan Lector a partir del seguimiento y las necesidades identificadas." }
+        ]
+      }
+    ]
+  }
+}
