@@ -1221,7 +1221,6 @@ tr.clickable {
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   font-weight: 600;
   font-size: 14px;
@@ -1240,6 +1239,12 @@ tr.clickable {
   background: #F8FAFC;
 }
 
+.secDetails summary:focus-visible {
+  outline: 2px solid var(--primary, #1D4ED8);
+  outline-offset: -2px;
+  background: #F8FAFC;
+}
+
 .secDetails[open] summary {
   border-bottom-color: var(--border);
   background: #F8FAFC;
@@ -1249,25 +1254,135 @@ tr.clickable {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex: 1;
+  flex: 0 1 auto;
+  min-width: 220px;
+  max-width: 42%;
 }
 
 .secChevron {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: transform 0.2s ease;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-600);
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
 }
 
 .secDetails[open] .secChevron {
   transform: rotate(90deg);
 }
 
+.secSummaryTitleWrap {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  line-height: 1.35;
+}
+
+.secSummaryName {
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--navy-900);
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+.secSummaryCount {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-600);
+  white-space: nowrap;
+}
+
 .secSummaryRight {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+.secBarContainer {
+  flex: 1 1 0%;
+  min-width: 200px;
+}
+
+.secBarTrack {
+  height: 15px;
+  background: #E2E8F0;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.secBarFill {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.35s ease;
+}
+
+.secBarFill.ok {
+  background: var(--ok, #059669);
+}
+
+.secBarFill.warn {
+  background: var(--warn, #D97706);
+}
+
+.secBarFill.danger {
+  background: var(--danger, #DC2626);
+}
+
+.secBarFill.none {
+  background: var(--neutral, #94A3B8);
+}
+
+.secSummaryPct {
+  min-width: 52px;
+  text-align: right;
+  font-weight: 700;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--navy-900);
   flex-shrink: 0;
+}
+
+.secSummaryRight .badge {
+  flex-shrink: 0;
+  min-width: 82px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .secDetails summary {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+  .secSummaryLeft {
+    max-width: 100%;
+    width: 100%;
+    min-width: 0;
+  }
+  .secSummaryRight {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .secBarContainer {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .secBarTrack {
+    min-width: 70px;
+  }
 }
 
 .secDetailsBody {

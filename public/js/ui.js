@@ -369,20 +369,33 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta) {
         '</tr>';
     }).join('');
 
-    return '<details class="secDetails"' + (si === 0 ? ' open' : '') + ' data-secitem="' + si + '">' +
-      '<summary>' +
+    const bodyId = 'sec_body_' + si;
+    const summaryId = 'sec_summary_' + si;
+    const secVal = sec.avg === null || sec.avg === undefined ? 0 : Math.min(Math.max(sec.avg, 0), 100);
+    const secFillCls = sec.avg === null || sec.avg === undefined
+      ? 'none'
+      : (sec.avg >= 85 ? 'ok' : (sec.avg >= 70 ? 'warn' : 'danger'));
+
+    return '<details class="secDetails" data-secitem="' + si + '">' +
+      '<summary id="' + summaryId + '" class="secSummary" role="button" tabindex="0" aria-expanded="false" aria-controls="' + bodyId + '">' +
       '<div class="secSummaryLeft">' +
-      '<span class="secChevron">▶</span>' +
-      '<strong>' + esc(sec.nombre) + '</strong>' +
-      '<span style="font-size:12px;color:var(--text-600);font-weight:400">(' + sec.items.length + ' indicadores)</span>' +
+      '<span class="secChevron" aria-hidden="true">▶</span>' +
+      '<div class="secSummaryTitleWrap">' +
+      '<span class="secSummaryName">' + esc(sec.nombre) + '</span>' +
+      ' <span class="secSummaryCount">(' + sec.items.length + ' ' + (sec.items.length === 1 ? 'indicador' : 'indicadores') + ')</span>' +
+      '</div>' +
       '</div>' +
       '<div class="secSummaryRight">' +
-      bar(sec.avg) +
-      '<span style="font-weight:700;font-size:13px;min-width:42px;text-align:right">' + (sec.avg === null ? '—' : sec.avg + '%') + '</span>' +
+      '<div class="secBarContainer">' +
+      '<div class="secBarTrack" role="progressbar" aria-valuenow="' + (sec.avg !== null ? sec.avg : 0) + '" aria-valuemin="0" aria-valuemax="100" aria-label="' + esc(sec.nombre) + '" title="' + (sec.avg === null ? 'Sin datos' : sec.avg + '%') + '">' +
+      '<div class="secBarFill ' + secFillCls + '" style="width:' + secVal + '%"></div>' +
+      '</div>' +
+      '</div>' +
+      '<span class="secSummaryPct">' + (sec.avg === null ? '—' : sec.avg + ' %') + '</span>' +
       '<span class="badge ' + secStatus.cls + '">' + secStatus.label + '</span>' +
       '</div>' +
       '</summary>' +
-      '<div class="secDetailsBody">' +
+      '<div class="secDetailsBody" id="' + bodyId + '" role="region" aria-labelledby="' + summaryId + '">' +
       '<div class="tblWrap"><table class="itemTable"><thead><tr>' +
       '<th style="width:40px;text-align:center">N.°</th>' +
       '<th>Indicador / Ítem</th>' +
