@@ -19,6 +19,7 @@ const mockDoc = {
     },
     getNumberOfPages: () => 3
   },
+  getTextWidth: (txt) => (txt || '').length * 5,
   setProperties: () => {},
   setFont: () => {},
   setFontSize: () => {},

@@ -3561,16 +3561,25 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     (dist.none ? '<span><span class="dot" style="background:var(--line-strong)"></span>Sin datos (' + dist.none + ')</span>' : '') +
     '</div></div>';
 
-  // Avance por sección (solo para tipo de ficha individual)
-  let secRows = '';
+  // Reporte por ítem (solo para tipo de ficha individual)
   let itemReportHtml = '';
   if (!isAllMode && ft) {
     const secAgg = {};
     ft.secciones.forEach(sec => secAgg[sec.nombre] = { sum: 0, cnt: 0 });
-    statsList.forEach(x => x.st.secciones.forEach(sc => { if (sc.pct !== null) { secAgg[sc.nombre].sum += sc.pct; secAgg[sc.nombre].cnt++; } }));
-    secRows = ft.secciones.map(sec => { const a = secAgg[sec.nombre]; const avg = a.cnt ? Math.round(a.sum / a.cnt) : null; return '<div class="barRow"><div class="name">' + esc(sec.nombre) + '</div>' + bar(avg) + '<div class="val">' + (avg === null ? '—' : avg + '%') + '</div></div>'; }).join('');
+    statsList.forEach(x => (x.st.secciones || []).forEach(sc => {
+      if (sc.pct !== null && secAgg[sc.nombre]) {
+        secAgg[sc.nombre].sum += sc.pct;
+        secAgg[sc.nombre].cnt++;
+      }
+    }));
 
     const itemAgg = computeItemAgg(statsList.map(x => x.s), ft);
+    itemAgg.forEach(sec => {
+      const a = secAgg[sec.nombre];
+      if (a && a.cnt) {
+        sec.avg = Math.round(a.sum / a.cnt);
+      }
+    });
     itemReportHtml = renderItemReportHtml(itemAgg, ft.tipoRespuesta);
   }
 
@@ -3693,7 +3702,6 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     '</div>' +
     '<div class="panel"><h3>Distribución de resultados</h3>' + seg + '</div>' +
     allTypesSummaryHtml +
-    (!isAllMode ? '<div class="panel"><h3>Avance por sección</h3>' + (secRows || '<p class="helpText">Sin secciones.</p>') + '</div>' : '') +
     (!isAllMode ? '<div class="panel"><h3>Reporte por ítem <small>resultado de cada indicador</small></h3>' + itemReportHtml + '</div>' : '') +
     '<div class="panel"><h3>Evolución por N° de visita</h3>' + visRows + '</div>' +
     '<div class="panel"><h3>Resumen por institución</h3>' +

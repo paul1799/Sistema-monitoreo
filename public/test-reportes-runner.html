@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Runner: Ajustes Vista Reportes</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body {
+      padding: 24px;
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    h1 { color: #38bdf8; margin-top: 0; }
+    .testCard {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      border: 1px solid #334155;
+    }
+    .badge-test {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 12px;
+    }
+    .badge-pass { background: #166534; color: #4ade80; }
+    .badge-fail { background: #991b1b; color: #f87171; }
+    table.resTable {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    table.resTable th, table.resTable td {
+      border: 1px solid #334155;
+      padding: 10px;
+      text-align: left;
+      font-size: 13.5px;
+    }
+    table.resTable th { background: #0f172a; }
+    #fixtureHost {
+      background: #f8fafc;
+      color: #0f172a;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Suite de Verificación: Ajustes Vista Reportes (6.1)</h1>
+  <div id="statusCard" class="testCard">Iniciando pruebas...</div>
+  
+  <div id="resultsCard" class="testCard" style="display:none;">
+    <h3>Resultados de Verificación Automatizada (9 Criterios)</h3>
+    <table class="resTable">
+      <thead>
+        <tr>
+          <th style="width:40px">#</th>
+          <th>Criterio Requerido</th>
+          <th style="width:90px">Estado</th>
+          <th>Detalles de la Verificación</th>
+        </tr>
+      </thead>
+      <tbody id="testRows"></tbody>
+    </table>
+  </div>
+
+  <h3>Montaje del Componente (Fixture):</h3>
+  <div id="fixtureHost"></div>
+
+  <script type="module">
+    import {
+      renderConsolidadoTab,
+      computeItemAgg,
+      renderItemReportHtml
+    } from './js/ui.js';
+
+    window.testResults = [];
+
+    function assertTest(num, name, condition, details) {
+      window.testResults.push({ num, name, passed: !!condition, details });
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="text-align:center;font-weight:bold">${num}</td>
+        <td><strong>${name}</strong></td>
+        <td><span class="badge-test ${condition ? 'badge-pass' : 'badge-fail'}">${condition ? 'PASS' : 'FAIL'}</span></td>
+        <td>${details}</td>
+      `;
+      document.getElementById('testRows').appendChild(tr);
+    }
+
+    async function runSuite() {
+      try {
+        const fixtureHost = document.getElementById('fixtureHost');
+
+        // FichaType mock con 5 secciones del caso real
+        const mockFt = {
+          id: 'ft_pedagogico_test',
+          nombre: 'Ficha de Monitoreo Pedagógico',
+          tipoRespuesta: 'si_no',
+          secciones: [
+            {
+              nombre: 'Monitoreo y acompañamiento a la práctica docente',
+              items: [
+                { id: 'sec1_1', texto: 'El directivo planifica las visitas.' },
+                { id: 'sec1_2', texto: 'Acompaña al docente en aula.' }
+              ]
+            },
+            {
+              nombre: 'Fortalecimiento docente',
+              items: [
+                { id: 'sec2_1', texto: 'Realiza talleres colegiados.' }
+              ]
+            },
+            {
+              nombre: 'Evaluación de los aprendizajes / Refuerzo escolar',
+              items: [
+                { id: 'sec3_1', texto: 'Implementa refuerzo escolar según resultados.' }
+              ]
+            },
+            {
+              nombre: 'Uso de materiales y espacios educativos',
+              items: [
+                { id: 'sec4_1', texto: 'Distribución y uso pertinente de cuadernos de trabajo.' }
+              ]
+            },
+            {
+              nombre: 'Otros aspectos',
+              items: [
+                { id: 'sec5_1', texto: 'Registros administrativos al día.' }
+              ]
+            }
+          ]
+        };
+
+        // Mock state con submissions que producen 100%, 100%, 94%, 96%, 75%
+        // Con 100 registros para porcentajes exactos
+        const mockSubmissions = [];
+        for (let i = 0; i < 100; i++) {
+          mockSubmissions.push({
+            id: 'sub_' + i,
+            fichaTypeId: 'ft_pedagogico_test',
+            institucion: 'I.E. ' + (1000 + (i % 5)),
+            ugel: 'UGEL 03',
+            red: 'RED 01',
+            fecha: '2026-09-20',
+            visita: 1,
+            responsable: 'Especialista AGEBRE',
+            respuestas: [
+              { id: 'sec1_1', valor: 'si' },
+              { id: 'sec1_2', valor: 'si' },
+              { id: 'sec2_1', valor: 'si' },
+              { id: 'sec3_1', valor: i < 94 ? 'si' : 'no' },
+              { id: 'sec4_1', valor: i < 96 ? 'si' : 'no' },
+              { id: 'sec5_1', valor: i < 75 ? 'si' : 'no' }
+            ]
+          });
+        }
+
+        const mockState = {
+          fichaTypes: [mockFt],
+          submissions: mockSubmissions,
+          colegios: [],
+          users: [],
+          currentUser: { id: 'u1', nombre: 'Admin AGEBRE', rol: 'admin' }
+        };
+
+        const getFichaType = (id) => id === 'ft_pedagogico_test' ? mockFt : null;
+        const mockDb = { collection: () => ({ doc: () => ({ delete: async () => {} }) }) };
+
+        // Renderizar Reportes
+        renderConsolidadoTab(fixtureHost, mockState, getFichaType, mockDb, true, () => {}, mockState.currentUser);
+
+        // Seleccionar la ficha de prueba
+        const consSelect = fixtureHost.querySelector('#consSelect');
+        consSelect.value = 'ft_pedagogico_test';
+        consSelect.dispatchEvent(new Event('change'));
+
+        // PRUEBA 1: No existe bloque ni título "Avance por sección"
+        const titles = Array.from(fixtureHost.querySelectorAll('h3, h2, h4, .lbl, strong'))
+          .map(el => el.textContent.trim().toLowerCase());
+        const hasAvanceSec = titles.some(t => t === 'avance por sección' || t.startsWith('avance por sección'));
+        assertTest(1, 'Eliminar tarjeta "Avance por sección"', !hasAvanceSec, 
+          hasAvanceSec ? 'Se encontró elemento con título "Avance por sección"' : 'No existe ningún elemento con título "Avance por sección"');
+
+        // PRUEBA 2: Acordeón cerrado por defecto
+        const allDetails = Array.from(fixtureHost.querySelectorAll('.secDetails'));
+        const allClosed = allDetails.every(d => !d.open);
+        const allAriaFalse = allDetails.every(d => {
+          const s = d.querySelector('summary');
+          return s && s.getAttribute('aria-expanded') === 'false';
+        });
+        assertTest(2, 'Todas las secciones cerradas al cargar', allClosed && allAriaFalse && allDetails.length === 5,
+          `Secciones encontradas: ${allDetails.length}. Todas cerradas: ${allClosed}. aria-expanded="false": ${allAriaFalse}`);
+
+        // PRUEBA 3: Clic en sección 2 abre solo sección 2; segundo clic la cierra
+        const sec2 = allDetails[1];
+        const sum2 = sec2.querySelector('summary');
+        sum2.click(); // Clic abrir
+        const sec2Open = sec2.open;
+        const othersClosedAfterSec2 = allDetails.filter((_, idx) => idx !== 1).every(d => !d.open);
+        const ariaExpSec2 = sum2.getAttribute('aria-expanded') === 'true';
+        
+        sum2.click(); // Clic cerrar
+        const sec2ClosedAgain = !sec2.open;
+        const ariaClosedSec2 = sum2.getAttribute('aria-expanded') === 'false';
+
+        assertTest(3, 'Clic en sección 2 abre solo sección 2 y segundo clic la cierra',
+          sec2Open && othersClosedAfterSec2 && ariaExpSec2 && sec2ClosedAgain && ariaClosedSec2,
+          `Abierta tras 1er clic: ${sec2Open} (aria-expanded: ${ariaExpSec2}). Otras cerradas: ${othersClosedAfterSec2}. Cerrada tras 2do clic: ${sec2ClosedAgain} (aria: ${ariaClosedSec2})`);
+
+        // PRUEBA 4: Clic en sección 1 y sección 3 deja ambas abiertas a la vez
+        const sec1 = allDetails[0];
+        const sec3 = allDetails[2];
+        sec1.querySelector('summary').click();
+        sec3.querySelector('summary').click();
+        const both1And3Open = sec1.open && sec3.open && !allDetails[1].open && !allDetails[3].open && !allDetails[4].open;
+        assertTest(4, 'Múltiples secciones abiertas a la vez', both1And3Open,
+          `Sec 1 open: ${sec1.open}, Sec 3 open: ${sec3.open}, Sec 2 open: ${allDetails[1].open}`);
+
+        // PRUEBA 5: Botón Expandir / Contraer todo
+        const toggleAllBtn = fixtureHost.querySelector('#toggleAllItemsBtn');
+        // Actualmente algunas están abiertas, otras cerradas. Clic debe abrir todas.
+        toggleAllBtn.click();
+        const allOpenAfterBtn = allDetails.every(d => d.open && d.querySelector('summary').getAttribute('aria-expanded') === 'true');
+        
+        // Con todo abierto, clic debe cerrar todas
+        toggleAllBtn.click();
+        const allClosedAfterBtn = allDetails.every(d => !d.open && d.querySelector('summary').getAttribute('aria-expanded') === 'false');
+        assertTest(5, 'Botón Expandir / Contraer todo', allOpenAfterBtn && allClosedAfterBtn,
+          `Expandir todo abre todas: ${allOpenAfterBtn}. Contraer todo cierra todas: ${allClosedAfterBtn}`);
+
+        // PRUEBA 6: Al cambiar un filtro, todas las secciones vuelven a quedar cerradas
+        // Abrimos la sección 1
+        sec1.querySelector('summary').click();
+        // Cambiar filtro de visita
+        const filVis = fixtureHost.querySelector('#top_fil_visita');
+        filVis.value = '1';
+        filVis.dispatchEvent(new Event('change'));
+        const refreshedDetails = Array.from(fixtureHost.querySelectorAll('.secDetails'));
+        const allClosedAfterFilter = refreshedDetails.every(d => !d.open && d.querySelector('summary').getAttribute('aria-expanded') === 'false');
+        assertTest(6, 'Cambio de filtro restablece acordeón a cerrado', allClosedAfterFilter,
+          `Tras cambiar filtro, ${refreshedDetails.length} secciones están cerradas: ${allClosedAfterFilter}`);
+
+        // PRUEBA 7: Porcentajes de cabeceras coinciden con valores esperados (100%, 100%, 94%, 96%, 75%)
+        const pcts = refreshedDetails.map(d => {
+          const pctEl = d.querySelector('.secSummaryPct');
+          return pctEl ? pctEl.textContent.trim() : '';
+        });
+        const expectedPcts = ['100 %', '100 %', '94 %', '96 %', '75 %'];
+        const pctsMatch = JSON.stringify(pcts) === JSON.stringify(expectedPcts);
+        assertTest(7, 'Porcentajes por sección (100%, 100%, 94%, 96%, 75%)', pctsMatch,
+          `Obtenidos: [${pcts.join(', ')}]. Esperados: [${expectedPcts.join(', ')}]`);
+
+        // PRUEBA 8: Barra ancha, role="progressbar", width correspondiente y color
+        const barsValid = refreshedDetails.every((d, idx) => {
+          const track = d.querySelector('.secBarTrack');
+          const fill = d.querySelector('.secBarFill');
+          if (!track || !fill) return false;
+          const role = track.getAttribute('role');
+          const ariaVal = track.getAttribute('aria-valuenow');
+          const styleW = fill.style.width;
+          const expVal = [100, 100, 94, 96, 75][idx];
+          const hasOk = expVal >= 85 ? fill.classList.contains('ok') : true;
+          const hasWarn = (expVal >= 70 && expVal < 85) ? fill.classList.contains('warn') : true;
+          return role === 'progressbar' && Number(ariaVal) === expVal && styleW === expVal + '%' && hasOk && hasWarn;
+        });
+        assertTest(8, 'Barras con role="progressbar", width% exacto y clases de color', barsValid,
+          `Verificación de atributos ARIA, width y clases .ok / .warn: ${barsValid ? 'CORRECTO' : 'ERROR'}`);
+
+        // PRUEBA 9: Teclado (Enter y Espacio) despliegan y pliegan cabecera
+        const testD = refreshedDetails[0];
+        const testSummary = testD.querySelector('summary');
+        testSummary.focus();
+        // Disparar Enter
+        testSummary.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        testD.open = !testD.open;
+        testD.dispatchEvent(new Event('toggle'));
+        const openWithEnter = testD.open && testSummary.getAttribute('aria-expanded') === 'true';
+
+        // Disparar Space
+        testSummary.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+        testD.open = !testD.open;
+        testD.dispatchEvent(new Event('toggle'));
+        const closedWithSpace = !testD.open && testSummary.getAttribute('aria-expanded') === 'false';
+        assertTest(9, 'Navegación por teclado (Enter y Espacio)', openWithEnter && closedWithSpace,
+          `Enter desplegó: ${openWithEnter}. Espacio plegó: ${closedWithSpace}`);
+
+        document.getElementById('statusCard').innerHTML = '<span style="color:#4ade80;font-weight:bold">✔ Todas las pruebas completadas.</span>';
+        document.getElementById('resultsCard').style.display = 'block';
+
+      } catch (err) {
+        console.error('Error ejecutando pruebas:', err);
+        document.getElementById('statusCard').innerHTML = `<span style="color:#f87171">Error: ${err.message}</span>`;
+      }
+    }
+
+    runSuite();
+  </script>
+</body>
+</html>
