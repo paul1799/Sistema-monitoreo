@@ -3738,16 +3738,44 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
   });
 
-  // Expandir / Contraer todo en Reporte por Ítem
+  // Expandir / Contraer todo en Reporte por Ítem y sincronización de accesibilidad
   const toggleAllBtn = document.getElementById('toggleAllItemsBtn');
+  const detailsList = host.querySelectorAll('.secDetails');
   if (toggleAllBtn) {
     toggleAllBtn.addEventListener('click', () => {
-      const detailsList = host.querySelectorAll('.secDetails');
       const anyClosed = Array.from(detailsList).some(d => !d.open);
-      detailsList.forEach(d => { d.open = anyClosed; });
+      detailsList.forEach(d => {
+        d.open = anyClosed;
+        const summary = d.querySelector('summary');
+        if (summary) summary.setAttribute('aria-expanded', anyClosed ? 'true' : 'false');
+      });
       toggleAllBtn.textContent = anyClosed ? 'Contraer todo' : 'Expandir todo';
     });
   }
+
+  detailsList.forEach(d => {
+    const summary = d.querySelector('summary');
+    d.addEventListener('toggle', () => {
+      if (summary) {
+        summary.setAttribute('aria-expanded', d.open ? 'true' : 'false');
+      }
+      if (toggleAllBtn) {
+        const anyClosed = Array.from(detailsList).some(item => !item.open);
+        toggleAllBtn.textContent = anyClosed ? 'Expandir todo' : 'Contraer todo';
+      }
+    });
+
+    if (summary) {
+      summary.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Spacebar') {
+          e.preventDefault();
+          d.open = !d.open;
+        } else if (e.key === 'Enter') {
+          // Enter nativamente conmuta el details; toggle event actualiza aria-expanded
+        }
+      });
+    }
+  });
 
   // Sincronizar UGEL / RED en fichas antiguas desde el padrón
   const btnBackfill = document.getElementById('btnBackfillUgel');
