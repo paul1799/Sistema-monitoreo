@@ -2545,15 +2545,15 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     if (!el) return;
     const allC = state.compromisos || [];
     const pending = allC.filter(c => c.institucion === ieName && c.estado !== 'Cumplido' && c.estado !== 'Anulado');
-    
+
     if (pending.length === 0) {
       el.innerHTML = '<p class="helpText" style="margin-top:0">No hay compromisos pendientes anteriores para esta institución.</p>';
       return;
     }
-    
-    el.innerHTML = '<ul style="padding-left:18px;margin-top:0">' + pending.map(c => 
+
+    el.innerHTML = '<ul style="padding-left:18px;margin-top:0">' + pending.map(c =>
       '<li style="margin-bottom:8px;font-size:13.5px">' +
-      '<strong>' + esc(c.responsable || 'Responsable') + ':</strong> ' + esc(c.texto) + 
+      '<strong>' + esc(c.responsable || 'Responsable') + ':</strong> ' + esc(c.texto) +
       ' <br><span style="color:var(--ink-soft);font-size:12px">Plazo: ' + (c.plazo ? fmtDate(c.plazo) : 'N/A') + '</span>' +
       ' <button type="button" class="btn btn-sm secondary btnClosePrevComp" style="padding:2px 6px;margin-left:8px" data-cid="' + esc(c.id) + '">Marcar Cumplido ✓</button>' +
       '</li>'
@@ -3605,19 +3605,19 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     const criticosDS = RepDatos.getRankingCriticosDataset(statsList, ft);
     const heatmapDS = RepDatos.getMapaCalorDataset(statsList, ft);
     const sugerencias = RepDatos.getSugerencias(statsList, ft, criticosDS);
-    
+
     let sugHtml = '';
     if (sugerencias.length > 0) {
       sugHtml = '<div class="panel" style="background:#FEF3C7;border:1px solid #F59E0B;border-left:4px solid #D97706;padding:16px;">' +
         '<h3 style="color:#B45309;margin-top:0">💡 Sugerencias Automáticas</h3>' +
-        '<ul style="margin-bottom:0;color:#92400E;padding-left:20px">' + 
-        sugerencias.map(s => '<li><strong>' + s.tipo + ':</strong> ' + s.mensaje + '</li>').join('') + 
+        '<ul style="margin-bottom:0;color:#92400E;padding-left:20px">' +
+        sugerencias.map(s => '<li><strong>' + s.tipo + ':</strong> ' + s.mensaje + '</li>').join('') +
         '</ul></div>';
     }
 
     let criticosHtml = '<div class="panel"><h3>Top 5 Ítems Críticos (No/Inicio)</h3>';
     if (criticosDS.length > 0) {
-      criticosHtml += criticosDS.slice(0, 5).map(c => 
+      criticosHtml += criticosDS.slice(0, 5).map(c =>
         '<div class="barRow"><div class="name" style="max-width:300px;white-space:normal;line-height:1.2;font-size:11px">' + c.texto + '</div>' +
         '<div class="barTrack"><div class="barFill danger" style="width:' + c.pctCritico + '%"></div></div><div class="val">' + c.pctCritico + '%</div></div>'
       ).join('');
@@ -3625,7 +3625,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
       criticosHtml += '<p class="helpText">No hay ítems críticos detectados.</p>';
     }
     criticosHtml += '</div>';
-    
+
     fase4Html = sugHtml + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">' + criticosHtml + '</div>';
   }
 
@@ -12405,7 +12405,7 @@ async function backfillSubmissionsUgelRed(dbNs, state) {
     if (matched) {
       let padronUgel = matched.dependencia || 'UGEL 03';
       if (padronUgel.toLowerCase().includes('sector educ')) padronUgel = 'UGEL 03';
-      
+
       const padronRed = matched.rei || 'No aplica';
       const padronCod = matched.codigoLocal || matched.codigoModular || '';
 
@@ -12418,7 +12418,8 @@ async function backfillSubmissionsUgelRed(dbNs, state) {
         needUpdate = true;
       }
       if (!newRed || newRed === '—') {
-        newRed = 'No aplica';
+
+        newRed = 'No aplica';
         needUpdate = true;
       }
     }
