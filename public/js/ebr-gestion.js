@@ -5,7 +5,7 @@
    de docentes R1–R5, I–IV), cálculo en tiempo real, validaciones y modelo de datos.
    ========================================================================= */
 
-import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui.js?v=20260925_v8';
+import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, clearEditMode } from './ui.js?v=20260925_v8';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260925_v8';
 
 /** Rúbricas oficiales de observación de aula (MINEDU) */
@@ -444,6 +444,7 @@ export function resetEbrFormState() {
     visita: null,
     colegioId: '',
     institucion: '',
+    responsable: '',
     fecha: todayStr(),
     formacionTecnica: false,
     codigoLocal: '',
@@ -474,6 +475,7 @@ export function preloadEbrFormState(sub, ft) {
   ebrFormState.visita = sub.visita === 2 ? 2 : 1;
   ebrFormState.colegioId = sub.colegioId || (sub.ie && sub.ie.id) || '';
   ebrFormState.institucion = sub.institucion || '';
+  ebrFormState.responsable = sub.responsable || '';
   ebrFormState.fecha = sub.fecha || todayStr();
   ebrFormState.codigoLocal = (sub.ie && sub.ie.codigoLocal) || sub.codigoModular || '';
   ebrFormState.red = (sub.ie && sub.ie.red) || sub.red || '';
@@ -575,6 +577,12 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
   const currentVisita = ebrFormState.visita;
   const isV1 = currentVisita === 1;
   const isV2 = currentVisita === 2;
+
+  const defaultResponsable = ebrFormState.responsable ||
+    (currentUser ? (currentUser.nombre || currentUser.displayName || (currentUser.email ? currentUser.email.split('@')[0] : '')) : '');
+  if (!ebrFormState.responsable && defaultResponsable) {
+    ebrFormState.responsable = defaultResponsable;
+  }
 
   // Secciones e ítems correspondientes a la visita elegida
   const seccionesActuales = isV1
@@ -687,6 +695,14 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
         <div class="field">
           <label for="f_fecha">Fecha de visita *</label>
           <input type="date" id="f_fecha" value="${esc(ebrFormState.fecha || todayStr())}" required>
+        </div>
+        <div class="field" style="grid-column:span 2">
+          <label for="ebr_responsable">Especialista / Monitor Responsable *</label>
+          <div class="ieSearchWrap" id="ebrRespSearchWrap">
+            <input type="text" id="ebr_responsable" class="respAutocompleteInp" autocomplete="off" placeholder="Buscar especialista o ingresar nombre completo..." value="${esc(ebrFormState.responsable || defaultResponsable || '')}" required>
+            <div class="respDropdown ieDropdown" id="ebrRespDropdown"></div>
+          </div>
+          <span class="respHint" id="ebrRespHint" style="display:${(ebrFormState.responsable || defaultResponsable) ? 'block' : 'none'};font-size:11.5px;color:var(--primary-dark);margin-top:4px">${(ebrFormState.responsable || defaultResponsable) ? '✓ Especialista responsable asignado' : ''}</span>
         </div>
         <div class="field" style="grid-column:span 2">
           <label style="display:block;margin-bottom:6px">¿La IE implementa el modelo de Servicio Educativo Secundaria con Formación Técnica? *</label>
@@ -1304,6 +1320,9 @@ export function syncAllEbrFormDataFromDom(host) {
   const redEl = host.querySelector('#ebr_red');
   if (redEl) ebrFormState.red = redEl.value.trim();
 
+  const respEl = host.querySelector('#ebr_responsable');
+  if (respEl) ebrFormState.responsable = respEl.value.trim();
+
   const ftRad = host.querySelector('input[name="ebr_formacion_tecnica"]:checked');
   if (ftRad) ebrFormState.formacionTecnica = ftRad.value === 'si';
 
@@ -1496,6 +1515,33 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       hint.textContent = `✓ Vinculada al padrón: ${c.ie} · RED ${c.rei || '—'} · Cód: ${c.codigoLocal || '—'}`;
     }
 
+    // Auto-sugerir especialista según RED del colegio
+    if (c.rei && state.responsables && state.responsables.length) {
+      const cReiNorm = normalizeText(c.rei);
+      const matchedResp = state.responsables.find(r => {
+        if (!r.red) return false;
+        const rRedNorm = normalizeText(r.red);
+        return rRedNorm.includes(cReiNorm) || cReiNorm.includes(rRedNorm) ||
+          (c.rei.match(/\d+/) && r.red.includes(c.rei.match(/\d+/)[0]));
+      });
+
+      if (matchedResp) {
+        const respName = matchedResp.nombresApellidos || matchedResp.especialista || '';
+        const userEmailName = (currentUser?.email ? currentUser.email.split('@')[0] : '');
+        if (respName && (!ebrFormState.responsable || ebrFormState.responsable === userEmailName)) {
+          ebrFormState.responsable = respName;
+          const rInp = host.querySelector('#ebr_responsable');
+          if (rInp) rInp.value = respName;
+          const rHint = host.querySelector('#ebrRespHint');
+          if (rHint) {
+            rHint.style.display = 'block';
+            rHint.textContent = '✓ ' + (matchedResp.cargo || matchedResp.especialista || 'Especialista') +
+              (matchedResp.red ? ' · ' + matchedResp.red : '');
+          }
+        }
+      }
+    }
+
     // Comprobar si ya tiene fichas EBR en 2026 para sugerir Visita 1 o Visita 2
     checkExistingVisitasEbr(c, host, state, ft, dbNs, currentUser, navigate, isEditing);
 
@@ -1534,6 +1580,75 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
     instInput.addEventListener('input', showDropdown);
     instInput.addEventListener('focus', () => { if (!instInput.value) showDropdown(); });
     instInput.addEventListener('blur', () => { setTimeout(() => { dropdown.style.display = 'none'; }, 200); });
+  }
+
+  // ---- Autocompletado del Especialista / Monitor Responsable ----
+  const respInput = host.querySelector('#ebr_responsable');
+  const respDrop = host.querySelector('#ebrRespDropdown');
+  const respHint = host.querySelector('#ebrRespHint');
+
+  const selectEbrResponsable = (r) => {
+    const name = r.nombresApellidos || r.especialista || '';
+    ebrFormState.responsable = name;
+    if (respInput) respInput.value = name;
+    if (respHint) {
+      respHint.style.display = 'block';
+      respHint.textContent = '✓ ' + (r.cargo || r.especialista || 'Especialista') +
+        (r.red ? ' · ' + r.red : '') +
+        (r.modalidad ? ' · ' + r.modalidad : '') +
+        (r.celular ? ' · Cel: ' + r.celular : '');
+    }
+    if (respDrop) respDrop.style.display = 'none';
+  };
+
+  if (respInput && respDrop) {
+    const renderRespMatches = () => {
+      const q = normalizeText(respInput.value);
+      const matches = (state.responsables || []).filter(r => {
+        if (!q) return true;
+        return normalizeText(r.nombresApellidos).includes(q) ||
+          normalizeText(r.especialista).includes(q) ||
+          normalizeText(r.cargo).includes(q) ||
+          normalizeText(r.red).includes(q) ||
+          normalizeText(r.distrito).includes(q) ||
+          normalizeText(r.modalidad).includes(q) ||
+          normalizeText(r.correo).includes(q);
+      }).slice(0, 20);
+
+      if (!matches.length) {
+        respDrop.style.display = 'none';
+        return;
+      }
+
+      respDrop.innerHTML = matches.map(r => {
+        const modBadge = r.modalidad ? ' <span class="badge" style="font-size:10px;padding:1px 6px;background:var(--surface-2);margin-left:4px">' + esc(r.modalidad) + '</span>' : '';
+        return '<div class="ieDropdownItem" data-respid="' + esc(r.id) + '">' +
+          '<div class="ieDropMain">' + esc(r.nombresApellidos || r.especialista) + modBadge + '</div>' +
+          '<div class="ieDropSub">' +
+          (r.cargo ? esc(r.cargo) : (r.especialista ? esc(r.especialista) : '')) +
+          (r.red ? ' · <strong>' + esc(r.red) + '</strong>' : '') +
+          (r.distrito ? ' · ' + esc(r.distrito) : '') +
+          (r.celular ? ' · Cel: ' + esc(r.celular) : '') +
+          '</div>' +
+          '</div>';
+      }).join('');
+      respDrop.style.display = 'block';
+
+      respDrop.querySelectorAll('.ieDropdownItem').forEach(item => {
+        item.onmousedown = (e) => {
+          e.preventDefault();
+          const r = (state.responsables || []).find(x => x.id === item.dataset.respid);
+          if (r) selectEbrResponsable(r);
+        };
+      });
+    };
+
+    respInput.addEventListener('input', () => {
+      ebrFormState.responsable = respInput.value.trim();
+      renderRespMatches();
+    });
+    respInput.addEventListener('focus', () => { if (!respInput.value) renderRespMatches(); });
+    respInput.addEventListener('blur', () => { setTimeout(() => { if (respDrop) respDrop.style.display = 'none'; }, 200); });
   }
 
   // ---- Guardar datos del subdirector ----
@@ -1885,6 +2000,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
   if (cancelBtn) {
     cancelBtn.onclick = () => {
       if (confirm('¿Deseas salir del formulario? Los cambios no guardados se perderán.')) {
+        clearEditMode();
         resetEbrFormState();
         if (navigate) navigate('registrar');
       }
@@ -1973,6 +2089,9 @@ function checkExistingVisitasEbr(colegio, host, state, ft, dbNs = null, currentU
       if (hasV1.director && !ebrFormState.director.nombres) {
         ebrFormState.director.nombres = typeof hasV1.director === 'object' ? hasV1.director.nombres : hasV1.director;
         ebrFormState.director.dni = hasV1.directorDni || (hasV1.director && hasV1.director.dni) || '';
+      }
+      if (hasV1.responsable && !ebrFormState.responsable) {
+        ebrFormState.responsable = hasV1.responsable;
       }
       if (Array.isArray(hasV1.subdirectores) && hasV1.subdirectores.length && !ebrFormState.subdirectores.length) {
         ebrFormState.subdirectores = [...hasV1.subdirectores];
@@ -2283,6 +2402,9 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
     extrasFlat.push({ label: 'Total docentes Secundaria 2do momento', value: (m2.find(r => r.nivel === 'Secundaria') || {}).total || 0 });
   }
 
+  const respEl = host.querySelector('#ebr_responsable');
+  const responsableVal = (respEl ? respEl.value.trim() : '') || ebrFormState.responsable || '';
+
   // Modelo estructurado exacto según Requerimiento 8
   return {
     fichaTypeId: ft.id,
@@ -2291,6 +2413,8 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
     visita: Number(visita),
     visitaTipo: visita === 1 ? 'Visita 1 · Primer momento' : 'Visita 2 · Segundo momento',
     institucion,
+    colegioId: ebrFormState.colegioId || null,
+    responsable: responsableVal,
     fecha,
     ie: {
       codigoLocal: ebrFormState.codigoLocal,

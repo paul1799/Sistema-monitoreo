@@ -126,6 +126,12 @@ export function setEditMode(id, data) {
   editingSubmissionData = data ? JSON.parse(JSON.stringify(data)) : null;
 }
 
+/** Limpia el modo edición para iniciar un nuevo registro limpio */
+export function clearEditMode() {
+  editingSubmissionId = null;
+  editingSubmissionData = null;
+}
+
 /* ============================= UTILIDADES ============================= */
 export function esc(s) {
   return String(s === undefined || s === null ? '' : s)
@@ -183,6 +189,64 @@ export function colorForPct(pct) {
 export function normalizeText(s) {
   return String(s === undefined || s === null ? '' : s)
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+export function normalizeInstName(s) {
+  return normalizeText(s)
+    .replace(/^i\s*\.\s*e\s*\.\s*/i, 'ie ')
+    .replace(/^i\s*\.\s*e\s+/i, 'ie ')
+    .replace(/\bn[°ºo]?\s*(\d+)/gi, 'n $1');
+}
+
+/**
+ * Obtiene el nombre del responsable de una ficha, resolviendo fallbacks si no fue guardado explícitamente:
+ * 1. Campo explícito s.responsable
+ * 2. Campo en extras (etiquetas como responsable, especialista, monitor)
+ * 3. Especialista asignado a la RED en state.responsables
+ * 4. Nombre del usuario en state.users según s.createdBy
+ * 5. Usuario de sesión actual si coincide con s.createdBy
+ */
+export function getSubmissionResponsable(s, state = null, currentUser = null) {
+  if (s && s.responsable && String(s.responsable).trim() && s.responsable.trim() !== '—') {
+    return s.responsable.trim();
+  }
+  // 1. Extras
+  if (s && Array.isArray(s.extras)) {
+    const ex = s.extras.find(e => {
+      const l = (e.label || '').toLowerCase();
+      return (l.includes('responsable') || l.includes('especialista') || l.includes('monitor')) &&
+        !l.includes('dni') && e.value && String(e.value).trim() && e.value.trim() !== '—';
+    });
+    if (ex && ex.value.trim()) return ex.value.trim();
+  }
+  // 2. Especialista asignado a la RED
+  const red = s ? (s.red || (s.ie && s.ie.red)) : '';
+  const appState = state || _appState || (typeof window !== 'undefined' ? window.state : null) || {};
+  if (red && red !== 'No aplica' && appState && Array.isArray(appState.responsables)) {
+    const redNorm = normalizeText(red);
+    const matchedResp = appState.responsables.find(r => {
+      if (!r.red) return false;
+      const rRedNorm = normalizeText(r.red);
+      return rRedNorm.includes(redNorm) || redNorm.includes(rRedNorm) ||
+        (red.match(/\d+/) && r.red.includes(red.match(/\d+/)[0]));
+    });
+    if (matchedResp && (matchedResp.nombresApellidos || matchedResp.especialista)) {
+      return (matchedResp.nombresApellidos || matchedResp.especialista).trim();
+    }
+  }
+  // 3. state.users por createdBy
+  if (s && s.createdBy && appState && Array.isArray(appState.users)) {
+    const userObj = appState.users.find(u => u.uid === s.createdBy || u.id === s.createdBy || u.email === s.createdBy);
+    if (userObj && (userObj.nombre || userObj.displayName)) {
+      return (userObj.nombre || userObj.displayName).trim();
+    }
+  }
+  // 4. currentUser
+  const user = currentUser || _currentSessionUser || (appState && appState.currentUser) || null;
+  if (user && s && s.createdBy && s.createdBy === user.uid && (user.nombre || user.displayName)) {
+    return (user.nombre || user.displayName).trim();
+  }
+  return '';
 }
 
 /* ============================= HELPERS DE RENDER ============================= */
@@ -1407,6 +1471,9 @@ export function setupNavigation(state, renderFn) {
       document.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
       b.classList.add('active');
       state.activeTab = b.dataset.tab;
+      if (state.activeTab === 'registrar') {
+        clearEditMode();
+      }
       cleanConcursoParams(state.activeTab);
       renderFn();
     });
@@ -1419,6 +1486,7 @@ export function setupNavigation(state, renderFn) {
       forceResetBodyScroll();
       window.scrollTo({ top: 0, behavior: 'instant' });
       state.activeTab = 'registrar';
+      clearEditMode();
       cleanConcursoParams('registrar');
       document.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
       const btn = document.querySelector('.navbtn[data-tab="registrar"]');
@@ -1782,8 +1850,7 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
     if (cambiarBtn) {
       cambiarBtn.onclick = () => {
         regSelectedTypeId = null;
-        editingSubmissionId = null;
-        editingSubmissionData = null;
+        clearEditMode();
         renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);
       };
     }
@@ -1996,6 +2063,7 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
 
   // Selección de ficha para registrar
   const selectFicha = (id) => {
+    clearEditMode();
     regSelectedTypeId = id;
     regBuiltFor = null;
     renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);
@@ -2797,13 +2865,13 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
   if (cancelFormBtn) {
     cancelFormBtn.addEventListener('click', () => {
       if (editingSubmissionId) {
-        editingSubmissionId = null;
-        editingSubmissionData = null;
+        clearEditMode();
         regBuiltFor = null;
         regSelectedTypeId = null;
         if (navigate) navigate('consolidado');
       } else {
         if (confirm('¿Deseas cancelar el registro? Se descartarán los cambios ingresados.')) {
+          clearEditMode();
           regBuiltFor = null;
           regCompromisos = [];
           regSelectedColegioId = null;
@@ -2876,8 +2944,28 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       let submissionToken = isEdit ? editingSubmissionId : ((form && form.dataset.submissionId) || genId());
       if (form) form.dataset.submissionId = submissionToken;
 
+      const fallbackResp = (currentUser && (currentUser.nombre || currentUser.displayName || currentUser.email)) || '';
+      let finalResp = (ebrData.responsable && ebrData.responsable.trim()) || '';
+      if (!finalResp && ebrData.red && activeState.responsables && activeState.responsables.length) {
+        const cReiNorm = normalizeText(ebrData.red);
+        const matchedResp = activeState.responsables.find(r => {
+          if (!r.red) return false;
+          const rRedNorm = normalizeText(r.red);
+          return rRedNorm.includes(cReiNorm) || cReiNorm.includes(rRedNorm) ||
+            (ebrData.red.match(/\d+/) && r.red.includes(ebrData.red.match(/\d+/)[0]));
+        });
+        if (matchedResp) {
+          finalResp = (matchedResp.nombresApellidos || matchedResp.especialista || '').trim();
+        }
+      }
+      if (!finalResp) {
+        finalResp = fallbackResp;
+      }
+
       const docData = {
         ...ebrData,
+        colegioId: ebrData.colegioId || regSelectedColegioId || null,
+        responsable: finalResp,
         createdBy: isEdit ? (editingSubmissionData?.createdBy || currentUser.uid) : currentUser.uid,
         createdAt: isEdit ? (editingSubmissionData?.createdAt || Date.now()) : Date.now(),
         updatedAt: Date.now()
@@ -2901,18 +2989,18 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
         console.warn('Error sincronizando directorio desde ficha EBR:', syncErr);
       }
 
-      if (!isEdit && activeState.submissions) {
-        const existingIdx = activeState.submissions.findIndex(s => s.id === submissionToken);
+      const targetId = isEdit ? editingSubmissionId : submissionToken;
+      if (activeState.submissions) {
+        const existingIdx = activeState.submissions.findIndex(s => s.id === targetId);
         if (existingIdx >= 0) {
-          activeState.submissions[existingIdx] = { id: submissionToken, ...docData };
+          activeState.submissions[existingIdx] = { id: targetId, ...docData };
         } else {
-          activeState.submissions.unshift({ id: submissionToken, ...docData });
+          activeState.submissions.unshift({ id: targetId, ...docData });
         }
       }
 
       if (form) form.dataset.submissionId = '';
-      editingSubmissionId = null;
-      editingSubmissionData = null;
+      clearEditMode();
       resetEbrFormState();
       regBuiltFor = null;
       regSelectedTypeId = null;
@@ -3150,6 +3238,25 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
     let submissionToken = (form && form.dataset.submissionId) || genId();
     if (form) form.dataset.submissionId = submissionToken;
 
+    const fallbackResp = (currentUser && (currentUser.nombre || currentUser.displayName || currentUser.email)) || '';
+    if (!responsableVal || !responsableVal.trim()) {
+      if (redVal && redVal !== 'No aplica' && activeState.responsables && activeState.responsables.length) {
+        const redNorm = normalizeText(redVal);
+        const matchedResp = activeState.responsables.find(r => {
+          if (!r.red) return false;
+          const rRedNorm = normalizeText(r.red);
+          return rRedNorm.includes(redNorm) || redNorm.includes(rRedNorm) ||
+            (redVal.match(/\d+/) && r.red.includes(redVal.match(/\d+/)[0]));
+        });
+        if (matchedResp && (matchedResp.nombresApellidos || matchedResp.especialista)) {
+          responsableVal = (matchedResp.nombresApellidos || matchedResp.especialista).trim();
+        }
+      }
+    }
+    if (!responsableVal || !responsableVal.trim()) {
+      responsableVal = fallbackResp;
+    }
+
     const docData = {
       fichaTypeId: ft.id,
       fichaTypeNombre: ft.nombre,
@@ -3233,19 +3340,18 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
     }
 
     // Actualizar cache local para respuesta instantánea de KPIs y tablas
-    if (!isEdit && activeState.submissions) {
-      const existingIdx = activeState.submissions.findIndex(s => s.id === submissionToken);
+    if (activeState.submissions) {
+      const existingIdx = activeState.submissions.findIndex(s => s.id === targetId);
       if (existingIdx >= 0) {
-        activeState.submissions[existingIdx] = { id: submissionToken, ...docData };
+        activeState.submissions[existingIdx] = { id: targetId, ...docData };
       } else {
-        activeState.submissions.unshift({ id: submissionToken, ...docData });
+        activeState.submissions.unshift({ id: targetId, ...docData });
       }
     }
 
     // Limpiar estado tras guardado exitoso
     if (form) form.dataset.submissionId = '';
-    editingSubmissionId = null;
-    editingSubmissionData = null;
+    clearEditMode();
     regBuiltFor = null;
     regSelectedTypeId = null;
     regCompromisos = [];
@@ -3525,7 +3631,10 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
   if (consFilters.visita) subs = subs.filter(s => String(s.visita || 1) === String(consFilters.visita));
   if (consFilters.responsable) {
     const rNorm = consFilters.responsable.trim().toLowerCase();
-    subs = subs.filter(s => (s.responsable || '').trim().toLowerCase().includes(rNorm));
+    subs = subs.filter(s => {
+      const respName = getSubmissionResponsable(s, state, user);
+      return respName.toLowerCase().includes(rNorm);
+    });
   }
   if (consFilters.desde) subs = subs.filter(s => s.fecha >= consFilters.desde);
   if (consFilters.hasta) subs = subs.filter(s => s.fecha <= consFilters.hasta);
@@ -3542,7 +3651,11 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
   if (consFilters.estado) statsList = statsList.filter(x => statusFromPct(x.st.pct).label === consFilters.estado);
   const withPct = statsList.filter(x => x.st.pct !== null);
   const avgPct = withPct.length ? Math.round(withPct.reduce((a, x) => a + x.st.pct, 0) / withPct.length) : null;
-  const instCount = new Set(statsList.map(x => (x.s.institucion || '') + '|' + (x.s.ugel || ''))).size;
+  const instCount = new Set(statsList.map(x => {
+    const normInst = normalizeInstName(x.s.institucion || '');
+    const normUgel = normalizeText(x.s.ugel || 'UGEL 03');
+    return x.s.colegioId ? ('col_' + x.s.colegioId) : (normInst + '|' + normUgel);
+  })).size;
 
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
   statsList.forEach(x => { const l = statusFromPct(x.st.pct).label; if (l === 'Logrado') dist.logrado++; else if (l === 'En proceso') dist.proceso++; else if (l === 'Inicio') dist.inicio++; else dist.none++; });
@@ -3665,25 +3778,51 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     const typeName = s.fichaTypeNombre || (getFichaType(s.fichaTypeId) || {}).nombre || '—';
     const typeCol = isAllMode ? '<td><span class="badge st-none" style="font-size:10.5px">' + esc(typeName) + '</span></td>' : '';
     const ugelRedCol = '<td>' + esc(s.ugel || 'UGEL 03') + '<br><small style="color:var(--text-muted);font-weight:600;">' + esc(s.red || 'No aplica') + '</small></td>';
-    return '<tr class="clickable" data-row="' + s.id + '"><td>' + fmtDate(s.fecha) + '</td><td>' + esc(s.institucion) + '</td>' + typeCol + ugelRedCol + '<td>' + (s.visita ? 'V' + s.visita : '—') + '</td><td>' + esc(s.responsable || '—') + '</td><td>' + (st.pct === null ? '—' : st.pct + '%') + '</td><td><span class="badge ' + status.cls + '">' + status.label + '</span></td><td style="white-space:nowrap"><div class="rowActions">' + pdfBtn + editBtn + delBtn + '</div></td></tr>' +
+    const subResp = getSubmissionResponsable(s, state, user);
+    return '<tr class="clickable" data-row="' + s.id + '"><td>' + fmtDate(s.fecha) + '</td><td>' + esc(s.institucion) + '</td>' + typeCol + ugelRedCol + '<td>' + (s.visita ? 'V' + s.visita : '—') + '</td><td>' + esc(subResp || '—') + '</td><td>' + (st.pct === null ? '—' : st.pct + '%') + '</td><td><span class="badge ' + status.cls + '">' + status.label + '</span></td><td style="white-space:nowrap"><div class="rowActions">' + pdfBtn + editBtn + delBtn + '</div></td></tr>' +
       (isOpen ? '<tr class="detailRow"><td colspan="' + (isAllMode ? 9 : 8) + '">' + detailContent + '</td></tr>' : '');
   }).join('') || '<tr><td colspan="' + (isAllMode ? 9 : 8) + '" style="text-align:center;color:var(--text-600);padding:22px">No hay fichas que coincidan con los filtros.</td></tr>';
 
   const byInst = {};
   statsList.forEach(x => {
-    const key = (x.s.institucion || '') + '|' + (x.s.ugel || '');
-    if (!byInst[key]) byInst[key] = { institucion: x.s.institucion, ugel: x.s.ugel, red: x.s.red, visitas: [] };
+    const normInst = normalizeInstName(x.s.institucion || '');
+    const normUgel = normalizeText(x.s.ugel || 'UGEL 03');
+    const key = x.s.colegioId ? ('col_' + x.s.colegioId) : (normInst + '|' + normUgel);
+    if (!byInst[key]) {
+      byInst[key] = {
+        colegioId: x.s.colegioId || null,
+        institucion: x.s.institucion,
+        ugel: x.s.ugel || 'UGEL 03',
+        red: x.s.red || '',
+        visitas: []
+      };
+    }
     byInst[key].visitas.push(x);
-    if (x.s.red && !byInst[key].red) byInst[key].red = x.s.red;
+    if (x.s.red && (!byInst[key].red || byInst[key].red === '—' || byInst[key].red === 'No aplica')) {
+      byInst[key].red = x.s.red;
+    }
+    if (x.s.institucion && x.s.institucion.length > (byInst[key].institucion || '').length) {
+      byInst[key].institucion = x.s.institucion;
+    }
   });
   const instRows = Object.values(byInst).sort((a, b) => (a.institucion || '').localeCompare(b.institucion || '')).map(g => {
-    g.visitas.sort((a, b) => (b.s.fecha || '').localeCompare(a.s.fecha || ''));
+    g.visitas.sort((a, b) => {
+      const fDiff = (b.s.fecha || '').localeCompare(a.s.fecha || '');
+      if (fDiff !== 0) return fDiff;
+      return (Number(b.s.visita) || 1) - (Number(a.s.visita) || 1);
+    });
     const last = g.visitas[0];
     const withP = g.visitas.filter(x => x.st.pct !== null);
     const avg = withP.length ? Math.round(withP.reduce((a, x) => a + x.st.pct, 0) / withP.length) : null;
     const gst = statusFromPct(avg);
+
+    // Calcular visitas registradas y total de visitas
+    const visitNums = Array.from(new Set(g.visitas.map(x => Number(x.s.visita) || 1))).sort((a, b) => a - b);
+    const totalVisitas = Math.max(g.visitas.length, ...visitNums);
+    const visitBadges = visitNums.map(v => '<span class="badge st-none" style="font-size:10px;padding:1px 5px;margin-left:4px;font-weight:700">V' + v + '</span>').join('');
+
     return '<tr><td>' + esc(g.institucion) + '</td><td>' + esc(g.red || '—') + '</td><td>' + esc(g.ugel || '—') + '</td>' +
-      '<td>' + g.visitas.length + '</td><td>' + fmtDate(last.s.fecha) + '</td>' +
+      '<td><strong>' + totalVisitas + '</strong>' + visitBadges + '</td><td>' + fmtDate(last.s.fecha) + '</td>' +
       '<td>' + (avg === null ? '—' : avg + '%') + ' <span class="badge ' + gst.cls + '">' + gst.label + '</span></td></tr>';
   }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-600);padding:20px">Sin instituciones con los filtros actuales.</td></tr>';
 
@@ -3939,7 +4078,8 @@ async function exportCsv(ft, statsList) {
     const s = x.s, st = x.st;
     const extras = (s.extras || []).map(e => e.label + ': ' + e.value).join(' | ');
     const comps = (Array.isArray(s.compromisos) ? s.compromisos : Array.isArray(s.compromisosList) ? s.compromisosList : []).map(c => c.texto).join(' | ');
-    return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, s.responsable, s.director, (st.pct === null ? '' : st.pct), statusFromPct(st.pct).label, extras, s.observaciones, comps];
+    const subResp = getSubmissionResponsable(s, _appState, _currentSessionUser);
+    return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, subResp || s.responsable || '', s.director, (st.pct === null ? '' : st.pct), statusFromPct(st.pct).label, extras, s.observaciones, comps];
   });
   downloadCsv((ft.nombre || 'reporte').replace(/[^a-z0-9]+/gi, '_').toLowerCase() + '.csv', header, rows);
 }
@@ -12467,53 +12607,41 @@ async function backfillSubmissionsUgelRed(dbNs, state) {
         needUpdate = true;
       }
       if (!newRed || newRed === '—') {
-
         newRed = 'No aplica';
         needUpdate = true;
       }
     }
 
+    let newColId = sub.colegioId || (matched ? matched.id : null);
+    if (!sub.colegioId && newColId) needUpdate = true;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    let newResp = sub.responsable;
+    if (!newResp || newResp === '—' || !newResp.trim()) {
+      const guessedResp = getSubmissionResponsable({ ...sub, ugel: newUgel, red: newRed }, state, null);
+      if (guessedResp) {
+        newResp = guessedResp;
+        needUpdate = true;
+      }
+    }
 
     if (needUpdate) {
+      sub.ugel = newUgel;
+      sub.red = newRed;
+      sub.codigoModular = formatCodigoModular(newCod || '');
+      if (newColId) sub.colegioId = newColId;
+      if (newResp) sub.responsable = newResp;
+
       const docRef = dbNs.collection('submissions').doc(sub.id);
-      currentBatch.update(docRef, {
+      const updateData = {
         ugel: newUgel,
         red: newRed,
         codigoModular: formatCodigoModular(newCod || ''),
         updatedAt: Date.now()
-      });
+      };
+      if (newColId) updateData.colegioId = newColId;
+      if (newResp) updateData.responsable = newResp;
+
+      currentBatch.update(docRef, updateData);
       opsInBatch++;
       updatedCount++;
 

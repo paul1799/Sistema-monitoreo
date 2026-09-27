@@ -165,8 +165,8 @@ export function getRubricasNivelDataset(statsList, ft) {
 export function getCoberturaDataset(statsList, colegios) {
   // Simplificado: colegios en padron vs fichas registradas
   const totalColegios = colegios ? colegios.length : 0;
-  const colegiosMonitoreados = new Set(statsList.map(x => x.s.colegioId).filter(Boolean)).size;
-  return { total: totalColegios, monitoreados: colegiosMonitoreados, faltan: totalColegios - colegiosMonitoreados };
+  const colegiosMonitoreados = new Set(statsList.map(x => x.s.colegioId || (x.s.institucion ? x.s.institucion.trim().toLowerCase() : null)).filter(Boolean)).size;
+  return { total: totalColegios, monitoreados: colegiosMonitoreados, faltan: Math.max(0, totalColegios - colegiosMonitoreados) };
 }
 
 export function getCompromisosDataset(statsList) {
