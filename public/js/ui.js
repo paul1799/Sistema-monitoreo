@@ -3,8 +3,21 @@
    ========================================================================= */
 
 /* ── Fase 1: Motor de cálculo puro (sin DOM) ───────────────────────────── */
-import { calcScore, estadoPorRegla } from './calcEngine.js?v=20260925_v1';
-import * as RepDatos from './reportes-datos.js?v=20260925';
+import {
+  calcScore,
+  estadoPorRegla,
+  REGLA_NIVEL_JEC,
+  REGLA_NIVEL_COORD_TUTORIA_JEC,
+  REGLA_NIVEL_EBR_GESTION_M1,
+  REGLA_NIVEL_EBR_GESTION_M2,
+  isFichaCoordTutoriaJec,
+  getNivelCoordTutoriaJec,
+  isFichaEbrGestionEscolar,
+  getReglaNivelEbrGestion,
+  getNivelEbrGestion,
+  getMomentoVisitaEbr
+} from './calcEngine.js?v=20260928_v11';
+import * as RepDatos from './reportes-datos.js?v=20260928_v11';
 
 import { AI_SCAN_ENDPOINT } from './firebase-config.js?v=20260918_v8';
 import {
@@ -36,23 +49,32 @@ import {
   PALETA_ESTANDAR,
   formatCodigoModular,
   JEDPA_THEME
-} from './pdf-template.js?v=20260925_v8';
+} from './pdf-template.js?v=20260928_v11';
 
 import {
-  isFichaEbrGestionEscolar,
   renderEbrGestionForm,
   collectEbrGestionFormData,
   preloadEbrFormState,
   resetEbrFormState,
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES
-} from './ebr-gestion.js?v=20260925_v8';
+} from './ebr-gestion.js?v=20260928_v11';
+
+import {
+  isFichaJec,
+  renderJecForm,
+  collectJecFormData,
+  preloadJecFormState,
+  resetJecFormState,
+  JEC_SECCIONES,
+  getNivelLogroJec
+} from './jec-monitoreo.js?v=20260928_v11';
 
 import {
   syncDirectivosFromFicha,
   getDirectivosForColegio,
   getDirectivosActivosForColegio
-} from './directorio.js?v=20260925_v8';
+} from './directorio.js?v=20260928_v11';
 
 /* ============================= CONSTANTES COMPARTIDAS ============================= */
 export const RESPONSE_OPTIONS = {
@@ -168,11 +190,26 @@ export function scoreValue(tipo, v) {
  * @param {number|null} pct - Porcentaje calculado
  * @param {Object|null} [fichaType] - Opcional: documento fichaType con regla_nivel
  * @param {number} [conteo_si] - Opcional: conteo absoluto de respuestas "si"
+ * @param {number} [puntaje] - Opcional: puntaje total sumado (ej. 21 a 63)
  */
-export function statusFromPct(pct, fichaType, conteo_si) {
-  const regla = (fichaType && fichaType.regla_nivel) ? fichaType.regla_nivel : null;
-  const estado = estadoPorRegla({ pct: pct ?? null, conteo_si: conteo_si || 0 }, regla);
-  return { label: estado.nivel, cls: estado.cls };
+export function statusFromPct(pct, fichaType, conteo_si, puntaje, visita) {
+  let regla = (fichaType && fichaType.regla_nivel) ? fichaType.regla_nivel : null;
+  if (isFichaEbrGestionEscolar(fichaType)) {
+    const v = visita || getMomentoVisitaEbr(fichaType);
+    regla = getReglaNivelEbrGestion(v);
+  } else if (!regla && isFichaCoordTutoriaJec(fichaType)) {
+    regla = REGLA_NIVEL_COORD_TUTORIA_JEC;
+  } else if (!regla && isFichaJec(fichaType)) {
+    regla = REGLA_NIVEL_JEC;
+  }
+  const estado = estadoPorRegla({ pct: pct ?? null, conteo_si: conteo_si || 0, puntaje: puntaje ?? null }, regla);
+  return {
+    label: estado.nivel,
+    estado_panel: estado.estado_panel,
+    cls: estado.cls,
+    descripcion: estado.descripcion || '',
+    puntaje: estado.puntaje
+  };
 }
 export function colorForPct(pct) {
   if (pct === null || pct === undefined) return 'var(--neutral)';
@@ -186,9 +223,18 @@ export function normalizeText(s) {
 }
 
 /* ============================= HELPERS DE RENDER ============================= */
-export function bar(pct) {
-  const w = pct === null || pct === undefined ? 0 : pct;
-  const cls = pct === null || pct === undefined ? 'none' : (pct >= 85 ? 'ok' : (pct >= 70 ? 'warn' : 'danger'));
+export function bar(pct, customClsOrStatus) {
+  const w = pct === null || pct === undefined ? 0 : Math.max(0, Math.min(100, pct));
+  let cls = 'none';
+  if (customClsOrStatus) {
+    const s = String(customClsOrStatus).toLowerCase().trim();
+    if (s.includes('ok') || s.includes('lograd') || s.includes('cumple')) cls = 'ok';
+    else if (s.includes('warn') || s.includes('proces') || s.includes('parcial')) cls = 'warn';
+    else if (s.includes('danger') || s.includes('inici') || s.includes('mejorar') || s.includes('no cumple')) cls = 'danger';
+    else cls = customClsOrStatus;
+  } else if (pct !== null && pct !== undefined) {
+    cls = pct >= 85 ? 'ok' : (pct >= 70 ? 'warn' : 'danger');
+  }
   return '<div class="barTrack" title="' + (pct === null ? 'Sin datos' : pct + '%') + '"><div class="barFill ' + cls + '" style="width:' + w + '%"></div></div>';
 }
 
@@ -257,23 +303,37 @@ export function computeStats(sub, ft) {
       secciones: [],
       estado: { label: 'Sin datos', cls: 'st-none' },
       conteo_si: 0,
+      puntaje: 0,
+      puntaje_max: 0,
     };
   }
-  // Para la ficha EBR Gestion Escolar, usar las secciones del motor especializado
-  // porque los IDs de items (ge1_1, ge1_2...) difieren de los del fichaType en Firestore (ge_1, ge_2...)
+  // Para la ficha EBR Gestion Escolar, JEC o Coordinador de Tutoría JEC, usar las secciones y reglas especializadas
   let ftForCalc = ft;
   if (isFichaEbrGestionEscolar(ft) && sub.respuestas && sub.respuestas.length > 0) {
-    const visita = sub.visita || 1;
+    const visita = getMomentoVisitaEbr(sub);
     const seccionesEbr = visita === 2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
-    ftForCalc = { ...ft, secciones: seccionesEbr, tipoRespuesta: 'ips', escala: 'IPL' };
+    const reglaEbr = getReglaNivelEbrGestion(visita);
+    ftForCalc = { ...ft, secciones: seccionesEbr, tipoRespuesta: 'ips', escala: 'IPL', visita, regla_nivel: reglaEbr };
+  } else if (isFichaCoordTutoriaJec(ft) && sub.respuestas && sub.respuestas.length > 0) {
+    ftForCalc = { ...ft, regla_nivel: ft.regla_nivel || REGLA_NIVEL_COORD_TUTORIA_JEC };
+  } else if (isFichaJec(ft) && sub.respuestas && sub.respuestas.length > 0) {
+    ftForCalc = { ...ft, secciones: JEC_SECCIONES, tipoRespuesta: 'si_no', regla_nivel: ft.regla_nivel || REGLA_NIVEL_JEC };
   }
   const result = calcScore(sub.respuestas, ftForCalc);
   return {
     pct: result.pct,
+    puntaje: result.puntaje,
+    puntaje_max: result.puntaje_max,
     secciones: result.secciones,
     conteo_si: result.conteo_si,
-    // Mapeamos { nivel, estado_panel, cls } → { label, cls } para compatibilidad
-    estado: { label: result.estado.nivel, cls: result.estado.cls },
+    // Mapeamos { nivel, estado_panel, cls } → { label, estado_panel, cls } para compatibilidad
+    estado: {
+      label: result.estado.nivel,
+      estado_panel: result.estado.estado_panel,
+      cls: result.estado.cls,
+      descripcion: result.estado.descripcion || '',
+      puntaje: result.estado.puntaje ?? result.puntaje
+    },
   };
 }
 
@@ -283,6 +343,8 @@ export function computeItemAgg(subs, ft) {
     const hasV2 = (subs || []).some(s => Number(s.visita) === 2);
     const seccionesEbr = hasV2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
     activeFt = { ...ft, secciones: (ft && ft.secciones && ft.secciones.length === seccionesEbr.length) ? ft.secciones : seccionesEbr, tipoRespuesta: 'ips' };
+  } else if (isFichaJec(ft)) {
+    activeFt = { ...ft, secciones: (ft && ft.secciones && ft.secciones.length === JEC_SECCIONES.length) ? ft.secciones : JEC_SECCIONES, tipoRespuesta: 'si_no' };
   }
   const tipoResp = activeFt?.tipoRespuesta || 'ips';
   return (activeFt?.secciones || []).map(sec => {
@@ -351,6 +413,11 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta) {
 
   const sections = itemAgg.map((sec, si) => {
     const secStatus = statusFromPct(sec.avg);
+    const pctVal = sec.avg === null || sec.avg === undefined ? 0 : Math.min(Math.max(sec.avg, 0), 100);
+    const barCls = sec.avg === null || sec.avg === undefined ? 'none' : (sec.avg >= 85 ? 'ok' : (sec.avg >= 70 ? 'warn' : 'danger'));
+    const pctText = sec.avg === null ? '—' : `${sec.avg} %`;
+    const secAriaLabel = `Avance de ${sec.nombre}: ${sec.avg !== null ? sec.avg + '%' : 'Sin datos'}`;
+
     const tableRows = sec.items.map((it, idx) => {
       const itStatus = statusFromPct(it.pct);
       const respPills = (RESPONSE_OPTIONS[tipoRespuesta] || []).map(o => {
@@ -369,20 +436,21 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta) {
         '</tr>';
     }).join('');
 
-    return '<details class="secDetails"' + (si === 0 ? ' open' : '') + ' data-secitem="' + si + '">' +
-      '<summary>' +
-      '<div class="secSummaryLeft">' +
-      '<span class="secChevron">▶</span>' +
-      '<strong>' + esc(sec.nombre) + '</strong>' +
-      '<span style="font-size:12px;color:var(--text-600);font-weight:400">(' + sec.items.length + ' indicadores)</span>' +
+    return '<details class="secDetails" data-secitem="' + si + '">' +
+      '<summary class="secSummary" role="button" tabindex="0" aria-expanded="false" aria-controls="sec_body_' + si + '" id="sec_hdr_' + si + '">' +
+      '<div class="secHeaderTitle">' +
+      '<span class="secChevron" aria-hidden="true">▶</span>' +
+      '<span class="secTitleText"><strong>' + esc(sec.nombre) + '</strong> <span class="secCount">(' + sec.items.length + ' indicadores)</span></span>' +
       '</div>' +
-      '<div class="secSummaryRight">' +
-      bar(sec.avg) +
-      '<span style="font-weight:700;font-size:13px;min-width:42px;text-align:right">' + (sec.avg === null ? '—' : sec.avg + '%') + '</span>' +
-      '<span class="badge ' + secStatus.cls + '">' + secStatus.label + '</span>' +
+      '<div class="secHeaderBar" role="progressbar" aria-valuenow="' + (sec.avg !== null ? sec.avg : 0) + '" aria-valuemin="0" aria-valuemax="100" aria-label="' + esc(secAriaLabel) + '">' +
+      '<div class="secHeaderBarTrack">' +
+      '<div class="secHeaderBarFill ' + barCls + '" style="width:' + pctVal + '%"></div>' +
       '</div>' +
+      '</div>' +
+      '<span class="secHeaderPct">' + pctText + '</span>' +
+      '<span class="badge ' + secStatus.cls + ' secHeaderBadge">' + secStatus.label + '</span>' +
       '</summary>' +
-      '<div class="secDetailsBody">' +
+      '<div class="secDetailsBody" id="sec_body_' + si + '" role="region" aria-labelledby="sec_hdr_' + si + '">' +
       '<div class="tblWrap"><table class="itemTable"><thead><tr>' +
       '<th style="width:40px;text-align:center">N.°</th>' +
       '<th>Indicador / Ítem</th>' +
@@ -396,7 +464,7 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta) {
 
   return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">' +
     '<div class="itemReportLegend" style="margin-bottom:0">' + legend + '</div>' +
-    '<button type="button" class="btn secondary small" id="toggleAllItemsBtn">⊞ Expandir / Contraer todo</button>' +
+    '<button type="button" class="btn secondary small" id="toggleAllItemsBtn">⊞ Expandir todo</button>' +
     '</div>' + sections;
 }
 
@@ -1470,10 +1538,11 @@ export function viewDashboard(state, getFichaType, renderFn) {
     const ft = getFichaType(s.fichaTypeId);
     const st = ft ? computeStats(s, ft) : { pct: null };
     if (st.pct !== null) { sumPct += st.pct; cntPct++; }
-    const status = statusFromPct(st.pct).label;
-    if (status === 'Logrado') dist.logrado++;
-    else if (status === 'En proceso') dist.proceso++;
-    else if (status === 'Por mejorar') dist.inicio++;
+    const status = st.estado?.estado_panel || st.estado?.label || statusFromPct(st.pct).label;
+    const sLower = String(status || '').toLowerCase();
+    if (sLower.includes('lograd')) dist.logrado++;
+    else if (sLower.includes('proces') || sLower.includes('parcial')) dist.proceso++;
+    else if (sLower.includes('inici') || sLower.includes('incipient') || sLower.includes('mejorar')) dist.inicio++;
     else dist.none++;
 
     if (perTipo[s.fichaTypeId]) {
@@ -1495,7 +1564,7 @@ export function viewDashboard(state, getFichaType, renderFn) {
 
   const tipoTableRows = sortedTipos.map(p => {
     const avg = p.cnt ? Math.round(p.sum / p.cnt) : null;
-    const status = statusFromPct(avg);
+    const status = statusFromPct(avg, p.ft);
     const fullNombre = esc(p.ft.nombre);
     const icono = p.ft.icono || '📋';
     return '<tr>' +
@@ -1557,7 +1626,7 @@ export function viewDashboard(state, getFichaType, renderFn) {
   const recent = [...state.submissions].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 8).map(s => {
     const ft = getFichaType(s.fichaTypeId);
     const st = ft ? computeStats(s, ft) : { pct: null };
-    const status = statusFromPct(st.pct);
+    const status = (st && st.estado && st.estado.label) ? { label: st.estado.label, cls: st.estado.cls } : statusFromPct(st.pct, ft, st?.conteo_si, st?.puntaje);
     return '<tr><td>' + fmtDate(s.fecha) + '</td><td>' + esc(s.institucion) + '</td><td>' + esc(s.fichaTypeNombre || (ft ? ft.nombre : '—')) + '</td><td>' + (s.visita ? 'V' + s.visita : '—') + '</td><td>' + (st.pct === null ? '—' : st.pct + '%') + '</td><td><span class="badge ' + status.cls + '">' + status.label + '</span></td></tr>';
   }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-600);padding:24px">Aún no se han registrado fichas.</td></tr>';
 
@@ -2040,6 +2109,20 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     return;
   }
 
+  // Interceptar Ficha "Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC"
+  if (isFichaJec(ft)) {
+    if (editingSubmissionData) {
+      preloadJecFormState(editingSubmissionData, ft);
+    }
+    renderJecForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData);
+    host.onsubmit = async (e) => {
+      if (e.target && e.target.id === 'regForm') {
+        await onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate);
+      }
+    };
+    return;
+  }
+
   const isDirectivo = (ft.tipoRespuesta === 'nivel_1_4') || (ft.id === 'ft_directivo') || (ft.nombre || '').toLowerCase().includes('directivo');
   const normExtras = normalizeExtras(ft.extras);
 
@@ -2181,6 +2264,50 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
         </div>
       </div>
     </details>
+  ` : '';
+
+  const isCoordTutoria = isFichaCoordTutoriaJec(ft);
+
+  const tutoriaNivelBannerHtml = isCoordTutoria ? `
+    <div class="panel" id="tutoriaReglasPanel" style="margin-bottom:18px;border-left:4px solid var(--primary,#2563eb);background:var(--surface-card,#ffffff);border-radius:8px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+        <div style="font-weight:700;font-size:13px;color:var(--text-main,#0f172a);text-transform:uppercase;letter-spacing:0.5px">
+          📋 NIVEL DE CUMPLIMIENTO — COORDINADOR(A) DE TUTORÍA (JEC)
+        </div>
+        <span id="tutoriaScoreSummaryBadge" class="badge st-none" style="font-size:13px;padding:5px 14px;font-weight:700">0 / 63 puntos (Sin calificar)</span>
+      </div>
+      <p class="helpText" style="margin-top:0;margin-bottom:12px;font-size:12.5px;color:var(--text-600,#475569)">
+        El nivel de cumplimiento se determina sumando la calificación obtenida en los <strong>21 indicadores</strong> (escala de 1 a 3; puntaje mínimo 21, máximo 63). Conforme responda cada indicador, el sistema calculará en tiempo real el puntaje acumulado y resaltará el nivel correspondiente:
+      </p>
+      <div class="tblWrap">
+        <table class="dataTable" style="width:100%;font-size:12px;text-align:left;border-collapse:collapse">
+          <thead>
+            <tr style="background:var(--surface-sunken,#f1f5f9)">
+              <th style="width:25%;padding:8px 10px;font-weight:700">Nivel de cumplimiento</th>
+              <th style="width:20%;padding:8px 10px;font-weight:700;text-align:center">Puntaje</th>
+              <th style="width:55%;padding:8px 10px;font-weight:700">Descripción oficial</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="tutoriaRowCumple" style="transition:all 0.25s ease">
+              <td style="padding:8px 10px;font-weight:700;color:#16A34A"><span class="badge st-logrado">Cumple</span></td>
+              <td style="padding:8px 10px;text-align:center;font-weight:700">De 53 a 63</td>
+              <td style="padding:8px 10px;color:var(--text-800)">El/la coordinador(a) de tutoría cumple con la función de manera oportuna, pertinente y sostenida.</td>
+            </tr>
+            <tr id="tutoriaRowParcial" style="transition:all 0.25s ease">
+              <td style="padding:8px 10px;font-weight:700;color:#D97706"><span class="badge st-proceso">Cumple parcialmente</span></td>
+              <td style="padding:8px 10px;text-align:center;font-weight:700">De 42 a 52</td>
+              <td style="padding:8px 10px;color:var(--text-800)">El/la coordinador(a) de tutoría cumple parcialmente con la función o se encuentra en proceso de consolidación.</td>
+            </tr>
+            <tr id="tutoriaRowNoCumple" style="transition:all 0.25s ease">
+              <td style="padding:8px 10px;font-weight:700;color:#DC2626"><span class="badge st-inicio">No cumple</span></td>
+              <td style="padding:8px 10px;text-align:center;font-weight:700">De 21 a 41</td>
+              <td style="padding:8px 10px;color:var(--text-800)">El/la coordinador(a) de tutoría no cumple o cumple de forma mínima, sin responder al propósito pedagógico esperado.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   ` : '';
 
   const activeOptions = ft.tipoRespuesta === 'nivel_1_4'
@@ -2330,6 +2457,7 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     '<div class="panel">' +
     '<div class="sectionHeaderTitle">ASPECTOS A MONITOREAR <small style="font-weight:400;color:var(--text-600);text-transform:none;margin-left:8px">' + RESPONSE_LABELS[ft.tipoRespuesta] + '</small></div>' +
     rubricaPanelHtml +
+    tutoriaNivelBannerHtml +
     seccionesHtml +
     '</div>' +
     sintesisPanelHtml +
@@ -2348,10 +2476,45 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
   // ---- Actualizador dinámico de avance ----
   const updateProgressBadge = () => {
     const badge = document.getElementById('regProgressBadge');
-    if (!badge) return;
     const checked = host.querySelectorAll('input[name^="item_"]:checked').length;
     const pct = totalItemsCount ? Math.round((checked / totalItemsCount) * 100) : 0;
-    badge.innerHTML = 'Avance: <strong>' + checked + ' de ' + totalItemsCount + '</strong> ítems respondidos (' + pct + '%)';
+    if (badge) {
+      badge.innerHTML = 'Avance: <strong>' + checked + ' de ' + totalItemsCount + '</strong> ítems respondidos (' + pct + '%)';
+    }
+
+    if (isCoordTutoria) {
+      let currentPts = 0;
+      let answeredCount = 0;
+      host.querySelectorAll('input[name^="item_"]:checked').forEach(r => {
+        const val = Number(r.value);
+        if (!isNaN(val) && val >= 1 && val <= 3) {
+          currentPts += val;
+          answeredCount++;
+        }
+      });
+      const nivelInfo = getNivelCoordTutoriaJec(currentPts);
+      const sumBadge = document.getElementById('tutoriaScoreSummaryBadge');
+      if (sumBadge) {
+        if (answeredCount === 0) {
+          sumBadge.className = 'badge st-none';
+          sumBadge.textContent = '0 / 63 puntos (Sin calificar)';
+        } else {
+          sumBadge.className = `badge ${nivelInfo.cls}`;
+          sumBadge.textContent = `${currentPts} / 63 puntos · ${nivelInfo.nivel}`;
+        }
+      }
+      const rowCumple = document.getElementById('tutoriaRowCumple');
+      const rowParcial = document.getElementById('tutoriaRowParcial');
+      const rowNoCumple = document.getElementById('tutoriaRowNoCumple');
+      if (rowCumple && rowParcial && rowNoCumple) {
+        rowCumple.style.backgroundColor = (answeredCount > 0 && currentPts >= 53) ? 'rgba(22, 163, 74, 0.14)' : '';
+        rowCumple.style.fontWeight = (answeredCount > 0 && currentPts >= 53) ? '700' : 'normal';
+        rowParcial.style.backgroundColor = (answeredCount > 0 && currentPts >= 42 && currentPts <= 52) ? 'rgba(217, 119, 6, 0.14)' : '';
+        rowParcial.style.fontWeight = (answeredCount > 0 && currentPts >= 42 && currentPts <= 52) ? '700' : 'normal';
+        rowNoCumple.style.backgroundColor = (answeredCount > 0 && currentPts < 42) ? 'rgba(220, 38, 38, 0.14)' : '';
+        rowNoCumple.style.fontWeight = (answeredCount > 0 && currentPts < 42) ? '700' : 'normal';
+      }
+    }
   };
   host.querySelectorAll('input[name^="item_"]').forEach(r => {
     r.addEventListener('change', updateProgressBadge);
@@ -2912,6 +3075,61 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       return;
     }
 
+    // Interceptar guardado de Ficha "Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC"
+    if (isFichaJec(ft)) {
+      const jecData = collectJecFormData(form || document.getElementById('regFormHost'), ft, isEdit);
+      let submissionToken = isEdit ? editingSubmissionId : ((form && form.dataset.submissionId) || genId());
+      if (form) form.dataset.submissionId = submissionToken;
+
+      const docData = {
+        ...jecData,
+        createdBy: isEdit ? (editingSubmissionData?.createdBy || currentUser.uid) : currentUser.uid,
+        createdAt: isEdit ? (editingSubmissionData?.createdAt || Date.now()) : Date.now(),
+        updatedAt: Date.now()
+      };
+
+      if (isEdit) {
+        await dbNs.collection('submissions').doc(editingSubmissionId).set(docData, { merge: true });
+        showToast('✓ Ficha JEC actualizada correctamente.');
+      } else {
+        await dbNs.collection('submissions').doc(submissionToken).set(docData);
+        showToast('✓ Ficha JEC registrada correctamente.');
+      }
+
+      // Sincronizar directorio de directivos
+      try {
+        const syncRes = await syncDirectivosFromFicha(dbNs, { id: isEdit ? editingSubmissionId : submissionToken, ...docData }, activeState, currentUser);
+        if (syncRes && syncRes.summary) {
+          showToast(`Ficha guardada. Directorio actualizado.`);
+        }
+      } catch (syncErr) {
+        console.warn('Error sincronizando directorio desde ficha JEC:', syncErr);
+      }
+
+      if (!isEdit && activeState.submissions) {
+        const existingIdx = activeState.submissions.findIndex(s => s.id === submissionToken);
+        if (existingIdx >= 0) {
+          activeState.submissions[existingIdx] = { id: submissionToken, ...docData };
+        } else {
+          activeState.submissions.unshift({ id: submissionToken, ...docData });
+        }
+      }
+
+      if (form) form.dataset.submissionId = '';
+      editingSubmissionId = null;
+      editingSubmissionData = null;
+      resetJecFormState();
+      regBuiltFor = null;
+      regSelectedTypeId = null;
+      regCompromisos = [];
+      regSelectedColegioId = null;
+
+      if (navigate) {
+        navigate('consolidado');
+      }
+      return;
+    }
+
     const isDirectivo = (ft.tipoRespuesta === 'nivel_1_4') || (ft.id === 'ft_directivo') || (ft.nombre || '').toLowerCase().includes('directivo');
 
     let firstErrorEl = null;
@@ -3137,6 +3355,18 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
     let submissionToken = (form && form.dataset.submissionId) || genId();
     if (form) form.dataset.submissionId = submissionToken;
 
+    let tutoriaExtraData = {};
+    if (isFichaCoordTutoriaJec(ft)) {
+      const stats = calcScore(respuestas, { ...ft, regla_nivel: ft.regla_nivel || REGLA_NIVEL_COORD_TUTORIA_JEC });
+      tutoriaExtraData = {
+        puntaje: stats.puntaje,
+        puntaje_maximo: 63,
+        nivel_cumplimiento: stats.estado.nivel,
+        descripcion_cumplimiento: stats.estado.descripcion || '',
+        estado_panel: stats.estado.estado_panel || 'Inicio'
+      };
+    }
+
     const docData = {
       fichaTypeId: ft.id,
       fichaTypeNombre: ft.nombre,
@@ -3166,6 +3396,7 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       observaciones: document.getElementById('f_observaciones') ? document.getElementById('f_observaciones').value.trim() : '',
       compromisos: allCompromisos,
       esBorrador: esBorrador,
+      ...tutoriaExtraData,
       createdBy: isEdit ? (editingSubmissionData?.createdBy || currentUser.uid) : currentUser.uid,
       createdAt: isEdit ? (editingSubmissionData.createdAt || Date.now()) : Date.now(),
       updatedAt: Date.now()
@@ -3424,7 +3655,7 @@ export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdm
   const responsableOptions = Array.from(respSet).sort((a, b) => a.localeCompare(b));
 
   container.innerHTML = '' +
-    '<div class="pageHead"><h2>Reportes</h2><p>Gráficas, avance por sección, resumen por institución y descarga en PDF.</p></div>' +
+    '<div class="pageHead"><h2>Reportes</h2><p>Gráficas, reporte por ítem, resumen por institución y descarga en PDF.</p></div>' +
     '<div class="panel">' +
     '<div class="filterBar" style="margin-bottom:0">' +
     '<div class="field" style="flex:2;min-width:240px">' +
@@ -3526,13 +3757,27 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     const sFt = isAllMode ? getFichaType(s.fichaTypeId) : ft;
     return { s, st: sFt ? computeStats(s, sFt) : { pct: null, secciones: [] } };
   });
-  if (consFilters.estado) statsList = statsList.filter(x => statusFromPct(x.st.pct).label === consFilters.estado);
+  if (consFilters.estado) {
+    statsList = statsList.filter(x => {
+      const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : ft;
+      const lbl = x.st?.estado?.label || statusFromPct(x.st.pct, sFt, x.st?.conteo_si, x.st?.puntaje).label;
+      const pnl = x.st?.estado?.estado_panel || '';
+      return lbl === consFilters.estado || pnl === consFilters.estado;
+    });
+  }
   const withPct = statsList.filter(x => x.st.pct !== null);
   const avgPct = withPct.length ? Math.round(withPct.reduce((a, x) => a + x.st.pct, 0) / withPct.length) : null;
   const instCount = new Set(statsList.map(x => (x.s.institucion || '') + '|' + (x.s.ugel || ''))).size;
 
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
-  statsList.forEach(x => { const l = statusFromPct(x.st.pct).label; if (l === 'Logrado') dist.logrado++; else if (l === 'En proceso') dist.proceso++; else if (l === 'Inicio') dist.inicio++; else dist.none++; });
+  statsList.forEach(x => {
+    const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : ft;
+    const l = (x.st?.estado?.estado_panel || x.st?.estado?.label || statusFromPct(x.st.pct, sFt, x.st?.conteo_si, x.st?.puntaje).label || '').toLowerCase();
+    if (l.includes('no cumple') || l.includes('inici') || l.includes('incipient') || l.includes('mejorar')) dist.inicio++;
+    else if (l.includes('parcial') || l.includes('proces')) dist.proceso++;
+    else if (l.includes('lograd') || l.includes('cumple')) dist.logrado++;
+    else dist.none++;
+  });
 
   const seg = '<div class="distWrap">' +
     donutChart([
@@ -3548,16 +3793,26 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     (dist.none ? '<span><span class="dot" style="background:var(--line-strong)"></span>Sin datos (' + dist.none + ')</span>' : '') +
     '</div></div>';
 
-  // Avance por sección (solo para tipo de ficha individual)
-  let secRows = '';
+  // Cálculo de avance por sección (se preserva para consistencia de cabeceras en "Reporte por ítem")
   let itemReportHtml = '';
   if (!isAllMode && ft) {
     const secAgg = {};
-    ft.secciones.forEach(sec => secAgg[sec.nombre] = { sum: 0, cnt: 0 });
-    statsList.forEach(x => x.st.secciones.forEach(sc => { if (sc.pct !== null) { secAgg[sc.nombre].sum += sc.pct; secAgg[sc.nombre].cnt++; } }));
-    secRows = ft.secciones.map(sec => { const a = secAgg[sec.nombre]; const avg = a.cnt ? Math.round(a.sum / a.cnt) : null; return '<div class="barRow"><div class="name">' + esc(sec.nombre) + '</div>' + bar(avg) + '<div class="val">' + (avg === null ? '—' : avg + '%') + '</div></div>'; }).join('');
+    (ft.secciones || []).forEach(sec => secAgg[sec.nombre] = { sum: 0, cnt: 0 });
+    statsList.forEach(x => (x.st.secciones || []).forEach(sc => {
+      if (sc.pct !== null && secAgg[sc.nombre]) {
+        secAgg[sc.nombre].sum += sc.pct;
+        secAgg[sc.nombre].cnt++;
+      }
+    }));
 
     const itemAgg = computeItemAgg(statsList.map(x => x.s), ft);
+    // Garantizar que cada sección en itemAgg use exactamente el mismo promedio calculado en secAgg
+    itemAgg.forEach(sec => {
+      const a = secAgg[sec.nombre];
+      if (a && a.cnt) {
+        sec.avg = Math.round(a.sum / a.cnt);
+      }
+    });
     itemReportHtml = renderItemReportHtml(itemAgg, ft.tipoRespuesta);
   }
 
@@ -3574,10 +3829,12 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
       const a = typeAgg[tid];
       a.total++;
       if (x.st.pct !== null) { a.sum += x.st.pct; a.cnt++; }
-      const st = statusFromPct(x.st.pct).label;
-      if (st === 'Logrado') a.logrado++;
-      else if (st === 'En proceso') a.proceso++;
-      else if (st === 'Inicio') a.inicio++;
+      const sFt = getFichaType(tid);
+      const st = x.st?.estado?.estado_panel || statusFromPct(x.st.pct, sFt, x.st?.conteo_si, x.st?.puntaje).label;
+      const stLower = String(st || '').toLowerCase();
+      if (stLower.includes('no cumple') || stLower.includes('inici') || stLower.includes('incipient') || stLower.includes('mejorar')) a.inicio++;
+      else if (stLower.includes('parcial') || stLower.includes('proces')) a.proceso++;
+      else if (stLower.includes('lograd') || stLower.includes('cumple')) a.logrado++;
     });
     const typeSummaryRows = Object.values(typeAgg).sort((a, b) => a.nombre.localeCompare(b.nombre)).map(a => {
       const avg = a.cnt ? Math.round(a.sum / a.cnt) : null;
@@ -3630,11 +3887,54 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
   }
 
   const visAgg = {};
-  statsList.forEach(x => { const v = x.s.visita || 1; if (!visAgg[v]) visAgg[v] = { sum: 0, cnt: 0 }; if (x.st.pct !== null) { visAgg[v].sum += x.st.pct; visAgg[v].cnt++; } });
-  const visRows = Object.keys(visAgg).sort((a, b) => a - b).map(v => { const a = visAgg[v]; const avg = a.cnt ? Math.round(a.sum / a.cnt) : null; return '<div class="barRow"><div class="name">Visita ' + v + '</div>' + bar(avg) + '<div class="val">' + (avg === null ? '—' : avg + '%') + '</div></div>'; }).join('') || '<p class="helpText">Sin datos suficientes.</p>';
+  statsList.forEach(x => {
+    const v = Number(x.s.visita) || 1;
+    if (!visAgg[v]) {
+      visAgg[v] = { sumPct: 0, cnt: 0, sumPts: 0, cntPts: 0, items: [] };
+    }
+    if (x.st.pct !== null && x.st.pct !== undefined) {
+      visAgg[v].sumPct += x.st.pct;
+      visAgg[v].cnt++;
+    }
+    if (x.st.puntaje !== null && x.st.puntaje !== undefined) {
+      visAgg[v].sumPts += x.st.puntaje;
+      visAgg[v].cntPts++;
+    }
+    visAgg[v].items.push(x);
+  });
+
+  const visRows = Object.keys(visAgg).sort((a, b) => Number(a) - Number(b)).map(v => {
+    const a = visAgg[v];
+    const vNum = Number(v);
+    const avg = a.cnt ? Math.round(a.sumPct / a.cnt) : null;
+    const avgPts = a.cntPts ? Math.round(a.sumPts / a.cntPts) : null;
+
+    // Obtener la ficha representativa para evaluar la regla de nivel
+    const sampleItem = a.items[0];
+    const sFt = (sampleItem && (isAllMode ? getFichaType(sampleItem.s.fichaTypeId) : ft)) || ft;
+    const isEbr = isFichaEbrGestionEscolar(sFt);
+    const isCoordTutoria = isFichaCoordTutoriaJec(sFt);
+
+    // Calcular el estado oficial de la visita según el momento exacto
+    const vSt = statusFromPct(avg, sFt, 0, avgPts, vNum);
+
+    // Tooltip y metadatos de puntaje
+    const maxPts = isEbr ? (vNum === 2 ? 69 : 57) : (isCoordTutoria ? 63 : null);
+    const scoreTitle = ((isEbr || isCoordTutoria) && avgPts !== null)
+      ? ' title="' + avgPts + '/' + maxPts + ' pts promedio (' + (avg === null ? '—' : avg + '%') + ')"'
+      : (avg !== null ? ' title="' + avg + '%"' : '');
+
+    return '<div class="barRow">' +
+      '<div class="name">Visita ' + vNum + ' <span class="badge ' + vSt.cls + '" style="margin-left:8px;font-size:11px;vertical-align:middle;">' + vSt.label + '</span></div>' +
+      bar(avg, vSt.cls) +
+      '<div class="val"' + scoreTitle + '>' + (avg === null ? '—' : avg + '%') + '</div>' +
+      '</div>';
+  }).join('') || '<p class="helpText">Sin datos suficientes.</p>';
 
   const rows = statsList.map(x => {
-    const s = x.s; const st = x.st; const status = statusFromPct(st.pct);
+    const s = x.s; const st = x.st;
+    const sFt = isAllMode ? getFichaType(s.fichaTypeId) : ft;
+    const status = (st && st.estado && st.estado.label) ? { label: st.estado.label, cls: st.estado.cls } : statusFromPct(st.pct, sFt, st?.conteo_si, st?.puntaje);
     const isOpen = consExpanded === s.id;
     const detailContent = isOpen ? buildDetail(s) : '';
     const pdfBtn = '<button class="actBtn pdfBtn" data-pdfsub="' + s.id + '" title="Descargar Ficha Oficial en PDF (A4)">📄 PDF</button>';
@@ -3643,7 +3943,19 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     const typeName = s.fichaTypeNombre || (getFichaType(s.fichaTypeId) || {}).nombre || '—';
     const typeCol = isAllMode ? '<td><span class="badge st-none" style="font-size:10.5px">' + esc(typeName) + '</span></td>' : '';
     const ugelRedCol = '<td>' + esc(s.ugel || 'UGEL 03') + '<br><small style="color:var(--text-muted);font-weight:600;">' + esc(s.red || 'No aplica') + '</small></td>';
-    return '<tr class="clickable" data-row="' + s.id + '"><td>' + fmtDate(s.fecha) + '</td><td>' + esc(s.institucion) + '</td>' + typeCol + ugelRedCol + '<td>' + (s.visita ? 'V' + s.visita : '—') + '</td><td>' + esc(s.responsable || '—') + '</td><td>' + (st.pct === null ? '—' : st.pct + '%') + '</td><td><span class="badge ' + status.cls + '">' + status.label + '</span></td><td style="white-space:nowrap"><div class="rowActions">' + pdfBtn + editBtn + delBtn + '</div></td></tr>' +
+    
+    const isEbr = isFichaEbrGestionEscolar(sFt || ft);
+    const isCoordTutoria = isFichaCoordTutoriaJec(sFt || ft);
+    let pctDisplay = (st.pct === null ? '—' : st.pct + '%');
+    if (isEbr && st.puntaje !== undefined && st.puntaje !== null) {
+      const v = getMomentoVisitaEbr(s);
+      const maxPts = st.puntaje_max || (v === 2 ? 69 : 57);
+      pctDisplay = '<strong>' + st.puntaje + '/' + maxPts + ' pts</strong><br><small style="color:var(--text-muted);font-weight:600">(' + st.pct + '%)</small>';
+    } else if (isCoordTutoria && st.puntaje !== undefined && st.puntaje !== null) {
+      pctDisplay = '<strong>' + st.puntaje + '/63 pts</strong><br><small style="color:var(--text-muted);font-weight:600">(' + st.pct + '%)</small>';
+    }
+
+    return '<tr class="clickable" data-row="' + s.id + '"><td>' + fmtDate(s.fecha) + '</td><td>' + esc(s.institucion) + '</td>' + typeCol + ugelRedCol + '<td>' + (s.visita ? 'V' + s.visita : '—') + '</td><td>' + esc(s.responsable || '—') + '</td><td>' + pctDisplay + '</td><td><span class="badge ' + status.cls + '">' + status.label + '</span></td><td style="white-space:nowrap"><div class="rowActions">' + pdfBtn + editBtn + delBtn + '</div></td></tr>' +
       (isOpen ? '<tr class="detailRow"><td colspan="' + (isAllMode ? 9 : 8) + '">' + detailContent + '</td></tr>' : '');
   }).join('') || '<tr><td colspan="' + (isAllMode ? 9 : 8) + '" style="text-align:center;color:var(--text-600);padding:22px">No hay fichas que coincidan con los filtros.</td></tr>';
 
@@ -3657,18 +3969,43 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
   const instRows = Object.values(byInst).sort((a, b) => (a.institucion || '').localeCompare(b.institucion || '')).map(g => {
     g.visitas.sort((a, b) => (b.s.fecha || '').localeCompare(a.s.fecha || ''));
     const last = g.visitas[0];
-    const withP = g.visitas.filter(x => x.st.pct !== null);
+    const sFt = isAllMode ? getFichaType(last.s.fichaTypeId) : ft;
+    const isEbr = isFichaEbrGestionEscolar(sFt || ft);
+    const isCoordTutoria = isFichaCoordTutoriaJec(sFt || ft);
+    const withP = g.visitas.filter(x => x.st && x.st.pct !== null);
     const avg = withP.length ? Math.round(withP.reduce((a, x) => a + x.st.pct, 0) / withP.length) : null;
-    const gst = statusFromPct(avg);
+    const withPts = g.visitas.filter(x => x.st && x.st.puntaje !== undefined && x.st.puntaje !== null);
+    const avgPts = withPts.length ? Math.round(withPts.reduce((a, x) => a + x.st.puntaje, 0) / withPts.length) : null;
+    const withSi = g.visitas.filter(x => x.st && x.st.conteo_si !== undefined && x.st.conteo_si !== null);
+    const avgSi = withSi.length ? Math.round(withSi.reduce((a, x) => a + x.st.conteo_si, 0) / withSi.length) : null;
+
+    let gst = null;
+    if (g.visitas.length === 1 && last.st && last.st.estado && last.st.estado.label) {
+      gst = { label: last.st.estado.label, cls: last.st.estado.cls };
+    } else {
+      gst = statusFromPct(avg, sFt, avgSi, avgPts, last.s.visita);
+    }
+
+    const vLast = isEbr ? getMomentoVisitaEbr(last.s) : 1;
+    const maxPts = isEbr ? (vLast === 2 ? 69 : 57) : 63;
+    const scoreTitle = ((isCoordTutoria || isEbr) && avgPts !== null) ? ' title="' + avgPts + '/' + maxPts + ' pts"' : '';
+
     return '<tr><td>' + esc(g.institucion) + '</td><td>' + esc(g.red || '—') + '</td><td>' + esc(g.ugel || '—') + '</td>' +
       '<td>' + g.visitas.length + '</td><td>' + fmtDate(last.s.fecha) + '</td>' +
-      '<td>' + (avg === null ? '—' : avg + '%') + ' <span class="badge ' + gst.cls + '">' + gst.label + '</span></td></tr>';
+      '<td><span' + scoreTitle + '>' + (avg === null ? '—' : avg + '%') + '</span> <span class="badge ' + gst.cls + '">' + gst.label + '</span></td></tr>';
   }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-600);padding:20px">Sin instituciones con los filtros actuales.</td></tr>';
 
   const subsForRed = isAllMode ? state.submissions : state.submissions.filter(s => s.fichaTypeId === ft.id);
   const redOptions = Array.from(new Set(subsForRed.filter(s => s.red).map(s => s.red))).sort();
 
   const tblTypeHeader = isAllMode ? '<th>Tipo de ficha</th>' : '';
+
+  const activeEl = document.activeElement;
+  const activeId = activeEl ? activeEl.id : null;
+  const selStart = (activeEl && typeof activeEl.selectionStart === 'number') ? activeEl.selectionStart : null;
+  const selEnd = (activeEl && typeof activeEl.selectionEnd === 'number') ? activeEl.selectionEnd : null;
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
 
   host.innerHTML = '' +
     '<div id="reportCapture">' +
@@ -3680,7 +4017,6 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     '</div>' +
     '<div class="panel"><h3>Distribución de resultados</h3>' + seg + '</div>' +
     allTypesSummaryHtml +
-    (!isAllMode ? '<div class="panel"><h3>Avance por sección</h3>' + (secRows || '<p class="helpText">Sin secciones.</p>') + '</div>' : '') +
     (!isAllMode ? '<div class="panel"><h3>Reporte por ítem <small>resultado de cada indicador</small></h3>' + itemReportHtml + '</div>' : '') +
     '<div class="panel"><h3>Evolución por N° de visita</h3>' + visRows + '</div>' +
     '<div class="panel"><h3>Resumen por institución</h3>' +
@@ -3709,10 +4045,41 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     '<div class="tblWrap"><table><thead><tr><th>Fecha</th><th>Institución</th>' + tblTypeHeader + '<th>UGEL / RED</th><th>Visita</th><th>Responsable</th><th>%</th><th>Estado</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
     '</div>';
 
-  ['inst', 'ugel', 'desde', 'hasta', 'distrito'].forEach(k => {
+  window.scrollTo(scrollX, scrollY);
+  if (activeId) {
+    const newEl = document.getElementById(activeId);
+    if (newEl) {
+      newEl.focus();
+      if (selStart !== null && selEnd !== null) {
+        try { newEl.setSelectionRange(selStart, selEnd); } catch (_) {}
+      }
+    }
+  }
+
+  let consDebounceTimer = null;
+  const debouncedRenderCons = () => {
+    if (consDebounceTimer) clearTimeout(consDebounceTimer);
+    consDebounceTimer = setTimeout(() => {
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+    }, 180);
+  };
+
+  ['inst', 'ugel', 'distrito'].forEach(k => {
     const el = document.getElementById('fil_' + k);
     if (!el) return;
-    el.addEventListener('input', () => { consFilters[k === 'inst' ? 'institucion' : k] = el.value; renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user); });
+    el.addEventListener('input', () => {
+      consFilters[k === 'inst' ? 'institucion' : k] = el.value;
+      debouncedRenderCons();
+    });
+  });
+
+  ['desde', 'hasta'].forEach(k => {
+    const el = document.getElementById('fil_' + k);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      consFilters[k] = el.value;
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+    });
   });
   document.getElementById('fil_red').addEventListener('change', e => { consFilters.red = e.target.value; renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user); });
   const filTipoGestion = document.getElementById('fil_tipogestion');
@@ -3725,14 +4092,51 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
   });
 
-  // Expandir / Contraer todo en Reporte por Ítem
+  // Acordeón y control "Expandir / Contraer todo" en Reporte por Ítem
+  const detailsList = host.querySelectorAll('.secDetails');
   const toggleAllBtn = document.getElementById('toggleAllItemsBtn');
+
+  const updateToggleAllBtnState = () => {
+    if (!toggleAllBtn || !detailsList.length) return;
+    const anyClosed = Array.from(detailsList).some(d => !d.open);
+    toggleAllBtn.textContent = anyClosed ? '⊞ Expandir todo' : '⊟ Contraer todo';
+  };
+
+  detailsList.forEach(d => {
+    const summary = d.querySelector('summary');
+    if (summary) {
+      d.addEventListener('toggle', () => {
+        summary.setAttribute('aria-expanded', d.open ? 'true' : 'false');
+        updateToggleAllBtnState();
+      });
+      summary.addEventListener('click', () => {
+        setTimeout(() => {
+          summary.setAttribute('aria-expanded', d.open ? 'true' : 'false');
+          updateToggleAllBtnState();
+        }, 0);
+      });
+      summary.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          d.open = !d.open;
+          summary.setAttribute('aria-expanded', d.open ? 'true' : 'false');
+          updateToggleAllBtnState();
+        }
+      });
+    }
+  });
+
   if (toggleAllBtn) {
     toggleAllBtn.addEventListener('click', () => {
-      const detailsList = host.querySelectorAll('.secDetails');
       const anyClosed = Array.from(detailsList).some(d => !d.open);
-      detailsList.forEach(d => { d.open = anyClosed; });
-      toggleAllBtn.textContent = anyClosed ? 'Contraer todo' : 'Expandir todo';
+      detailsList.forEach(d => {
+        d.open = anyClosed;
+        const summary = d.querySelector('summary');
+        if (summary) {
+          summary.setAttribute('aria-expanded', anyClosed ? 'true' : 'false');
+        }
+      });
+      toggleAllBtn.textContent = anyClosed ? '⊟ Contraer todo' : '⊞ Expandir todo';
     });
   }
 
@@ -3849,10 +4253,198 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
 }
 
 function buildDetail(s) {
+  const isCoordTutoria = (s.fichaTypeId === 'ft_coord_tutoria_jec' || (s.fichaTypeNombre || '').toLowerCase().includes('tutor'));
+  const isJec = !isCoordTutoria && (s.fichaTypeId === 'ft_msejec_2do' || s.fichaTypeId === 'ft_jec' || (s.fichaTypeNombre || '').toLowerCase().includes('jec') || !!s.docentes_monitoreo);
+
+  let ebrGestionBanner = '';
+  const isEbr = isFichaEbrGestionEscolar(s);
+  if (isEbr) {
+    const v = getMomentoVisitaEbr(s);
+    let puntaje = (s.puntaje !== undefined && s.puntaje !== null) ? Number(s.puntaje) : null;
+    if (puntaje === null && Array.isArray(s.respuestas) && s.respuestas.length > 0) {
+      let pSum = 0;
+      s.respuestas.forEach(r => {
+        const vL = String(r?.valor || '').toLowerCase();
+        if (vL === 'logrado' || vL === 'si') pSum += 3;
+        else if (vL === 'proceso') pSum += 2;
+        else if (vL === 'inicio' || vL === 'no') pSum += 1;
+      });
+      puntaje = pSum;
+    }
+    const maxPts = v === 2 ? 69 : 57;
+    if (puntaje === null) puntaje = 0;
+    const nivelObj = getNivelEbrGestion(puntaje, v);
+    const momentoStr = v === 2 ? '2.° Momento (Visita 2 · 23 ítems · Máx 69 pts)' : '1.er Momento (Visita 1 · 19 ítems · Máx 57 pts)';
+
+    ebrGestionBanner = `
+      <div style="margin-bottom:14px;padding:14px 16px;border-radius:8px;background:var(--surface-card,#ffffff);border:1px solid var(--border-soft,#e2e8f0);box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+          <div>
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted,#64748b);text-transform:uppercase;letter-spacing:0.5px">Nivel de Cumplimiento · Gestión Escolar EBR (${momentoStr})</span>
+            <div style="font-size:17px;font-weight:800;color:var(--text-main,#0f172a);margin-top:2px">${esc(nivelObj.nivel)} (${puntaje} / ${maxPts} pts · ${nivelObj.pct}%)</div>
+          </div>
+          <div>
+            <span class="badge ${esc(nivelObj.cls)}" style="font-size:13px;padding:6px 14px;font-weight:800;background:${nivelObj.color};color:#ffffff">${esc(nivelObj.nivel)}</span>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;font-size:11.5px;border-collapse:collapse;margin-top:6px">
+            <thead>
+              <tr style="background:var(--surface-sunken,#f8fafc);color:var(--text-muted,#64748b);text-align:left">
+                <th style="padding:5px 8px;width:25%">Nivel Oficial</th>
+                <th style="padding:5px 8px;width:25%;text-align:center">Rango de Puntaje</th>
+                <th style="padding:5px 8px;width:50%">Criterio pedagógico</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="${puntaje >= (v === 2 ? 47 : 39) ? 'background:rgba(22,163,74,0.12);font-weight:700' : ''}">
+                <td style="padding:5px 8px;color:#16a34a">LOGRADO ${puntaje >= (v === 2 ? 47 : 39) ? '✓ (Obtenido)' : ''}</td>
+                <td style="padding:5px 8px;text-align:center">${v === 2 ? 'De 47 a 69 pts' : 'De 39 a 57 pts'}</td>
+                <td style="padding:5px 8px">Evidencia nivel óptimo en las condiciones y compromisos de gestión escolar.</td>
+              </tr>
+              <tr style="${puntaje >= (v === 2 ? 24 : 20) && puntaje <= (v === 2 ? 46 : 38) ? 'background:rgba(217,119,6,0.12);font-weight:700' : ''}">
+                <td style="padding:5px 8px;color:#d97706">PROCESO ${puntaje >= (v === 2 ? 24 : 20) && puntaje <= (v === 2 ? 46 : 38) ? '✓ (Obtenido)' : ''}</td>
+                <td style="padding:5px 8px;text-align:center">${v === 2 ? 'De 24 a 46 pts' : 'De 20 a 38 pts'}</td>
+                <td style="padding:5px 8px">En proceso de implementación; requiere consolidar acciones de mejora.</td>
+              </tr>
+              <tr style="${puntaje <= (v === 2 ? 23 : 19) ? 'background:rgba(220,38,38,0.12);font-weight:700' : ''}">
+                <td style="padding:5px 8px;color:#dc2626">INICIO ${puntaje <= (v === 2 ? 23 : 19) ? '✓ (Obtenido)' : ''}</td>
+                <td style="padding:5px 8px;text-align:center">${v === 2 ? 'De 0 a 23 pts' : 'De 0 a 19 pts'}</td>
+                <td style="padding:5px 8px">Requiere asistencia técnica prioritaria para el cumplimiento de condiciones.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  let coordTutoriaBanner = '';
+  if (isCoordTutoria) {
+    let puntaje = s.puntaje;
+    if (puntaje === undefined || puntaje === null) {
+      puntaje = (s.respuestas || []).reduce((acc, r) => {
+        const v = Number(r.valor);
+        return !isNaN(v) && v >= 1 && v <= 3 ? acc + v : acc;
+      }, 0);
+    }
+    const nivelInfo = getNivelCoordTutoriaJec(puntaje);
+    const nivelLabel = s.nivel_cumplimiento || nivelInfo.nivel;
+    const nivelDesc = s.descripcion_cumplimiento || nivelInfo.descripcion;
+    const nivelCls = nivelInfo.cls;
+    const pct = Math.round((puntaje / 63) * 100);
+
+    coordTutoriaBanner = `
+      <div style="margin-bottom:14px;padding:14px 18px;border-radius:8px;background:var(--surface-card,#ffffff);border:1px solid var(--border-soft,#e2e8f0);box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+          <div>
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted,#64748b);text-transform:uppercase;letter-spacing:0.5px">Nivel de Cumplimiento Oficial (Funciones del Coordinador(a) de Tutoría JEC)</span>
+            <div style="font-size:18px;font-weight:800;color:var(--text-main,#0f172a);margin-top:2px">${esc(nivelLabel)}</div>
+          </div>
+          <div style="text-align:right">
+            <span class="badge ${esc(nivelCls)}" style="font-size:13px;padding:5px 14px;font-weight:700">${esc(nivelLabel)}</span>
+            <div style="font-size:12px;color:var(--text-muted,#64748b);margin-top:3px;font-weight:700">${puntaje} de 63 puntos (${pct}%)</div>
+          </div>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-800,#1e293b);background:var(--surface-sunken,#f8fafc);padding:8px 12px;border-radius:6px;margin:0 0 10px 0;border-left:3px solid var(--primary,#2563eb)">
+          <strong>Criterio oficial:</strong> ${esc(nivelDesc)}
+        </p>
+        <div class="tblWrap" style="margin-top:8px">
+          <table class="dataTable" style="font-size:11.5px;width:100%;border-collapse:collapse;text-align:left">
+            <thead>
+              <tr style="background:var(--surface-sunken,#f1f5f9)">
+                <th style="padding:5px 8px;width:25%">Nivel de cumplimiento</th>
+                <th style="padding:5px 8px;width:20%;text-align:center">Puntaje</th>
+                <th style="padding:5px 8px;width:55%">Descripción oficial de la función</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="${puntaje >= 53 ? 'background:rgba(22,163,74,0.12);font-weight:700' : ''}">
+                <td style="padding:5px 8px;color:#16a34a">Cumple ${puntaje >= 53 ? '✓ (Obtenido)' : ''}</td>
+                <td style="padding:5px 8px;text-align:center">De 53 a 63</td>
+                <td style="padding:5px 8px">El/la coordinador(a) de tutoría cumple con la función de manera oportuna, pertinente y sostenida.</td>
+              </tr>
+              <tr style="${puntaje >= 42 && puntaje <= 52 ? 'background:rgba(217,119,6,0.12);font-weight:700' : ''}">
+                <td style="padding:5px 8px;color:#d97706">Cumple parcialmente ${puntaje >= 42 && puntaje <= 52 ? '✓ (Obtenido)' : ''}</td>
+                <td style="padding:5px 8px;text-align:center">De 42 a 52</td>
+                <td style="padding:5px 8px">El/la coordinador(a) de tutoría cumple parcialmente con la función o se encuentra en proceso de consolidación.</td>
+              </tr>
+              <tr style="${puntaje < 42 ? 'background:rgba(220,38,38,0.12);font-weight:700' : ''}">
+                <td style="padding:5px 8px;color:#dc2626">No cumple ${puntaje < 42 ? '✓ (Obtenido)' : ''}</td>
+                <td style="padding:5px 8px;text-align:center">De 21 a 41</td>
+                <td style="padding:5px 8px">El/la coordinador(a) de tutoría no cumple o cumple de forma mínima, sin responder al propósito pedagógico esperado.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  let jecNivelBanner = '';
+  if (isJec) {
+    const totalSi = s.conteo_si !== undefined
+      ? s.conteo_si
+      : (s.respuestas || []).filter(r => (r.valor || '').toLowerCase() === 'si' || (r.valor || '').toLowerCase() === 'sí').length;
+    const nivelObj = getNivelLogroJec(totalSi);
+    jecNivelBanner = `
+      <div style="margin-bottom:14px;padding:12px 16px;border-radius:8px;background:var(--surface-card,#ffffff);border:1px solid var(--border-soft,#e2e8f0);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <span style="font-size:11px;font-weight:700;color:var(--text-muted,#64748b);text-transform:uppercase;letter-spacing:0.5px">Nivel de Implementación del MSE JEC</span>
+          <div style="font-size:16px;font-weight:800;color:var(--text-main,#0f172a);margin-top:2px">${esc(nivelObj.nivel)}</div>
+        </div>
+        <div style="text-align:right">
+          <span class="badge ${esc(nivelObj.cls)}" style="font-size:12.5px;padding:5px 12px;font-weight:700">${esc(nivelObj.nivel)}</span>
+          <div style="font-size:11.5px;color:var(--text-muted,#64748b);margin-top:3px;font-weight:600">${totalSi} de 31 respuestas "Sí"</div>
+        </div>
+      </div>
+    `;
+  }
+
   const items = (s.respuestas || []).map(r => {
     const opt = (RESPONSE_OPTIONS[s.tipoRespuesta] || []).find(o => o.v === r.valor);
-    return '<div class="itemRow"><div class="itxt"><strong style="font-weight:600;color:var(--ink-soft);font-size:11.5px">' + esc(r.seccion) + '</strong><br>' + esc(r.texto) + '</div><div class="optGroup"><span class="badge st-none" style="color:var(--ink)">' + esc(opt ? opt.l : r.valor) + '</span></div></div>';
+    const hallazgoHtml = r.hallazgo ? `<div style="margin-top:6px;font-size:11.5px;color:var(--text-800,#1e293b);background:var(--surface-sunken,#f8fafc);padding:5px 10px;border-radius:4px;border-left:3px solid var(--primary,#2563eb)"><strong>Hallazgo:</strong> ${esc(r.hallazgo)}</div>` : '';
+    return '<div class="itemRow"><div class="itxt"><strong style="font-weight:600;color:var(--ink-soft);font-size:11.5px">' + esc(r.seccion) + '</strong><br>' + esc(r.texto) + hallazgoHtml + '</div><div class="optGroup"><span class="badge st-none" style="color:var(--ink)">' + esc(opt ? opt.l : r.valor) + '</span></div></div>';
   }).join('') || '<p class="helpText">Sin respuestas registradas.</p>';
+
+  let docentesTableHtml = '';
+  if (s.docentes_monitoreo) {
+    const renderMiniGrid = (title, m) => {
+      if (!m) return '';
+      const rubros = ['r1', 'r2', 'r3', 'r4', 'r5'];
+      const headers = ['R1', 'R2', 'R3', 'R4', 'R5'];
+      const qCells = rubros.map(r => [1,2,3,4].map(n => `<td style="padding:4px;text-align:center">${m[r]?.[`c${n}`] ?? 0}</td>`).join('')).join('');
+      const pCells = rubros.map(r => [1,2,3,4].map(n => `<td style="padding:4px;text-align:center;font-size:10px;color:var(--text-muted,#64748b)">${m[r]?.[`p${n}`] ?? 0}%</td>`).join('')).join('');
+      return `
+        <div style="margin-top:10px;margin-bottom:12px">
+          <div style="font-weight:700;font-size:12px;margin-bottom:4px;color:var(--text-900,#0f172a)">
+            ${esc(title)} — Total docentes: <strong>${m.total_docentes || 0}</strong> | Monitoreados: <strong>${m.docentes_monitoreados || 0}</strong> (${m.pct_monitoreados || 0}%) | No monitoreados: <strong>${m.docentes_no_monitoreados || 0}</strong> (${m.pct_no_monitoreados || 0}%)
+          </div>
+          <div style="overflow-x:auto">
+            <table class="dataTable" style="font-size:11px;text-align:center;width:100%;border-collapse:collapse">
+              <thead>
+                <tr>
+                  <th rowspan="2" style="padding:4px;background:var(--surface-sunken,#f1f5f9)">Datos</th>
+                  ${headers.map(h => `<th colspan="4" style="padding:4px;background:var(--surface-sunken,#f1f5f9)">${h}</th>`).join('')}
+                </tr>
+                <tr>
+                  ${headers.map(() => `<th style="padding:2px;font-size:10px">I</th><th style="padding:2px;font-size:10px">II</th><th style="padding:2px;font-size:10px">III</th><th style="padding:2px;font-size:10px">IV</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td style="font-weight:600;padding:4px;text-align:left">Cant.</td>${qCells}</tr>
+                <tr><td style="font-weight:600;padding:4px;text-align:left;color:var(--text-muted)">%</td>${pCells}</tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    };
+    docentesTableHtml = '<div class="sectionTitle" style="margin-top:14px">V. Data de docentes monitoreados a la fecha de la visita nivel secundaria</div>' +
+      renderMiniGrid('a) 1er monitoreo', s.docentes_monitoreo.m1) +
+      renderMiniGrid('b) 2do monitoreo', s.docentes_monitoreo.m2);
+  }
+
   const extras = (s.extras || []).filter(x => x && (x.value !== undefined && x.value !== '')).map(x => {
     let valHtml = esc(x.value);
     if (x.tipo === 'si_no') {
@@ -3877,20 +4469,38 @@ function buildDetail(s) {
   const legacyHtml = legacyInfo.length ? '<div style="font-size:12.5px;margin-bottom:10px;color:var(--ink-soft)">' + legacyInfo.join(' · ') + '</div>' : '';
 
   return '' +
+    ebrGestionBanner +
+    coordTutoriaBanner +
+    jecNivelBanner +
     (extras ? '<div class="sectionTitle" style="margin-top:0">Datos generales de la ficha</div>' + extras : '') +
     legacyHtml +
-    '<div class="sectionTitle" style="margin-top:12px">Respuestas</div>' + items +
+    docentesTableHtml +
+    '<div class="sectionTitle" style="margin-top:14px">Respuestas y Hallazgos</div>' + items +
     (s.observaciones ? '<div class="sectionTitle">Observaciones</div><p style="font-size:13px">' + esc(s.observaciones) + '</p>' : '') +
     (comps ? '<div class="sectionTitle">Compromisos de mejora</div><ul style="margin:0;padding-left:18px;font-size:13px">' + comps + '</ul>' : '');
 }
 
 async function exportCsv(ft, statsList) {
-  const header = ['Fecha', 'Institución', 'UGEL', 'Código', 'Visita', 'Responsable', 'Director', '% Cumplimiento', 'Estado', 'Datos adicionales', 'Observaciones', 'Compromisos'];
+  const isCoord = isFichaCoordTutoriaJec(ft);
+  const isEbr = isFichaEbrGestionEscolar(ft);
+  const header = ['Fecha', 'Institución', 'UGEL', 'Código', 'Visita', 'Responsable', 'Director', isCoord ? 'Puntaje (de 63)' : (isEbr ? 'Puntaje Obtenido' : '% Cumplimiento'), (isCoord || isEbr) ? '% Equivalente' : '', 'Nivel / Estado', 'Datos adicionales', 'Observaciones', 'Compromisos'].filter(Boolean);
   const rows = statsList.map(x => {
     const s = x.s, st = x.st;
     const extras = (s.extras || []).map(e => e.label + ': ' + e.value).join(' | ');
     const comps = (Array.isArray(s.compromisos) ? s.compromisos : Array.isArray(s.compromisosList) ? s.compromisosList : []).map(c => c.texto).join(' | ');
-    return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, s.responsable, s.director, (st.pct === null ? '' : st.pct), statusFromPct(st.pct).label, extras, s.observaciones, comps];
+    const stLabel = (st && st.estado && st.estado.label) ? st.estado.label : statusFromPct(st.pct, ft, st?.conteo_si, st?.puntaje, s?.visita).label;
+    if (isCoord) {
+      const pts = (st.puntaje !== undefined && st.puntaje !== null) ? st.puntaje : (s.puntaje || '');
+      return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, s.responsable, s.director, pts, (st.pct === null ? '' : st.pct + '%'), stLabel, extras, s.observaciones, comps];
+    }
+    if (isEbr) {
+      const v = getMomentoVisitaEbr(s);
+      const maxPts = v === 2 ? 69 : 57;
+      const pts = (st.puntaje !== undefined && st.puntaje !== null) ? st.puntaje : (s.puntaje || '');
+      const ptsStr = pts !== '' ? `${pts}/${maxPts}` : '';
+      return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, s.responsable, s.director, ptsStr, (st.pct === null ? '' : st.pct + '%'), stLabel, extras, s.observaciones, comps];
+    }
+    return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, s.responsable, s.director, (st.pct === null ? '' : st.pct), stLabel, extras, s.observaciones, comps];
   });
   downloadCsv((ft.nombre || 'reporte').replace(/[^a-z0-9]+/gi, '_').toLowerCase() + '.csv', header, rows);
 }
@@ -4150,7 +4760,28 @@ let colImportPreview = null; // {rows, errors}
 let colImportResults = null; // { total, success, failures, mainErrorCode }
 let colEditing = null; // null | 'new' | colegioId
 let cachedCurrentUser = null;
-
+function buildColegioRowsHtml(filtered, bySchool, getFichaType, colExpandedId, isAdmin, state) {
+  return filtered.map(c => {
+    const subs = bySchool[c.id] || [];
+    const typeStats = colegioFichaTypeStats(subs, getFichaType);
+    const lastVisit = subs.reduce((max, s) => (!max || s.fecha > max) ? s.fecha : max, null);
+    const chips = typeStats.map(t => '<span class="badge st-none" style="margin:1px 3px 1px 0">' + esc(t.nombre) + ' (' + t.count + ')</span>').join('') || '<span class="helpText" style="margin:0">Sin monitoreos</span>';
+    const isOpen = colExpandedId === c.id;
+    const detail = isOpen ? renderColegioProfile(c, subs, typeStats, state) : '';
+    return '<tr class="clickable" data-colrow="' + c.id + '">' +
+      '<td>' + esc(c.rei || '—') + '</td>' +
+      '<td>' + esc(c.codigoLocal || '—') + '</td>' +
+      '<td>' + esc(c.ie || '—') + '</td>' +
+      '<td>' + esc(c.distrito || '—') + '</td>' +
+      '<td>' + esc(c.tipoGestion || '—') + '</td>' +
+      '<td>' + (subs.length ? subs.length : '<span class="badge st-inicio">0</span>') + '</td>' +
+      '<td>' + chips + '</td>' +
+      '<td>' + (lastVisit ? fmtDate(lastVisit) : '—') + '</td>' +
+      (isAdmin ? '<td><button class="iconBtn" data-coledit="' + c.id + '" title="Editar">✎</button> <button class="iconBtn" data-coldel="' + c.id + '" title="Eliminar">✕</button></td>' : '<td></td>') +
+      '</tr>' +
+      (isOpen ? '<tr class="detailRow"><td colspan="9">' + detail + '</td></tr>' : '');
+  }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--ink-soft);padding:22px">Ningún colegio coincide con los filtros.</td></tr>';
+}
 
 export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, currentUser) {
   if (currentUser) cachedCurrentUser = currentUser;
@@ -4178,34 +4809,27 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
     return '<div class="barRow"><div class="name">' + esc(a.rei) + ' <span style="color:var(--ink-soft);font-weight:400">(' + a.monitoreados + '/' + a.total + ' colegios' + (avg !== null ? ' · ' + avg + '% cumpl.' : '') + ')</span></div>' + bar(pct) + '<div class="val">' + (pct === null ? '—' : pct + '%') + '</div></div>';
   }).join('') || '<p class="helpText">Los colegios del padrón no tienen REI asignado.</p>';
 
-  let filtered = state.colegios.slice();
-  if (colFilters.rei) filtered = filtered.filter(c => c.rei === colFilters.rei);
-  if (colFilters.distrito) filtered = filtered.filter(c => normalizeText(c.distrito).includes(normalizeText(colFilters.distrito)));
-  if (colFilters.tipoGestion) filtered = filtered.filter(c => c.tipoGestion === colFilters.tipoGestion);
-  if (colFilters.q) filtered = filtered.filter(c => normalizeText(c.ie).includes(normalizeText(colFilters.q)) || normalizeText(c.codigoLocal).includes(normalizeText(colFilters.q)));
-  if (colFilters.pendientes) filtered = filtered.filter(c => (bySchool[c.id] || []).length === 0);
-  filtered.sort((a, b) => (a.ie || '').localeCompare(b.ie || ''));
+  const getFilteredColegios = () => {
+    let list = state.colegios.slice();
+    if (colFilters.rei) list = list.filter(c => c.rei === colFilters.rei);
+    if (colFilters.distrito) list = list.filter(c => normalizeText(c.distrito).includes(normalizeText(colFilters.distrito)));
+    if (colFilters.tipoGestion) list = list.filter(c => c.tipoGestion === colFilters.tipoGestion);
+    if (colFilters.q) list = list.filter(c => normalizeText(c.ie).includes(normalizeText(colFilters.q)) || normalizeText(c.codigoLocal).includes(normalizeText(colFilters.q)));
+    if (colFilters.pendientes) list = list.filter(c => (bySchool[c.id] || []).length === 0);
+    list.sort((a, b) => (a.ie || '').localeCompare(b.ie || ''));
+    return list;
+  };
 
-  const rows = filtered.map(c => {
-    const subs = bySchool[c.id] || [];
-    const typeStats = colegioFichaTypeStats(subs, getFichaType);
-    const lastVisit = subs.reduce((max, s) => (!max || s.fecha > max) ? s.fecha : max, null);
-    const chips = typeStats.map(t => '<span class="badge st-none" style="margin:1px 3px 1px 0">' + esc(t.nombre) + ' (' + t.count + ')</span>').join('') || '<span class="helpText" style="margin:0">Sin monitoreos</span>';
-    const isOpen = colExpanded === c.id;
-    const detail = isOpen ? renderColegioProfile(c, subs, typeStats) : '';
-    return '<tr class="clickable" data-colrow="' + c.id + '">' +
-      '<td>' + esc(c.rei || '—') + '</td>' +
-      '<td>' + esc(c.codigoLocal || '—') + '</td>' +
-      '<td>' + esc(c.ie || '—') + '</td>' +
-      '<td>' + esc(c.distrito || '—') + '</td>' +
-      '<td>' + esc(c.tipoGestion || '—') + '</td>' +
-      '<td>' + (subs.length ? subs.length : '<span class="badge st-inicio">0</span>') + '</td>' +
-      '<td>' + chips + '</td>' +
-      '<td>' + (lastVisit ? fmtDate(lastVisit) : '—') + '</td>' +
-      (isAdmin ? '<td><button class="iconBtn" data-coledit="' + c.id + '" title="Editar">✎</button> <button class="iconBtn" data-coldel="' + c.id + '" title="Eliminar">✕</button></td>' : '<td></td>') +
-      '</tr>' +
-      (isOpen ? '<tr class="detailRow"><td colspan="9">' + detail + '</td></tr>' : '');
-  }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--ink-soft);padding:22px">Ningún colegio coincide con los filtros.</td></tr>';
+  const filtered = getFilteredColegios();
+  const rows = buildColegioRowsHtml(filtered, bySchool, getFichaType, colExpanded, isAdmin, state);
+
+  // Capturar foco y posición de scroll para preservar al re-renderizar
+  const activeEl = document.activeElement;
+  const activeId = activeEl ? activeEl.id : null;
+  const selStart = (activeEl && typeof activeEl.selectionStart === 'number') ? activeEl.selectionStart : null;
+  const selEnd = (activeEl && typeof activeEl.selectionEnd === 'number') ? activeEl.selectionEnd : null;
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
 
   container.innerHTML = '' +
     '<div class="pageHead"><h2>Colegios</h2><p>Padrón de instituciones educativas por REI, cruzado con las fichas de monitoreo ya registradas.</p></div>' +
@@ -4216,7 +4840,7 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
     '<div class="card"><div class="num">' + (coberturaPct === null ? '—' : coberturaPct + '%') + '</div><div class="lbl">Cobertura de monitoreo</div></div>' +
     '</div>' +
     (totalColegios === 0 ? '<div class="empty"><h4>Aún no hay un padrón cargado</h4><p>' + (isAdmin ? 'Importa la lista de instituciones en el panel de abajo.' : 'Pide a un administrador que importe el padrón de instituciones.') + '</p></div>' : '') +
-    (isAdmin ? renderColegiosAdminPanel() : '') +
+    (isAdmin ? renderColegiosAdminPanel(state) : '') +
     (totalColegios ? '<div class="panel"><h3>Cobertura por REI</h3>' + reiRows + '</div>' : '') +
     (totalColegios ? (
       '<div class="panel">' +
@@ -4232,17 +4856,115 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
       '<button class="btn secondary small" id="col_export" type="button" style="margin-left:auto">Exportar CSV</button>' +
       '<button class="btn small" id="col_export_pdf" type="button">⬇ Descargar padrón oficial (PDF)</button>' +
       '</div>' +
-      '<div class="tblWrap"><table><thead><tr><th>REI</th><th>Código local</th><th>I.E.</th><th>Distrito</th><th>Tipo de gestión</th><th>N° monitoreos</th><th>Tipos de ficha aplicados</th><th>Última visita</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="tblWrap"><table><thead><tr><th>REI</th><th>Código local</th><th>I.E.</th><th>Distrito</th><th>Tipo de gestión</th><th>N° monitoreos</th><th>Tipos de ficha aplicados</th><th>Última visita</th><th></th></tr></thead><tbody id="col_table_tbody">' + rows + '</tbody></table></div>' +
       '</div>'
     ) : '');
 
-  const onFilterChange = () => renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser);
-  const fRei = document.getElementById('col_fil_rei'); if (fRei) fRei.addEventListener('change', e => { colFilters.rei = e.target.value; onFilterChange(); });
-  const fDist = document.getElementById('col_fil_distrito'); if (fDist) fDist.addEventListener('input', e => { colFilters.distrito = e.target.value; onFilterChange(); });
-  const fGes = document.getElementById('col_fil_gestion'); if (fGes) fGes.addEventListener('change', e => { colFilters.tipoGestion = e.target.value; onFilterChange(); });
-  const fQ = document.getElementById('col_fil_q'); if (fQ) fQ.addEventListener('input', e => { colFilters.q = e.target.value; onFilterChange(); });
-  const fPend = document.getElementById('col_fil_pend'); if (fPend) fPend.addEventListener('change', e => { colFilters.pendientes = e.target.checked; onFilterChange(); });
-  const fClear = document.getElementById('col_fil_clear'); if (fClear) fClear.addEventListener('click', () => { colFilters = { rei: '', distrito: '', tipoGestion: '', q: '', pendientes: false }; onFilterChange(); });
+  // Restaurar foco y scroll si se realizó render completo
+  window.scrollTo(scrollX, scrollY);
+  if (activeId) {
+    const newEl = container.querySelector('#' + activeId);
+    if (newEl) {
+      newEl.focus();
+      if (selStart !== null && selEnd !== null) {
+        try { newEl.setSelectionRange(selStart, selEnd); } catch (_) {}
+      }
+    }
+  }
+
+  // Actualización reactiva solo del tbody (sin tocar los inputs ni perder foco ni saltar el scroll)
+  const updateTableOnly = () => {
+    const tbody = container.querySelector('#col_table_tbody');
+    if (!tbody) {
+      renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser);
+      return;
+    }
+    const curFiltered = getFilteredColegios();
+    tbody.innerHTML = buildColegioRowsHtml(curFiltered, bySchool, getFichaType, colExpanded, isAdmin, state);
+    bindColegiosRowEvents();
+  };
+
+  const bindColegiosRowEvents = () => {
+    container.querySelectorAll('tr[data-colrow]').forEach(tr => {
+      tr.addEventListener('click', (e) => {
+        if (e.target.closest('[data-coledit],[data-coldel],.lnkVerEnDirectorio')) return;
+        const id = tr.dataset.colrow;
+        colExpanded = colExpanded === id ? null : id;
+        updateTableOnly();
+      });
+    });
+
+    container.querySelectorAll('.lnkVerEnDirectorio').forEach(lnk => {
+      lnk.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const q = lnk.dataset.ieSearch || '';
+        const dirBtn = document.querySelector('.navbtn[data-tab="directorio"]');
+        if (dirBtn) dirBtn.click();
+        setTimeout(() => {
+          const inp = document.getElementById('dir_fil_q');
+          if (inp) {
+            inp.value = q;
+            inp.dispatchEvent(new Event('input'));
+          }
+        }, 60);
+      });
+    });
+
+    if (isAdmin) {
+      container.querySelectorAll('[data-coledit]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          colEditing = btn.dataset.coledit;
+          renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser);
+          const fCode = document.getElementById('col_f_codigo');
+          if (fCode) fCode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      });
+
+      container.querySelectorAll('[data-coldel]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (!confirm('¿Eliminar este colegio del padrón? Las fichas ya registradas no se borran.')) return;
+          try {
+            await dbNs.collection('colegios').doc(btn.dataset.coldel).delete();
+            showToast('Institución eliminada del padrón.');
+          } catch (err) {
+            console.error('Error eliminando institución:', err);
+            showToast('No se pudo eliminar: [' + (err.code || 'error') + '] ' + err.message);
+          }
+        });
+      });
+    }
+  };
+
+  bindColegiosRowEvents();
+
+  const fRei = document.getElementById('col_fil_rei');
+  if (fRei) fRei.addEventListener('change', e => { colFilters.rei = e.target.value; updateTableOnly(); });
+
+  const fDist = document.getElementById('col_fil_distrito');
+  if (fDist) fDist.addEventListener('input', e => { colFilters.distrito = e.target.value; updateTableOnly(); });
+
+  const fGes = document.getElementById('col_fil_gestion');
+  if (fGes) fGes.addEventListener('change', e => { colFilters.tipoGestion = e.target.value; updateTableOnly(); });
+
+  const fQ = document.getElementById('col_fil_q');
+  if (fQ) fQ.addEventListener('input', e => { colFilters.q = e.target.value; updateTableOnly(); });
+
+  const fPend = document.getElementById('col_fil_pend');
+  if (fPend) fPend.addEventListener('change', e => { colFilters.pendientes = e.target.checked; updateTableOnly(); });
+
+  const fClear = document.getElementById('col_fil_clear');
+  if (fClear) fClear.addEventListener('click', () => {
+    colFilters = { rei: '', distrito: '', tipoGestion: '', q: '', pendientes: false };
+    if (fRei) fRei.value = '';
+    if (fDist) fDist.value = '';
+    if (fGes) fGes.value = '';
+    if (fQ) fQ.value = '';
+    if (fPend) fPend.checked = false;
+    updateTableOnly();
+  });
   const fExport = document.getElementById('col_export');
   if (fExport) fExport.addEventListener('click', () => {
     const header = ['REI', 'Código local', 'I.E.', 'Modalidad', 'Nivel de servicio', 'Turnos', 'Tipo de Gestión', 'Dependencia', 'Dirección', 'Distrito', 'Director', 'N° monitoreos', 'Última visita'];
@@ -4281,50 +5003,7 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
       });
     });
   }
-
-  container.querySelectorAll('tr[data-colrow]').forEach(tr => {
-    tr.addEventListener('click', (e) => {
-      if (e.target.closest('[data-coledit],[data-coldel],.lnkVerEnDirectorio')) return;
-      const id = tr.dataset.colrow;
-      colExpanded = colExpanded === id ? null : id;
-      renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser);
-    });
-  });
-
-  container.querySelectorAll('.lnkVerEnDirectorio').forEach(lnk => {
-    lnk.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const q = lnk.dataset.ieSearch || '';
-      const dirBtn = document.querySelector('.navbtn[data-tab="directorio"]');
-      if (dirBtn) dirBtn.click();
-      setTimeout(() => {
-        const inp = document.getElementById('dir_fil_q');
-        if (inp) {
-          inp.value = q;
-          inp.dispatchEvent(new Event('input'));
-        }
-      }, 60);
-    });
-  });
-
   if (isAdmin) {
-    container.querySelectorAll('[data-coledit]').forEach(btn => {
-      btn.addEventListener('click', (e) => { e.stopPropagation(); colEditing = btn.dataset.coledit; renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser); });
-    });
-    container.querySelectorAll('[data-coldel]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (!confirm('¿Eliminar este colegio del padrón? Las fichas ya registradas no se borran.')) return;
-        try {
-          await dbNs.collection('colegios').doc(btn.dataset.coldel).delete();
-          showToast('Institución eliminada del padrón.');
-        } catch (err) {
-          console.error('Error eliminando institución:', err);
-          showToast('No se pudo eliminar: [' + (err.code || 'error') + '] ' + err.message);
-        }
-      });
-    });
     const newBtn = document.getElementById('col_new_btn');
     if (newBtn) newBtn.addEventListener('click', () => { colEditing = 'new'; renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser); });
     const saveBtn = document.getElementById('col_f_save');
@@ -4374,10 +5053,10 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
   }
 }
 
-function renderColegiosAdminPanel() {
+function renderColegiosAdminPanel(state) {
   return '' +
-    '<div class="panel"><h3>Agregar / editar institución</h3>' +
-    (colEditing ? renderColegioFormPanel() : '<button class="btn secondary small" id="col_new_btn" type="button">+ Agregar institución manualmente</button>') +
+    '<div class="panel"><h3>' + (colEditing && colEditing !== 'new' ? 'Editar institución' : 'Agregar institución') + '</h3>' +
+    (colEditing ? renderColegioFormPanel(state) : '<button class="btn secondary small" id="col_new_btn" type="button">+ Agregar institución manualmente</button>') +
     '</div>' +
     '<div class="panel">' +
     '<h3>Importar padrón desde Excel <small>archivo .xlsx</small></h3>' +
@@ -4495,38 +5174,42 @@ function renderColegiosImportPreview(preview) {
     (preview.rows.length > 50 ? '<p class="helpText">Mostrando las primeras 50 filas de ' + preview.rows.length + '.</p>' : '');
 }
 
-function renderColegioFormPanel() {
-  // Busca el registro que se está editando en state para precargar datos
-  // Nota: state no está en scope directo aquí, se pasa a través del cierre de renderColegiosTab
+function renderColegioFormPanel(state) {
+  const col = (state && state.colegios && colEditing && colEditing !== 'new')
+    ? (state.colegios.find(x => x.id === colEditing) || {})
+    : {};
+  const dir = col.director || {};
+  const sub = col.subDirector || {};
+
   return '' +
     '<div class="fieldGrid">' +
-    '<div class="field"><label>REI</label><input type="text" id="col_f_rei"></div>' +
-    '<div class="field"><label>Código local *</label><input type="text" id="col_f_codigo"></div>' +
-    '<div class="field"><label>Nombre I.E. *</label><input type="text" id="col_f_ie"></div>' +
-    '<div class="field"><label>Modalidad</label><input type="text" id="col_f_modalidad"></div>' +
-    '<div class="field"><label>Nivel de servicio</label><input type="text" id="col_f_nivel"></div>' +
-    '<div class="field"><label>Turnos</label><input type="text" id="col_f_turnos"></div>' +
-    '<div class="field"><label>Tipo de Gestión</label><input type="text" id="col_f_gestion"></div>' +
-    '<div class="field"><label>Dependencia</label><input type="text" id="col_f_dependencia"></div>' +
-    '<div class="field" style="grid-column:span 2"><label>Dirección</label><input type="text" id="col_f_direccion"></div>' +
-    '<div class="field"><label>Distrito</label><input type="text" id="col_f_distrito"></div>' +
+    '<div class="field"><label>REI</label><input type="text" id="col_f_rei" value="' + esc(col.rei || '') + '"></div>' +
+    '<div class="field"><label>Código local *</label><input type="text" id="col_f_codigo" value="' + esc(col.codigoLocal || '') + '"></div>' +
+    '<div class="field"><label>Nombre I.E. *</label><input type="text" id="col_f_ie" value="' + esc(col.ie || '') + '"></div>' +
+    '<div class="field"><label>Modalidad</label><input type="text" id="col_f_modalidad" value="' + esc(col.modalidad || '') + '"></div>' +
+    '<div class="field"><label>Nivel de servicio</label><input type="text" id="col_f_nivel" value="' + esc(col.nivelServicio || '') + '"></div>' +
+    '<div class="field"><label>Turnos</label><input type="text" id="col_f_turnos" value="' + esc(col.turnos || '') + '"></div>' +
+    '<div class="field"><label>Tipo de Gestión</label><input type="text" id="col_f_gestion" value="' + esc(col.tipoGestion || '') + '"></div>' +
+    '<div class="field"><label>Dependencia</label><input type="text" id="col_f_dependencia" value="' + esc(col.dependencia || '') + '"></div>' +
+    '<div class="field" style="grid-column:span 2"><label>Dirección</label><input type="text" id="col_f_direccion" value="' + esc(col.direccion || '') + '"></div>' +
+    '<div class="field"><label>Distrito</label><input type="text" id="col_f_distrito" value="' + esc(col.distrito || '') + '"></div>' +
     '</div>' +
     '<div class="sectionTitle">Datos del Director(a)</div>' +
     '<div class="fieldGrid">' +
-    '<div class="field"><label>Apellidos y nombres *</label><input type="text" id="col_f_dir_nombre"></div>' +
-    '<div class="field"><label>DNI</label><input type="text" id="col_f_dir_dni" maxlength="8"></div>' +
-    '<div class="field"><label>Teléfono</label><input type="text" id="col_f_dir_tel"></div>' +
-    '<div class="field"><label>Correo</label><input type="email" id="col_f_dir_correo"></div>' +
+    '<div class="field"><label>Apellidos y nombres *</label><input type="text" id="col_f_dir_nombre" value="' + esc(dir.nombre || '') + '"></div>' +
+    '<div class="field"><label>DNI</label><input type="text" id="col_f_dir_dni" maxlength="8" value="' + esc(dir.dni || '') + '"></div>' +
+    '<div class="field"><label>Teléfono</label><input type="text" id="col_f_dir_tel" value="' + esc(dir.telefono || '') + '"></div>' +
+    '<div class="field"><label>Correo</label><input type="email" id="col_f_dir_correo" value="' + esc(dir.correo || '') + '"></div>' +
     '</div>' +
     '<div class="sectionTitle">Datos del Sub-director(a) <small style="font-weight:400;color:var(--ink-soft)">(opcional)</small></div>' +
     '<div class="fieldGrid">' +
-    '<div class="field"><label>Apellidos y nombres</label><input type="text" id="col_f_sub_nombre"></div>' +
-    '<div class="field"><label>DNI</label><input type="text" id="col_f_sub_dni" maxlength="8"></div>' +
-    '<div class="field"><label>Teléfono</label><input type="text" id="col_f_sub_tel"></div>' +
-    '<div class="field"><label>Correo</label><input type="email" id="col_f_sub_correo"></div>' +
+    '<div class="field"><label>Apellidos y nombres</label><input type="text" id="col_f_sub_nombre" value="' + esc(sub.nombre || '') + '"></div>' +
+    '<div class="field"><label>DNI</label><input type="text" id="col_f_sub_dni" maxlength="8" value="' + esc(sub.dni || '') + '"></div>' +
+    '<div class="field"><label>Teléfono</label><input type="text" id="col_f_sub_tel" value="' + esc(sub.telefono || '') + '"></div>' +
+    '<div class="field"><label>Correo</label><input type="email" id="col_f_sub_correo" value="' + esc(sub.correo || '') + '"></div>' +
     '</div>' +
     '<div style="display:flex;gap:8px;margin-top:4px">' +
-    '<button class="btn small" id="col_f_save" type="button">Guardar institución</button>' +
+    '<button class="btn small" id="col_f_save" type="button">' + (colEditing === 'new' ? 'Guardar nueva institución' : 'Actualizar institución') + '</button>' +
     '<button class="btn secondary small" id="col_f_cancel" type="button">Cancelar</button>' +
     '</div>';
 }
@@ -4573,6 +5256,12 @@ async function saveColegioForm(state, dbNs, container, getFichaType, isAdmin) {
   try {
     await dbNs.collection('colegios').doc(id).set(data);
     showToast('Institución guardada.');
+    const idx = (state.colegios || []).findIndex(x => x.id === id);
+    if (idx >= 0) {
+      state.colegios[idx] = data;
+    } else {
+      state.colegios.push(data);
+    }
     colEditing = null;
   } catch (err) {
     console.error('Error al guardar institución individual en Firestore:', err);
@@ -4683,8 +5372,8 @@ async function commitColegiosImport(state, dbNs, container, getFichaType, isAdmi
   renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser);
 }
 
-function renderColegioProfile(c, subs, typeStats) {
-  const directivos = getDirectivosActivosForColegio(activeState, c.id, c.codigoLocal, c.codigoModular);
+function renderColegioProfile(c, subs, typeStats, state) {
+  const directivos = getDirectivosActivosForColegio(state || {}, c.id, c.codigoLocal, c.codigoModular);
   const dir = directivos.director;
   const subdirs = directivos.subdirectores || [];
 
@@ -6861,40 +7550,8 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
     return m === 'EBR / EBE' || (m.includes('EBR') && m.includes('EBE'));
   }).length;
 
-  let filtered = (state.responsables || []).slice();
-  if (respFilters.modalidad) {
-    if (respFilters.modalidad === 'EBR') {
-      filtered = filtered.filter(r => (r.modalidad || '').toUpperCase().includes('EBR'));
-    } else if (respFilters.modalidad === 'EBE') {
-      filtered = filtered.filter(r => (r.modalidad || '').toUpperCase().includes('EBE'));
-    } else if (respFilters.modalidad === 'EBR / EBE') {
-      filtered = filtered.filter(r => {
-        const m = (r.modalidad || '').toUpperCase();
-        return m === 'EBR / EBE' || (m.includes('EBR') && m.includes('EBE'));
-      });
-    } else {
-      filtered = filtered.filter(r => r.modalidad === respFilters.modalidad);
-    }
-  }
-  if (respFilters.red) {
-    const reqRed = normalizeText(respFilters.red);
-    filtered = filtered.filter(r => normalizeText(r.red).includes(reqRed));
-  }
-  if (respFilters.q) {
-    const qNorm = normalizeText(respFilters.q);
-    filtered = filtered.filter(r =>
-      normalizeText(r.nombresApellidos).includes(qNorm) ||
-      normalizeText(r.especialista).includes(qNorm) ||
-      normalizeText(r.cargo).includes(qNorm) ||
-      normalizeText(r.red).includes(qNorm) ||
-      normalizeText(r.distrito).includes(qNorm) ||
-      normalizeText(r.correo).includes(qNorm) ||
-      normalizeText(r.celular).includes(qNorm)
-    );
-  }
-  filtered.sort((a, b) => (a.nombresApellidos || '').localeCompare(b.nombresApellidos || ''));
-
-  const rows = filtered.map(r => {
+function buildResponsablesRowsHtml(filtered, respExpanded, isAdmin, state) {
+  return filtered.map(r => {
     const isOpen = respExpanded === r.id;
     const subsCount = (state.submissions || []).filter(s => {
       const respName = (s.responsable || '').trim().toLowerCase();
@@ -6930,6 +7587,53 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
       '</tr>' +
       (isOpen ? '<tr class="detailRow"><td colspan="' + (isAdmin ? 9 : 8) + '">' + detailHtml + '</td></tr>' : '');
   }).join('') || '<tr><td colspan="' + (isAdmin ? 9 : 8) + '" style="text-align:center;color:var(--ink-soft);padding:22px">Ningún especialista coincide con los filtros.</td></tr>';
+}
+
+  const getFilteredResponsables = () => {
+    let list = (state.responsables || []).slice();
+    if (respFilters.modalidad) {
+      if (respFilters.modalidad === 'EBR') {
+        list = list.filter(r => (r.modalidad || '').toUpperCase().includes('EBR'));
+      } else if (respFilters.modalidad === 'EBE') {
+        list = list.filter(r => (r.modalidad || '').toUpperCase().includes('EBE'));
+      } else if (respFilters.modalidad === 'EBR / EBE') {
+        list = list.filter(r => {
+          const m = (r.modalidad || '').toUpperCase();
+          return m === 'EBR / EBE' || (m.includes('EBR') && m.includes('EBE'));
+        });
+      } else {
+        list = list.filter(r => r.modalidad === respFilters.modalidad);
+      }
+    }
+    if (respFilters.red) {
+      const reqRed = normalizeText(respFilters.red);
+      list = list.filter(r => normalizeText(r.red).includes(reqRed));
+    }
+    if (respFilters.q) {
+      const qNorm = normalizeText(respFilters.q);
+      list = list.filter(r =>
+        normalizeText(r.nombresApellidos).includes(qNorm) ||
+        normalizeText(r.especialista).includes(qNorm) ||
+        normalizeText(r.cargo).includes(qNorm) ||
+        normalizeText(r.red).includes(qNorm) ||
+        normalizeText(r.distrito).includes(qNorm) ||
+        normalizeText(r.correo).includes(qNorm) ||
+        normalizeText(r.celular).includes(qNorm)
+      );
+    }
+    list.sort((a, b) => (a.nombresApellidos || '').localeCompare(b.nombresApellidos || ''));
+    return list;
+  };
+
+  const filtered = getFilteredResponsables();
+  const rows = buildResponsablesRowsHtml(filtered, respExpanded, isAdmin, state);
+
+  const activeEl = document.activeElement;
+  const activeId = activeEl ? activeEl.id : null;
+  const selStart = (activeEl && typeof activeEl.selectionStart === 'number') ? activeEl.selectionStart : null;
+  const selEnd = (activeEl && typeof activeEl.selectionEnd === 'number') ? activeEl.selectionEnd : null;
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
 
   container.innerHTML = '' +
     '<div class="pageHead">' +
@@ -6971,63 +7675,84 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
     '<button class="btn secondary small" id="resp_fil_clear" type="button" style="align-self:flex-end;margin-bottom:2px">Limpiar</button>' +
     '<button class="btn secondary small" id="resp_export" type="button" style="margin-left:auto;align-self:flex-end;margin-bottom:2px">Exportar CSV</button>' +
     '</div>' +
-    '<div class="tblWrap"><table><thead><tr><th>RED</th><th>Distrito(s)</th><th>Especialista responsable</th><th>Nombres y apellidos</th><th>Cargo</th><th>Modalidad</th><th>N°Celular</th><th>Correo Institucional</th>' + (isAdmin ? '<th></th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<div class="tblWrap"><table><thead><tr><th>RED</th><th>Distrito(s)</th><th>Especialista responsable</th><th>Nombres y apellidos</th><th>Cargo</th><th>Modalidad</th><th>N°Celular</th><th>Correo Institucional</th>' + (isAdmin ? '<th></th>' : '') + '</tr></thead><tbody id="resp_table_tbody">' + rows + '</tbody></table></div>' +
     '</div>';
 
-  // Event handlers
-  const onFilterChange = () => renderResponsablesTab(container, state, dbNs, isAdmin, currentUser);
-  const fMod = document.getElementById('resp_fil_modalidad');
-  if (fMod) fMod.addEventListener('change', e => { respFilters.modalidad = e.target.value; onFilterChange(); });
-  const fRed = document.getElementById('resp_fil_red');
-  if (fRed) fRed.addEventListener('change', e => { respFilters.red = e.target.value; onFilterChange(); });
-  const fQ = document.getElementById('resp_fil_q');
-  if (fQ) fQ.addEventListener('input', e => { respFilters.q = e.target.value; onFilterChange(); });
-  const fClear = document.getElementById('resp_fil_clear');
-  if (fClear) fClear.addEventListener('click', () => { respFilters = { modalidad: '', red: '', q: '' }; onFilterChange(); });
-
-  const fExport = document.getElementById('resp_export');
-  if (fExport) {
-    fExport.addEventListener('click', () => {
-      const header = ['RED', 'Distrito(s)', 'Especialista responsable', 'Nombres y apellidos', 'Cargo', 'Modalidad', 'N°Celular', 'Correo Institucional'];
-      const dataRows = filtered.map(r => [
-        r.red, r.distrito, r.especialista, r.nombresApellidos, r.cargo, r.modalidad, r.celular, r.correo
-      ]);
-      downloadCsv('responsables.csv', header, dataRows);
-    });
+  window.scrollTo(scrollX, scrollY);
+  if (activeId) {
+    const newEl = container.querySelector('#' + activeId);
+    if (newEl) {
+      newEl.focus();
+      if (selStart !== null && selEnd !== null) {
+        try { newEl.setSelectionRange(selStart, selEnd); } catch (_) {}
+      }
+    }
   }
 
-  container.querySelectorAll('tr[data-resprow]').forEach(tr => {
-    tr.addEventListener('click', (e) => {
-      if (e.target.closest('[data-respenit],[data-respdel],a')) return;
-      const id = tr.dataset.resprow;
-      respExpanded = respExpanded === id ? null : id;
+  const updateRespTableOnly = () => {
+    const tbody = container.querySelector('#resp_table_tbody');
+    if (!tbody) {
       renderResponsablesTab(container, state, dbNs, isAdmin, currentUser);
+      return;
+    }
+    const curFiltered = getFilteredResponsables();
+    tbody.innerHTML = buildResponsablesRowsHtml(curFiltered, respExpanded, isAdmin, state);
+    bindRespRowEvents();
+  };
+
+  const bindRespRowEvents = () => {
+    container.querySelectorAll('tr[data-resprow]').forEach(tr => {
+      tr.addEventListener('click', (e) => {
+        if (e.target.closest('[data-respenit],[data-respdel],a')) return;
+        const id = tr.dataset.resprow;
+        respExpanded = respExpanded === id ? null : id;
+        updateRespTableOnly();
+      });
     });
+
+    if (isAdmin) {
+      container.querySelectorAll('[data-respenit]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          respEditing = btn.dataset.respenit;
+          renderResponsablesTab(container, state, dbNs, isAdmin, currentUser);
+        });
+      });
+
+      container.querySelectorAll('[data-respdel]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (!confirm('¿Eliminar este especialista del directorio?')) return;
+          try {
+            await dbNs.collection('responsables').doc(btn.dataset.respdel).delete();
+            showToast('Especialista eliminado.');
+          } catch (err) {
+            console.error('Error eliminando responsable:', err);
+            showToast('No se pudo eliminar: [' + (err.code || 'error') + '] ' + err.message);
+          }
+        });
+      });
+    }
+  };
+
+  bindRespRowEvents();
+
+  const fMod = document.getElementById('resp_fil_modalidad');
+  if (fMod) fMod.addEventListener('change', e => { respFilters.modalidad = e.target.value; updateRespTableOnly(); });
+  const fRed = document.getElementById('resp_fil_red');
+  if (fRed) fRed.addEventListener('change', e => { respFilters.red = e.target.value; updateRespTableOnly(); });
+  const fQ = document.getElementById('resp_fil_q');
+  if (fQ) fQ.addEventListener('input', e => { respFilters.q = e.target.value; updateRespTableOnly(); });
+  const fClear = document.getElementById('resp_fil_clear');
+  if (fClear) fClear.addEventListener('click', () => {
+    respFilters = { modalidad: '', red: '', q: '' };
+    if (fMod) fMod.value = '';
+    if (fRed) fRed.value = '';
+    if (fQ) fQ.value = '';
+    updateRespTableOnly();
   });
 
   if (isAdmin) {
-    container.querySelectorAll('[data-respenit]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        respEditing = btn.dataset.respenit;
-        renderResponsablesTab(container, state, dbNs, isAdmin, currentUser);
-      });
-    });
-
-    container.querySelectorAll('[data-respdel]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (!confirm('¿Eliminar este especialista del directorio?')) return;
-        try {
-          await dbNs.collection('responsables').doc(btn.dataset.respdel).delete();
-          showToast('Especialista eliminado.');
-        } catch (err) {
-          console.error('Error eliminando responsable:', err);
-          showToast('No se pudo eliminar: [' + (err.code || 'error') + '] ' + err.message);
-        }
-      });
-    });
-
     const newBtn = document.getElementById('resp_new_btn');
     if (newBtn) newBtn.addEventListener('click', () => {
       respEditing = 'new';

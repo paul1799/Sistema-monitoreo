@@ -1,4 +1,4 @@
-import { esc, fmtDate, showToast } from './ui.js?v=20260925_v8';
+import { esc, fmtDate, showToast } from './ui.js?v=20260928_v11';
 
 let alertFilters = { fichaTypeId: '', ugel: '' };
 
@@ -74,6 +74,13 @@ export function renderAlertasTab(container, state, getFichaType, dbNs, currentUs
 
   const ftOpts = state.fichaTypes.map(ft => '<option value="' + ft.id + '"' + (ft.id === alertFilters.fichaTypeId ? ' selected' : '') + '>' + esc(ft.nombre) + '</option>').join('');
 
+  const activeEl = document.activeElement;
+  const activeId = activeEl ? activeEl.id : null;
+  const selStart = (activeEl && typeof activeEl.selectionStart === 'number') ? activeEl.selectionStart : null;
+  const selEnd = (activeEl && typeof activeEl.selectionEnd === 'number') ? activeEl.selectionEnd : null;
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+
   container.innerHTML = '' +
     '<div class="pageHead"><h2>Alertas y Seguimiento</h2><p>Vencimiento de compromisos, fichas en borrador e ítems críticos en retroceso.</p></div>' +
     '<div class="cards">' +
@@ -104,8 +111,27 @@ export function renderAlertasTab(container, state, getFichaType, dbNs, currentUs
     '<div class="tblWrap"><table><thead><tr><th>Institución</th><th>Ficha / sección</th><th>Ítem</th><th>Resultado</th><th>Última visita</th></tr></thead><tbody>' + critRows + '</tbody></table></div>' +
     '</div>';
 
+  window.scrollTo(scrollX, scrollY);
+  if (activeId) {
+    const newEl = container.querySelector('#' + activeId);
+    if (newEl) {
+      newEl.focus();
+      if (selStart !== null && selEnd !== null) {
+        try { newEl.setSelectionRange(selStart, selEnd); } catch (_) {}
+      }
+    }
+  }
+
+  let alDebounceTimer = null;
+  const debouncedRenderAlertas = () => {
+    if (alDebounceTimer) clearTimeout(alDebounceTimer);
+    alDebounceTimer = setTimeout(() => {
+      renderAlertasTab(container, state, getFichaType, dbNs, currentUser, isAdmin);
+    }, 180);
+  };
+
   document.getElementById('al_ft').addEventListener('change', e => { alertFilters.fichaTypeId = e.target.value; renderAlertasTab(container, state, getFichaType, dbNs, currentUser, isAdmin); });
-  document.getElementById('al_ugel').addEventListener('input', e => { alertFilters.ugel = e.target.value; renderAlertasTab(container, state, getFichaType, dbNs, currentUser, isAdmin); });
+  document.getElementById('al_ugel').addEventListener('input', e => { alertFilters.ugel = e.target.value; debouncedRenderAlertas(); });
 
   // Bind fulfill buttons
   container.querySelectorAll('.btnCumplir').forEach(btn => {

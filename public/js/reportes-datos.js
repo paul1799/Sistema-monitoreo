@@ -122,13 +122,15 @@ export function getMapaCalorDataset(statsList, ft) {
 export function getEvolucionVisitasDataset(statsList) {
   const visAgg = {};
   statsList.forEach(x => { 
-    const v = x.s.visita || 1; 
-    if (!visAgg[v]) visAgg[v] = { sum: 0, cnt: 0 }; 
-    if (x.st.pct !== null) { visAgg[v].sum += x.st.pct; visAgg[v].cnt++; } 
+    const v = Number(x.s.visita) || 1; 
+    if (!visAgg[v]) visAgg[v] = { sum: 0, cnt: 0, sumPts: 0, cntPts: 0 }; 
+    if (x.st.pct !== null && x.st.pct !== undefined) { visAgg[v].sum += x.st.pct; visAgg[v].cnt++; } 
+    if (x.st.puntaje !== null && x.st.puntaje !== undefined) { visAgg[v].sumPts += x.st.puntaje; visAgg[v].cntPts++; }
   });
-  return Object.keys(visAgg).sort((a, b) => a - b).map(v => ({
-    visita: v,
-    avg: visAgg[v].cnt ? Math.round(visAgg[v].sum / visAgg[v].cnt) : null
+  return Object.keys(visAgg).sort((a, b) => Number(a) - Number(b)).map(v => ({
+    visita: Number(v),
+    avg: visAgg[v].cnt ? Math.round(visAgg[v].sum / visAgg[v].cnt) : null,
+    avgPts: visAgg[v].cntPts ? Math.round(visAgg[v].sumPts / visAgg[v].cntPts) : null
   }));
 }
 
