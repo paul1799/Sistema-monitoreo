@@ -11,7 +11,7 @@ import {
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES,
   migrateLegacyEbrTotals
-} from './ebr-gestion.js?v=20260928_v12';
+} from './ebr-gestion.js?v=20260929_v15';
 
 import {
   isFichaJec,
@@ -21,6 +21,9 @@ import {
 
 import {
   isFichaCoordTutoriaJec,
+  isFichaCoordPedagogico,
+  isFichaEspecialistaJec,
+  ESPECIALISTA_JEC_OFICIAL,
   getNivelCoordTutoriaJec,
   REGLA_NIVEL_COORD_TUTORIA_JEC,
   calcScore,
@@ -28,6 +31,13 @@ import {
   getReglaNivelEbrGestion,
   getMomentoVisitaEbr
 } from './calcEngine.js?v=20260928_v12';
+
+import {
+  getHallazgosClave,
+  computeItemAgg
+} from './reportes-datos.js?v=20260929_v18';
+
+export const SISTEMA_NOMBRE_OFICIAL = 'Sistema de Fichas de Monitoreo';
 
 /**
  * Obtiene la instancia de jsPDF desde window.jspdf
@@ -1447,8 +1457,8 @@ export function sanitizePdfText(str) {
  * Dibuja el membrete oficial institucional (4 celdas grises + línea azul marino)
  * El 4.° recuadro es dinámico según el área elegida (áreaConfig).
  */
-export function drawOfficialHeader(doc, pageW, margin, pageH, areaConfig = null) {
-  const headerY = margin;
+export function drawOfficialHeader(doc, pageW, margin, pageH, areaConfig = null, customTopY = null) {
+  const headerY = customTopY !== null ? customTopY : margin;
   const headerH = 34;
   const colCount = 4;
   const colGap = 4;
@@ -1525,6 +1535,7 @@ export async function createOfficialPdfDocument({
   subtitle = 'Monitoreo y Acompañamiento 2026 · UGEL 03',
   orientation = 'portrait', // 'portrait' | 'landscape'
   introParagraph = '',
+  soloEncabezadoPagina1 = false,
   metaGrid = [], // Array de { label, value, note }
   tableHeaders = [],
   tableRows = [],
@@ -1560,7 +1571,9 @@ export async function createOfficialPdfDocument({
   const margin = orientation === 'landscape' ? 36 : 42; // ~13mm a 15mm
   const CONTENT_WIDTH = pageW - 2 * margin;
 
-  const headerBottomY = margin + 34 + 6; // Posición inferior de la línea azul del encabezado
+  const headerTopY = (soloEncabezadoPagina1) ? (orientation === 'landscape' ? 24 : 26) : margin;
+  const headerBottomY = headerTopY + 34 + 6; // Posición inferior de la línea azul del encabezado
+  const topMarginSubsequent = soloEncabezadoPagina1 ? (orientation === 'landscape' ? 32 : 36) : (headerBottomY + 16);
 
   // Código de verificación oficial
   const docVerifCode = verificationCode || generateVerificationCode();
@@ -1588,9 +1601,13 @@ export async function createOfficialPdfDocument({
     const p = pageNumber || (doc.internal.getCurrentPageInfo ? doc.internal.getCurrentPageInfo().pageNumber : 1);
     if (!drawnHeaderPages.has(p)) {
       drawnHeaderPages.add(p);
-      return drawOfficialHeader(doc, pageW, margin, pageH, areaConfig);
+      if (soloEncabezadoPagina1 && p > 1) {
+        return topMarginSubsequent;
+      }
+      const customTopY = (soloEncabezadoPagina1 && p === 1) ? headerTopY : null;
+      return drawOfficialHeader(doc, pageW, margin, pageH, areaConfig, customTopY);
     }
-    return headerBottomY + 16;
+    return (soloEncabezadoPagina1 && p > 1) ? topMarginSubsequent : (headerBottomY + 16);
   };
 
   let curY = safeDrawHeader(1);
@@ -1764,8 +1781,12 @@ export async function createOfficialPdfDocument({
         const neededSpace = t.minHeight || (t.tableHeaders && t.tableRows ? 80 : 40);
         if (t.pageBreak === 'before' || curY + neededSpace > pageH - 50) {
           doc.addPage();
-          safeDrawHeader(doc.internal.getCurrentPageInfo ? doc.internal.getCurrentPageInfo().pageNumber : null);
-          curY = headerBottomY + 16;
+          if (!soloEncabezadoPagina1) {
+            safeDrawHeader(doc.internal.getCurrentPageInfo ? doc.internal.getCurrentPageInfo().pageNumber : null);
+            curY = headerBottomY + 16;
+          } else {
+            curY = topMarginSubsequent;
+          }
         }
 
         if (t.title) {
@@ -1795,8 +1816,8 @@ export async function createOfficialPdfDocument({
             head: t.head ? t.head : (Array.isArray(t.tableHeaders[0]) ? t.tableHeaders : [t.tableHeaders]),
             body: t.tableRows,
             startY: curY,
-            margin: { left: margin, right: margin, top: headerBottomY + 14, bottom: 42 },
-            tableWidth: t.tableWidth || CONTENT_WIDTH,
+            margin: { left: margin, right: margin, top: soloEncabezadoPagina1 ? (orientation === 'landscape' ? 32 : 36) : (headerBottomY + 14), bottom: 42 },
+            tableWidth: t.tableWidth || 'auto',
             theme: 'plain',
             rowPageBreak: t.rowPageBreak || 'avoid',
             showHead: t.showHead || 'everyPage',
@@ -1835,7 +1856,7 @@ export async function createOfficialPdfDocument({
               }
             },
             didDrawPage: (data) => {
-              if (data.pageNumber > 1) {
+              if (data.pageNumber > 1 && !soloEncabezadoPagina1) {
                 safeDrawHeader(data.pageNumber);
               }
             }
@@ -1852,8 +1873,8 @@ export async function createOfficialPdfDocument({
         head: [tableHeaders],
         body: tableRows,
         startY: curY,
-        margin: { left: margin, right: margin, top: headerBottomY + 14, bottom: 42 },
-        tableWidth: CONTENT_WIDTH,
+        margin: { left: margin, right: margin, top: soloEncabezadoPagina1 ? (orientation === 'landscape' ? 32 : 36) : (headerBottomY + 14), bottom: 42 },
+        tableWidth: tableStyles.tableWidth || 'auto',
         theme: 'plain',
         rowPageBreak: 'avoid',
         showHead: 'everyPage',
@@ -1893,7 +1914,7 @@ export async function createOfficialPdfDocument({
         },
         didDrawPage: (data) => {
           // Membrete oficial en páginas subsecuentes
-          if (data.pageNumber > 1) {
+          if (data.pageNumber > 1 && !soloEncabezadoPagina1) {
             safeDrawHeader(data.pageNumber);
           }
         }
@@ -1906,24 +1927,29 @@ export async function createOfficialPdfDocument({
   // 7. Secciones de resumen / compromisos / observaciones
   if (summarySections && summarySections.length > 0) {
     summarySections.forEach(sec => {
-      if (curY + 60 > pageH - 80) {
+      const splitSec = doc.splitTextToSize(sec.content, pageW - 2 * margin);
+      const neededH = 16 + (splitSec.length * 11) + 14;
+      if (curY + neededH > pageH - 46) {
         doc.addPage();
-        safeDrawHeader(doc.internal.getCurrentPageInfo ? doc.internal.getCurrentPageInfo().pageNumber : null);
-        curY = headerBottomY + 16;
+        if (!soloEncabezadoPagina1) {
+          safeDrawHeader(doc.internal.getCurrentPageInfo ? doc.internal.getCurrentPageInfo().pageNumber : null);
+          curY = headerBottomY + 16;
+        } else {
+          curY = topMarginSubsequent;
+        }
       }
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9.5);
       doc.setTextColor(18, 41, 77);
       doc.text(sec.title.toUpperCase(), margin, curY);
-      curY += 12;
+      curY += 13;
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.5);
+      doc.setFontSize(8);
       doc.setTextColor(15, 27, 45);
-      const splitSec = doc.splitTextToSize(sec.content, pageW - 2 * margin);
-      doc.text(splitSec, margin, curY, { align: 'justify', lineHeightFactor: 1.2 });
-      curY += splitSec.length * 11 + 14;
+      doc.text(splitSec, margin, curY, { align: 'left', maxWidth: pageW - 2 * margin, lineHeightFactor: 1.25 });
+      curY += splitSec.length * 10 + 14;
     });
   }
 
@@ -2694,6 +2720,37 @@ export async function exportJecFichaPdf(sub, fichaType, colegio = null, download
 
   const customTables = [];
 
+  const jecRespName = (sub.responsable && !/^\d+$/.test(String(sub.responsable).trim()))
+    ? sub.responsable
+    : ESPECIALISTA_JEC_OFICIAL.nombresApellidos;
+  const jecRespCargo = sub.responsableCargo || ESPECIALISTA_JEC_OFICIAL.cargo;
+
+  // -------------------------------------------------------------------------
+  // III. DATOS DEL ESPECIALISTA QUE REALIZA EL MONITOREO Y ASISTENCIA TÉCNICA
+  // -------------------------------------------------------------------------
+  customTables.push({
+    title: 'III. DATOS DEL ESPECIALISTA QUE REALIZA EL MONITOREO Y ASISTENCIA TÉCNICA',
+    minHeight: 35,
+    tableHeaders: ['Especialista Responsable', 'Cargo', 'Dependencia / Entidad'],
+    tableRows: [
+      [
+        formatPersonName(jecRespName || ESPECIALISTA_JEC_OFICIAL.nombresApellidos),
+        jecRespCargo,
+        ESPECIALISTA_JEC_OFICIAL.entidad
+      ]
+    ],
+    columnStyles: {
+      0: { cellWidth: 200, fontStyle: 'bold' },
+      1: { cellWidth: 150 },
+      2: { cellWidth: 151 }
+    },
+    headStyles: {
+      fillColor: [18, 41, 77],
+      fontSize: 8,
+      fontStyle: 'bold'
+    }
+  });
+
   // -------------------------------------------------------------------------
   // IV. DATOS DEL DIRECTIVO QUE BRINDA LA INFORMACIÓN SOLICITADA
   // -------------------------------------------------------------------------
@@ -3008,10 +3065,10 @@ export async function exportJecFichaPdf(sub, fichaType, colegio = null, download
       leyenda: `DNI: ${dirDni}`
     },
     {
-      cargo: 'Especialista / Monitor JEC',
-      nombre: formatPersonName(sub.responsable || 'Especialista UGEL 03'),
-      entidad: 'UGEL 03 · AGEBRE',
-      leyenda: `DNI: ${sub.monitorDni || '—'}`
+      cargo: 'Especialista de JEC',
+      nombre: formatPersonName(jecRespName || ESPECIALISTA_JEC_OFICIAL.nombresApellidos),
+      entidad: ESPECIALISTA_JEC_OFICIAL.entidad,
+      leyenda: `Cargo: ${jecRespCargo}`
     }
   ];
 
@@ -3021,7 +3078,7 @@ export async function exportJecFichaPdf(sub, fichaType, colegio = null, download
     title,
     subtitle,
     orientation: 'portrait',
-    introParagraph: `En Lima, a la fecha ${fechaVisita}, se procedió a realizar la jornada de monitoreo y asistencia técnica a la implementación del Modelo de Servicio Educativo Jornada Escolar Completa (JEC) en la IE ${ieName} (${codModular}), a cargo del especialista ${sub.responsable || 'Especialista UGEL 03'}.`,
+    introParagraph: `En Lima, a la fecha ${fechaVisita}, se procedió a realizar la jornada de monitoreo y asistencia técnica a la implementación del Modelo de Servicio Educativo Jornada Escolar Completa (JEC) en la IE ${ieName} (${codModular}), a cargo de la especialista de JEC ${jecRespName || ESPECIALISTA_JEC_OFICIAL.nombresApellidos}.`,
     metaGrid,
     customTables,
     signatures: signaturesList,
@@ -3058,7 +3115,10 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
   const ieName = sub.institucion || (colegio ? colegio.ie : 'Institución Educativa');
   const fechaVisita = formatDate(sub.fecha);
   const numVisita = sub.visita ? `Visita N.° ${sub.visita}` : 'Visita única';
-  const responsable = sub.responsable || 'Especialista UGEL 03';
+  const isJecFicha = isFichaEspecialistaJec(fichaType) || isFichaEspecialistaJec(sub);
+  const responsable = isJecFicha
+    ? ESPECIALISTA_JEC_OFICIAL.nombresApellidos
+    : ((sub.responsable && !/^\d+$/.test(String(sub.responsable).trim())) ? sub.responsable : 'Especialista UGEL 03');
   const director = sub.director || (colegio && colegio.director ? colegio.director.nombre : '—');
   const ugel = sub.ugel || 'UGEL 03';
   const red = sub.red || (colegio ? colegio.rei : '—');
@@ -3699,12 +3759,13 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
 
   // Firmas por defecto (Director, Monitor, Jefatura opcional)
   const areaSigla = (downloadConfig.areaConfig && downloadConfig.areaConfig.sigla) ? downloadConfig.areaConfig.sigla : 'AGEBRE';
+  const monitorCargo = isJecFicha ? 'Especialista de JEC — UGEL 03' : (isNivel14 ? `Monitor(a) — ${areaSigla}` : `Especialista que monitorea — ${areaSigla}`);
   const defaultSignatures = isNivel14 ? [
     { cargo: 'Director(a) de la I.E.', entidad: ieName, nombre: (director && director !== '—') ? formatPersonName(director) : '', leyenda: 'Firma y Sello' },
-    { cargo: `Monitor(a) — ${areaSigla}`, entidad: 'UGEL 03 – DRELM', nombre: responsable ? formatPersonName(responsable) : '', leyenda: 'Firma y Sello' },
+    { cargo: monitorCargo, entidad: 'UGEL 03 – DRELM', nombre: responsable ? formatPersonName(responsable) : '', leyenda: 'Firma y Sello' },
     { cargo: `V.° B.° Jefatura de ${areaSigla}`, entidad: 'UGEL 03', nombre: '', leyenda: 'V.° B.°' }
   ] : [
-    { cargo: `Especialista que monitorea — ${areaSigla}`, entidad: 'UGEL 03 – DRELM', nombre: responsable ? formatPersonName(responsable) : '', leyenda: 'Firma y Sello' },
+    { cargo: monitorCargo, entidad: 'UGEL 03 – DRELM', nombre: responsable ? formatPersonName(responsable) : '', leyenda: 'Firma y Sello' },
     { cargo: 'Director(a) / Autoridad de la I.E.', entidad: ieName, nombre: (director && director !== '—') ? formatPersonName(director) : '', leyenda: 'Firma y Sello' },
     { cargo: `Jefatura de ${areaSigla}`, entidad: 'UGEL 03', nombre: '', leyenda: 'V.° B.°' }
   ];
@@ -3744,13 +3805,114 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
 }
 
 /**
- * Exporta el Reporte Consolidado de Monitoreo a PDF con todas sus secciones y gráficas:
- * 1. Distribución de resultados (gráfica de barras segmentadas + tabla de distribución)
- * 2. Avance por sección / dimensión (tabla con barras de avance)
- * 3. Reporte por ítem (indicadores con gráficas de distribución de respuestas y porcentajes)
- * 4. Detalle consolidado de fichas registradas
+ * Normaliza y formatea el valor de Red Educativa / REI institucional
+ * Ejemplos: "01" -> "REI 01", "RED 04" -> "REI 04", "REI 05" -> "REI 05", null/vacío -> "—"
  */
-export async function exportConsolidadoReportPdf(statsList, fichaType, filters = {}, isAllMode = false, downloadConfig = {}) {
+export function formatRei(redVal) {
+  if (!redVal || redVal === '—' || redVal === 'No aplica' || redVal === 'null' || redVal === 'undefined') {
+    return '—';
+  }
+  const clean = String(redVal).trim();
+  if (!clean || clean === '-') return '—';
+  const upper = clean.toUpperCase();
+  if (upper.startsWith('REI ') || upper.startsWith('RED ')) {
+    return upper.replace(/^RED\s+/, 'REI ');
+  }
+  if (/^\d+$/.test(clean)) {
+    return `REI ${clean.padStart(2, '0')}`;
+  }
+  return `REI ${clean}`;
+}
+
+/**
+ * Dibuja un gráfico de dona vectorial nativo en jsPDF con leyenda a la derecha
+ * y total centrado ("12 fichas"). Si todas las fichas están en una categoría,
+ * dibuja el anillo completo sin errores por segmentos en 0.
+ */
+export function drawPdfDonutChart(doc, cx, cy, outerRadius, innerRadius, segments, totalLabel = '', subLabel = 'fichas') {
+  const total = segments.reduce((sum, s) => sum + (Number(s.val) || 0), 0);
+  const numFontSize = outerRadius >= 40 ? 22 : 13;
+  const subFontSize = outerRadius >= 40 ? 8.5 : 7;
+  const yNumOffset = outerRadius >= 40 ? 3 : 1;
+  const ySubOffset = outerRadius >= 40 ? 12 : 9;
+
+  if (total === 0) {
+    // Anillo vacío en gris claro
+    doc.setFillColor(229, 231, 235); // #E5E7EB
+    doc.circle(cx, cy, outerRadius, 'F');
+    doc.setFillColor(255, 255, 255);
+    doc.circle(cx, cy, innerRadius, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(numFontSize);
+    doc.setTextColor(15, 23, 42);
+    doc.text('0', cx, cy - yNumOffset, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(subFontSize);
+    doc.setTextColor(100, 116, 139);
+    doc.text(subLabel, cx, cy + ySubOffset, { align: 'center' });
+    return;
+  }
+
+  // Verificar si un solo segmento concentra el 100%
+  const single100 = segments.find(s => s.val === total);
+  if (single100) {
+    doc.setFillColor(single100.color[0], single100.color[1], single100.color[2]);
+    doc.circle(cx, cy, outerRadius, 'F');
+    doc.setFillColor(255, 255, 255);
+    doc.circle(cx, cy, innerRadius, 'F');
+  } else {
+    // Dibujar sectores mediante abanico poligonal de triángulos
+    let currentAngle = -Math.PI / 2; // Iniciar arriba (12 en punto)
+    const step = Math.PI / 45; // paso de 4 grados (suave y nítido)
+
+    segments.forEach(seg => {
+      const val = Number(seg.val) || 0;
+      if (val <= 0) return;
+
+      const span = (val / total) * 2 * Math.PI;
+      const endAngle = currentAngle + span;
+      doc.setFillColor(seg.color[0], seg.color[1], seg.color[2]);
+
+      let a = currentAngle;
+      while (a < endAngle) {
+        const nextA = Math.min(a + step, endAngle);
+        const x1 = cx + outerRadius * Math.cos(a);
+        const y1 = cy + outerRadius * Math.sin(a);
+        const x2 = cx + outerRadius * Math.cos(nextA);
+        const y2 = cy + outerRadius * Math.sin(nextA);
+        doc.triangle(cx, cy, x1, y1, x2, y2, 'F');
+        a = nextA;
+      }
+      currentAngle = endAngle;
+    });
+
+    // Recorte interior blanco para formar el anillo de la dona
+    doc.setFillColor(255, 255, 255);
+    doc.circle(cx, cy, innerRadius, 'F');
+  }
+
+  // Texto centrado: Total y etiqueta ("12 fichas")
+  const displayTotal = totalLabel !== '' ? String(totalLabel) : String(total);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(numFontSize);
+  doc.setTextColor(15, 23, 42);
+  doc.text(displayTotal, cx, cy - 1 - (outerRadius >= 40 ? 2 : 0), { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(subFontSize);
+  doc.setTextColor(100, 116, 139);
+  doc.text(subLabel, cx, cy + ySubOffset, { align: 'center' });
+}
+
+/**
+ * Exporta el Reporte Consolidado Oficial de Monitoreo (V2 - AGEBRE Oficial)
+ * Estructura:
+ * I.   Distribución de resultados (3 tarjetas KPI + Gráfico de dona + Tabla de distribución)
+ * II.  Avance por sección / dimensión evaluada (Gráficas de progreso vectoriales + badges)
+ * III. Matriz comparativa por institución y dimensión (con columna REI integrada)
+ * Nota Metodológica completa + Firmas oficiales + Pie con código de verificación
+ */
+export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters = {}, isAllMode = false, downloadConfig = {}) {
   const isLandscape = downloadConfig.orientation ? (downloadConfig.orientation === 'landscape') : true;
   const isDirectivoType = fichaType && (fichaType.tipoRespuesta === 'nivel_1_4' || (fichaType.id || '').includes('directivo') || (fichaType.nombre || '').toLowerCase().includes('directivo'));
 
@@ -3759,42 +3921,58 @@ export async function exportConsolidadoReportPdf(statsList, fichaType, filters =
     : `REPORTE CONSOLIDADO — ${(fichaType ? fichaType.nombre.toUpperCase() : 'MONITOREO')}`;
 
   const totalFichas = statsList.length;
-  const instCount = new Set(statsList.map(x => x.s.institucion || '')).size;
-  const withPct = statsList.filter(x => x.st.pct !== null);
+  const instCount = new Set(statsList.map(x => x.s.institucion || '').filter(Boolean)).size;
+  const withPct = statsList.filter(x => x.st && x.st.pct !== null && x.st.pct !== undefined);
   const avgPct = withPct.length ? Math.round(withPct.reduce((a, x) => a + x.st.pct, 0) / withPct.length) : '—';
 
-  // Subtítulo con filtros aplicados visibles una sola vez (C8)
+  // Subtítulo con filtros aplicados (sin redundancias)
   const filtrosAplicados = [];
   if (filters.institucion) filtrosAplicados.push(`I.E.: ${filters.institucion}`);
-  if (filters.red) filtrosAplicados.push(`RED: ${filters.red}`);
-  if (filters.visita) filtrosAplicados.push(`Visita: ${filters.visita}`);
+  if (filters.red) filtrosAplicados.push(`RED/REI: ${filters.red}`);
+  if (filters.visita) filtrosAplicados.push(`Visita: V${filters.visita}`);
   if (filters.responsable) filtrosAplicados.push(`Responsable: ${filters.responsable}`);
   if (filters.distrito) filtrosAplicados.push(`Distrito: ${filters.distrito}`);
   if (filters.desde || filters.hasta) filtrosAplicados.push(`Período: ${filters.desde || 'inicio'} a ${filters.hasta || 'fin'}`);
   const filterSubtitle = filtrosAplicados.length ? `Filtros: ${filtrosAplicados.join(' · ')}` : 'Filtros: ninguno (todos los registros)';
 
-  // C8: Gramática dinámica y eliminación de repetición
-  const introParagraph = `El presente documento consolida la información de las visitas de monitoreo registradas en el Sistema de Gestión Institucional UGEL 03 para el año lectivo 2026. Se reporta un total de ${totalFichas} ${plural(totalFichas, 'ficha', 'fichas')} de monitoreo aplicada(s) en ${instCount} ${plural(instCount, 'institución educativa', 'instituciones educativas')}, con un nivel de cumplimiento promedio general del ${avgPct}%. ${filterSubtitle}.`;
+  // Texto introductorio oficial con concordancia gramatical exacta y sin repetir filtros al final
+  const fichaTxt = totalFichas === 1
+    ? '1 ficha de monitoreo aplicada'
+    : `${plural(totalFichas, 'ficha', 'fichas')} de monitoreo aplicadas`;
+  const instTxt = instCount === 1
+    ? '1 institución educativa'
+    : `${plural(instCount, 'institución educativa', 'instituciones educativas')}`;
 
-  const metaGrid = [
-    { label: 'Total Fichas Registradas', value: `${totalFichas} ${plural(totalFichas, 'ficha', 'fichas')}` },
-    { label: 'Instituciones Educativas', value: `${instCount} ${plural(instCount, 'institución', 'instituciones')}` },
-    { label: 'Cumplimiento Promedio', value: avgPct === '—' ? '—' : `${avgPct}%` },
-    { label: 'Jurisdicción', value: 'UGEL 03 / DRELM' }
-  ];
+  const introParagraph = totalFichas > 0
+    ? `El presente documento consolida la información de las visitas de monitoreo registradas en el ${SISTEMA_NOMBRE_OFICIAL} para el año lectivo 2026. Se reporta un total de ${fichaTxt} en ${instTxt}, con un nivel de cumplimiento promedio general del ${avgPct === '—' ? '—' : avgPct + '%'}.`
+    : `El presente documento consolida la información de las visitas de monitoreo registradas en el ${SISTEMA_NOMBRE_OFICIAL} para el año lectivo 2026. No se registran visitas de monitoreo para los filtros seleccionados (${filterSubtitle}).`;
 
-  // 1. CÁLCULO DE DISTRIBUCIÓN DE RESULTADOS
+  // Escala oficial unificada (EBR Gestión Escolar / IPL: Logrado >= 67%, Proceso >= 34%, Inicio < 34%)
+  const isEbr = isFichaEbrGestionEscolar(fichaType)
+    || (fichaType?.escala === 'IPL')
+    || (fichaType?.tipoRespuesta === 'ips')
+    || (!fichaType && statsList.some(x => isFichaEbrGestionEscolar(x.s)));
+  const logCut = isEbr ? 67 : 85;
+  const procCut = isEbr ? 34 : 70;
+
+  // 1. CÁLCULO DE DISTRIBUCIÓN DE RESULTADOS (FUENTE ÚNICA)
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
   statsList.forEach(x => {
-    if (x.st.pct === null) dist.none++;
+    if (x.st.pct === null || x.st.pct === undefined) dist.none++;
     else {
-      const lbl = (x.st?.estado?.estado_panel || x.st?.estado?.label || '').toLowerCase();
-      if (lbl.includes('no cumple') || lbl.includes('inici') || lbl.includes('incipient') || lbl.includes('mejorar')) dist.inicio++;
-      else if (lbl.includes('parcial') || lbl.includes('proces')) dist.proceso++;
-      else if (lbl.includes('lograd') || lbl.includes('cumple')) dist.logrado++;
-      else if (x.st.pct >= 85) dist.logrado++;
-      else if (x.st.pct >= 70) dist.proceso++;
-      else dist.inicio++;
+      if (isEbr) {
+        if (x.st.pct >= logCut) dist.logrado++;
+        else if (x.st.pct >= procCut) dist.proceso++;
+        else dist.inicio++;
+      } else {
+        const lbl = (x.st?.estado?.estado_panel || x.st?.estado?.label || '').toLowerCase();
+        if (lbl.includes('no cumple') || lbl.includes('inici') || lbl.includes('incipient') || lbl.includes('mejorar')) dist.inicio++;
+        else if (lbl.includes('parcial') || lbl.includes('proces')) dist.proceso++;
+        else if (lbl.includes('lograd') || lbl.includes('cumple')) dist.logrado++;
+        else if (x.st.pct >= logCut) dist.logrado++;
+        else if (x.st.pct >= procCut) dist.proceso++;
+        else dist.inicio++;
+      }
     }
   });
 
@@ -3806,167 +3984,194 @@ export async function exportConsolidadoReportPdf(statsList, fichaType, filters =
   const customTables = [];
 
   // ==========================================
-  // RESUMEN EJECUTIVO (C10: 3–4 VIÑETAS CALCULADAS)
-  // ==========================================
-  if (downloadConfig.incluirResumenEjecutivo !== false && totalFichas > 0) {
-    const secAggScores = {};
-    if (fichaType && fichaType.secciones) {
-      fichaType.secciones.forEach(sec => {
-        secAggScores[sec.nombre] = { sum: 0, cnt: 0 };
-      });
-      statsList.forEach(x => {
-        (x.st.secciones || []).forEach(sc => {
-          if (sc.pct !== null && secAggScores[sc.nombre]) {
-            secAggScores[sc.nombre].sum += sc.pct;
-            secAggScores[sc.nombre].cnt++;
-          }
-        });
-      });
-    }
-
-    const secAverages = Object.keys(secAggScores).map(name => {
-      const a = secAggScores[name];
-      return { nombre: name, pct: a.cnt ? Math.round(a.sum / a.cnt) : null };
-    }).filter(x => x.pct !== null);
-
-    const destacadas = secAverages.filter(x => x.pct >= 85).map(x => `${x.nombre} (${x.pct}%)`);
-    const porFortalecer = secAverages.filter(x => x.pct < 85).map(x => `${x.nombre} (${x.pct}%)`);
-
-    const bullets = [];
-    const statusLabel = avgPct === '—' ? 'Sin evaluar' : (avgPct >= 85 ? 'Logrado' : (avgPct >= 70 ? 'En proceso' : 'Por mejorar'));
-    bullets.push(`• Nivel institucional global: Cumplimiento promedio del ${avgPct}% con estado ${statusLabel.toUpperCase()}, procesado a partir de ${totalFichas} ${plural(totalFichas, 'ficha', 'fichas')} y ${instCount} ${plural(instCount, 'institución', 'instituciones')}.`);
-
-    if (destacadas.length > 0) {
-      bullets.push(`• Dimensiones destacadas (>= 85%): ${destacadas.join(', ')}.`);
-    }
-    if (porFortalecer.length > 0) {
-      bullets.push(`• Dimensiones por fortalecer (< 85%): ${porFortalecer.join(', ')}.`);
-    } else {
-      bullets.push(`• Todas las dimensiones evaluadas alcanzaron o superaron el estándar mínimo satisfactorio (>= 85%).`);
-    }
-
-    if (dist.inicio > 0 || dist.proceso > 0) {
-      bullets.push(`• Atención prioritaria: ${dist.inicio} ${plural(dist.inicio, 'ficha requiere', 'fichas requieren')} acompañamiento focalizado inmediato (< 70%), y ${dist.proceso} ${plural(dist.proceso, 'ficha se encuentra', 'fichas se encuentran')} en proceso de consolidación.`);
-    } else {
-      bullets.push(`• El 100% de las fichas registradas alcanzaron el nivel Logrado.`);
-    }
-
-    customTables.push({
-      title: 'RESUMEN EJECUTIVO DE MONITOREO',
-      subtitle: 'Principales hallazgos y prioridades de acompañamiento calculados a partir de los datos registrados.',
-      minHeight: 65,
-      tableHeaders: null,
-      tableRows: bullets.map(b => [{ content: b, styles: { fontSize: 7.5, cellPadding: { top: 3, right: 6, bottom: 3, left: 6 }, fillColor: [247, 249, 252] } }]),
-      columnStyles: { 0: { cellWidth: isLandscape ? 770 : 511 } }
-    });
-  }
-
-  // ==========================================
-  // SECCIÓN 1: DISTRIBUCIÓN DE RESULTADOS (C2, C3)
+  // SECCIÓN I: DISTRIBUCIÓN DE RESULTADOS (3 TARJETAS KPI + DONA + TABLA)
   // ==========================================
   customTables.push({
     title: 'I. DISTRIBUCIÓN DE RESULTADOS',
     subtitle: 'Categorización porcentual y numérica de las fichas de monitoreo según el nivel de logro alcanzado.',
-    minHeight: 90,
+    minHeight: 140,
     beforeDraw: (doc, curY, pageW, margin) => {
-      const barW = pageW - 2 * margin;
-      const barH = 12;
-      const barY = curY + 2;
+      const CONTENT_WIDTH = pageW - 2 * margin;
 
-      // Dibujar fondo de barra
-      doc.setFillColor(235, 238, 242);
-      doc.roundedRect(margin, barY, barW, barH, 2.5, 2.5, 'F');
+      // 1. TRES TARJETAS KPI EN UNA FILA CON FRANJA INFERIOR DE COLOR
+      const cardGap = isLandscape ? 14 : 10;
+      const cardW = Math.floor((CONTENT_WIDTH - 2 * cardGap) / 3);
+      const cardH = 42;
 
-      if (totalFichas > 0) {
-        let segX = margin;
-        const segments = [
-          { val: dist.logrado, pct: pctLogrado, color: [5, 150, 105], label: 'Logrado' },
-          { val: dist.proceso, pct: pctProceso, color: [217, 119, 6], label: 'En proceso' },
-          { val: dist.inicio,  pct: pctInicio,  color: [220, 38, 38],  label: 'Por mejorar' },
-          { val: dist.none,    pct: pctNone,    color: [156, 163, 175], label: 'Sin datos' }
-        ];
+      const cardsData = [
+        { val: String(totalFichas), lbl: 'FICHAS REGISTRADAS', color: [37, 99, 235] }, // Franja Azul (#2563EB)
+        { val: String(instCount), lbl: 'INSTITUCIONES', color: [22, 163, 74] },        // Franja Verde (#16A34A)
+        { val: avgPct === '—' || avgPct === null ? '—' : `${avgPct}%`, lbl: 'CUMPLIMIENTO PROMEDIO', color: [217, 119, 6] } // Franja Ámbar (#D97706)
+      ];
 
-        segments.forEach((seg, sIdx) => {
-          if (seg.val > 0) {
-            const segW = (seg.val / totalFichas) * barW;
-            doc.setFillColor(seg.color[0], seg.color[1], seg.color[2]);
-            if (sIdx === 0 && segments.every((s, i) => i === 0 || s.val === 0)) {
-              doc.roundedRect(segX, barY, segW, barH, 2.5, 2.5, 'F');
-            } else if (sIdx === 0) {
-              doc.roundedRect(segX, barY, segW, barH, 2.5, 2.5, 'F');
-              doc.rect(segX + 2.5, barY, segW - 2.5, barH, 'F');
-            } else if (sIdx === segments.length - 1 || segments.slice(sIdx + 1).every(s => s.val === 0)) {
-              doc.roundedRect(segX, barY, segW, barH, 2.5, 2.5, 'F');
-              doc.rect(segX, barY, Math.max(0, segW - 2.5), barH, 'F');
-            } else {
-              doc.rect(segX, barY, segW, barH, 'F');
-            }
+      cardsData.forEach((c, idx) => {
+        const cX = margin + idx * (cardW + cardGap);
+        const cY = curY;
+        // Fondo blanco con borde sutil
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.75);
+        doc.roundedRect(cX, cY, cardW, cardH, 3.5, 3.5, 'FD');
 
-            if (segW > 26) {
-              doc.setFont('helvetica', 'bold');
-              doc.setFontSize(7.5);
-              doc.setTextColor(255, 255, 255);
-              doc.text(`${seg.pct}%`, segX + segW / 2, barY + 8.5, { align: 'center' });
-            }
-            segX += segW;
-          }
+        // Franja inferior de color (3.5pt)
+        doc.setFillColor(c.color[0], c.color[1], c.color[2]);
+        doc.roundedRect(cX, cY + cardH - 3.5, cardW, 3.5, 1.5, 1.5, 'F');
+
+        // Número grande (una sola vez)
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(isLandscape ? 17 : 15);
+        doc.setTextColor(15, 23, 42); // Navy 900
+        doc.text(c.val, cX + 12, cY + 19);
+
+        // Etiqueta en mayúsculas
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(100, 116, 139); // Slate 500
+        doc.text(c.lbl, cX + 12, cY + 31);
+      });
+
+      curY += cardH + 12;
+
+      // 2. PANEL DE GRÁFICO DE DONA (AGRANDADA 1.75X) + LEYENDA + HALLAZGOS CLAVE
+      const panelH = isLandscape ? 114 : 118;
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.75);
+      doc.roundedRect(margin, curY, CONTENT_WIDTH, panelH, 4, 4, 'FD');
+
+      // Título de la dona
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text('Distribución de resultados', margin + 14, curY + 15);
+
+      // Gráfica de dona más grande (~1.72x diámetro: radio exterior 48pt, radio interior 29pt)
+      const donutCx = margin + 70;
+      const donutCy = curY + 62;
+      const donutOuterR = 48;
+      const donutInnerR = 29;
+
+      const donutSegments = [
+        { val: dist.logrado, color: [22, 163, 74], label: 'Logrado' },
+        { val: dist.proceso, color: [217, 119, 6], label: 'En proceso' },
+        { val: dist.inicio,  color: [220, 38, 38], label: 'Inicio' },
+        ...(dist.none > 0 ? [{ val: dist.none, color: [148, 163, 184], label: 'Sin datos' }] : [])
+      ];
+
+      drawPdfDonutChart(doc, donutCx, donutCy, donutOuterR, donutInnerR, donutSegments, String(totalFichas), totalFichas === 1 ? 'ficha' : 'fichas');
+
+      // Leyenda vertical proporcional a la derecha de la dona
+      const legX = donutCx + donutOuterR + 24;
+      let legY = curY + 44;
+      donutSegments.forEach(s => {
+        doc.setFillColor(s.color[0], s.color[1], s.color[2]);
+        doc.circle(legX + 5, legY - 3, 4, 'F');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(30, 41, 59);
+        doc.text(`${s.label} (${s.val})`, legX + 14, legY);
+        legY += 16;
+      });
+
+      // R6.2: Hallazgos clave calculados automáticamente en lugar de resumen repetido
+      const hallazgos = getHallazgosClave(statsList, fichaType, isEbr);
+      if (isLandscape && CONTENT_WIDTH > 480 && hallazgos.length > 0) {
+        const noteX = margin + 275;
+        const noteW = CONTENT_WIDTH - 285;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(18, 41, 77);
+        doc.text('Hallazgos clave del monitoreo:', noteX, curY + 28);
+
+        let hY = curY + 44;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(51, 65, 85);
+        hallazgos.forEach(h => {
+          const splitH = doc.splitTextToSize(`• ${h}`, noteW);
+          doc.text(splitH, noteX, hY, { maxWidth: noteW, lineHeightFactor: 1.2 });
+          hY += splitH.length * 10 + 4;
         });
       }
 
-      // C2: Leyenda con '>= 85%' (no '≥' ni '"e')
-      const legendY = barY + barH + 9;
-      doc.setFontSize(7.5);
-
-      const legItems = [
-        { label: `Logrado (>= 85%): ${dist.logrado} (${pctLogrado}%)`, color: [5, 150, 105] },
-        { label: `En proceso (70%–84%): ${dist.proceso} (${pctProceso}%)`, color: [217, 119, 6] },
-        { label: `Por mejorar (< 70%): ${dist.inicio} (${pctInicio}%)`, color: [220, 38, 38] },
-        { label: `Sin datos: ${dist.none} (${pctNone}%)`, color: [156, 163, 175] }
-      ];
-
-      const legW = barW / 4;
-      legItems.forEach((it, idx) => {
-        const lx = margin + idx * legW;
-        doc.setFillColor(it.color[0], it.color[1], it.color[2]);
-        doc.circle(lx + 4, legendY - 2.5, 2.5, 'F');
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(18, 41, 77);
-        doc.text(it.label, lx + 9, legendY);
-      });
-
-      return legendY + 8;
+      return curY + panelH + 10;
     },
     tableHeaders: ['Nivel de Logro', 'Rango de Cumplimiento', 'Cantidad de Fichas', 'Porcentaje (%)', 'Interpretación Institucional'],
-    tableRows: [
-      ['Logrado', '>= 85%', String(dist.logrado), `${pctLogrado}%`, 'Nivel óptimo; cumple satisfactoriamente los estándares evaluados'],
-      ['En proceso', '70% – 84%', String(dist.proceso), `${pctProceso}%`, 'En desarrollo; requiere fortalecimiento de prácticas pedagógicas'],
-      ['Por mejorar', '< 70%', String(dist.inicio), `${pctInicio}%`, 'Requiere asistencia técnica focalizada y acompañamiento prioritario'],
-      ['Sin datos', '—', String(dist.none), `${pctNone}%`, 'Fichas sin respuestas o con indicadores no evaluados'],
-      ['TOTAL', '—', String(totalFichas), '100%', 'Total consolidado de visitas de monitoreo procesadas']
+    tableRows: totalFichas > 0 ? [
+      [
+        { content: 'Logrado', styles: { textColor: [4, 120, 87], fontStyle: 'bold' } },
+        `>= ${logCut}%`,
+        String(dist.logrado),
+        `${pctLogrado}%`,
+        'Nivel óptimo; cumple satisfactoriamente los estándares evaluados'
+      ],
+      [
+        { content: 'En proceso', styles: { textColor: [180, 83, 9], fontStyle: 'bold' } },
+        `${procCut}% – ${logCut - 1}%`,
+        String(dist.proceso),
+        `${pctProceso}%`,
+        'En desarrollo; requiere fortalecimiento de prácticas pedagógicas'
+      ],
+      [
+        { content: 'Inicio / Por mejorar', styles: { textColor: [185, 28, 28], fontStyle: 'bold' } },
+        `< ${procCut}%`,
+        String(dist.inicio),
+        `${pctInicio}%`,
+        'Requiere asistencia técnica focalizada y acompañamiento prioritario'
+      ],
+      ...(dist.none > 0 ? [
+        [
+          { content: 'Sin datos', styles: { textColor: [100, 116, 139] } },
+          '—',
+          String(dist.none),
+          `${pctNone}%`,
+          'Fichas sin respuestas o con indicadores no evaluados'
+        ]
+      ] : []),
+      [
+        { content: 'TOTAL', styles: { fontStyle: 'bold' } },
+        '—',
+        { content: String(totalFichas), styles: { fontStyle: 'bold' } },
+        { content: '100%', styles: { fontStyle: 'bold' } },
+        'Total consolidado de visitas de monitoreo procesadas'
+      ]
+    ] : [
+      [
+        { content: 'Sin datos', colSpan: 5, styles: { halign: 'center', textColor: [100, 116, 139], fontStyle: 'italic' } }
+      ]
     ],
     columnStyles: isLandscape ? {
       0: { fontStyle: 'bold', cellWidth: 110 },
-      1: { halign: 'center', cellWidth: 110 },
-      2: { halign: 'center', cellWidth: 90, fontStyle: 'bold' },
-      3: { halign: 'center', cellWidth: 80, fontStyle: 'bold' },
-      4: { halign: 'left', cellWidth: 380 }
+      1: { halign: 'center', cellWidth: 100 },
+      2: { halign: 'center', cellWidth: 85, fontStyle: 'bold' },
+      3: { halign: 'center', cellWidth: 75, fontStyle: 'bold' },
+      4: { halign: 'left' }
     } : {
-      0: { fontStyle: 'bold', cellWidth: 85 },
+      0: { fontStyle: 'bold', cellWidth: 95 },
       1: { halign: 'center', cellWidth: 85 },
       2: { halign: 'center', cellWidth: 60, fontStyle: 'bold' },
       3: { halign: 'center', cellWidth: 55, fontStyle: 'bold' },
-      4: { halign: 'left', cellWidth: 226 }
+      4: { halign: 'left' }
     }
   });
 
   // ==========================================
-  // SECCIÓN 2: AVANCE POR SECCIÓN / DIMENSIÓN (C1, C4)
+  // SECCIÓN II: AVANCE POR SECCIÓN / DIMENSIÓN EVALUADA
   // ==========================================
-  if (!isAllMode && fichaType && fichaType.secciones && fichaType.secciones.length > 0) {
+  if (!isAllMode && fichaType) {
+    let seccionesParaAgg = (fichaType.secciones && fichaType.secciones.length > 0)
+      ? fichaType.secciones
+      : [];
+    if (isEbr) {
+      const hasV2 = statsList.some(x => Number(x.s.visita) === 2);
+      seccionesParaAgg = hasV2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
+    }
+
     const secAgg = {};
-    fichaType.secciones.forEach(sec => {
+    seccionesParaAgg.forEach(sec => {
       secAgg[sec.nombre] = { sum: 0, cnt: 0, itemsCount: (sec.items || []).length };
     });
+
     statsList.forEach(x => {
       (x.st.secciones || []).forEach(sc => {
         if (sc.pct !== null && secAgg[sc.nombre]) {
@@ -3976,63 +4181,115 @@ export async function exportConsolidadoReportPdf(statsList, fichaType, filters =
       });
     });
 
-    const secTableRows = fichaType.secciones.map((sec, idx) => {
-      const a = secAgg[sec.nombre];
+    const secTableRows = seccionesParaAgg.map((sec, idx) => {
+      const a = secAgg[sec.nombre] || { sum: 0, cnt: 0, itemsCount: (sec.items || []).length };
       const avg = a.cnt ? Math.round(a.sum / a.cnt) : null;
-      const statusLabel = avg === null ? 'Sin datos' : (avg >= 85 ? 'Logrado' : (avg >= 70 ? 'En proceso' : 'Por mejorar'));
+      let statusLabel = 'Sin datos';
+      let badgeBg = [243, 244, 246];
+      let badgeText = [107, 114, 128];
+
+      if (avg !== null) {
+        if (avg >= logCut) {
+          statusLabel = 'Logrado';
+          badgeBg = [236, 253, 245];
+          badgeText = [4, 120, 87];
+        } else if (avg >= procCut) {
+          statusLabel = 'En proceso';
+          badgeBg = [254, 243, 199];
+          badgeText = [180, 83, 9];
+        } else {
+          statusLabel = 'Por mejorar';
+          badgeBg = [254, 226, 226];
+          badgeText = [185, 28, 28];
+        }
+      }
+
       return [
         String(idx + 1),
         sec.nombre,
         String(a.itemsCount),
         avg !== null ? `${avg}%` : '—',
-        // C1: Dejar content como '' y pasar datos numéricos en raw para que NO se imprima [object Object]
-        { content: '', raw: { pct: avg } },
-        statusLabel
+        { content: '', pct: avg, raw: { pct: avg } },
+        { content: statusLabel, styles: { halign: 'center', fontStyle: 'bold', fillColor: badgeBg, textColor: badgeText } }
       ];
     });
 
     customTables.push({
       title: 'II. AVANCE POR SECCIÓN / DIMENSIÓN EVALUADA',
-      subtitle: 'Nivel de cumplimiento promedio obtenido en cada una de las dimensiones que integran el instrumento de monitoreo.',
-      minHeight: 80,
+      subtitle: 'Nivel de cumplimiento promedio obtenido en cada una de las dimensiones que integran el instrumento.',
+      minHeight: 145, // R6.4: Espacio suficiente para no dividirse entre páginas
+      beforeDraw: (doc, curY, pageW, margin) => {
+        // R6.1: Leyenda vectorial limpia (doc.circle) para evitar glifos corruptos
+        const legY = curY + 2;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text('Leyenda:', margin, legY);
+
+        let lx = margin + 46;
+        const legendItems = [
+          { label: `Logrado (>= ${logCut}%): Cumplido`, color: [22, 163, 74] },
+          { label: `Proceso (${procCut}%–${logCut - 1}%): En proceso`, color: [217, 119, 6] },
+          { label: `Inicio (< ${procCut}%): Por mejorar`, color: [220, 38, 38] },
+          { label: 'N/A: No aplica', color: [148, 163, 184] }
+        ];
+        legendItems.forEach(it => {
+          doc.setFillColor(it.color[0], it.color[1], it.color[2]);
+          doc.circle(lx + 3, legY - 2.5, 2.5, 'F');
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.2);
+          doc.setTextColor(51, 65, 85);
+          doc.text(it.label, lx + 8, legY);
+          lx += doc.getTextWidth(it.label) + 16;
+        });
+        return curY + 12;
+      },
       tableHeaders: ['N.°', 'Sección / Dimensión Evaluada', 'N.° Indicadores', '% Cumpl.', 'Gráfica de Avance', 'Nivel Alcanzado'],
-      tableRows: secTableRows,
+      tableRows: secTableRows.length > 0 ? secTableRows : [
+        [{ content: 'Sin secciones registradas', colSpan: 6, styles: { halign: 'center', textColor: [100, 116, 139] } }]
+      ],
       styles: {
-        cellPadding: { top: 3.5, right: 4, bottom: 3.5, left: 4 }
+        cellPadding: { top: 4, right: 5, bottom: 4, left: 5 }
       },
       columnStyles: isLandscape ? {
-        0: { halign: 'center', cellWidth: 30, fontStyle: 'bold' },
-        1: { halign: 'left', cellWidth: 260 },
-        2: { halign: 'center', cellWidth: 80 },
-        3: { halign: 'center', cellWidth: 70, fontStyle: 'bold' },
-        4: { halign: 'center', cellWidth: 230 },
-        5: { halign: 'center', cellWidth: 100, fontStyle: 'bold' }
+        0: { halign: 'center', cellWidth: 28, fontStyle: 'bold' },
+        1: { halign: 'left' },
+        2: { halign: 'center', cellWidth: 75 },
+        3: { halign: 'center', cellWidth: 65, fontStyle: 'bold' },
+        4: { halign: 'center', cellWidth: 210 },
+        5: { halign: 'center', cellWidth: 105, fontStyle: 'bold' }
       } : {
         0: { halign: 'center', cellWidth: 24, fontStyle: 'bold' },
-        1: { halign: 'left', cellWidth: 180 },
+        1: { halign: 'left' },
         2: { halign: 'center', cellWidth: 55 },
         3: { halign: 'center', cellWidth: 48, fontStyle: 'bold' },
-        4: { halign: 'center', cellWidth: 134 },
-        5: { halign: 'center', cellWidth: 70, fontStyle: 'bold' }
+        4: { halign: 'center', cellWidth: 130 },
+        5: { halign: 'center', cellWidth: 79, fontStyle: 'bold' }
       },
       didDrawCell: (data) => {
         if (data.section === 'body' && data.column.index === 4) {
           const doc = data.doc;
           if (!doc) return;
           const rawObj = data.cell.raw;
-          const pct = rawObj && rawObj.pct !== undefined ? rawObj.pct : null;
-          if (pct !== null) {
+          let pct = null;
+          if (typeof rawObj === 'number') {
+            pct = rawObj;
+          } else if (rawObj && typeof rawObj === 'object') {
+            if (rawObj.pct !== undefined) pct = rawObj.pct;
+            else if (rawObj.raw && rawObj.raw.pct !== undefined) pct = rawObj.raw.pct;
+          }
+          if (pct !== null && !isNaN(pct)) {
             const trackX = data.cell.x + 6;
-            const trackY = data.cell.y + (data.cell.height - 7) / 2;
+            const trackY = data.cell.y + (data.cell.height - 8) / 2;
             const trackW = data.cell.width - 12;
-            const trackH = 7;
-            doc.setFillColor(235, 238, 242);
-            doc.roundedRect(trackX, trackY, trackW, trackH, 2, 2, 'F');
-            const fillW = Math.max(2, trackW * (Math.min(pct, 100) / 100));
-            if (pct >= 85) doc.setFillColor(5, 150, 105);
-            else if (pct >= 70) doc.setFillColor(217, 119, 6);
+            const trackH = 8;
+            doc.setFillColor(229, 231, 235);
+            doc.roundedRect(trackX, trackY, trackW, trackH, 2.5, 2.5, 'F');
+            const fillW = Math.max(3, trackW * (Math.min(Math.max(pct, 0), 100) / 100));
+            if (pct >= logCut) doc.setFillColor(22, 163, 74);
+            else if (pct >= procCut) doc.setFillColor(217, 119, 6);
             else doc.setFillColor(220, 38, 38);
-            doc.roundedRect(trackX, trackY, fillW, trackH, 2, 2, 'F');
+            doc.roundedRect(trackX, trackY, fillW, trackH, 2.5, 2.5, 'F');
           }
         }
       }
@@ -4046,10 +4303,10 @@ export async function exportConsolidadoReportPdf(statsList, fichaType, filters =
       }
       const a = typeAgg[tid];
       a.total++;
-      if (x.st.pct !== null) { a.sum += x.st.pct; a.cnt++; }
+      if (x.st.pct !== null && x.st.pct !== undefined) { a.sum += x.st.pct; a.cnt++; }
       if (x.st.pct >= 85) a.logrado++;
       else if (x.st.pct >= 70) a.proceso++;
-      else if (x.st.pct !== null) a.inicio++;
+      else if (x.st.pct !== null && x.st.pct !== undefined) a.inicio++;
     });
 
     const typeRows = Object.values(typeAgg).sort((a, b) => a.nombre.localeCompare(b.nombre)).map((a, idx) => {
@@ -4059,7 +4316,7 @@ export async function exportConsolidadoReportPdf(statsList, fichaType, filters =
         a.nombre,
         String(a.total),
         avg !== null ? `${avg}%` : '—',
-        { content: '', raw: { pct: avg } },
+        { content: '', pct: avg, raw: { pct: avg } },
         `L: ${a.logrado}  ·  P: ${a.proceso}  ·  I: ${a.inicio}`
       ];
     });
@@ -4067,42 +4324,74 @@ export async function exportConsolidadoReportPdf(statsList, fichaType, filters =
     customTables.push({
       title: 'II. AVANCE GENERAL POR TIPO DE FICHA',
       subtitle: 'Promedio de cumplimiento y distribución de estados comparativos por cada tipo de ficha registrada.',
-      minHeight: 80,
+      minHeight: 145,
+      beforeDraw: (doc, curY, pageW, margin) => {
+        const legY = curY + 2;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text('Leyenda:', margin, legY);
+
+        let lx = margin + 46;
+        const legendItems = [
+          { label: 'Logrado (>= 85%): Cumplido', color: [22, 163, 74] },
+          { label: 'Proceso (70%–84%): En proceso', color: [217, 119, 6] },
+          { label: 'Inicio (< 70%): Por mejorar', color: [220, 38, 38] }
+        ];
+        legendItems.forEach(it => {
+          doc.setFillColor(it.color[0], it.color[1], it.color[2]);
+          doc.circle(lx + 3, legY - 2.5, 2.5, 'F');
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.2);
+          doc.setTextColor(51, 65, 85);
+          doc.text(it.label, lx + 8, legY);
+          lx += doc.getTextWidth(it.label) + 16;
+        });
+        return curY + 12;
+      },
       tableHeaders: ['N.°', 'Tipo de Ficha de Monitoreo', 'Fichas Registradas', '% Cumpl.', 'Gráfica de Avance', 'Distribución (L / P / I)'],
-      tableRows: typeRows,
+      tableRows: typeRows.length > 0 ? typeRows : [
+        [{ content: 'Sin registros para los filtros seleccionados', colSpan: 6, styles: { halign: 'center', textColor: [100, 116, 139] } }]
+      ],
       columnStyles: isLandscape ? {
-        0: { halign: 'center', cellWidth: 30, fontStyle: 'bold' },
-        1: { halign: 'left', cellWidth: 260 },
+        0: { halign: 'center', cellWidth: 28, fontStyle: 'bold' },
+        1: { halign: 'left' },
         2: { halign: 'center', cellWidth: 80 },
         3: { halign: 'center', cellWidth: 70, fontStyle: 'bold' },
-        4: { halign: 'center', cellWidth: 230 },
-        5: { halign: 'center', cellWidth: 100, fontStyle: 'bold' }
+        4: { halign: 'center', cellWidth: 210 },
+        5: { halign: 'center', cellWidth: 110, fontStyle: 'bold' }
       } : {
         0: { halign: 'center', cellWidth: 26, fontStyle: 'bold' },
-        1: { halign: 'left', cellWidth: 180 },
+        1: { halign: 'left' },
         2: { halign: 'center', cellWidth: 55 },
         3: { halign: 'center', cellWidth: 48, fontStyle: 'bold' },
-        4: { halign: 'center', cellWidth: 132 },
-        5: { halign: 'center', cellWidth: 70, fontStyle: 'bold' }
+        4: { halign: 'center', cellWidth: 130 },
+        5: { halign: 'center', cellWidth: 77, fontStyle: 'bold' }
       },
       didDrawCell: (data) => {
         if (data.section === 'body' && data.column.index === 4) {
           const doc = data.doc;
           if (!doc) return;
           const rawObj = data.cell.raw;
-          const pct = rawObj && rawObj.pct !== undefined ? rawObj.pct : null;
-          if (pct !== null) {
+          let pct = null;
+          if (typeof rawObj === 'number') {
+            pct = rawObj;
+          } else if (rawObj && typeof rawObj === 'object') {
+            if (rawObj.pct !== undefined) pct = rawObj.pct;
+            else if (rawObj.raw && rawObj.raw.pct !== undefined) pct = rawObj.raw.pct;
+          }
+          if (pct !== null && !isNaN(pct)) {
             const trackX = data.cell.x + 6;
-            const trackY = data.cell.y + (data.cell.height - 7) / 2;
+            const trackY = data.cell.y + (data.cell.height - 8) / 2;
             const trackW = data.cell.width - 12;
-            const trackH = 7;
-            doc.setFillColor(235, 238, 242);
-            doc.roundedRect(trackX, trackY, trackW, trackH, 2, 2, 'F');
-            const fillW = Math.max(2, trackW * (Math.min(pct, 100) / 100));
-            if (pct >= 85) doc.setFillColor(5, 150, 105);
+            const trackH = 8;
+            doc.setFillColor(229, 231, 235);
+            doc.roundedRect(trackX, trackY, trackW, trackH, 2.5, 2.5, 'F');
+            const fillW = Math.max(3, trackW * (Math.min(Math.max(pct, 0), 100) / 100));
+            if (pct >= 85) doc.setFillColor(22, 163, 74);
             else if (pct >= 70) doc.setFillColor(217, 119, 6);
             else doc.setFillColor(220, 38, 38);
-            doc.roundedRect(trackX, trackY, fillW, trackH, 2, 2, 'F');
+            doc.roundedRect(trackX, trackY, fillW, trackH, 2.5, 2.5, 'F');
           }
         }
       }
@@ -4110,476 +4399,294 @@ export async function exportConsolidadoReportPdf(statsList, fichaType, filters =
   }
 
   // ==========================================
-  // SECCIÓN 3: MATRIZ POR INSTITUCIÓN Y DIMENSIÓN (C10: CUANDO HAY >= 2 FICHAS)
+  // SECCIÓN III: MATRIZ COMPARATIVA POR INSTITUCIÓN Y DIMENSIÓN + COLUMNA REI
+  // (Dinámica con nombres reales de secciones, soporte multi-tipo y visita condicional)
   // ==========================================
-  if (totalFichas >= 2 && fichaType && fichaType.secciones && fichaType.secciones.length > 0 && downloadConfig.incluirMatriz !== false) {
-    const secHeaders = fichaType.secciones.map((s, i) => `Dim. ${String.fromCharCode(65 + i)}`);
-    const matrizHeaders = ['N.°', 'Institución Educativa', 'Visita', ...secHeaders, 'Global', 'Estado'];
-
-    // Ordenar por menor cumplimiento primero
-    const sortedStats = [...statsList].sort((a, b) => (a.st.pct || 0) - (b.st.pct || 0));
-
-    const matrizRows = sortedStats.map((x, idx) => {
-      const s = x.s;
-      const st = x.st;
-      const secMap = {};
-      (st.secciones || []).forEach(sc => { secMap[sc.nombre] = sc.pct; });
-
-      const secCells = fichaType.secciones.map(sec => {
-        const p = secMap[sec.nombre];
-        if (p === undefined || p === null) return '—';
-        let bg = [255, 255, 255];
-        let col = [15, 27, 45];
-        if (p >= 85) { bg = [236, 253, 245]; col = [4, 120, 87]; }
-        else if (p >= 70) { bg = [254, 243, 199]; col = [180, 83, 9]; }
-        else { bg = [254, 226, 226]; col = [185, 28, 28]; }
-        return { content: `${p}%`, styles: { halign: 'center', fillColor: bg, textColor: col, fontStyle: 'bold' } };
-      });
-
-      const globPct = st.pct !== null ? `${st.pct}%` : '—';
-      const globStatus = st.pct === null ? 'Sin datos' : (st.pct >= 85 ? 'Logrado' : (st.pct >= 70 ? 'En proceso' : 'Por mejorar'));
-      const statusCol = st.pct >= 85 ? [4, 120, 87] : (st.pct >= 70 ? [180, 83, 9] : [185, 28, 28]);
-
-      return [
-        String(idx + 1),
-        s.institucion || '—',
-        s.visita ? `V${s.visita}` : '—',
-        ...secCells,
-        { content: globPct, styles: { halign: 'center', fontStyle: 'bold', textColor: statusCol } },
-        { content: globStatus, styles: { halign: 'center', fontStyle: 'bold', textColor: statusCol } }
-      ];
-    });
-
-    customTables.push({
-      title: 'III. MATRIZ COMPARATIVA POR INSTITUCIÓN Y DIMENSIÓN',
-      subtitle: 'Desempeño desagregado por institución educativa y dimensión evaluada (ordenado por menor cumplimiento primero).',
-      minHeight: 100,
-      tableHeaders: matrizHeaders,
-      tableRows: matrizRows,
-      styles: { fontSize: 7 },
-      columnStyles: isLandscape ? {
-        0: { halign: 'center', cellWidth: 25 },
-        1: { halign: 'left', cellWidth: 175 },
-        2: { halign: 'center', cellWidth: 45 },
-        3: { halign: 'center', cellWidth: 55 },
-        4: { halign: 'center', cellWidth: 55 },
-        5: { halign: 'center', cellWidth: 55 },
-        6: { halign: 'center', cellWidth: 55 },
-        7: { halign: 'center', cellWidth: 55 },
-        8: { halign: 'center', cellWidth: 55 },
-        9: { halign: 'center', cellWidth: 60, fontStyle: 'bold' },
-        10: { halign: 'center', cellWidth: 85, fontStyle: 'bold' }
-      } : {
-        0: { halign: 'center', cellWidth: 20 },
-        1: { halign: 'left', cellWidth: 125 },
-        2: { halign: 'center', cellWidth: 32 },
-        3: { halign: 'center', cellWidth: 36 },
-        4: { halign: 'center', cellWidth: 36 },
-        5: { halign: 'center', cellWidth: 36 },
-        6: { halign: 'center', cellWidth: 36 },
-        7: { halign: 'center', cellWidth: 36 },
-        8: { halign: 'center', cellWidth: 36 },
-        9: { halign: 'center', cellWidth: 44, fontStyle: 'bold' },
-        10: { halign: 'center', cellWidth: 70, fontStyle: 'bold' }
-      }
-    });
-  }
-
-  // ==========================================
-  // SECCIÓN 4: ÍTEMS CON MENOR CUMPLIMIENTO (C10: TOP CRÍTICOS / PRIORIDADES)
-  // ==========================================
-  if (!isAllMode && fichaType && fichaType.secciones && fichaType.secciones.length > 0 && downloadConfig.incluirCriticos !== false) {
-    const allItemsAgg = [];
-    const subs = statsList.map(x => x.s);
-
-    let itNum = 1;
-    fichaType.secciones.forEach((sec, sIdx) => {
-      (sec.items || []).forEach(it => {
-        let scoreSum = 0, scoreCnt = 0, lowCount = 0;
-        subs.forEach(s => {
-          const r = (s.respuestas || []).find(x => x.id === it.id);
-          if (r && r.valor !== undefined && r.valor !== null && r.valor !== '') {
-            const v = String(r.valor).toLowerCase();
-            let sc = null;
-            if (fichaType.tipoRespuesta === 'nivel_1_4' || isDirectivoType) {
-              const numV = Number(v);
-              if (numV === 4) sc = 100;
-              else if (numV === 3) sc = 75;
-              else if (numV === 2) { sc = 50; lowCount++; }
-              else if (numV === 1) { sc = 25; lowCount++; }
-            } else if (fichaType.tipoRespuesta === 'si_no') {
-              if (v === 'si') sc = 100;
-              else if (v === 'no') { sc = 0; lowCount++; }
-            } else if (fichaType.tipoRespuesta === 'ips') {
-              if (v === 'logrado') sc = 100;
-              else if (v === 'proceso') sc = 50;
-              else if (v === 'inicio') { sc = 0; lowCount++; }
-            }
-            if (sc !== null) { scoreSum += sc; scoreCnt++; }
-          }
-        });
-
-        const pct = scoreCnt ? Math.round(scoreSum / scoreCnt) : null;
-        allItemsAgg.push({
-          num: itNum++,
-          secNombre: sec.nombre,
-          texto: isDirectivoType ? (OFFICIAL_DIRECTIVO_ITEMS[itNum - 1] || it.texto) : it.texto,
-          pct,
-          lowCount,
-          status: pct === null ? 'Sin datos' : (pct >= 85 ? 'Logrado' : (pct >= 70 ? 'En proceso' : 'Por mejorar'))
-        });
-      });
-    });
-
-    // Ordenar de menor a mayor cumplimiento
-    allItemsAgg.sort((a, b) => (a.pct || 0) - (b.pct || 0));
-    const criticos = allItemsAgg.slice(0, 5);
-
-    if (criticos.length > 0) {
-      const criticosRows = criticos.map((it, idx) => {
-        const colStatus = it.pct >= 85 ? [4, 120, 87] : (it.pct >= 70 ? [180, 83, 9] : [185, 28, 28]);
-        return [
-          String(it.num),
-          it.texto,
-          it.secNombre,
-          it.pct !== null ? `${it.pct}%` : '—',
-          String(it.lowCount),
-          { content: it.status, styles: { halign: 'center', fontStyle: 'bold', textColor: colStatus } }
-        ];
-      });
-
-      customTables.push({
-        title: 'IV. ÍTEMS CON MENOR CUMPLIMIENTO (PRIORIDADES DE ATENCIÓN)',
-        subtitle: 'Indicadores que presentan los niveles más bajos de logro o mayor necesidad de asistencia técnica focalizada.',
-        minHeight: 90,
-        tableHeaders: ['N.°', 'Indicador / Ítem Evaluado', 'Dimensión', '% Cumpl.', 'Fichas en Nivel Bajo', 'Estado'],
-        tableRows: criticosRows,
-        columnStyles: isLandscape ? {
-          0: { halign: 'center', cellWidth: 30, fontStyle: 'bold' },
-          1: { halign: 'left', cellWidth: 340 },
-          2: { halign: 'left', cellWidth: 170 },
-          3: { halign: 'center', cellWidth: 65, fontStyle: 'bold' },
-          4: { halign: 'center', cellWidth: 85 },
-          5: { halign: 'center', cellWidth: 80, fontStyle: 'bold' }
-        } : {
-          0: { halign: 'center', cellWidth: 24, fontStyle: 'bold' },
-          1: { halign: 'left', cellWidth: 220 },
-          2: { halign: 'left', cellWidth: 120 },
-          3: { halign: 'center', cellWidth: 48, fontStyle: 'bold' },
-          4: { halign: 'center', cellWidth: 45 },
-          5: { halign: 'center', cellWidth: 54, fontStyle: 'bold' }
-        }
-      });
-    }
-  }
-
-  // ==========================================
-  // SECCIÓN 5: REPORTE POR ÍTEM (INDICADORES) (C1, C5, C6)
-  // ==========================================
-  if (!isAllMode && fichaType && fichaType.secciones && fichaType.secciones.length > 0 && downloadConfig.incluirReporteItem !== false) {
-    const itemReportRows = [];
-    const subs = statsList.map(x => x.s);
-    let itemCounter = 1;
-
-    fichaType.secciones.forEach((sec, sIdx) => {
-      let secScoreSum = 0, secScoreCnt = 0;
-      const itemsData = (sec.items || []).map((it, itIdx) => {
-        const counts = {};
-        let scoreSum = 0, scoreCnt = 0, total = 0;
-        subs.forEach(s => {
-          const r = (s.respuestas || []).find(x => x.id === it.id);
-          if (r && r.valor !== undefined && r.valor !== null && r.valor !== '') {
-            counts[r.valor] = (counts[r.valor] || 0) + 1;
-            total++;
-            let sc = null;
-            const v = r.valor;
-            const tipo = fichaType.tipoRespuesta;
-            if (tipo === 'si_no') sc = v === 'si' ? 100 : (v === 'no' ? 0 : null);
-            else if (tipo === 'escala_1_3') sc = Math.round(Math.max(0, Math.min(1, Number(v) / 3)) * 100);
-            else if (tipo === 'nivel_1_4' || isDirectivoType) {
-              const numV = Number(v);
-              if (numV === 4) sc = 100;
-              else if (numV === 3) sc = 75;
-              else if (numV === 2) sc = 50;
-              else if (numV === 1) sc = 25;
-            } else if (tipo === 'ips') sc = v === 'logrado' ? 100 : (v === 'proceso' ? 50 : (v === 'inicio' ? 0 : null));
-
-            if (sc !== null) {
-              scoreSum += sc;
-              scoreCnt++;
-              secScoreSum += sc;
-              secScoreCnt++;
-            }
-          }
-        });
-        const pct = scoreCnt ? Math.round(scoreSum / scoreCnt) : null;
-        return { it, itIdx, counts, total, pct };
-      });
-
-      const secAvg = secScoreCnt ? Math.round(secScoreSum / secScoreCnt) : null;
-      const secStatus = secAvg === null ? 'Sin datos' : (secAvg >= 85 ? 'Logrado' : (secAvg >= 70 ? 'En proceso' : 'Por mejorar'));
-
-      // Encabezado de dimensión
-      itemReportRows.push([
-        {
-          content: `DIMENSIÓN ${sIdx + 1}: ${sec.nombre.toUpperCase()}  (Promedio: ${secAvg !== null ? secAvg + '%' : '—'} · ${secStatus})`,
-          colSpan: 6,
-          styles: {
-            fillColor: [18, 41, 77],
-            textColor: [255, 255, 255],
-            fontStyle: 'bold',
-            halign: 'left',
-            fontSize: 8
-          }
-        }
-      ]);
-
-      // Filas para cada indicador
-      itemsData.forEach(({ it, itIdx, counts, total, pct }) => {
-        const itemIdx = itemCounter++;
-        const respParts = [];
-
-        // C5: Formato legible y no código crudo 4: 1
-        if (fichaType.tipoRespuesta === 'nivel_1_4' || isDirectivoType) {
-          const lvls = [4, 3, 2, 1];
-          const romanMap = { 4: 'IV', 3: 'III', 2: 'II', 1: 'I' };
-          lvls.forEach(l => {
-            if (counts[l]) respParts.push(`${romanMap[l]} × ${counts[l]}`);
-          });
-        } else {
-          const optKeys = Object.keys(counts);
-          optKeys.forEach(k => {
-            let label = k;
-            if (k === 'si') label = 'Sí';
-            else if (k === 'no') label = 'No';
-            else if (k === 'na') label = 'N/A';
-            else if (k === 'logrado') label = 'Logrado';
-            else if (k === 'proceso') label = 'Proceso';
-            else if (k === 'inicio') label = 'Inicio';
-            respParts.push(`${label}: ${counts[k]}`);
-          });
-        }
-
-        const respSummary = respParts.length ? respParts.join('  ·  ') : 'Sin respuestas';
-        const itStatus = pct === null ? 'Sin datos' : (pct >= 85 ? 'Logrado' : (pct >= 70 ? 'En proceso' : 'Por mejorar'));
-        const itemText = isDirectivoType ? (OFFICIAL_DIRECTIVO_ITEMS[itemIdx] || it.texto) : it.texto;
-
-        itemReportRows.push([
-          String(itemIdx),
-          itemText,
-          respSummary,
-          // C1: Dejar content vacío y pasar datos numéricos en raw para que NO se imprima [object Object]
-          { content: '', raw: { counts, total, tipoRespuesta: fichaType.tipoRespuesta, isDirectivoType } },
-          pct !== null ? `${pct}%` : '—',
-          itStatus
-        ]);
-      });
-    });
-
-    customTables.push({
-      title: 'V. REPORTE POR ÍTEM (EVALUACIÓN DETALLADA DE CADA INDICADOR)',
-      subtitle: 'Desglose de respuestas registradas, distribución proporcional y porcentaje de logro por cada indicador evaluado.\nLeyenda: ● IV (100%): Cumplimiento integral   ● III (75%): Avance significativo   ● II (50%): En desarrollo   ● I (25%): Por mejorar',
-      minHeight: 120,
-      tableHeaders: ['N.°', 'Indicador / Ítem Evaluado', 'Distribución por Nivel', 'Gráfica Proporcional', '% Cumpl.', 'Estado'],
-      tableRows: itemReportRows,
-      columnStyles: isLandscape ? {
-        0: { halign: 'center', cellWidth: 30, fontStyle: 'bold' },
-        1: { halign: 'left', cellWidth: 270 },
-        2: { halign: 'left', cellWidth: 150 },
-        3: { halign: 'center', cellWidth: 170 },
-        4: { halign: 'center', cellWidth: 65, fontStyle: 'bold' },
-        5: { halign: 'center', cellWidth: 85, fontStyle: 'bold' }
-      } : {
-        0: { halign: 'center', cellWidth: 24, fontStyle: 'bold' },
-        1: { halign: 'left', cellWidth: 180 },
-        2: { halign: 'left', cellWidth: 110 },
-        3: { halign: 'center', cellWidth: 95 },
-        4: { halign: 'center', cellWidth: 42, fontStyle: 'bold' },
-        5: { halign: 'center', cellWidth: 60, fontStyle: 'bold' }
-      },
-      didDrawCell: (data) => {
-        if (data.section === 'body' && data.column.index === 3) {
-          const doc = data.doc;
-          if (!doc) return;
-          const rawObj = data.cell.raw;
-          if (rawObj && rawObj.counts && rawObj.total > 0) {
-            const { counts, total } = rawObj;
-            const trackX = data.cell.x + 4;
-            const trackY = data.cell.y + (data.cell.height - 7) / 2;
-            const trackW = data.cell.width - 8;
-            const trackH = 7;
-
-            doc.setFillColor(235, 238, 242);
-            doc.roundedRect(trackX, trackY, trackW, trackH, 1.5, 1.5, 'F');
-
-            let curX = trackX;
-            // C6: Colores exactos por nivel (IV verde, III ámbar, II naranja, I rojo)
-            const orderKeys = (rawObj.tipoRespuesta === 'nivel_1_4' || rawObj.isDirectivoType)
-              ? [4, 3, 2, 1]
-              : Object.keys(counts);
-
-            orderKeys.forEach(val => {
-              const cnt = counts[val] || 0;
-              if (cnt > 0) {
-                const segW = (cnt / total) * trackW;
-                let col = [156, 163, 175];
-                const vStr = String(val).toLowerCase();
-                if (vStr === '4' || vStr === 'si' || vStr === 'logrado') col = [5, 150, 105]; // verde
-                else if (vStr === '3' || vStr === 'proceso') col = [217, 119, 6]; // ámbar
-                else if (vStr === '2') col = [234, 88, 12]; // naranja
-                else if (vStr === '1' || vStr === 'no' || vStr === 'inicio') col = [220, 38, 38]; // rojo
-
-                doc.setFillColor(col[0], col[1], col[2]);
-                doc.rect(curX, trackY, segW, trackH, 'F');
-                curX += segW;
-              }
-            });
-          }
-        }
-      }
-    });
-  }
-
-  // ==========================================
-  // SECCIÓN 6: DETALLE DE FICHAS REGISTRADAS
-  // ==========================================
-  const detailTableHeaders = isAllMode
-    ? ['N.°', 'Fecha', 'Institución Educativa', 'Tipo de Ficha', 'UGEL / RED', 'Visita', 'Especialista', '% Cumpl.', 'Estado']
-    : (isDirectivoType
-      ? ['N.°', 'Fecha', 'Institución Educativa', 'UGEL', 'RED/REI', 'Visita', 'Directivo', 'Monitor', '% Cumpl.', 'Estado']
-      : ['N.°', 'Fecha', 'Institución Educativa', 'UGEL / RED', 'Visita', 'Responsable', '% Cumpl.', 'Estado']);
-
-  // Ordenamiento configurable (por defecto menor cumplimiento)
-  const detailSortOrder = downloadConfig.ordenDetalle || 'menor_cumplimiento';
-  const detailSortedStats = [...statsList].sort((a, b) => {
-    if (detailSortOrder === 'fecha') {
-      return String(b.s.fecha || '').localeCompare(String(a.s.fecha || ''));
-    }
-    if (detailSortOrder === 'institucion') {
-      return (a.s.institucion || '').localeCompare(b.s.institucion || '');
-    }
-    // 'menor_cumplimiento'
-    return (a.st.pct || 0) - (b.st.pct || 0);
-  });
-
-  const detailTableRows = detailSortedStats.map((x, idx) => {
-    const s = x.s;
-    const st = x.st;
-    const isEbr = isFichaEbrGestionEscolar(s);
-    const isCoord = isFichaCoordTutoriaJec(s);
-    let pctVal = st.pct !== null ? `${st.pct}%` : '—';
-    if (isEbr && st.puntaje !== undefined && st.puntaje !== null) {
-      const v = getMomentoVisitaEbr(s);
-      const maxPts = st.puntaje_max || (v === 2 ? 69 : 57);
-      pctVal = `${st.puntaje}/${maxPts} (${st.pct}%)`;
-    } else if (isCoord && st.puntaje !== undefined && st.puntaje !== null) {
-      pctVal = `${st.puntaje}/63 (${st.pct}%)`;
-    }
-    const statusLabel = (st.estado && st.estado.label) ? st.estado.label : (st.pct === null ? 'Sin datos' : (st.pct >= 85 ? 'Logrado' : (st.pct >= 70 ? 'En proceso' : 'Por mejorar')));
-    const ugelText = s.ugel || 'UGEL 03';
-    const redText = s.red ? (s.red.toLowerCase().includes('red') || s.red.toLowerCase().includes('rei') ? s.red : 'RED ' + s.red) : 'No aplica';
-    const ugelRed = `${ugelText}\n${redText}`;
-
+  if (totalFichas >= 1 && downloadConfig.incluirMatriz !== false) {
+    const typeGroups = {};
     if (isAllMode) {
-      return [
-        String(idx + 1),
-        formatDate(s.fecha),
-        s.institucion || '—',
-        s.fichaTypeNombre || '—',
-        ugelRed,
-        s.visita ? `V${s.visita}` : '—',
-        s.responsable ? formatPersonName(s.responsable) : '—',
-        pctVal,
-        statusLabel
-      ];
-    } else if (isDirectivoType) {
-      return [
-        String(idx + 1),
-        formatDate(s.fecha),
-        s.institucion || '—',
-        s.ugel || 'UGEL 03',
-        s.red ? (s.red.toLowerCase().includes('red') || s.red.toLowerCase().includes('rei') ? s.red : 'RED ' + s.red) : '—',
-        s.visita ? `V${s.visita}` : '—',
-        s.director ? formatPersonName(s.director) : '—',
-        s.responsable ? formatPersonName(s.responsable) : '—',
-        pctVal,
-        statusLabel
-      ];
+      statsList.forEach(x => {
+        const tid = x.s.fichaTypeId || 'sin_tipo';
+        if (!typeGroups[tid]) typeGroups[tid] = [];
+        typeGroups[tid].push(x);
+      });
     } else {
-      return [
-        String(idx + 1),
-        formatDate(s.fecha),
-        s.institucion || '—',
-        ugelRed,
-        s.visita ? `V${s.visita}` : '—',
-        s.responsable ? formatPersonName(s.responsable) : '—',
-        pctVal,
-        statusLabel
-      ];
+      typeGroups[fichaType?.id || 'tipo_actual'] = statsList;
     }
-  });
 
-  const sectionNum = customTables.length + 1;
-  const romanNums = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
-  const secRoman = romanNums[sectionNum - 1] || `${sectionNum}`;
+    const typeGroupEntries = Object.entries(typeGroups);
+    typeGroupEntries.forEach(([tid, groupStats], gIdx) => {
+      let groupFt = fichaType;
+      if (isAllMode) {
+        if (typeof downloadConfig.getFichaType === 'function') {
+          groupFt = downloadConfig.getFichaType(tid);
+        } else if (Array.isArray(downloadConfig.fichaTypes)) {
+          groupFt = downloadConfig.fichaTypes.find(f => f.id === tid);
+        }
+        if (!groupFt) {
+          groupFt = {
+            id: tid,
+            nombre: groupStats[0]?.s?.fichaTypeNombre || 'Monitoreo',
+            secciones: []
+          };
+        }
+      }
 
-  customTables.push({
-    title: `${secRoman}. DETALLE DE FICHAS DE MONITOREO REGISTRADAS`,
-    subtitle: `Relación individualizada de las visitas de monitoreo registradas con los filtros aplicados (${detailSortedStats.length} registros).`,
-    minHeight: 100,
-    tableHeaders: detailTableHeaders,
-    tableRows: detailTableRows,
-    styles: { fontSize: 7.2 },
-    columnStyles: isAllMode ? {
-      0: { halign: 'center', cellWidth: 25, fontStyle: 'bold' },
-      1: { halign: 'center', cellWidth: 55 },
-      2: { halign: 'left', cellWidth: 175 },
-      3: { halign: 'left', cellWidth: 120 },
-      4: { halign: 'center', cellWidth: 80 },
-      5: { halign: 'center', cellWidth: 35 },
-      6: { halign: 'left', cellWidth: 150 },
-      7: { halign: 'center', cellWidth: 55, fontStyle: 'bold' },
-      8: { halign: 'center', cellWidth: 75, fontStyle: 'bold' }
-    } : (isDirectivoType ? {
-      0: { halign: 'center', cellWidth: 25, fontStyle: 'bold' },
-      1: { halign: 'center', cellWidth: 55 },
-      2: { halign: 'left', cellWidth: 185 },
-      3: { halign: 'center', cellWidth: 55 },
-      4: { halign: 'center', cellWidth: 55 },
-      5: { halign: 'center', cellWidth: 35 },
-      6: { halign: 'left', cellWidth: 140 },
-      7: { halign: 'left', cellWidth: 110 },
-      8: { halign: 'center', cellWidth: 45, fontStyle: 'bold' },
-      9: { halign: 'center', cellWidth: 65, fontStyle: 'bold' }
-    } : {
-      0: { halign: 'center', cellWidth: 28, fontStyle: 'bold' },
-      1: { halign: 'center', cellWidth: 60 },
-      2: { halign: 'left', cellWidth: 210 },
-      3: { halign: 'center', cellWidth: 95 },
-      4: { halign: 'center', cellWidth: 45 },
-      5: { halign: 'left', cellWidth: 145 },
-      6: { halign: 'center', cellWidth: 55, fontStyle: 'bold' },
-      7: { halign: 'center', cellWidth: 70, fontStyle: 'bold' }
-    })
-  });
+      let groupIsEbr = isFichaEbrGestionEscolar(groupFt)
+        || (groupFt?.escala === 'IPL')
+        || (groupFt?.tipoRespuesta === 'ips')
+        || groupStats.some(x => isFichaEbrGestionEscolar(x.s));
+
+      let seccionesParaAgg = (groupFt?.secciones && groupFt.secciones.length > 0)
+        ? groupFt.secciones
+        : [];
+      if (groupIsEbr) {
+        const hasV2 = groupStats.some(x => Number(x.s.visita) === 2);
+        seccionesParaAgg = hasV2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
+      } else if (isFichaJec(groupFt)) {
+        seccionesParaAgg = (groupFt?.secciones && groupFt.secciones.length === JEC_SECCIONES.length) ? groupFt.secciones : JEC_SECCIONES;
+      }
+
+      if (seccionesParaAgg.length === 0 && groupStats[0]?.st?.secciones) {
+        seccionesParaAgg = groupStats[0].st.secciones.map(sc => ({ nombre: sc.nombre, items: [] }));
+      }
+
+      if (seccionesParaAgg.length > 0) {
+        // R3: Nombres reales de dimensiones con salto de línea y número de indicadores
+        const secHeaders = seccionesParaAgg.map(s => {
+          const count = s.items ? s.items.length : 0;
+          return count > 0 ? `${s.nombre}\n(${count} ind.)` : s.nombre;
+        });
+
+        // R3: Ocultar columna Visita si el filtro es una visita única (ej: V1 o V2)
+        const uniqueVisitas = new Set(groupStats.map(x => String(x.s?.visita || '').trim()).filter(Boolean));
+        const isSingleVisitFilter = Boolean(filters.visita) && (String(filters.visita) === '1' || String(filters.visita) === '2');
+        const showVisitaCol = !isSingleVisitFilter && uniqueVisitas.size > 1;
+
+        const matrizHeaders = ['N.°', 'Institución Educativa', 'REI', ...(showVisitaCol ? ['Visita'] : []), ...secHeaders, 'Global', 'Estado'];
+
+        // R3: Ordenar de menor a mayor cumplimiento global; desempate alfabético por I.E.
+        const sortedStats = [...statsList].sort((a, b) => {
+          const diff = (a.st.pct ?? 0) - (b.st.pct ?? 0);
+          if (diff !== 0) return diff;
+          return (a.s?.institucion || '').localeCompare(b.s?.institucion || '');
+        }).filter(x => groupStats.includes(x));
+
+        const gLogCut = groupIsEbr ? 67 : 85;
+        const gProcCut = groupIsEbr ? 34 : 70;
+
+        const matrizRows = sortedStats.map((x, idx) => {
+          const s = x.s;
+          const st = x.st;
+          const secMap = {};
+          (st.secciones || []).forEach(sc => { secMap[sc.nombre] = sc.pct; });
+
+          const secCells = seccionesParaAgg.map(sec => {
+            const p = secMap[sec.nombre];
+            if (p === undefined || p === null) return '—';
+            let bg = [255, 255, 255];
+            let col = [15, 27, 45];
+            if (p >= gLogCut) { bg = [236, 253, 245]; col = [4, 120, 87]; }
+            else if (p >= gProcCut) { bg = [254, 243, 199]; col = [180, 83, 9]; }
+            else { bg = [254, 226, 226]; col = [185, 28, 28]; }
+            return { content: `${p}%`, styles: { halign: 'center', fillColor: bg, textColor: col, fontStyle: 'bold' } };
+          });
+
+          const globPct = st.pct !== null && st.pct !== undefined ? `${st.pct}%` : '—';
+          const globStatus = st.pct === null || st.pct === undefined ? 'Sin datos' : (st.pct >= gLogCut ? 'Logrado' : (st.pct >= gProcCut ? 'En proceso' : 'Por mejorar'));
+          const statusCol = st.pct >= gLogCut ? [4, 120, 87] : (st.pct >= gProcCut ? [180, 83, 9] : [185, 28, 28]);
+          const statusBg = st.pct >= gLogCut ? [236, 253, 245] : (st.pct >= gProcCut ? [254, 243, 199] : [254, 226, 226]);
+
+          return [
+            String(idx + 1),
+            s.institucion || '—',
+            formatRei(s.red),
+            ...(showVisitaCol ? [s.visita ? `V${s.visita}` : '—'] : []),
+            ...secCells,
+            { content: globPct, styles: { halign: 'center', fontStyle: 'bold', textColor: statusCol } },
+            { content: globStatus, styles: { halign: 'center', fontStyle: 'bold', fillColor: statusBg, textColor: statusCol } }
+          ];
+        });
+
+        const numDims = seccionesParaAgg.length;
+        const availableDimsWidth = isLandscape
+          ? (showVisitaCol ? 350 : 386)
+          : (showVisitaCol ? 190 : 218);
+        const dimColW = Math.max(38, Math.floor(availableDimsWidth / numDims));
+
+        const colStyles = {
+          0: { halign: 'center', cellWidth: isLandscape ? 24 : 18 },
+          1: { halign: 'left', valign: 'middle' },
+          2: { halign: 'center', cellWidth: isLandscape ? 48 : 36, fontStyle: 'bold' },
+        };
+        let cOffset = 3;
+        if (showVisitaCol) {
+          colStyles[cOffset] = { halign: 'center', cellWidth: isLandscape ? 36 : 28 };
+          cOffset++;
+        }
+        seccionesParaAgg.forEach((_, sIdx) => {
+          colStyles[cOffset + sIdx] = { halign: 'center', cellWidth: dimColW, fontSize: numDims > 5 ? 6.2 : 6.8 };
+        });
+        colStyles[cOffset + numDims] = { halign: 'center', cellWidth: isLandscape ? 50 : 36, fontStyle: 'bold' };
+        colStyles[cOffset + numDims + 1] = { halign: 'center', cellWidth: isLandscape ? 70 : 60, fontStyle: 'bold' };
+
+        const matrizTable = {
+          title: 'III. MATRIZ COMPARATIVA POR INSTITUCIÓN Y DIMENSIÓN',
+          subtitle: 'Desempeño desagregado por institución educativa y dimensión evaluada (ordenado de menor a mayor cumplimiento global).',
+          minHeight: 90,
+          showHead: 'everyPage',
+          tableHeaders: matrizHeaders,
+          tableRows: matrizRows,
+          styles: { fontSize: 7, cellPadding: { top: 3.5, right: 3, bottom: 3.5, left: 3 }, valign: 'middle' },
+          headStyles: { fontSize: numDims > 5 ? 6.5 : 7.2 },
+          columnStyles: colStyles
+        };
+        if (typeGroupEntries.length > 1) {
+          matrizTable.title = `III.${gIdx + 1}. MATRIZ COMPARATIVA — ${(groupFt?.nombre || 'MONITOREO').toUpperCase()}`;
+        }
+        customTables.push(matrizTable);
+      }
+    });
+  }
 
   // ==========================================
-  // C9: NOTA METODOLÓGICA
+  // SECCIÓN IV: REPORTE POR ÍTEM — CONSOLIDADO DE INDICADORES (CONDICIONAL)
+  // ==========================================
+  const incluirReporteItem = Boolean(downloadConfig.incluirReporteItem || downloadConfig.incluir_items);
+  if (incluirReporteItem && statsList.length > 0 && fichaType) {
+    const subsList = statsList.map(x => x.s);
+    const aggSections = computeItemAgg(subsList, fichaType);
+
+    if (aggSections && aggSections.length > 0) {
+      customTables.push({
+        title: 'IV. REPORTE POR ÍTEM — CONSOLIDADO DE INDICADORES',
+        subtitle: `Detalle consolidado de cada indicador evaluado (n = ${totalFichas} fichas de monitoreo procesadas).`,
+        minHeight: 80,
+        pageBreak: 'before',
+        beforeDraw: (doc, curY, pageW, margin) => {
+          const legY = curY + 2;
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.setTextColor(71, 85, 105);
+          doc.text('Leyenda:', margin, legY);
+
+          let lx = margin + 46;
+          const legendPills = [
+            { label: 'Logrado: Cumplido', color: [22, 163, 74] },
+            { label: 'Proceso: En proceso', color: [217, 119, 6] },
+            { label: 'Inicio: Por mejorar', color: [220, 38, 38] },
+            { label: 'N/A: No aplica', color: [148, 163, 184] }
+          ];
+          legendPills.forEach(it => {
+            doc.setFillColor(it.color[0], it.color[1], it.color[2]);
+            doc.circle(lx + 3, legY - 2.5, 2.5, 'F');
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.2);
+            doc.setTextColor(51, 65, 85);
+            doc.text(it.label, lx + 8, legY);
+            lx += doc.getTextWidth(it.label) + 16;
+          });
+          return curY + 12;
+        }
+      });
+
+      aggSections.forEach((sec) => {
+        const secCut = isEbr ? 67 : 85;
+        const secProcCut = isEbr ? 34 : 70;
+        let secStatus = 'Sin datos';
+        let secBg = [243, 244, 246];
+        let secCol = [107, 114, 128];
+        if (sec.avg !== null) {
+          if (sec.avg >= secCut) { secStatus = 'Logrado'; secBg = [236, 253, 245]; secCol = [4, 120, 87]; }
+          else if (sec.avg >= secProcCut) { secStatus = 'En proceso'; secBg = [254, 243, 199]; secCol = [180, 83, 9]; }
+          else { secStatus = 'Por mejorar'; secBg = [254, 226, 226]; secCol = [185, 28, 28]; }
+        }
+
+        const secBannerTitle = `${sec.nombre} (${sec.items.length} indicadores)`;
+        const secSubtitle = `Cumplimiento de la sección: ${sec.avg !== null ? sec.avg + '%' : '—'}  ·  Nivel: ${secStatus}`;
+
+        const itemRows = sec.items.map((it, iIdx) => {
+          let itemStatus = 'Sin datos';
+          let itemBg = [243, 244, 246];
+          let itemCol = [107, 114, 128];
+          if (it.pct !== null) {
+            if (it.pct >= secCut) { itemStatus = 'Logrado'; itemBg = [236, 253, 245]; itemCol = [4, 120, 87]; }
+            else if (it.pct >= secProcCut) { itemStatus = 'En proceso'; itemBg = [254, 243, 199]; itemCol = [180, 83, 9]; }
+            else { itemStatus = 'Por mejorar'; itemBg = [254, 226, 226]; itemCol = [185, 28, 28]; }
+          }
+
+          // R4: Distribución: conteo por nivel con su color. Omitir los niveles con 0.
+          const distParts = [];
+          if (it.counts.logrado) distParts.push(`Logrado: ${it.counts.logrado}`);
+          if (it.counts.proceso) distParts.push(`Proceso: ${it.counts.proceso}`);
+          if (it.counts.inicio) distParts.push(`Inicio: ${it.counts.inicio}`);
+          if (it.counts.na || it.counts.nc) distParts.push(`N/A: ${(it.counts.na || 0) + (it.counts.nc || 0)}`);
+          if (it.counts.si) distParts.push(`Sí: ${it.counts.si}`);
+          if (it.counts.no) distParts.push(`No: ${it.counts.no}`);
+          const distString = distParts.length ? distParts.join('  ·  ') : '—';
+
+          return [
+            String(iIdx + 1),
+            it.texto || `Ítem ${it.id}`,
+            { content: itemStatus, styles: { halign: 'center', fontStyle: 'bold', fillColor: itemBg, textColor: itemCol } },
+            distString,
+            it.pct !== null ? `${it.pct}%` : '—'
+          ];
+        });
+
+        customTables.push({
+          title: secBannerTitle,
+          subtitle: secSubtitle,
+          minHeight: 50,
+          showHead: 'everyPage',
+          tableHeaders: ['N.°', 'Indicador / Ítem', 'Resultado', `Distribución (n = ${totalFichas})`, '%'],
+          tableRows: itemRows,
+          styles: { fontSize: 7, cellPadding: { top: 3.5, right: 4, bottom: 3.5, left: 4 }, valign: 'middle' },
+          columnStyles: isLandscape ? {
+            0: { halign: 'center', cellWidth: 24, fontStyle: 'bold' },
+            1: { halign: 'left' },
+            2: { halign: 'center', cellWidth: 80, fontStyle: 'bold' },
+            3: { halign: 'center', cellWidth: 210 },
+            4: { halign: 'center', cellWidth: 48, fontStyle: 'bold' }
+          } : {
+            0: { halign: 'center', cellWidth: 20, fontStyle: 'bold' },
+            1: { halign: 'left' },
+            2: { halign: 'center', cellWidth: 68, fontStyle: 'bold' },
+            3: { halign: 'center', cellWidth: 140 },
+            4: { halign: 'center', cellWidth: 40, fontStyle: 'bold' }
+          }
+        });
+      });
+    }
+  }
+
+  // ==========================================
+  // NOTA METODOLÓGICA COMPLETA (SIN TRUNCAR)
   // ==========================================
   const summarySections = [
     {
       title: 'Nota Metodológica',
-      content: 'El cumplimiento de cada ítem se calcula mediante la conversión: IV = 100%, III = 75%, II = 50%, I = 25%; el porcentaje de cada dimensión corresponde al promedio aritmético de sus ítems y el global corresponde al promedio de todos los ítems evaluados en la visita. Escala de valoración institucional: Logrado >= 85%, En proceso 70% – 84%, Por mejorar < 70%.'
+      content: isEbr
+        ? 'El cumplimiento de la Ficha de Monitoreo a la Gestión Escolar se determina según la escala oficial UGEL 03 EBR: Logrado (47–69 pts en V2, 39–57 pts en V1 / 67%–100%), En proceso (24–46 pts en V2, 20–38 pts en V1 / 34%–66%), Inicio (0–23 pts en V2, 0–19 pts en V1 / 0%–33%). Cada indicador se evalúa en escala Inicio (1 pt / 33%), Proceso (2 pts / 66%) y Logrado (3 pts / 100%), excluyendo del cálculo los indicadores con No Aplica (N/A).'
+        : 'El cumplimiento de cada ítem se calcula mediante la conversión: IV = 100%, III = 75%, II = 50%, I = 25%; el porcentaje de cada dimensión corresponde al promedio aritmético de sus ítems y el global corresponde al promedio de todos los ítems evaluados en la visita. Escala de valoración institucional: Logrado >= 85%, En proceso 70% – 84%, Por mejorar < 70%.'
     }
   ];
 
   const safeName = sanitizeFilename(isAllMode ? 'general' : (fichaType ? (isDirectivoType ? 'Monitoreo_Directivo_IE' : fichaType.nombre) : 'reporte'));
-  const filename = `Reporte_Consolidado_${safeName}_${getLimaDateStr()}.pdf`;
+  const visitaTag = filters.visita ? `_V${filters.visita}` : '';
+  const itemsTag = incluirReporteItem ? '_con_items' : '';
+  const filename = `Reporte_Consolidado_${safeName}${visitaTag}_${getLimaDateStr()}${itemsTag}.pdf`;
 
-  // C7: Bloque de firmas oficial dinámico
+  // Bloque de firmas oficial dinámico
   const areaSigla = (downloadConfig.areaConfig && downloadConfig.areaConfig.sigla) ? downloadConfig.areaConfig.sigla : 'AGEBRE';
+  const isJecReport = isFichaEspecialistaJec(fichaType);
   const defaultSignatures = [
-    { cargo: `Especialista Responsable de Monitoreo — ${areaSigla}`, entidad: 'UGEL 03 – DRELM', leyenda: 'Firma y Sello' },
+    {
+      cargo: isJecReport ? 'Especialista Responsable de JEC — UGEL 03' : `Especialista Responsable de Monitoreo — ${areaSigla}`,
+      nombre: isJecReport ? ESPECIALISTA_JEC_OFICIAL.nombresApellidos : '',
+      entidad: 'UGEL 03 – DRELM',
+      leyenda: 'Firma y Sello'
+    },
     { cargo: `Jefatura de ${areaSigla} — UGEL 03 – DRELM`, entidad: 'UGEL 03 – DRELM', leyenda: 'V.° B.° y Sello' }
   ];
 
@@ -4588,7 +4695,8 @@ export async function exportConsolidadoReportPdf(statsList, fichaType, filters =
     subtitle: `Consolidado Oficial de Monitoreo y Acompañamiento 2026 · UGEL 03 · ${filterSubtitle}`,
     orientation: isLandscape ? 'landscape' : 'portrait',
     introParagraph,
-    metaGrid,
+    soloEncabezadoPagina1: true,
+    metaGrid: [], // Se renderiza dentro de Sección I con las 3 tarjetas KPI estilizadas
     customTables,
     summarySections,
     signatures: downloadConfig.signatures || defaultSignatures,
@@ -4600,6 +4708,127 @@ export async function exportConsolidadoReportPdf(statsList, fichaType, filters =
     marcaBorrador: downloadConfig.marcaBorrador || false,
     filename
   });
+}
+
+/**
+ * Versión Legacy (V1) para retrocompatibilidad y rollback instantáneo sin downtime.
+ */
+export async function exportConsolidadoReportPdfV1(statsList, fichaType, filters = {}, isAllMode = false, downloadConfig = {}) {
+  const isLandscape = downloadConfig.orientation ? (downloadConfig.orientation === 'landscape') : true;
+  const isDirectivoType = fichaType && (fichaType.tipoRespuesta === 'nivel_1_4' || (fichaType.id || '').includes('directivo') || (fichaType.nombre || '').toLowerCase().includes('directivo'));
+
+  const title = isAllMode
+    ? 'REPORTE CONSOLIDADO GENERAL DE MONITOREO'
+    : `REPORTE CONSOLIDADO — ${(fichaType ? fichaType.nombre.toUpperCase() : 'MONITOREO')}`;
+
+  const totalFichas = statsList.length;
+  const instCount = new Set(statsList.map(x => x.s.institucion || '')).size;
+  const withPct = statsList.filter(x => x.st.pct !== null);
+  const avgPct = withPct.length ? Math.round(withPct.reduce((a, x) => a + x.st.pct, 0) / withPct.length) : '—';
+
+  const filtrosAplicados = [];
+  if (filters.institucion) filtrosAplicados.push(`I.E.: ${filters.institucion}`);
+  if (filters.red) filtrosAplicados.push(`RED: ${filters.red}`);
+  if (filters.visita) filtrosAplicados.push(`Visita: ${filters.visita}`);
+  if (filters.responsable) filtrosAplicados.push(`Responsable: ${filters.responsable}`);
+  if (filters.distrito) filtrosAplicados.push(`Distrito: ${filters.distrito}`);
+  if (filters.desde || filters.hasta) filtrosAplicados.push(`Período: ${filters.desde || 'inicio'} a ${filters.hasta || 'fin'}`);
+  const filterSubtitle = filtrosAplicados.length ? `Filtros: ${filtrosAplicados.join(' · ')}` : 'Filtros: ninguno (todos los registros)';
+
+  const introParagraph = `El presente documento consolida la información de las visitas de monitoreo registradas en el Sistema de Gestión Institucional UGEL 03 para el año lectivo 2026. Se reporta un total de ${plural(totalFichas, 'ficha', 'fichas')} de monitoreo aplicada(s) en ${plural(instCount, 'institución educativa', 'instituciones educativas')}, con un nivel de cumplimiento promedio general del ${avgPct}%. ${filterSubtitle}.`;
+
+  const isEbr = isFichaEbrGestionEscolar(fichaType) || (fichaType?.escala === 'IPL') || (fichaType?.tipoRespuesta === 'ips');
+  const logCut = isEbr ? 67 : 85;
+  const procCut = isEbr ? 34 : 70;
+
+  const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
+  statsList.forEach(x => {
+    if (x.st.pct === null) dist.none++;
+    else {
+      if (isEbr) {
+        if (x.st.pct >= logCut) dist.logrado++;
+        else if (x.st.pct >= procCut) dist.proceso++;
+        else dist.inicio++;
+      } else {
+        const lbl = (x.st?.estado?.estado_panel || x.st?.estado?.label || '').toLowerCase();
+        if (lbl.includes('no cumple') || lbl.includes('inici') || lbl.includes('incipient') || lbl.includes('mejorar')) dist.inicio++;
+        else if (lbl.includes('parcial') || lbl.includes('proces')) dist.proceso++;
+        else if (lbl.includes('lograd') || lbl.includes('cumple')) dist.logrado++;
+        else if (x.st.pct >= logCut) dist.logrado++;
+        else if (x.st.pct >= procCut) dist.proceso++;
+        else dist.inicio++;
+      }
+    }
+  });
+
+  const pctLogrado = totalFichas ? Math.round((dist.logrado / totalFichas) * 100) : 0;
+  const pctProceso = totalFichas ? Math.round((dist.proceso / totalFichas) * 100) : 0;
+  const pctInicio  = totalFichas ? Math.round((dist.inicio / totalFichas) * 100) : 0;
+  const pctNone    = totalFichas ? Math.round((dist.none / totalFichas) * 100) : 0;
+
+  const customTables = [];
+
+  customTables.push({
+    title: 'I. DISTRIBUCIÓN DE RESULTADOS',
+    subtitle: 'Categorización porcentual y numérica de las fichas de monitoreo según el nivel de logro alcanzado.',
+    minHeight: 90,
+    tableHeaders: ['Nivel de Logro', 'Rango de Cumplimiento', 'Cantidad de Fichas', 'Porcentaje (%)', 'Interpretación Institucional'],
+    tableRows: [
+      ['Logrado', `>= ${logCut}%`, String(dist.logrado), `${pctLogrado}%`, 'Nivel óptimo; cumple satisfactoriamente los estándares evaluados'],
+      ['En proceso', `${procCut}% – ${logCut - 1}%`, String(dist.proceso), `${pctProceso}%`, 'En desarrollo; requiere fortalecimiento de prácticas pedagógicas'],
+      ['Por mejorar', `< ${procCut}%`, String(dist.inicio), `${pctInicio}%`, 'Requiere asistencia técnica focalizada y acompañamiento prioritario'],
+      ['Sin datos', '—', String(dist.none), `${pctNone}%`, 'Fichas sin respuestas o con indicadores no evaluados'],
+      ['TOTAL', '—', String(totalFichas), '100%', 'Total consolidado de visitas de monitoreo procesadas']
+    ]
+  });
+
+  const summarySections = [
+    {
+      title: 'Nota Metodológica',
+      content: isEbr
+        ? 'El cumplimiento de la Ficha de Monitoreo a la Gestión Escolar se determina según la escala oficial UGEL 03 EBR: Logrado (47–69 pts en V2, 39–57 pts en V1 / 67%–100%), En proceso (24–46 pts en V2, 20–38 pts en V1 / 34%–66%), Inicio (0–23 pts en V2, 0–19 pts en V1 / 0%–33%). Cada indicador se evalúa en escala Inicio (1 pt / 33%), Proceso (2 pts / 66%) y Logrado (3 pts / 100%).'
+        : 'El cumplimiento de cada ítem se calcula mediante la conversión: IV = 100%, III = 75%, II = 50%, I = 25%; el porcentaje de cada dimensión corresponde al promedio aritmético de sus ítems y el global corresponde al promedio de todos los ítems evaluados en la visita. Escala de valoración institucional: Logrado >= 85%, En proceso 70% – 84%, Por mejorar < 70%.'
+    }
+  ];
+
+  const safeName = sanitizeFilename(isAllMode ? 'general' : (fichaType ? (isDirectivoType ? 'Monitoreo_Directivo_IE' : fichaType.nombre) : 'reporte'));
+  const filename = `Reporte_Consolidado_${safeName}_${getLimaDateStr()}.pdf`;
+
+  const areaSigla = (downloadConfig.areaConfig && downloadConfig.areaConfig.sigla) ? downloadConfig.areaConfig.sigla : 'AGEBRE';
+  const defaultSignatures = [
+    { cargo: `Especialista Responsable de Monitoreo — ${areaSigla}`, entidad: 'UGEL 03 – DRELM', leyenda: 'Firma y Sello' },
+    { cargo: `Jefatura de ${areaSigla} — UGEL 03 – DRELM`, entidad: 'UGEL 03 – DRELM', leyenda: 'V.° B.° y Sello' }
+  ];
+
+  await createOfficialPdfDocument({
+    title,
+    subtitle: `Consolidado Oficial de Monitoreo y Acompañamiento 2026 · UGEL 03 · ${filterSubtitle}`,
+    orientation: isLandscape ? 'landscape' : 'portrait',
+    introParagraph,
+    metaGrid: [],
+    customTables,
+    summarySections,
+    signatures: downloadConfig.signatures || defaultSignatures,
+    lugarFecha: downloadConfig.lugarFecha || `Lima, ${formatDate(getLimaDateStr())}`,
+    sinFirmas: downloadConfig.sinFirmas || false,
+    areaConfig: downloadConfig.areaConfig || null,
+    incluirQr: downloadConfig.incluirQr !== false,
+    datosIncompletos: downloadConfig.datosIncompletos || false,
+    marcaBorrador: downloadConfig.marcaBorrador || false,
+    filename
+  });
+}
+
+/**
+ * Función principal de exportación con soporte para Feature Flag de versión.
+ * Por defecto ejecuta V2. Si downloadConfig.version === 1 o window.__REPORT_PDF_V1 === true, ejecuta V1.
+ */
+export async function exportConsolidadoReportPdf(statsList, fichaType, filters = {}, isAllMode = false, downloadConfig = {}) {
+  const forceV1 = (downloadConfig && downloadConfig.version === 1) || (typeof window !== 'undefined' && window.__REPORT_PDF_V1 === true);
+  if (forceV1) {
+    return await exportConsolidadoReportPdfV1(statsList, fichaType, filters, isAllMode, downloadConfig);
+  }
+  return await exportConsolidadoReportPdfV2(statsList, fichaType, filters, isAllMode, downloadConfig);
 }
 
 /**

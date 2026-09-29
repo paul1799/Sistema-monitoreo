@@ -25,11 +25,13 @@ import {
   computeStats,
   forceResetBodyScroll,
   setAppState,
-} from './ui.js?v=20260928_v12';
+} from './ui.js?v=20260929_v15';
 
 import { renderDirectorioTab } from './directorio.js?v=20260928_v12';
 
 import { renderAlertasTab, getAlertCount } from './alertas.js?v=20260928_v12';
+
+import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20260929_v15';
 
 /* ============================= MANEJADORES GLOBALES DE ERROR ============================= */
 if (typeof window !== 'undefined') {
@@ -253,6 +255,22 @@ function startListeners() {
   activeUnsubscribers.push(
     dbNs.collection('responsables').onSnapshot(snap => {
       state.responsables = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const hasJecResp = state.responsables.some(r => {
+        const n = (r.nombresApellidos || '').toLowerCase();
+        return n.includes('fanny liliana') || (n.includes('fanny') && n.includes('arias'));
+      });
+      if (!hasJecResp) {
+        state.responsables.push({
+          id: 'resp_jec_fanny_arias',
+          nombresApellidos: ESPECIALISTA_JEC_OFICIAL.nombresApellidos,
+          cargo: ESPECIALISTA_JEC_OFICIAL.cargo,
+          especialista: ESPECIALISTA_JEC_OFICIAL.area,
+          modalidad: ESPECIALISTA_JEC_OFICIAL.modalidad,
+          red: ESPECIALISTA_JEC_OFICIAL.red,
+          distrito: 'UGEL 03',
+          entidad: ESPECIALISTA_JEC_OFICIAL.entidad
+        });
+      }
       state.responsables.sort((a, b) => (a.nombresApellidos || a.especialista || '').localeCompare(b.nombresApellidos || b.especialista || ''));
       if (state.activeTab !== 'registrar') {
         render();

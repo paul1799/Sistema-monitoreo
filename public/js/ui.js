@@ -11,13 +11,16 @@ import {
   REGLA_NIVEL_EBR_GESTION_M1,
   REGLA_NIVEL_EBR_GESTION_M2,
   isFichaCoordTutoriaJec,
+  isFichaCoordPedagogico,
+  isFichaEspecialistaJec,
+  ESPECIALISTA_JEC_OFICIAL,
   getNivelCoordTutoriaJec,
   isFichaEbrGestionEscolar,
   getReglaNivelEbrGestion,
   getNivelEbrGestion,
   getMomentoVisitaEbr
-} from './calcEngine.js?v=20260928_v12';
-import * as RepDatos from './reportes-datos.js?v=20260928_v12';
+} from './calcEngine.js?v=20260929_v15';
+import * as RepDatos from './reportes-datos.js?v=20260929_v18';
 
 import { AI_SCAN_ENDPOINT } from './firebase-config.js?v=20260918_v8';
 import {
@@ -49,7 +52,7 @@ import {
   PALETA_ESTANDAR,
   formatCodigoModular,
   JEDPA_THEME
-} from './pdf-template.js?v=20260928_v12';
+} from './pdf-template.js?v=20260929_v18';
 
 import {
   renderEbrGestionForm,
@@ -217,8 +220,13 @@ export function statusFromPct(pct, fichaType, conteo_si, puntaje, visita) {
     puntaje: estado.puntaje
   };
 }
-export function colorForPct(pct) {
+export function colorForPct(pct, fichaType = null) {
   if (pct === null || pct === undefined) return 'var(--neutral)';
+  if (isFichaEbrGestionEscolar(fichaType)) {
+    if (pct >= 67) return 'var(--ok)';
+    if (pct >= 34) return 'var(--warn)';
+    return 'var(--danger)';
+  }
   if (pct >= 85) return 'var(--ok)';
   if (pct >= 70) return 'var(--warn)';
   return 'var(--danger)';
@@ -237,28 +245,50 @@ export function normalizeInstName(s) {
 
 /**
  * Obtiene el nombre del responsable de una ficha, resolviendo fallbacks si no fue guardado explícitamente:
- * 1. Campo explícito s.responsable
- * 2. Campo en extras (etiquetas como responsable, especialista, monitor)
- * 3. Especialista asignado a la RED en state.responsables
- * 4. Nombre del usuario en state.users según s.createdBy
- * 5. Usuario de sesión actual si coincide con s.createdBy
+ * 1. REGLA OFICIAL JEC: Si es Ficha de Tutoría JEC, Ficha Coordinador Pedagógico o Implementación Modelo JEC,
+ *    la encargada asignada es exclusivamente la Especialista de JEC (Fanny Liliana Arias Quiróz).
+ * 2. Campo explícito s.responsable (para las demás fichas cuyos colegios están distribuidos por REI)
+ * 3. Campo en extras (etiquetas como responsable, especialista, monitor)
+ * 4. Especialista asignado a la RED en state.responsables
+ * 5. Nombre del usuario en state.users según s.createdBy
+ * 6. Usuario de sesión actual si coincide con s.createdBy
  */
 export function getSubmissionResponsable(s, state = null, currentUser = null) {
-  if (s && s.responsable && String(s.responsable).trim() && s.responsable.trim() !== '—') {
-    return s.responsable.trim();
+  if (!s) return '';
+
+  // 1. REGLA ESPECÍFICA OFICIAL JEC:
+  // - Ficha de Monitoreo a las Funciones del Coordinador(a) de Tutoría (JEC)
+  // - Ficha de Monitoreo a las funciones que cumple el/la coordinador(a) Pedagógico
+  // - Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC
+  // La especialista encargada de forma exclusiva es Fanny Liliana Arias Quiróz.
+  // Se ignora cualquier valor numérico residual (ej. 28 o 33) y la asignación ordinaria de RED.
+  const appState = state || _appState || (typeof window !== 'undefined' ? window.state : null) || {};
+  if (isFichaEspecialistaJec(s, appState)) {
+    return ESPECIALISTA_JEC_OFICIAL.nombresApellidos;
   }
-  // 1. Extras
-  if (s && Array.isArray(s.extras)) {
+
+  // 2. Para las demás fichas (EBR, EBE, directivos):
+  // Colegios distribuidos por REI pertenecen a sus respectivos especialistas
+  if (s.responsable && String(s.responsable).trim() && s.responsable.trim() !== '—') {
+    const rVal = String(s.responsable).trim();
+    if (!/^\d+$/.test(rVal)) {
+      return rVal;
+    }
+  }
+
+  // 3. Extras
+  if (Array.isArray(s.extras)) {
     const ex = s.extras.find(e => {
       const l = (e.label || '').toLowerCase();
       return (l.includes('responsable') || l.includes('especialista') || l.includes('monitor')) &&
-        !l.includes('dni') && e.value && String(e.value).trim() && e.value.trim() !== '—';
+        !l.includes('dni') && e.value && String(e.value).trim() && e.value.trim() !== '—' &&
+        !/^\d+$/.test(String(e.value).trim());
     });
     if (ex && ex.value.trim()) return ex.value.trim();
   }
-  // 2. Especialista asignado a la RED
+
+  // 4. Especialista asignado a la RED (para las demás fichas)
   const red = s ? (s.red || (s.ie && s.ie.red)) : '';
-  const appState = state || _appState || (typeof window !== 'undefined' ? window.state : null) || {};
   if (red && red !== 'No aplica' && appState && Array.isArray(appState.responsables)) {
     const redNorm = normalizeText(red);
     const matchedResp = appState.responsables.find(r => {
@@ -267,18 +297,23 @@ export function getSubmissionResponsable(s, state = null, currentUser = null) {
       return rRedNorm.includes(redNorm) || redNorm.includes(rRedNorm) ||
         (red.match(/\d+/) && r.red.includes(red.match(/\d+/)[0]));
     });
-    if (matchedResp && (matchedResp.nombresApellidos || matchedResp.especialista)) {
-      return (matchedResp.nombresApellidos || matchedResp.especialista).trim();
+    if (matchedResp) {
+      const cand = (matchedResp.nombresApellidos || matchedResp.especialista || '').trim();
+      if (cand && !/^\d+$/.test(cand)) {
+        return cand;
+      }
     }
   }
-  // 3. state.users por createdBy
+
+  // 5. state.users por createdBy
   if (s && s.createdBy && appState && Array.isArray(appState.users)) {
     const userObj = appState.users.find(u => u.uid === s.createdBy || u.id === s.createdBy || u.email === s.createdBy);
     if (userObj && (userObj.nombre || userObj.displayName)) {
       return (userObj.nombre || userObj.displayName).trim();
     }
   }
-  // 4. currentUser
+
+  // 6. currentUser
   const user = currentUser || _currentSessionUser || (appState && appState.currentUser) || null;
   if (user && s && s.createdBy && s.createdBy === user.uid && (user.nombre || user.displayName)) {
     return (user.nombre || user.displayName).trim();
@@ -287,17 +322,22 @@ export function getSubmissionResponsable(s, state = null, currentUser = null) {
 }
 
 /* ============================= HELPERS DE RENDER ============================= */
-export function bar(pct, customClsOrStatus) {
+export function bar(pct, customClsOrStatus, fichaType = null) {
   const w = pct === null || pct === undefined ? 0 : Math.max(0, Math.min(100, pct));
   let cls = 'none';
-  if (customClsOrStatus) {
+  const targetFt = fichaType || (typeof customClsOrStatus === 'object' && customClsOrStatus ? customClsOrStatus : null);
+  if (customClsOrStatus && typeof customClsOrStatus === 'string') {
     const s = String(customClsOrStatus).toLowerCase().trim();
     if (s.includes('ok') || s.includes('lograd') || s.includes('cumple')) cls = 'ok';
     else if (s.includes('warn') || s.includes('proces') || s.includes('parcial')) cls = 'warn';
     else if (s.includes('danger') || s.includes('inici') || s.includes('mejorar') || s.includes('no cumple')) cls = 'danger';
     else cls = customClsOrStatus;
   } else if (pct !== null && pct !== undefined) {
-    cls = pct >= 85 ? 'ok' : (pct >= 70 ? 'warn' : 'danger');
+    if (isFichaEbrGestionEscolar(targetFt)) {
+      cls = pct >= 67 ? 'ok' : (pct >= 34 ? 'warn' : 'danger');
+    } else {
+      cls = pct >= 85 ? 'ok' : (pct >= 70 ? 'warn' : 'danger');
+    }
   }
   return '<div class="barTrack" title="' + (pct === null ? 'Sin datos' : pct + '%') + '"><div class="barFill ' + cls + '" style="width:' + w + '%"></div></div>';
 }
@@ -371,82 +411,66 @@ export function computeStats(sub, ft) {
       puntaje_max: 0,
     };
   }
+  let respuestasArray = sub.respuestas;
+  if (respuestasArray && typeof respuestasArray === 'object' && !Array.isArray(respuestasArray)) {
+    respuestasArray = Object.entries(respuestasArray).map(([id, valor]) => ({ id, valor }));
+  }
+
   // Para la ficha EBR Gestion Escolar, JEC o Coordinador de Tutoría JEC, usar las secciones y reglas especializadas
   let ftForCalc = ft;
-  if (isFichaEbrGestionEscolar(ft) && sub.respuestas && sub.respuestas.length > 0) {
+  const isEbr = isFichaEbrGestionEscolar(ft || sub);
+  if (isEbr && respuestasArray && (Array.isArray(respuestasArray) ? respuestasArray.length > 0 : true)) {
     const visita = getMomentoVisitaEbr(sub);
     const seccionesEbr = visita === 2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
     const reglaEbr = getReglaNivelEbrGestion(visita);
     ftForCalc = { ...ft, secciones: seccionesEbr, tipoRespuesta: 'ips', escala: 'IPL', visita, regla_nivel: reglaEbr };
-  } else if (isFichaCoordTutoriaJec(ft) && sub.respuestas && sub.respuestas.length > 0) {
-    ftForCalc = { ...ft, regla_nivel: ft.regla_nivel || REGLA_NIVEL_COORD_TUTORIA_JEC };
-  } else if (isFichaJec(ft) && sub.respuestas && sub.respuestas.length > 0) {
-    ftForCalc = { ...ft, secciones: JEC_SECCIONES, tipoRespuesta: 'si_no', regla_nivel: ft.regla_nivel || REGLA_NIVEL_JEC };
+  } else if (isFichaCoordTutoriaJec(ft || sub) && respuestasArray && respuestasArray.length > 0) {
+    ftForCalc = { ...ft, regla_nivel: ft?.regla_nivel || REGLA_NIVEL_COORD_TUTORIA_JEC };
+  } else if (isFichaJec(ft || sub) && respuestasArray && respuestasArray.length > 0) {
+    ftForCalc = { ...ft, secciones: JEC_SECCIONES, tipoRespuesta: 'si_no', regla_nivel: ft?.regla_nivel || REGLA_NIVEL_JEC };
   }
-  const result = calcScore(sub.respuestas, ftForCalc);
+  const result = calcScore(respuestasArray, ftForCalc);
+  let finalEstado = {
+    label: result.estado.nivel,
+    estado_panel: result.estado.estado_panel,
+    cls: result.estado.cls,
+    descripcion: result.estado.descripcion || '',
+    puntaje: result.estado.puntaje ?? result.puntaje
+  };
+  if ((isEbr || ftForCalc.escala === 'IPL' || ftForCalc.tipoRespuesta === 'ips') && result.pct !== null) {
+    if (result.pct >= 67) {
+      finalEstado.label = 'Logrado';
+      finalEstado.estado_panel = 'Logrado';
+      finalEstado.cls = 'st-logrado';
+    } else if (result.pct >= 34) {
+      finalEstado.label = 'Proceso';
+      finalEstado.estado_panel = 'En proceso';
+      finalEstado.cls = 'st-proceso';
+    } else {
+      finalEstado.label = 'Inicio';
+      finalEstado.estado_panel = 'Inicio';
+      finalEstado.cls = 'st-inicio';
+    }
+  }
   return {
     pct: result.pct,
     puntaje: result.puntaje,
     puntaje_max: result.puntaje_max,
     secciones: result.secciones,
     conteo_si: result.conteo_si,
-    // Mapeamos { nivel, estado_panel, cls } → { label, estado_panel, cls } para compatibilidad
-    estado: {
-      label: result.estado.nivel,
-      estado_panel: result.estado.estado_panel,
-      cls: result.estado.cls,
-      descripcion: result.estado.descripcion || '',
-      puntaje: result.estado.puntaje ?? result.puntaje
-    },
+    estado: finalEstado,
   };
 }
 
 export function computeItemAgg(subs, ft) {
-  let activeFt = ft;
-  if (isFichaEbrGestionEscolar(ft)) {
-    const hasV2 = (subs || []).some(s => Number(s.visita) === 2);
-    const seccionesEbr = hasV2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
-    activeFt = { ...ft, secciones: (ft && ft.secciones && ft.secciones.length === seccionesEbr.length) ? ft.secciones : seccionesEbr, tipoRespuesta: 'ips' };
-  } else if (isFichaJec(ft)) {
-    activeFt = { ...ft, secciones: (ft && ft.secciones && ft.secciones.length === JEC_SECCIONES.length) ? ft.secciones : JEC_SECCIONES, tipoRespuesta: 'si_no' };
-  }
-  const tipoResp = activeFt?.tipoRespuesta || 'ips';
-  return (activeFt?.secciones || []).map(sec => {
-    const items = (sec.items || []).map(it => {
-      const counts = {};
-      let scoreSum = 0, scoreCnt = 0, total = 0;
-      (subs || []).forEach(s => {
-        const r = (s.respuestas || []).find(x => {
-          if (!x) return false;
-          if (x.id === it.id) return true;
-          const normX = String(x.id || '').replace(/^ge\d*_/, 'ge_');
-          const normIt = String(it.id || '').replace(/^ge\d*_/, 'ge_');
-          if (normX && normIt && normX === normIt) return true;
-          if (x.num && it.num && Number(x.num) === Number(it.num)) {
-            if (x.seccion && sec.nombre && normalizeText(x.seccion) === normalizeText(sec.nombre)) return true;
-          }
-          if (x.texto && it.texto && normalizeText(x.texto) === normalizeText(it.texto)) return true;
-          return false;
-        });
-        if (r) {
-          const vClean = String(r.valor || '').trim().toLowerCase();
-          if (vClean) {
-            counts[vClean] = (counts[vClean] || 0) + 1;
-            total++;
-            const sc = scoreValue(tipoResp, vClean);
-            if (sc !== null) { scoreSum += sc; scoreCnt++; }
-          }
-        }
-      });
-      return { texto: it.texto, id: it.id, counts, total, pct: scoreCnt ? Math.round(scoreSum / scoreCnt * 100) : null };
-    });
-    const secTotal = items.reduce((a, i) => a + (i.pct !== null ? 1 : 0), 0);
-    const secAvg = secTotal ? Math.round(items.filter(i => i.pct !== null).reduce((a, i) => a + i.pct, 0) / secTotal) : null;
-    return { nombre: sec.nombre, items, avg: secAvg };
-  });
+  return RepDatos.computeItemAgg(subs, ft);
 }
 
-export function renderItemReportHtml(itemAgg, tipoRespuesta) {
+export function renderItemReportHtml(itemAgg, tipoRespuesta, ft = null) {
+  const isEbr = isFichaEbrGestionEscolar(ft);
+  const logCut = isEbr ? 67 : 85;
+  const procCut = isEbr ? 34 : 70;
+
   const legendMap = tipoRespuesta === 'nivel_1_4' ? {
     '1': 'I = No evidencia cumplimiento mínimo (25%)',
     '2': 'II = Cumplimiento parcial (50%)',
@@ -476,14 +500,14 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta) {
   }).join('');
 
   const sections = itemAgg.map((sec, si) => {
-    const secStatus = statusFromPct(sec.avg);
+    const secStatus = statusFromPct(sec.avg, ft);
     const pctVal = sec.avg === null || sec.avg === undefined ? 0 : Math.min(Math.max(sec.avg, 0), 100);
-    const barCls = sec.avg === null || sec.avg === undefined ? 'none' : (sec.avg >= 85 ? 'ok' : (sec.avg >= 70 ? 'warn' : 'danger'));
+    const barCls = sec.avg === null || sec.avg === undefined ? 'none' : (sec.avg >= logCut ? 'ok' : (sec.avg >= procCut ? 'warn' : 'danger'));
     const pctText = sec.avg === null ? '—' : `${sec.avg} %`;
     const secAriaLabel = `Avance de ${sec.nombre}: ${sec.avg !== null ? sec.avg + '%' : 'Sin datos'}`;
 
     const tableRows = sec.items.map((it, idx) => {
-      const itStatus = statusFromPct(it.pct);
+      const itStatus = statusFromPct(it.pct, ft);
       const respPills = (RESPONSE_OPTIONS[tipoRespuesta] || []).map(o => {
         const cnt = it.counts[o.v] || 0;
         if (!cnt) return '';
@@ -505,7 +529,7 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta) {
     const secVal = sec.avg === null || sec.avg === undefined ? 0 : Math.min(Math.max(sec.avg, 0), 100);
     const secFillCls = sec.avg === null || sec.avg === undefined
       ? 'none'
-      : (sec.avg >= 85 ? 'ok' : (sec.avg >= 70 ? 'warn' : 'danger'));
+      : (sec.avg >= logCut ? 'ok' : (sec.avg >= procCut ? 'warn' : 'danger'));
 
     return '<details class="secDetails" data-secitem="' + si + '">' +
       '<summary id="' + summaryId + '" class="secSummary" role="button" tabindex="0" aria-expanded="false" aria-controls="' + bodyId + '">' +
@@ -717,7 +741,7 @@ export function openDownloadConfigModal({
   let consResumen = savedPref ? (savedPref.incluirResumenEjecutivo !== false) : true;
   let consMatriz = savedPref ? (savedPref.incluirMatriz !== false) : true;
   let consCriticos = savedPref ? (savedPref.incluirCriticos !== false) : true;
-  let consItems = savedPref ? (savedPref.incluirReporteItem !== false) : true;
+  let consItems = savedPref ? (savedPref.incluirReporteItem === true) : false;
   let consOrden = (savedPref && savedPref.ordenDetalle) ? savedPref.ordenDetalle : 'menor_cumplimiento';
 
   let recordarEleccion = true;
@@ -1095,28 +1119,15 @@ export function openDownloadConfigModal({
 
               ${tipoReporte === 'consolidado' ? `
                 <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:8px 10px;margin-top:6px;display:flex;flex-direction:column;gap:6px">
-                  <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:2px">Opciones de Reporte Consolidado:</div>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-                    <input type="checkbox" id="dl_cons_resumen" ${consResumen ? 'checked' : ''}> Incluir resumen ejecutivo (puntos destacados y por fortalecer)
+                  <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:2px">Contenido a exportar:</div>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft);cursor:default">
+                    <input type="checkbox" checked disabled>
+                    <span><strong>Reporte consolidado</strong> (siempre incluido: Tarjetas KPI, dona, avance por sección y matriz)</span>
                   </label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-                    <input type="checkbox" id="dl_cons_matriz" ${consMatriz ? 'checked' : ''}> Incluir matriz por institución y dimensión (2 o más fichas)
+                  <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="dl_cons_items" ${consItems ? 'checked' : ''}>
+                    <span>Incluir reporte por ítem (consolidado de indicadores)</span>
                   </label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-                    <input type="checkbox" id="dl_cons_criticos" ${consCriticos ? 'checked' : ''}> Incluir sección de ítems críticos / prioridades de atención
-                  </label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-                    <input type="checkbox" id="dl_cons_items" ${consItems ? 'checked' : ''}> Incluir reporte detallado por ítem con barras de nivel
-                  </label>
-                  <div style="display:flex;align-items:center;gap:8px;font-size:12px;margin-top:2px">
-                    <span style="font-weight:600;color:var(--ink-soft)">Orden del detalle de fichas:</span>
-                    <select id="dl_cons_orden" class="input" style="padding:2px 8px;font-size:12px;width:auto">
-                      <option value="menor_cumplimiento" ${consOrden === 'menor_cumplimiento' ? 'selected' : ''}>Menor cumplimiento primero (urgente)</option>
-                      <option value="mayor_cumplimiento" ${consOrden === 'mayor_cumplimiento' ? 'selected' : ''}>Mayor cumplimiento primero</option>
-                      <option value="fecha" ${consOrden === 'fecha' ? 'selected' : ''}>Por fecha de visita (más reciente primero)</option>
-                      <option value="institucion" ${consOrden === 'institucion' ? 'selected' : ''}>Alfabético por Institución Educativa</option>
-                    </select>
-                  </div>
                 </div>
               ` : ''}
 
@@ -1150,7 +1161,7 @@ export function openDownloadConfigModal({
         <div class="downloadModalFooter">
           <button type="button" class="btn secondary" id="dl_cancel_btn">Cancelar</button>
           <button type="button" class="btn" id="dl_confirm_btn" style="display:flex;align-items:center;gap:6px">
-            <span>⬇</span> Generar PDF
+            <span>⬇</span> Descargar
           </button>
         </div>
       </div>
@@ -1472,6 +1483,7 @@ export function openDownloadConfigModal({
         incluirMatriz: consMatriz,
         incluirCriticos: consCriticos,
         incluirReporteItem: consItems,
+        incluir_items: consItems,
         ordenDetalle: consOrden,
         datosIncompletos: forceWithIncomplete || (totalAnomalies > 0),
         marcaBorrador: forceWithIncomplete && (anomalies.sinPuesto > 0 || anomalies.sinAsesor > 0)
@@ -1485,7 +1497,7 @@ export function openDownloadConfigModal({
         console.error('Error generando PDF con configuración:', err);
         showToast('Error al generar PDF: ' + (err.message || 'Error desconocido'));
         confirmBtn.disabled = false;
-        confirmBtn.innerHTML = '<span>⬇</span> Generar PDF';
+        confirmBtn.innerHTML = '<span>⬇</span> Descargar';
       }
     }
 
@@ -1616,11 +1628,17 @@ export function viewDashboard(state, getFichaType, renderFn) {
 
   state.submissions.forEach(s => {
     const ft = getFichaType(s.fichaTypeId);
+    const isEbr = isFichaEbrGestionEscolar(ft || s);
     const st = ft ? computeStats(s, ft) : { pct: null };
     if (st.pct !== null) { sumPct += st.pct; cntPct++; }
-    const status = st.estado?.estado_panel || st.estado?.label || statusFromPct(st.pct).label;
-    const sLower = String(status || '').toLowerCase();
-    if (sLower.includes('lograd')) dist.logrado++;
+    let sLower = '';
+    if (isEbr && st.pct !== null) {
+      sLower = st.pct >= 67 ? 'logrado' : (st.pct >= 34 ? 'proceso' : 'inicio');
+    } else {
+      const status = st.estado?.estado_panel || st.estado?.label || statusFromPct(st.pct, ft, st?.conteo_si, st?.puntaje, s.visita).label;
+      sLower = String(status || '').toLowerCase();
+    }
+    if (sLower.includes('lograd') || sLower.includes('cumple')) dist.logrado++;
     else if (sLower.includes('proces') || sLower.includes('parcial')) dist.proceso++;
     else if (sLower.includes('inici') || sLower.includes('incipient') || sLower.includes('mejorar')) dist.inicio++;
     else dist.none++;
@@ -2752,8 +2770,18 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
       }
     });
 
-    // Auto-sugerir / completar especialista si coincide con la RED del colegio
-    if (c.rei && state.responsables && state.responsables.length) {
+    // Auto-sugerir / completar especialista: para fichas JEC la especialista oficial es Fanny Liliana Arias Quiróz, para el resto según REI del colegio
+    const currentFt = state.selectedFichaType || (state.currentFicha ? state.currentFicha.tipo : '') || '';
+    if (isFichaEspecialistaJec(currentFt)) {
+      respInputs.forEach(rInp => {
+        rInp.value = ESPECIALISTA_JEC_OFICIAL.nombresApellidos;
+        const hEl = rInp.closest('.field') ? rInp.closest('.field').querySelector('.respHint') : null;
+        if (hEl) {
+          hEl.textContent = '✓ Especialista de JEC responsable: ' + ESPECIALISTA_JEC_OFICIAL.nombresApellidos + ' (AGEBRE – UGEL 03)';
+          hEl.style.display = 'block';
+        }
+      });
+    } else if (c.rei && state.responsables && state.responsables.length) {
       const cReiNorm = normalizeText(c.rei);
       const matchedResp = state.responsables.find(r => {
         if (!r.red) return false;
@@ -3448,30 +3476,39 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       allCompromisos.unshift({ texto: compDirectorVal, responsable: 'Director(a) de la IE', plazo: 'Año escolar 2026' });
     }
     if (compMonitorVal) {
-      allCompromisos.push({ texto: compMonitorVal, responsable: 'Monitor / Especialista', plazo: 'Seguimiento continuo' });
+      allCompromisos.push({
+        texto: compMonitorVal,
+        responsable: isFichaEspecialistaJec(ft) ? ESPECIALISTA_JEC_OFICIAL.nombresApellidos : 'Monitor / Especialista',
+        plazo: 'Seguimiento continuo'
+      });
     }
 
     // Token de idempotencia en cliente para prevenir duplicados en caso de reintento o doble clic
     let submissionToken = (form && form.dataset.submissionId) || genId();
     if (form) form.dataset.submissionId = submissionToken;
 
-    const fallbackResp = (currentUser && (currentUser.nombre || currentUser.displayName || currentUser.email)) || '';
-    if (!responsableVal || !responsableVal.trim()) {
-      if (redVal && redVal !== 'No aplica' && activeState.responsables && activeState.responsables.length) {
-        const redNorm = normalizeText(redVal);
-        const matchedResp = activeState.responsables.find(r => {
-          if (!r.red) return false;
-          const rRedNorm = normalizeText(r.red);
-          return rRedNorm.includes(redNorm) || redNorm.includes(rRedNorm) ||
-            (redVal.match(/\d+/) && r.red.includes(redVal.match(/\d+/)[0]));
-        });
-        if (matchedResp && (matchedResp.nombresApellidos || matchedResp.especialista)) {
-          responsableVal = (matchedResp.nombresApellidos || matchedResp.especialista).trim();
+    if (isFichaEspecialistaJec(ft)) {
+      // Las 3 fichas JEC son atendidas exclusivamente por la Especialista de JEC oficial
+      responsableVal = ESPECIALISTA_JEC_OFICIAL.nombresApellidos;
+    } else {
+      const fallbackResp = (currentUser && (currentUser.nombre || currentUser.displayName || currentUser.email)) || '';
+      if (!responsableVal || !responsableVal.trim() || /^\d+$/.test(responsableVal.trim())) {
+        if (redVal && redVal !== 'No aplica' && activeState.responsables && activeState.responsables.length) {
+          const redNorm = normalizeText(redVal);
+          const matchedResp = activeState.responsables.find(r => {
+            if (!r.red) return false;
+            const rRedNorm = normalizeText(r.red);
+            return rRedNorm.includes(redNorm) || redNorm.includes(rRedNorm) ||
+              (redVal.match(/\d+/) && r.red.includes(redVal.match(/\d+/)[0]));
+          });
+          if (matchedResp && (matchedResp.nombresApellidos || matchedResp.especialista)) {
+            responsableVal = (matchedResp.nombresApellidos || matchedResp.especialista).trim();
+          }
         }
       }
-    }
-    if (!responsableVal || !responsableVal.trim()) {
-      responsableVal = fallbackResp;
+      if (!responsableVal || !responsableVal.trim() || /^\d+$/.test(responsableVal.trim())) {
+        responsableVal = fallbackResp;
+      }
     }
 
     let tutoriaExtraData = {};
@@ -3498,6 +3535,7 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       red: redVal,
       codigoModular: codigoVal,
       responsable: responsableVal,
+      responsableCargo: isFichaEspecialistaJec(ft) ? ESPECIALISTA_JEC_OFICIAL.cargo : undefined,
       director: directorVal,
       directorDni: directorDniVal,
       condicion: condicionVal,
@@ -3765,8 +3803,9 @@ export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdm
   if (visitaSet.size === 0) [1, 2, 3].forEach(v => visitaSet.add(v));
   const visitaOptions = Array.from(visitaSet).sort((a, b) => a - b);
 
-  // Opciones de responsables: SOLO especialistas/coordinadores de state.responsables
+  // Opciones de responsables: especialistas/coordinadores de state.responsables + Especialista de JEC
   const respSet = new Set();
+  respSet.add(ESPECIALISTA_JEC_OFICIAL.nombresApellidos);
   (state.responsables || []).forEach(r => {
     if (r.nombresApellidos) respSet.add(r.nombresApellidos.trim());
   });
@@ -3881,8 +3920,18 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
   if (consFilters.estado) {
     statsList = statsList.filter(x => {
       const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : ft;
-      const lbl = x.st?.estado?.label || statusFromPct(x.st.pct, sFt, x.st?.conteo_si, x.st?.puntaje).label;
-      const pnl = x.st?.estado?.estado_panel || '';
+      const isEbr = isFichaEbrGestionEscolar(sFt || ft || x.s);
+      let lbl = '';
+      let pnl = '';
+      if (isEbr && x.st && x.st.pct !== null) {
+        if (x.st.pct >= 67) { lbl = 'Logrado'; pnl = 'Logrado'; }
+        else if (x.st.pct >= 34) { lbl = 'Proceso'; pnl = 'En proceso'; }
+        else { lbl = 'Inicio'; pnl = 'Inicio'; }
+      } else {
+        const v = x.s ? getMomentoVisitaEbr(x.s) : undefined;
+        lbl = x.st?.estado?.label || statusFromPct(x.st.pct, sFt, x.st?.conteo_si, x.st?.puntaje, v).label;
+        pnl = x.st?.estado?.estado_panel || '';
+      }
       return lbl === consFilters.estado || pnl === consFilters.estado;
     });
   }
@@ -3897,32 +3946,55 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
   statsList.forEach(x => {
     const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : ft;
-    const l = (x.st?.estado?.estado_panel || x.st?.estado?.label || statusFromPct(x.st.pct, sFt, x.st?.conteo_si, x.st?.puntaje).label || '').toLowerCase();
+    const isEbr = isFichaEbrGestionEscolar(sFt || ft || x.s)
+      || (sFt?.tipoRespuesta === 'ips')
+      || (sFt?.escala === 'IPL')
+      || (ft?.tipoRespuesta === 'ips')
+      || (ft?.escala === 'IPL');
+    let l = '';
+    if ((isEbr || sFt?.escala === 'IPL' || ft?.escala === 'IPL') && x.st && x.st.pct !== null) {
+      l = x.st.pct >= 67 ? 'logrado' : (x.st.pct >= 34 ? 'proceso' : 'inicio');
+    } else if (x.st && x.st.estado && (x.st.estado.estado_panel || x.st.estado.label)) {
+      l = String(x.st.estado.estado_panel || x.st.estado.label).toLowerCase();
+    } else {
+      const v = x.s ? getMomentoVisitaEbr(x.s) : undefined;
+      l = (statusFromPct(x.st?.pct, sFt, x.st?.conteo_si, x.st?.puntaje, v).label || '').toLowerCase();
+    }
     if (l.includes('no cumple') || l.includes('inici') || l.includes('incipient') || l.includes('mejorar')) dist.inicio++;
     else if (l.includes('parcial') || l.includes('proces')) dist.proceso++;
     else if (l.includes('lograd') || l.includes('cumple')) dist.logrado++;
     else dist.none++;
   });
 
+  const colLog = 'var(--ok, #16a34a)';
+  const colProc = 'var(--warn, #d97706)';
+  const colIni = 'var(--danger, #dc2626)';
+
   const seg = '<div class="distWrap">' +
     donutChart([
-      { value: dist.logrado, color: 'var(--primary)', label: 'Logrado' },
-      { value: dist.proceso, color: 'var(--accent)', label: 'En proceso' },
-      { value: dist.inicio, color: 'var(--danger)', label: 'Inicio' },
-      { value: dist.none, color: 'var(--line-strong)', label: 'Sin datos' },
+      { value: dist.logrado, color: colLog, label: 'Logrado' },
+      { value: dist.proceso, color: colProc, label: 'En proceso' },
+      { value: dist.inicio, color: colIni, label: 'Inicio' },
+      { value: dist.none, color: 'var(--line-strong, #94a3b8)', label: 'Sin datos' },
     ], { centerLabel: (dist.logrado + dist.proceso + dist.inicio + dist.none), centerSub: 'fichas' }) +
     '<div class="seglegend" style="flex-direction:column;gap:8px;align-items:flex-start">' +
-    '<span><span class="dot" style="background:var(--primary)"></span>Logrado (' + dist.logrado + ')</span>' +
-    '<span><span class="dot" style="background:var(--accent)"></span>En proceso (' + dist.proceso + ')</span>' +
-    '<span><span class="dot" style="background:var(--danger)"></span>Inicio (' + dist.inicio + ')</span>' +
-    (dist.none ? '<span><span class="dot" style="background:var(--line-strong)"></span>Sin datos (' + dist.none + ')</span>' : '') +
+    '<span><span class="dot" style="background:' + colLog + '"></span>Logrado (' + dist.logrado + ')</span>' +
+    '<span><span class="dot" style="background:' + colProc + '"></span>En proceso (' + dist.proceso + ')</span>' +
+    '<span><span class="dot" style="background:' + colIni + '"></span>Inicio (' + dist.inicio + ')</span>' +
+    (dist.none ? '<span><span class="dot" style="background:var(--line-strong, #94a3b8)"></span>Sin datos (' + dist.none + ')</span>' : '') +
     '</div></div>';
 
   // Reporte por ítem (solo para tipo de ficha individual)
   let itemReportHtml = '';
   if (!isAllMode && ft) {
+    const isEbr = isFichaEbrGestionEscolar(ft);
+    let seccionesParaAgg = ft.secciones || [];
+    if (isEbr) {
+      const hasV2 = statsList.some(x => Number(x.s.visita) === 2);
+      seccionesParaAgg = hasV2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
+    }
     const secAgg = {};
-    (ft.secciones || []).forEach(sec => secAgg[sec.nombre] = { sum: 0, cnt: 0 });
+    seccionesParaAgg.forEach(sec => secAgg[sec.nombre] = { sum: 0, cnt: 0 });
     statsList.forEach(x => (x.st.secciones || []).forEach(sc => {
       if (sc.pct !== null && secAgg[sc.nombre]) {
         secAgg[sc.nombre].sum += sc.pct;
@@ -3938,7 +4010,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
         sec.avg = Math.round(a.sum / a.cnt);
       }
     });
-    itemReportHtml = renderItemReportHtml(itemAgg, ft.tipoRespuesta);
+    itemReportHtml = renderItemReportHtml(itemAgg, ft.tipoRespuesta, ft);
   }
 
   // Avance general por tipo de ficha (solo para modo "Todas")
@@ -4059,7 +4131,17 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
   const rows = statsList.map(x => {
     const s = x.s; const st = x.st;
     const sFt = isAllMode ? getFichaType(s.fichaTypeId) : ft;
-    const status = (st && st.estado && st.estado.label) ? { label: st.estado.label, cls: st.estado.cls } : statusFromPct(st.pct, sFt, st?.conteo_si, st?.puntaje);
+    const isEbr = isFichaEbrGestionEscolar(sFt || ft || s);
+    let status = null;
+    if (isEbr && st && st.pct !== null) {
+      if (st.pct >= 67) status = { label: 'Logrado', cls: 'st-logrado' };
+      else if (st.pct >= 34) status = { label: 'Proceso', cls: 'st-proceso' };
+      else status = { label: 'Inicio', cls: 'st-inicio' };
+    } else if (st && st.estado && st.estado.label) {
+      status = { label: st.estado.label, cls: st.estado.cls };
+    } else {
+      status = statusFromPct(st.pct, sFt, st?.conteo_si, st?.puntaje, s.visita);
+    }
     const isOpen = consExpanded === s.id;
     const detailContent = isOpen ? buildDetail(s) : '';
     const pdfBtn = '<button class="actBtn pdfBtn" data-pdfsub="' + s.id + '" title="Descargar Ficha Oficial en PDF (A4)">📄 PDF</button>';
@@ -4069,7 +4151,9 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     const typeCol = isAllMode ? '<td><span class="badge st-none" style="font-size:10.5px">' + esc(typeName) + '</span></td>' : '';
     const ugelRedCol = '<td>' + esc(s.ugel || 'UGEL 03') + '<br><small style="color:var(--text-muted);font-weight:600;">' + esc(s.red || 'No aplica') + '</small></td>';
     const subResp = getSubmissionResponsable(s, state, user);
-    const isEbr = isFichaEbrGestionEscolar(sFt || ft);
+    const displayResp = (subResp && !/^\d+$/.test(subResp))
+      ? subResp
+      : ((s.responsable && !/^\d+$/.test(String(s.responsable).trim())) ? String(s.responsable).trim() : '—');
     const isCoordTutoria = isFichaCoordTutoriaJec(sFt || ft);
     let pctDisplay = (st.pct === null ? '—' : st.pct + '%');
     if (isEbr && st.puntaje !== undefined && st.puntaje !== null) {
@@ -4080,7 +4164,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
       pctDisplay = '<strong>' + st.puntaje + '/63 pts</strong><br><small style="color:var(--text-muted);font-weight:600">(' + st.pct + '%)</small>';
     }
 
-    return '<tr class="clickable" data-row="' + s.id + '"><td>' + fmtDate(s.fecha) + '</td><td>' + esc(s.institucion) + '</td>' + typeCol + ugelRedCol + '<td>' + (s.visita ? 'V' + s.visita : '—') + '</td><td>' + esc(subResp || s.responsable || '—') + '</td><td>' + pctDisplay + '</td><td><span class="badge ' + status.cls + '">' + status.label + '</span></td><td style="white-space:nowrap"><div class="rowActions">' + pdfBtn + editBtn + delBtn + '</div></td></tr>' +
+    return '<tr class="clickable" data-row="' + s.id + '"><td>' + fmtDate(s.fecha) + '</td><td>' + esc(s.institucion) + '</td>' + typeCol + ugelRedCol + '<td>' + (s.visita ? 'V' + s.visita : '—') + '</td><td>' + esc(displayResp) + '</td><td>' + pctDisplay + '</td><td><span class="badge ' + status.cls + '">' + status.label + '</span></td><td style="white-space:nowrap"><div class="rowActions">' + pdfBtn + editBtn + delBtn + '</div></td></tr>' +
       (isOpen ? '<tr class="detailRow"><td colspan="' + (isAllMode ? 9 : 8) + '">' + detailContent + '</td></tr>' : '');
   }).join('') || '<tr><td colspan="' + (isAllMode ? 9 : 8) + '" style="text-align:center;color:var(--text-600);padding:22px">No hay fichas que coincidan con los filtros.</td></tr>';
 
@@ -4114,7 +4198,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     });
     const last = g.visitas[0];
     const sFt = isAllMode ? getFichaType(last.s.fichaTypeId) : ft;
-    const isEbr = isFichaEbrGestionEscolar(sFt || ft);
+    const isEbr = isFichaEbrGestionEscolar(sFt || ft || last.s);
     const isCoordTutoria = isFichaCoordTutoriaJec(sFt || ft);
     const withP = g.visitas.filter(x => x.st && x.st.pct !== null);
     const avg = withP.length ? Math.round(withP.reduce((a, x) => a + x.st.pct, 0) / withP.length) : null;
@@ -4124,7 +4208,11 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     const avgSi = withSi.length ? Math.round(withSi.reduce((a, x) => a + x.st.conteo_si, 0) / withSi.length) : null;
 
     let gst = null;
-    if (g.visitas.length === 1 && last.st && last.st.estado && last.st.estado.label) {
+    if (isEbr && avg !== null) {
+      if (avg >= 67) gst = { label: 'Logrado', cls: 'st-logrado' };
+      else if (avg >= 34) gst = { label: 'Proceso', cls: 'st-proceso' };
+      else gst = { label: 'Inicio', cls: 'st-inicio' };
+    } else if (g.visitas.length === 1 && last.st && last.st.estado && last.st.estado.label) {
       gst = { label: last.st.estado.label, cls: last.st.estado.cls };
     } else {
       gst = statusFromPct(avg, sFt, avgSi, avgPts, last.s.visita);
@@ -4323,6 +4411,8 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
       dbNs,
       isAdmin,
       onConfirm: async (cfg) => {
+        cfg.getFichaType = getFichaType;
+        cfg.fichaTypes = state.fichaTypes;
         await exportConsolidadoReportPdf(statsList, ft, consFilters, isAllMode, cfg);
       }
     });
@@ -4628,7 +4718,10 @@ async function exportCsv(ft, statsList) {
     const s = x.s, st = x.st;
     const extras = (s.extras || []).map(e => e.label + ': ' + e.value).join(' | ');
     const comps = (Array.isArray(s.compromisos) ? s.compromisos : Array.isArray(s.compromisosList) ? s.compromisosList : []).map(c => c.texto).join(' | ');
-    const subResp = getSubmissionResponsable(s, _appState, _currentSessionUser) || s.responsable || '';
+    let subResp = getSubmissionResponsable(s, _appState, _currentSessionUser);
+    if (!subResp || /^\d+$/.test(subResp)) {
+      subResp = (s.responsable && !/^\d+$/.test(String(s.responsable).trim())) ? String(s.responsable).trim() : '';
+    }
     const stLabel = (st && st.estado && st.estado.label) ? st.estado.label : statusFromPct(st.pct, ft, st?.conteo_si, st?.puntaje, s?.visita).label;
     if (isCoord) {
       const pts = (st.puntaje !== undefined && st.puntaje !== null) ? st.puntaje : (s.puntaje || '');
@@ -7676,6 +7769,29 @@ let respImportResults = null; // { total, success, failures, mainErrorCode }
 let respEditing = null; // null | 'new' | responsableId
 
 export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUser) {
+  // Asegurar que la Especialista Oficial de JEC esté visible en el directorio
+  const hasJecResp = (state.responsables || []).some(r => {
+    const n = (r.nombresApellidos || '').toLowerCase();
+    return n.includes('fanny liliana') || (n.includes('fanny') && n.includes('arias'));
+  });
+  if (!hasJecResp) {
+    const jecObj = {
+      id: 'resp_jec_fanny_arias',
+      nombresApellidos: ESPECIALISTA_JEC_OFICIAL.nombresApellidos,
+      cargo: ESPECIALISTA_JEC_OFICIAL.cargo,
+      especialista: ESPECIALISTA_JEC_OFICIAL.area,
+      modalidad: ESPECIALISTA_JEC_OFICIAL.modalidad,
+      red: ESPECIALISTA_JEC_OFICIAL.red,
+      distrito: 'UGEL 03',
+      entidad: ESPECIALISTA_JEC_OFICIAL.entidad
+    };
+    if (!state.responsables) state.responsables = [];
+    state.responsables.push(jecObj);
+    if (isAdmin && dbNs) {
+      dbNs.collection('responsables').doc('resp_jec_fanny_arias').set({ ...jecObj, createdAt: Date.now() }).catch(() => {});
+    }
+  }
+
   const allReds = new Set();
   (state.responsables || []).forEach(r => {
     if (!r.red) return;
@@ -13293,9 +13409,14 @@ async function backfillSubmissionsUgelRed(dbNs, state) {
     if (!sub.colegioId && newColId) needUpdate = true;
 
     let newResp = sub.responsable;
-    if (!newResp || newResp === '—' || !newResp.trim()) {
+    if (isFichaEspecialistaJec(sub)) {
+      if (newResp !== ESPECIALISTA_JEC_OFICIAL.nombresApellidos) {
+        newResp = ESPECIALISTA_JEC_OFICIAL.nombresApellidos;
+        needUpdate = true;
+      }
+    } else if (!newResp || newResp === '—' || !newResp.trim() || /^\d+$/.test(newResp.trim())) {
       const guessedResp = getSubmissionResponsable({ ...sub, ugel: newUgel, red: newRed }, state, null);
-      if (guessedResp) {
+      if (guessedResp && guessedResp !== '—') {
         newResp = guessedResp;
         needUpdate = true;
       }

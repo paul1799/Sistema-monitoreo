@@ -1,4 +1,17 @@
-import { calcScore, puntajeItem, estadoPorRegla } from './calcEngine.js?v=20260925_v8';
+import { calcScore, puntajeItem, estadoPorRegla } from './calcEngine.js?v=20260929_v15';
+import {
+  isFichaEbrGestionEscolar,
+  EBR_GESTION_VISITA_1_SECCIONES,
+  EBR_GESTION_VISITA_2_SECCIONES
+} from './ebr-gestion.js?v=20260929_v15';
+import {
+  isFichaJec,
+  JEC_SECCIONES
+} from './jec-monitoreo.js?v=20260928_v12';
+
+function _normStr(str) {
+  return String(str || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
 
 export function applyFilters(subs, filters, state, colegioIdx, getFichaType, normalizeText, matchColegio) {
   let filtered = subs.slice();
@@ -32,11 +45,22 @@ export function buildStatsList(subs, isAllMode, selectedFt, getFichaType) {
 export function getDonaEstadosDataset(statsList) {
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
   statsList.forEach(x => { 
-    const l = x.st.estado ? x.st.estado.nivel : 'Sin datos'; 
-    if (l === 'Logrado') dist.logrado++; 
-    else if (l === 'En proceso') dist.proceso++; 
-    else if (l === 'Inicio') dist.inicio++; 
-    else dist.none++; 
+    const isEbr = (x.s?.fichaTypeId === 'ft_gestion_ugel03_ebr')
+      || String(x.s?.fichaTypeNombre || '').toLowerCase().includes('gestion')
+      || (x.s?.tipoRespuesta === 'ips')
+      || (x.s?.escala === 'IPL');
+    if (x.st && x.st.pct !== null && (isEbr || x.st.pct !== null)) {
+      if (x.st.pct >= 67) dist.logrado++;
+      else if (x.st.pct >= 34) dist.proceso++;
+      else dist.inicio++;
+    } else {
+      const l = x.st?.estado ? (x.st.estado.estado_panel || x.st.estado.nivel || x.st.estado.label) : 'Sin datos'; 
+      const lLower = String(l || '').toLowerCase();
+      if (lLower.includes('lograd') || lLower.includes('cumple')) dist.logrado++; 
+      else if (lLower.includes('proces') || lLower.includes('parcial')) dist.proceso++; 
+      else if (lLower.includes('inici') || lLower.includes('mejorar')) dist.inicio++; 
+      else dist.none++; 
+    }
   });
   return dist;
 }
@@ -210,4 +234,160 @@ export function getSugerencias(statsList, ft, rankingCriticos) {
   }
 
   return sugerencias;
+}
+
+/**
+ * Obtiene los 3–4 hallazgos clave calculados automáticamente a partir de los datos filtrados
+ * para el panel del Reporte Consolidado (evita redundancias con la tabla de distribución).
+ */
+export function getHallazgosClave(statsList, ft, isEbr) {
+  const hallazgos = [];
+  if (!statsList || statsList.length === 0) return hallazgos;
+
+  // 1. Dimensión con menor cumplimiento
+  const secAgg = {};
+  statsList.forEach(x => {
+    (x.st?.secciones || []).forEach(sc => {
+      if (!secAgg[sc.nombre]) secAgg[sc.nombre] = { sum: 0, cnt: 0 };
+      if (sc.pct !== null && sc.pct !== undefined) {
+        secAgg[sc.nombre].sum += sc.pct;
+        secAgg[sc.nombre].cnt++;
+      }
+    });
+  });
+
+  const secAverages = Object.entries(secAgg)
+    .filter(([_, v]) => v.cnt > 0)
+    .map(([nombre, v]) => ({ nombre, avg: Math.round(v.sum / v.cnt) }))
+    .sort((a, b) => a.avg - b.avg);
+
+  if (secAverages.length > 0) {
+    const dimMin = secAverages[0];
+    hallazgos.push(`Dimensión con menor avance: "${dimMin.nombre}" (${dimMin.avg}%).`);
+  }
+
+  // 2. Número de I.E. con alguna dimensión por debajo del 67% (máx 3 con su REI)
+  const cutOff = isEbr ? 67 : 70;
+  const ieAfectadasMap = new Map();
+  statsList.forEach(x => {
+    const s = x.s || {};
+    const nombreIE = s.institucion || 'IE sin nombre';
+    const rRaw = String(s.red || '').trim();
+    const rNum = rRaw.replace(/\D/g, '');
+    const red = rNum ? `REI ${rNum.padStart(2, '0')}` : (rRaw ? `REI ${rRaw}` : '—');
+    const tieneBaja = (x.st?.secciones || []).some(sc => sc.pct !== null && sc.pct !== undefined && sc.pct < cutOff);
+    if (tieneBaja && !ieAfectadasMap.has(nombreIE)) {
+      ieAfectadasMap.set(nombreIE, red);
+    }
+  });
+
+  const totalAfectadas = ieAfectadasMap.size;
+  if (totalAfectadas > 0) {
+    const ejemplos = Array.from(ieAfectadasMap.entries()).slice(0, 3).map(([ie, red]) => `${ie} (${red})`).join(', ');
+    const mas = totalAfectadas > 3 ? ` y ${totalAfectadas - 3} más` : '';
+    hallazgos.push(`${totalAfectadas} ${totalAfectadas === 1 ? 'I.E. presenta' : 'II.EE. presentan'} dimensión < ${cutOff}%: ${ejemplos}${mas}.`);
+  } else {
+    hallazgos.push(`100% de II.EE. con avance óptimo (>= ${cutOff}%) en todas sus dimensiones.`);
+  }
+
+  // 3. Indicador con más fichas en Inicio o Proceso
+  const itemIssues = {};
+  statsList.forEach(x => {
+    (x.s?.respuestas || []).forEach(r => {
+      if (!r || !r.id) return;
+      const v = String(r.valor || '').trim().toLowerCase();
+      if (v === 'inicio' || v === 'proceso' || v === '1' || v === '2' || v === 'no') {
+        if (!itemIssues[r.id]) {
+          itemIssues[r.id] = { id: r.id, count: 0, texto: r.texto || '' };
+        }
+        itemIssues[r.id].count++;
+        if (!itemIssues[r.id].texto && r.texto) itemIssues[r.id].texto = r.texto;
+      }
+    });
+  });
+
+  const worstItems = Object.values(itemIssues).sort((a, b) => b.count - a.count);
+  if (worstItems.length > 0 && worstItems[0].count > 0) {
+    const topItem = worstItems[0];
+    const desc = topItem.texto ? `"${topItem.texto.slice(0, 48)}${topItem.texto.length > 48 ? '...' : ''}"` : `Ítem ${topItem.id}`;
+    hallazgos.push(`Prioridad de acompañamiento: ${desc} (${topItem.count} ${topItem.count === 1 ? 'visita' : 'visitas'} en Inicio/Proceso).`);
+  }
+
+  // 4. REI con menor cumplimiento promedio
+  const redAgg = {};
+  statsList.forEach(x => {
+    const rRaw = x.s?.red;
+    if (rRaw !== undefined && rRaw !== null && String(rRaw).trim() !== '') {
+      const rNum = String(rRaw).replace(/\D/g, '');
+      const rLabel = rNum ? `REI ${rNum.padStart(2, '0')}` : String(rRaw).trim().toUpperCase();
+      if (!redAgg[rLabel]) redAgg[rLabel] = { sum: 0, cnt: 0 };
+      if (x.st?.pct !== null && x.st?.pct !== undefined) {
+        redAgg[rLabel].sum += x.st.pct;
+        redAgg[rLabel].cnt++;
+      }
+    }
+  });
+
+  const redAverages = Object.entries(redAgg)
+    .filter(([_, v]) => v.cnt > 0)
+    .map(([red, v]) => ({ red, avg: Math.round(v.sum / v.cnt), fichas: v.cnt }))
+    .sort((a, b) => a.avg - b.avg);
+
+  if (redAverages.length > 1) {
+    const minRed = redAverages[0];
+    hallazgos.push(`Red educativa con menor promedio: ${minRed.red} (${minRed.avg}% en ${minRed.fichas} ${minRed.fichas === 1 ? 'visita' : 'visitas'}).`);
+  }
+
+  return hallazgos.slice(0, 4);
+}
+
+/**
+ * Agrega y consolida el desempeño por ítem individual de una ficha o conjunto de visitas.
+ * Fuente única de cálculo compartida entre la vista web y la Sección IV del PDF Oficial.
+ */
+export function computeItemAgg(subs, ft) {
+  let activeFt = ft;
+  if (isFichaEbrGestionEscolar(ft)) {
+    const hasV2 = (subs || []).some(s => Number(s.visita) === 2);
+    const seccionesEbr = hasV2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
+    activeFt = { ...ft, secciones: (ft && ft.secciones && ft.secciones.length === seccionesEbr.length) ? ft.secciones : seccionesEbr, tipoRespuesta: 'ips' };
+  } else if (isFichaJec(ft)) {
+    activeFt = { ...ft, secciones: (ft && ft.secciones && ft.secciones.length === JEC_SECCIONES.length) ? ft.secciones : JEC_SECCIONES, tipoRespuesta: 'si_no' };
+  }
+  const tipoResp = activeFt?.tipoRespuesta || 'ips';
+  const escala = activeFt?.escala || (tipoResp === 'ips' ? 'IPL' : (tipoResp === 'si_no' ? 'SI_NO_NA' : (tipoResp === 'nivel_1_4' ? 'NIVEL_1_4' : 'IPL')));
+
+  return (activeFt?.secciones || []).map(sec => {
+    const items = (sec.items || []).map(it => {
+      const counts = {};
+      let scoreSum = 0, scoreCnt = 0, total = 0;
+      (subs || []).forEach(s => {
+        const r = (s.respuestas || []).find(x => {
+          if (!x) return false;
+          if (x.id === it.id) return true;
+          const normX = String(x.id || '').replace(/^ge\d*_/, 'ge_');
+          const normIt = String(it.id || '').replace(/^ge\d*_/, 'ge_');
+          if (normX && normIt && normX === normIt) return true;
+          if (x.num && it.num && Number(x.num) === Number(it.num)) {
+            if (x.seccion && sec.nombre && _normStr(x.seccion) === _normStr(sec.nombre)) return true;
+          }
+          if (x.texto && it.texto && _normStr(x.texto) === _normStr(it.texto)) return true;
+          return false;
+        });
+        if (r) {
+          const vClean = String(r.valor || '').trim().toLowerCase();
+          if (vClean) {
+            counts[vClean] = (counts[vClean] || 0) + 1;
+            total++;
+            const sc = puntajeItem(escala, vClean);
+            if (sc !== null) { scoreSum += sc; scoreCnt++; }
+          }
+        }
+      });
+      return { texto: it.texto, id: it.id, counts, total, pct: scoreCnt ? Math.round(scoreSum / scoreCnt * 100) : null };
+    });
+    const secTotal = items.reduce((a, i) => a + (i.pct !== null ? 1 : 0), 0);
+    const secAvg = secTotal ? Math.round(items.filter(i => i.pct !== null).reduce((a, i) => a + i.pct, 0) / secTotal) : null;
+    return { nombre: sec.nombre, items, avg: secAvg };
+  });
 }

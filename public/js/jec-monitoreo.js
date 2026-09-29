@@ -18,9 +18,9 @@
 import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui.js?v=20260928_v12';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260928_v12';
 import { RUBRICAS_OBSERVACION_AULA } from './ebr-gestion.js?v=20260928_v12';
-import { isFichaJec, REGLA_NIVEL_JEC, estadoPorRegla } from './calcEngine.js?v=20260928_v12';
+import { isFichaJec, REGLA_NIVEL_JEC, estadoPorRegla, ESPECIALISTA_JEC_OFICIAL, isFichaEspecialistaJec } from './calcEngine.js?v=20260928_v12';
 
-export { isFichaJec, REGLA_NIVEL_JEC };
+export { isFichaJec, REGLA_NIVEL_JEC, ESPECIALISTA_JEC_OFICIAL, isFichaEspecialistaJec };
 
 /**
  * Los 31 ítems oficiales del instrumento MSE JEC distribuidos en 3 componentes
@@ -323,6 +323,8 @@ let jecFormState = {
   ugel: 'UGEL 03',
   rei: '',
   fecha: todayStr(),
+  responsable: ESPECIALISTA_JEC_OFICIAL.nombresApellidos,
+  responsableCargo: ESPECIALISTA_JEC_OFICIAL.cargo,
   secciones: '',
   estudiantes: '',
   docentesTotal: '',
@@ -366,6 +368,8 @@ export function resetJecFormState() {
     ugel: 'UGEL 03',
     rei: '',
     fecha: todayStr(),
+    responsable: ESPECIALISTA_JEC_OFICIAL.nombresApellidos,
+    responsableCargo: ESPECIALISTA_JEC_OFICIAL.cargo,
     secciones: '',
     estudiantes: '',
     docentesTotal: '',
@@ -399,6 +403,8 @@ export function preloadJecFormState(sub, ft) {
   jecFormState.ugel = sub.ugel || 'UGEL 03';
   jecFormState.rei = sub.rei || sub.red || (sub.ie && sub.ie.rei) || (sub.ie && sub.ie.red) || '';
   jecFormState.fecha = sub.fecha || todayStr();
+  jecFormState.responsable = sub.responsable || ESPECIALISTA_JEC_OFICIAL.nombresApellidos;
+  jecFormState.responsableCargo = sub.responsableCargo || ESPECIALISTA_JEC_OFICIAL.cargo;
 
   // Valores de Secciones, Estudiantes, Docentes
   const extras = sub.extras || [];
@@ -554,6 +560,17 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
           <span style="font-size:12px;font-weight:normal;color:var(--ink-soft)">* Campos obligatorios</span>
         </div>
         <div class="fieldGrid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px">
+          <div class="field" style="grid-column:1 / -1;background:linear-gradient(135deg, rgba(2,132,199,0.06), rgba(14,165,233,0.02));padding:12px 14px;border-radius:var(--radius);border:1px solid rgba(2,132,199,0.25);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <span style="font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:0.5px;display:block">
+                Especialista Responsable de Monitoreo JEC:
+              </span>
+              <strong style="font-size:14.5px;color:var(--ink)">${esc(jecFormState.responsable || ESPECIALISTA_JEC_OFICIAL.nombresApellidos)}</strong>
+              <span style="font-size:12px;color:var(--ink-soft);margin-left:6px">(${esc(jecFormState.responsableCargo || ESPECIALISTA_JEC_OFICIAL.cargo)} · AGEBRE – UGEL 03)</span>
+            </div>
+            <span class="badge" style="background:var(--primary);color:#fff;font-size:11px;padding:3px 9px;font-weight:700">MSE JEC</span>
+          </div>
+
           <div class="field" style="grid-column:1 / -1">
             <label for="f_institucion">Número y/o nombre de la Institución Educativa *</label>
             <div class="ieSearchWrap" id="jecIeSearchWrap">
@@ -1406,7 +1423,12 @@ export function collectJecFormData(host, ft, isEdit = false) {
   const pct = Math.round((conteoSi / totalItems) * 100);
 
   // Extras planos para máxima compatibilidad con exportaciones a Excel y tablas existentes
+  const finalRespNombre = jecFormState.responsable || ESPECIALISTA_JEC_OFICIAL.nombresApellidos;
+  const finalRespCargo = jecFormState.responsableCargo || ESPECIALISTA_JEC_OFICIAL.cargo;
+
   const extrasFlat = [
+    { label: 'Especialista responsable', value: finalRespNombre },
+    { label: 'Cargo especialista', value: finalRespCargo },
     { label: 'Secciones', value: jecFormState.secciones },
     { label: 'Cantidad Estudiantes', value: jecFormState.estudiantes },
     { label: 'Cantidad Docentes', value: jecFormState.docentesTotal },
@@ -1428,6 +1450,9 @@ export function collectJecFormData(host, ft, isEdit = false) {
     fichaTypeNombre: ft.nombre || 'Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC',
     tipoRespuesta: 'si_no',
     escala: 'SI_NO_NA',
+    responsable: finalRespNombre,
+    responsableCargo: finalRespCargo,
+    especialista: finalRespNombre,
     institucion: jecFormState.institucion,
     colegioId: jecFormState.colegioId,
     codigoModular: jecFormState.codigoModular,
@@ -1465,7 +1490,8 @@ export function collectJecFormData(host, ft, isEdit = false) {
     status: nivelCalculado.estado_panel,
     compromisos: {
       directivo: jecFormState.compromisoDirector,
-      especialista: jecFormState.compromisoMonitor
+      especialista: jecFormState.compromisoMonitor,
+      responsableMonitor: finalRespNombre
     },
     compromisoDirector: jecFormState.compromisoDirector,
     compromisoMonitor: jecFormState.compromisoMonitor,

@@ -5,7 +5,7 @@
    de docentes R1–R5, I–IV), cálculo en tiempo real, validaciones y modelo de datos.
    ========================================================================= */
 
-import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, clearEditMode } from './ui.js?v=20260928_v12';
+import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, clearEditMode } from './ui.js?v=20260929_v15';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260928_v12';
 import {
   REGLA_NIVEL_EBR_GESTION_M1,
@@ -13,7 +13,7 @@ import {
   getReglaNivelEbrGestion,
   getNivelEbrGestion,
   getMomentoVisitaEbr
-} from './calcEngine.js?v=20260928_v12';
+} from './calcEngine.js?v=20260929_v15';
 
 /** Rúbricas oficiales de observación de aula (MINEDU) */
 export const RUBRICAS_OBSERVACION_AULA = [
@@ -354,9 +354,16 @@ export function isFichaEbrGestionEscolar(ft) {
   const id = String(ft.id || ft.fichaTypeId || '').toLowerCase();
   if (id === 'ft_gestion_ugel03_ebr') return true;
   if (id === 'ft_ebr_gestion_1er') return false;
+  if (id.includes('gestion') && (id.includes('ebr') || id.includes('ugel'))) return true;
   const n = normalizeText(ft.nombre || ft.fichaTypeNombre || '');
   if (n.includes('1er momento') || n.includes('1.er momento') || n.includes('diagnostico')) return false;
-  return n.includes('gestion escolar') && (n.includes('ebr') || n.includes('ugel 03'));
+  if (n.includes('gestion escolar')) return true;
+  if (n.includes('gestion') && (n.includes('ebr') || n.includes('escolar') || n.includes('ugel 03') || n.includes('asistencia') || n.includes('educativa'))) return true;
+  if (n.includes('monitoreo') && n.includes('gestion')) return true;
+  if (ft.regla_nivel && (ft.regla_nivel.escala === 'IPL' || ft.regla_nivel.momento || ft.regla_nivel.maxPuntaje === 69 || ft.regla_nivel.maxPuntaje === 57)) return true;
+  if (ft.escala === 'IPL' || ft.escala === 'IPL_NA' || ft.tipoRespuesta === 'ips') return true;
+  if (Array.isArray(ft.respuestas) && ft.respuestas.some(r => String(r?.id || '').startsWith('ge'))) return true;
+  return false;
 }
 
 /**

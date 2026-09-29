@@ -1458,39 +1458,47 @@ tr.clickable {
     gap: 10px;
     padding: 12px 14px;
   }
+
   .secSummaryLeft {
     max-width: 100%;
     width: 100%;
     min-width: 0;
   }
+
   .secSummaryRight {
     width: 100%;
     display: flex;
     align-items: center;
     gap: 12px;
   }
+
   .secBarContainer {
     flex: 1 1 auto;
     min-width: 0;
   }
+
   .secBarTrack {
     min-width: 70px;
   }
+
   .secHeaderTitle {
     flex: 1 0 100%;
     max-width: 100%;
     min-width: 100%;
     margin-bottom: 2px;
   }
+
   .secHeaderBar {
     flex: 1 1 0;
     min-width: 120px;
   }
+
   .secHeaderPct {
     font-size: 13px;
     width: 48px;
     min-width: 48px;
   }
+
   .secHeaderBadge {
     min-width: auto;
   }
