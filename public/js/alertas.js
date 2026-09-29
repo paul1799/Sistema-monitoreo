@@ -1,4 +1,4 @@
-import { esc, fmtDate, showToast } from './ui.js?v=20260928_v11';
+import { esc, fmtDate, showToast } from './ui.js?v=20260928_v12';
 
 let alertFilters = { fichaTypeId: '', ugel: '' };
 

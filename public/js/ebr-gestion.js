@@ -5,20 +5,15 @@
    de docentes R1–R5, I–IV), cálculo en tiempo real, validaciones y modelo de datos.
    ========================================================================= */
 
-<<<<<<< HEAD
-import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, clearEditMode } from './ui.js?v=20260925_v8';
-import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260925_v8';
-=======
-import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui.js?v=20260928_v11';
-import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260928_v11';
+import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, clearEditMode } from './ui.js?v=20260928_v12';
+import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260928_v12';
 import {
   REGLA_NIVEL_EBR_GESTION_M1,
   REGLA_NIVEL_EBR_GESTION_M2,
   getReglaNivelEbrGestion,
   getNivelEbrGestion,
   getMomentoVisitaEbr
-} from './calcEngine.js?v=20260928_v11';
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
+} from './calcEngine.js?v=20260928_v12';
 
 /** Rúbricas oficiales de observación de aula (MINEDU) */
 export const RUBRICAS_OBSERVACION_AULA = [
@@ -357,8 +352,10 @@ export const EBR_GESTION_VISITA_2_SECCIONES = [
 export function isFichaEbrGestionEscolar(ft) {
   if (!ft) return false;
   const id = String(ft.id || ft.fichaTypeId || '').toLowerCase();
-  if (id === 'ft_gestion_ugel03_ebr' || id === 'ft_ebr_gestion_1er' || id === 'ft_ebr_gestion_2do' || id === 'ft_ebr_gestion') return true;
+  if (id === 'ft_gestion_ugel03_ebr') return true;
+  if (id === 'ft_ebr_gestion_1er') return false;
   const n = normalizeText(ft.nombre || ft.fichaTypeNombre || '');
+  if (n.includes('1er momento') || n.includes('1.er momento') || n.includes('diagnostico')) return false;
   return n.includes('gestion escolar') && (n.includes('ebr') || n.includes('ugel 03'));
 }
 
@@ -2599,13 +2596,11 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
     extrasFlat.push({ label: 'Total docentes Secundaria 2do momento', value: (m2.find(r => r.nivel === 'Secundaria') || {}).total || 0 });
   }
 
-<<<<<<< HEAD
   const respEl = host.querySelector('#ebr_responsable');
   const responsableVal = (respEl ? respEl.value.trim() : '') || ebrFormState.responsable || '';
-=======
+
   // Cálculo del puntaje oficial y nivel de cumplimiento
   const scoreData = calculateEbrCurrentScore(visita, ebrFormState.respuestas);
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
 
   // Modelo estructurado exacto según Requerimiento 8
   return {
@@ -2615,10 +2610,8 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
     visita: Number(visita),
     visitaTipo: visita === 1 ? 'Visita 1 · Primer momento' : 'Visita 2 · Segundo momento',
     institucion,
-<<<<<<< HEAD
     colegioId: ebrFormState.colegioId || null,
     responsable: responsableVal,
-=======
     puntaje: scoreData.puntaje,
     puntaje_max: scoreData.maxPuntaje,
     puntaje_maximo: scoreData.maxPuntaje,
@@ -2628,7 +2621,6 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
     estado_panel: scoreData.nivelInfo.estado_panel,
     descripcion_cumplimiento: scoreData.nivelInfo.descripcion,
     regla_nivel: getReglaNivelEbrGestion(visita),
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
     fecha,
     ie: {
       codigoLocal: ebrFormState.codigoLocal,

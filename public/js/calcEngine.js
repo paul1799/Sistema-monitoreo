@@ -55,14 +55,14 @@ export function puntajeItem(escala, valor) {
     case 'IPL':
     case 'IPL_NA':
       if (valor === 'logrado')  return 1;
-      if (valor === 'proceso')  return 2 / 3;
-      if (valor === 'inicio')   return 1 / 3;
+      if (valor === 'proceso')  return 0.5;
+      if (valor === 'inicio')   return 0;
       // ─── Compatibilidad hacia atrás ───────────────────────────────────
       // Fichas EBR guardadas con el formulario genérico (si/no)
       // antes de la introducción del módulo ebr-gestion.js.
       // Se mapean con la mejor intención: si → Logrado, no → Inicio.
       if (valor === 'si')  return 1;   // interpretado como Logrado
-      if (valor === 'no')  return 1 / 3;   // interpretado como Inicio
+      if (valor === 'no')  return 0;   // interpretado como Inicio
       return null;
 
     case 'NIVEL_1_4':
@@ -592,9 +592,11 @@ export const REGLA_NIVEL_EBR_GESTION_M2 = {
 export function isFichaEbrGestionEscolar(ft) {
   if (!ft) return false;
   const id = String(ft.id || ft.fichaTypeId || '').toLowerCase();
-  if (id === 'ft_gestion_ugel03_ebr' || id === 'ft_ebr_gestion_1er' || id === 'ft_ebr_gestion_2do' || id === 'ft_ebr_gestion') return true;
+  if (id === 'ft_gestion_ugel03_ebr') return true;
+  if (id === 'ft_ebr_gestion_1er') return false;
   const n = String(ft.nombre || ft.fichaTypeNombre || '')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  if (n.includes('1er momento') || n.includes('1.er momento') || n.includes('diagnostico')) return false;
   return n.includes('gestion escolar') && (n.includes('ebr') || n.includes('ugel 03'));
 }
 
@@ -610,6 +612,9 @@ export function getMomentoVisitaEbr(subOrFt) {
   if (v === 1 || v === 2) return v;
   if (subOrFt.visitaTipo && String(subOrFt.visitaTipo).includes('2')) return 2;
   if (subOrFt.visitaTipo && String(subOrFt.visitaTipo).includes('1')) return 1;
+  const n = String(subOrFt.nombre || subOrFt.fichaTypeNombre || '').toLowerCase();
+  if (n.includes('2do') || n.includes('segundo') || n.includes('momento 2')) return 2;
+  if (n.includes('1er') || n.includes('primer') || n.includes('momento 1')) return 1;
   if (subOrFt.version?.momento === '2do' || subOrFt.momento === '2do' || subOrFt.momento === 2) return 2;
   if (subOrFt.version?.momento === '1er' || subOrFt.momento === '1er' || subOrFt.momento === 1) return 1;
   if (Array.isArray(subOrFt.respuestas) && subOrFt.respuestas.some(r => String(r?.id || '').startsWith('ge2_'))) return 2;

@@ -25,11 +25,11 @@ import {
   computeStats,
   forceResetBodyScroll,
   setAppState,
-} from './ui.js?v=20260928_v11';
+} from './ui.js?v=20260928_v12';
 
-import { renderDirectorioTab } from './directorio.js?v=20260928_v11';
+import { renderDirectorioTab } from './directorio.js?v=20260928_v12';
 
-import { renderAlertasTab, getAlertCount } from './alertas.js?v=20260928_v11';
+import { renderAlertasTab, getAlertCount } from './alertas.js?v=20260928_v12';
 
 /* ============================= MANEJADORES GLOBALES DE ERROR ============================= */
 if (typeof window !== 'undefined') {

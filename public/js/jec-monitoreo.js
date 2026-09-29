@@ -15,10 +15,10 @@
        * Implementación incipiente: De 0 a 11 respuestas "Sí"  (Inicio)
    ========================================================================= */
 
-import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui.js?v=20260928_v11';
-import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260928_v11';
-import { RUBRICAS_OBSERVACION_AULA } from './ebr-gestion.js?v=20260928_v11';
-import { isFichaJec, REGLA_NIVEL_JEC, estadoPorRegla } from './calcEngine.js?v=20260928_v11';
+import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui.js?v=20260928_v12';
+import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260928_v12';
+import { RUBRICAS_OBSERVACION_AULA } from './ebr-gestion.js?v=20260928_v12';
+import { isFichaJec, REGLA_NIVEL_JEC, estadoPorRegla } from './calcEngine.js?v=20260928_v12';
 
 export { isFichaJec, REGLA_NIVEL_JEC };
 

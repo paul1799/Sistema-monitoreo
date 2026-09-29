@@ -16,8 +16,8 @@ import {
   getReglaNivelEbrGestion,
   getNivelEbrGestion,
   getMomentoVisitaEbr
-} from './calcEngine.js?v=20260928_v11';
-import * as RepDatos from './reportes-datos.js?v=20260928_v11';
+} from './calcEngine.js?v=20260928_v12';
+import * as RepDatos from './reportes-datos.js?v=20260928_v12';
 
 import { AI_SCAN_ENDPOINT } from './firebase-config.js?v=20260918_v8';
 import {
@@ -49,7 +49,7 @@ import {
   PALETA_ESTANDAR,
   formatCodigoModular,
   JEDPA_THEME
-} from './pdf-template.js?v=20260928_v11';
+} from './pdf-template.js?v=20260928_v12';
 
 import {
   renderEbrGestionForm,
@@ -58,7 +58,7 @@ import {
   resetEbrFormState,
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES
-} from './ebr-gestion.js?v=20260928_v11';
+} from './ebr-gestion.js?v=20260928_v12';
 
 import {
   isFichaJec,
@@ -68,13 +68,13 @@ import {
   resetJecFormState,
   JEC_SECCIONES,
   getNivelLogroJec
-} from './jec-monitoreo.js?v=20260928_v11';
+} from './jec-monitoreo.js?v=20260928_v12';
 
 import {
   syncDirectivosFromFicha,
   getDirectivosForColegio,
   getDirectivosActivosForColegio
-} from './directorio.js?v=20260928_v11';
+} from './directorio.js?v=20260928_v12';
 
 /* ============================= CONSTANTES COMPARTIDAS ============================= */
 export const RESPONSE_OPTIONS = {
@@ -500,7 +500,6 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta) {
         '</tr>';
     }).join('');
 
-<<<<<<< HEAD
     const bodyId = 'sec_body_' + si;
     const summaryId = 'sec_summary_' + si;
     const secVal = sec.avg === null || sec.avg === undefined ? 0 : Math.min(Math.max(sec.avg, 0), 100);
@@ -525,27 +524,9 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta) {
       '</div>' +
       '<span class="secSummaryPct">' + (sec.avg === null ? '—' : sec.avg + ' %') + '</span>' +
       '<span class="badge ' + secStatus.cls + '">' + secStatus.label + '</span>' +
-=======
-    return '<details class="secDetails" data-secitem="' + si + '">' +
-      '<summary class="secSummary" role="button" tabindex="0" aria-expanded="false" aria-controls="sec_body_' + si + '" id="sec_hdr_' + si + '">' +
-      '<div class="secHeaderTitle">' +
-      '<span class="secChevron" aria-hidden="true">▶</span>' +
-      '<span class="secTitleText"><strong>' + esc(sec.nombre) + '</strong> <span class="secCount">(' + sec.items.length + ' indicadores)</span></span>' +
       '</div>' +
-      '<div class="secHeaderBar" role="progressbar" aria-valuenow="' + (sec.avg !== null ? sec.avg : 0) + '" aria-valuemin="0" aria-valuemax="100" aria-label="' + esc(secAriaLabel) + '">' +
-      '<div class="secHeaderBarTrack">' +
-      '<div class="secHeaderBarFill ' + barCls + '" style="width:' + pctVal + '%"></div>' +
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
-      '</div>' +
-      '</div>' +
-      '<span class="secHeaderPct">' + pctText + '</span>' +
-      '<span class="badge ' + secStatus.cls + ' secHeaderBadge">' + secStatus.label + '</span>' +
       '</summary>' +
-<<<<<<< HEAD
       '<div class="secDetailsBody" id="' + bodyId + '" role="region" aria-labelledby="' + summaryId + '">' +
-=======
-      '<div class="secDetailsBody" id="sec_body_' + si + '" role="region" aria-labelledby="sec_hdr_' + si + '">' +
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
       '<div class="tblWrap"><table class="itemTable"><thead><tr>' +
       '<th style="width:40px;text-align:center">N.°</th>' +
       '<th>Indicador / Ítem</th>' +
@@ -3474,7 +3455,6 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
     let submissionToken = (form && form.dataset.submissionId) || genId();
     if (form) form.dataset.submissionId = submissionToken;
 
-<<<<<<< HEAD
     const fallbackResp = (currentUser && (currentUser.nombre || currentUser.displayName || currentUser.email)) || '';
     if (!responsableVal || !responsableVal.trim()) {
       if (redVal && redVal !== 'No aplica' && activeState.responsables && activeState.responsables.length) {
@@ -3492,7 +3472,8 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
     }
     if (!responsableVal || !responsableVal.trim()) {
       responsableVal = fallbackResp;
-=======
+    }
+
     let tutoriaExtraData = {};
     if (isFichaCoordTutoriaJec(ft)) {
       const stats = calcScore(respuestas, { ...ft, regla_nivel: ft.regla_nivel || REGLA_NIVEL_COORD_TUTORIA_JEC });
@@ -3503,7 +3484,6 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
         descripcion_cumplimiento: stats.estado.descripcion || '',
         estado_panel: stats.estado.estado_panel || 'Inicio'
       };
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
     }
 
     const docData = {
@@ -3938,19 +3918,11 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     (dist.none ? '<span><span class="dot" style="background:var(--line-strong)"></span>Sin datos (' + dist.none + ')</span>' : '') +
     '</div></div>';
 
-<<<<<<< HEAD
   // Reporte por ítem (solo para tipo de ficha individual)
   let itemReportHtml = '';
   if (!isAllMode && ft) {
     const secAgg = {};
-    ft.secciones.forEach(sec => secAgg[sec.nombre] = { sum: 0, cnt: 0 });
-=======
-  // Cálculo de avance por sección (se preserva para consistencia de cabeceras en "Reporte por ítem")
-  let itemReportHtml = '';
-  if (!isAllMode && ft) {
-    const secAgg = {};
     (ft.secciones || []).forEach(sec => secAgg[sec.nombre] = { sum: 0, cnt: 0 });
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
     statsList.forEach(x => (x.st.secciones || []).forEach(sc => {
       if (sc.pct !== null && secAgg[sc.nombre]) {
         secAgg[sc.nombre].sum += sc.pct;
@@ -3959,10 +3931,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     }));
 
     const itemAgg = computeItemAgg(statsList.map(x => x.s), ft);
-<<<<<<< HEAD
-=======
     // Garantizar que cada sección en itemAgg use exactamente el mismo promedio calculado en secAgg
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
     itemAgg.forEach(sec => {
       const a = secAgg[sec.nombre];
       if (a && a.cnt) {
@@ -4099,11 +4068,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     const typeName = s.fichaTypeNombre || (getFichaType(s.fichaTypeId) || {}).nombre || '—';
     const typeCol = isAllMode ? '<td><span class="badge st-none" style="font-size:10.5px">' + esc(typeName) + '</span></td>' : '';
     const ugelRedCol = '<td>' + esc(s.ugel || 'UGEL 03') + '<br><small style="color:var(--text-muted);font-weight:600;">' + esc(s.red || 'No aplica') + '</small></td>';
-<<<<<<< HEAD
     const subResp = getSubmissionResponsable(s, state, user);
-    return '<tr class="clickable" data-row="' + s.id + '"><td>' + fmtDate(s.fecha) + '</td><td>' + esc(s.institucion) + '</td>' + typeCol + ugelRedCol + '<td>' + (s.visita ? 'V' + s.visita : '—') + '</td><td>' + esc(subResp || '—') + '</td><td>' + (st.pct === null ? '—' : st.pct + '%') + '</td><td><span class="badge ' + status.cls + '">' + status.label + '</span></td><td style="white-space:nowrap"><div class="rowActions">' + pdfBtn + editBtn + delBtn + '</div></td></tr>' +
-=======
-    
     const isEbr = isFichaEbrGestionEscolar(sFt || ft);
     const isCoordTutoria = isFichaCoordTutoriaJec(sFt || ft);
     let pctDisplay = (st.pct === null ? '—' : st.pct + '%');
@@ -4115,8 +4080,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
       pctDisplay = '<strong>' + st.puntaje + '/63 pts</strong><br><small style="color:var(--text-muted);font-weight:600">(' + st.pct + '%)</small>';
     }
 
-    return '<tr class="clickable" data-row="' + s.id + '"><td>' + fmtDate(s.fecha) + '</td><td>' + esc(s.institucion) + '</td>' + typeCol + ugelRedCol + '<td>' + (s.visita ? 'V' + s.visita : '—') + '</td><td>' + esc(s.responsable || '—') + '</td><td>' + pctDisplay + '</td><td><span class="badge ' + status.cls + '">' + status.label + '</span></td><td style="white-space:nowrap"><div class="rowActions">' + pdfBtn + editBtn + delBtn + '</div></td></tr>' +
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
+    return '<tr class="clickable" data-row="' + s.id + '"><td>' + fmtDate(s.fecha) + '</td><td>' + esc(s.institucion) + '</td>' + typeCol + ugelRedCol + '<td>' + (s.visita ? 'V' + s.visita : '—') + '</td><td>' + esc(subResp || s.responsable || '—') + '</td><td>' + pctDisplay + '</td><td><span class="badge ' + status.cls + '">' + status.label + '</span></td><td style="white-space:nowrap"><div class="rowActions">' + pdfBtn + editBtn + delBtn + '</div></td></tr>' +
       (isOpen ? '<tr class="detailRow"><td colspan="' + (isAllMode ? 9 : 8) + '">' + detailContent + '</td></tr>' : '');
   }).join('') || '<tr><td colspan="' + (isAllMode ? 9 : 8) + '" style="text-align:center;color:var(--text-600);padding:22px">No hay fichas que coincidan con los filtros.</td></tr>';
 
@@ -4154,18 +4118,6 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     const isCoordTutoria = isFichaCoordTutoriaJec(sFt || ft);
     const withP = g.visitas.filter(x => x.st && x.st.pct !== null);
     const avg = withP.length ? Math.round(withP.reduce((a, x) => a + x.st.pct, 0) / withP.length) : null;
-<<<<<<< HEAD
-    const gst = statusFromPct(avg);
-
-    // Calcular visitas registradas y total de visitas
-    const visitNums = Array.from(new Set(g.visitas.map(x => Number(x.s.visita) || 1))).sort((a, b) => a - b);
-    const totalVisitas = Math.max(g.visitas.length, ...visitNums);
-    const visitBadges = visitNums.map(v => '<span class="badge st-none" style="font-size:10px;padding:1px 5px;margin-left:4px;font-weight:700">V' + v + '</span>').join('');
-
-    return '<tr><td>' + esc(g.institucion) + '</td><td>' + esc(g.red || '—') + '</td><td>' + esc(g.ugel || '—') + '</td>' +
-      '<td><strong>' + totalVisitas + '</strong>' + visitBadges + '</td><td>' + fmtDate(last.s.fecha) + '</td>' +
-      '<td>' + (avg === null ? '—' : avg + '%') + ' <span class="badge ' + gst.cls + '">' + gst.label + '</span></td></tr>';
-=======
     const withPts = g.visitas.filter(x => x.st && x.st.puntaje !== undefined && x.st.puntaje !== null);
     const avgPts = withPts.length ? Math.round(withPts.reduce((a, x) => a + x.st.puntaje, 0) / withPts.length) : null;
     const withSi = g.visitas.filter(x => x.st && x.st.conteo_si !== undefined && x.st.conteo_si !== null);
@@ -4182,10 +4134,14 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     const maxPts = isEbr ? (vLast === 2 ? 69 : 57) : 63;
     const scoreTitle = ((isCoordTutoria || isEbr) && avgPts !== null) ? ' title="' + avgPts + '/' + maxPts + ' pts"' : '';
 
+    // Calcular visitas registradas y total de visitas
+    const visitNums = Array.from(new Set(g.visitas.map(x => Number(x.s.visita) || 1))).sort((a, b) => a - b);
+    const totalVisitas = Math.max(g.visitas.length, ...visitNums);
+    const visitBadges = visitNums.map(v => '<span class="badge st-none" style="font-size:10px;padding:1px 5px;margin-left:4px;font-weight:700">V' + v + '</span>').join('');
+
     return '<tr><td>' + esc(g.institucion) + '</td><td>' + esc(g.red || '—') + '</td><td>' + esc(g.ugel || '—') + '</td>' +
-      '<td>' + g.visitas.length + '</td><td>' + fmtDate(last.s.fecha) + '</td>' +
+      '<td><strong>' + totalVisitas + '</strong>' + visitBadges + '</td><td>' + fmtDate(last.s.fecha) + '</td>' +
       '<td><span' + scoreTitle + '>' + (avg === null ? '—' : avg + '%') + '</span> <span class="badge ' + gst.cls + '">' + gst.label + '</span></td></tr>';
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
   }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-600);padding:20px">Sin instituciones con los filtros actuales.</td></tr>';
 
   const subsForRed = isAllMode ? state.submissions : state.submissions.filter(s => s.fichaTypeId === ft.id);
@@ -4285,63 +4241,18 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
   });
 
-<<<<<<< HEAD
   // Expandir / Contraer todo en Reporte por Ítem y sincronización de accesibilidad
   const toggleAllBtn = document.getElementById('toggleAllItemsBtn');
   const detailsList = host.querySelectorAll('.secDetails');
-=======
-  // Acordeón y control "Expandir / Contraer todo" en Reporte por Ítem
-  const detailsList = host.querySelectorAll('.secDetails');
-  const toggleAllBtn = document.getElementById('toggleAllItemsBtn');
-
-  const updateToggleAllBtnState = () => {
-    if (!toggleAllBtn || !detailsList.length) return;
-    const anyClosed = Array.from(detailsList).some(d => !d.open);
-    toggleAllBtn.textContent = anyClosed ? '⊞ Expandir todo' : '⊟ Contraer todo';
-  };
-
-  detailsList.forEach(d => {
-    const summary = d.querySelector('summary');
-    if (summary) {
-      d.addEventListener('toggle', () => {
-        summary.setAttribute('aria-expanded', d.open ? 'true' : 'false');
-        updateToggleAllBtnState();
-      });
-      summary.addEventListener('click', () => {
-        setTimeout(() => {
-          summary.setAttribute('aria-expanded', d.open ? 'true' : 'false');
-          updateToggleAllBtnState();
-        }, 0);
-      });
-      summary.addEventListener('keydown', (e) => {
-        if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          d.open = !d.open;
-          summary.setAttribute('aria-expanded', d.open ? 'true' : 'false');
-          updateToggleAllBtnState();
-        }
-      });
-    }
-  });
-
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
   if (toggleAllBtn) {
     toggleAllBtn.addEventListener('click', () => {
       const anyClosed = Array.from(detailsList).some(d => !d.open);
       detailsList.forEach(d => {
         d.open = anyClosed;
         const summary = d.querySelector('summary');
-<<<<<<< HEAD
         if (summary) summary.setAttribute('aria-expanded', anyClosed ? 'true' : 'false');
       });
-      toggleAllBtn.textContent = anyClosed ? 'Contraer todo' : 'Expandir todo';
-=======
-        if (summary) {
-          summary.setAttribute('aria-expanded', anyClosed ? 'true' : 'false');
-        }
-      });
       toggleAllBtn.textContent = anyClosed ? '⊟ Contraer todo' : '⊞ Expandir todo';
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
     });
   }
 
@@ -4717,24 +4628,20 @@ async function exportCsv(ft, statsList) {
     const s = x.s, st = x.st;
     const extras = (s.extras || []).map(e => e.label + ': ' + e.value).join(' | ');
     const comps = (Array.isArray(s.compromisos) ? s.compromisos : Array.isArray(s.compromisosList) ? s.compromisosList : []).map(c => c.texto).join(' | ');
-<<<<<<< HEAD
-    const subResp = getSubmissionResponsable(s, _appState, _currentSessionUser);
-    return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, subResp || s.responsable || '', s.director, (st.pct === null ? '' : st.pct), statusFromPct(st.pct).label, extras, s.observaciones, comps];
-=======
+    const subResp = getSubmissionResponsable(s, _appState, _currentSessionUser) || s.responsable || '';
     const stLabel = (st && st.estado && st.estado.label) ? st.estado.label : statusFromPct(st.pct, ft, st?.conteo_si, st?.puntaje, s?.visita).label;
     if (isCoord) {
       const pts = (st.puntaje !== undefined && st.puntaje !== null) ? st.puntaje : (s.puntaje || '');
-      return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, s.responsable, s.director, pts, (st.pct === null ? '' : st.pct + '%'), stLabel, extras, s.observaciones, comps];
+      return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, subResp, s.director, pts, (st.pct === null ? '' : st.pct + '%'), stLabel, extras, s.observaciones, comps];
     }
     if (isEbr) {
       const v = getMomentoVisitaEbr(s);
       const maxPts = v === 2 ? 69 : 57;
       const pts = (st.puntaje !== undefined && st.puntaje !== null) ? st.puntaje : (s.puntaje || '');
       const ptsStr = pts !== '' ? `${pts}/${maxPts}` : '';
-      return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, s.responsable, s.director, ptsStr, (st.pct === null ? '' : st.pct + '%'), stLabel, extras, s.observaciones, comps];
+      return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, subResp, s.director, ptsStr, (st.pct === null ? '' : st.pct + '%'), stLabel, extras, s.observaciones, comps];
     }
-    return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, s.responsable, s.director, (st.pct === null ? '' : st.pct), stLabel, extras, s.observaciones, comps];
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
+    return [s.fecha, s.institucion, s.ugel, s.codigoModular, s.visita, subResp, s.director, (st.pct === null ? '' : st.pct), stLabel, extras, s.observaciones, comps];
   });
   downloadCsv((ft.nombre || 'reporte').replace(/[^a-z0-9]+/gi, '_').toLowerCase() + '.csv', header, rows);
 }

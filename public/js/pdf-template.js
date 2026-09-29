@@ -11,13 +11,13 @@ import {
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES,
   migrateLegacyEbrTotals
-} from './ebr-gestion.js?v=20260928_v11';
+} from './ebr-gestion.js?v=20260928_v12';
 
 import {
   isFichaJec,
   JEC_SECCIONES,
   getNivelLogroJec
-} from './jec-monitoreo.js?v=20260928_v11';
+} from './jec-monitoreo.js?v=20260928_v12';
 
 import {
   isFichaCoordTutoriaJec,
@@ -27,7 +27,7 @@ import {
   getNivelEbrGestion,
   getReglaNivelEbrGestion,
   getMomentoVisitaEbr
-} from './calcEngine.js?v=20260928_v11';
+} from './calcEngine.js?v=20260928_v12';
 
 /**
  * Obtiene la instancia de jsPDF desde window.jspdf

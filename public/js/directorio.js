@@ -7,7 +7,7 @@
    Exportación fiel de plantilla oficial E2_Directorio_de_Directores_por_IE
    ========================================================================= */
 
-import { esc, showToast, genId, fmtDate } from './ui.js?v=20260928_v11';
+import { esc, showToast, genId, fmtDate } from './ui.js?v=20260928_v12';
 
 /* =========================================================================
    1. UTILIDADES Y NORMALIZACIÓN

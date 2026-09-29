@@ -1245,14 +1245,9 @@ tr.clickable {
 }
 
 .secDetails summary:focus-visible {
-<<<<<<< HEAD
   outline: 2px solid var(--primary, #1D4ED8);
   outline-offset: -2px;
   background: #F8FAFC;
-=======
-  outline: 2px solid var(--blue-600, #1F5FA8);
-  outline-offset: -2px;
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
 }
 
 .secDetails[open] summary {
@@ -1265,11 +1260,6 @@ tr.clickable {
   display: flex;
   align-items: center;
   gap: 10px;
-<<<<<<< HEAD
-  flex: 0 1 auto;
-  min-width: 220px;
-  max-width: 42%;
-=======
   flex: 0 1 clamp(240px, 34%, 420px);
   min-width: 220px;
   line-height: 1.35;
@@ -1294,7 +1284,6 @@ tr.clickable {
   font-size: 12px;
   color: var(--text-600);
   font-weight: 400;
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
 }
 
 .secChevron {
@@ -1305,18 +1294,14 @@ tr.clickable {
   font-size: 11px;
   color: var(--text-600);
   flex-shrink: 0;
-<<<<<<< HEAD
   width: 14px;
   text-align: center;
-=======
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
 }
 
 .secDetails[open] .secChevron {
   transform: rotate(90deg);
 }
 
-<<<<<<< HEAD
 .secSummaryTitleWrap {
   display: flex;
   align-items: baseline;
@@ -1338,7 +1323,8 @@ tr.clickable {
   font-weight: 400;
   color: var(--text-600);
   white-space: nowrap;
-=======
+}
+
 /* Barra de progreso de cabecera: ocupa todo el espacio libre (flex: 1) */
 .secHeaderBar {
   flex: 1;
@@ -1403,7 +1389,6 @@ tr.clickable {
   align-items: center;
   gap: 10px;
   flex: 1;
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
 }
 
 .secSummaryRight {
@@ -1460,7 +1445,6 @@ tr.clickable {
   flex-shrink: 0;
 }
 
-<<<<<<< HEAD
 .secSummaryRight .badge {
   flex-shrink: 0;
   min-width: 82px;
@@ -1491,36 +1475,24 @@ tr.clickable {
   }
   .secBarTrack {
     min-width: 70px;
-=======
-/* Responsive: por debajo de ~768 px */
-@media (max-width: 768px) {
-  .secDetails summary {
-    flex-wrap: wrap;
-    gap: 10px 14px;
-    padding: 12px 14px;
   }
-
   .secHeaderTitle {
     flex: 1 0 100%;
     max-width: 100%;
     min-width: 100%;
     margin-bottom: 2px;
   }
-
   .secHeaderBar {
     flex: 1 1 0;
     min-width: 120px;
   }
-
   .secHeaderPct {
     font-size: 13px;
     width: 48px;
     min-width: 48px;
   }
-
   .secHeaderBadge {
     min-width: auto;
->>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
   }
 }
 
