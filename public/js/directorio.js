@@ -7,7 +7,7 @@
    Exportación fiel de plantilla oficial E2_Directorio_de_Directores_por_IE
    ========================================================================= */
 
-import { esc, showToast, genId, fmtDate } from './ui.js?v=20260925_v8';
+import { esc, showToast, genId, fmtDate } from './ui.js?v=20260928_v11';
 
 /* =========================================================================
    1. UTILIDADES Y NORMALIZACIÓN
@@ -922,48 +922,8 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
   const conIncompletos = ieDataList.filter(x => x.tieneIncompleto).length;
   const conAvisosRevision = ieDataList.filter(x => x.tieneAviso).length;
 
-  // Filtrado
-  let filtered = ieDataList.filter(item => {
-    const c = item.colegio;
-    const dir = item.director;
-    const subs = item.subdirectores;
-
-    if (dirFilters.rei && c.rei !== dirFilters.rei) return false;
-    if (dirFilters.distrito && !normalizeStr(c.distrito).includes(normalizeStr(dirFilters.distrito))) return false;
-    if (dirFilters.modalidad && c.modalidad !== dirFilters.modalidad) return false;
-    if (dirFilters.nivelServicio && c.nivelServicio !== dirFilters.nivelServicio) return false;
-    if (dirFilters.tipoGestion && c.tipoGestion !== dirFilters.tipoGestion) return false;
-
-    // Filtro por estado
-    if (dirFilters.estadoDirectivo === 'con_director' && !dir) return false;
-    if (dirFilters.estadoDirectivo === 'sin_director' && dir) return false;
-    if (dirFilters.estadoDirectivo === 'con_subdirector' && subs.length === 0) return false;
-    if (dirFilters.estadoDirectivo === 'incompletos' && !item.tieneIncompleto) return false;
-    if (dirFilters.estadoDirectivo === 'con_aviso' && !item.tieneAviso) return false;
-
-    // Buscador general (IE, código, nombres o DNI de director y subdirectores)
-    if (dirFilters.q) {
-      const q = normalizeStr(dirFilters.q);
-      const ieMatch = normalizeStr(c.ie).includes(q) || cleanTextCode(c.codigoLocal).includes(q);
-      const dirMatch = dir && (normalizeStr(dir.apellidosNombres).includes(q) || cleanTextCode(dir.dni).includes(q));
-      const subMatch = subs.some(s => normalizeStr(s.apellidosNombres).includes(q) || cleanTextCode(s.dni).includes(q));
-      if (!ieMatch && !dirMatch && !subMatch) return false;
-    }
-
-    return true;
-  });
-
-  // Orden inicial: por REI y luego por nombre de IE
-  filtered.sort((a, b) => {
-    const rA = a.colegio.rei || 'ZZZ';
-    const rB = b.colegio.rei || 'ZZZ';
-    const cmpRei = rA.localeCompare(rB, undefined, { numeric: true });
-    if (cmpRei !== 0) return cmpRei;
-    return (a.colegio.ie || '').localeCompare(b.colegio.ie || '');
-  });
-
-  // Renderizar filas de la tabla
-  const rowsHtml = filtered.map(item => {
+  function buildDirectorioRowsHtml(filtered) {
+    return filtered.map(item => {
     const c = item.colegio;
     const dir = item.director;
     const subs = item.subdirectores;
@@ -1047,6 +1007,59 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
       </tr>
     `;
   }).join('') || `<tr><td colspan="17" style="text-align:center;padding:30px;color:var(--ink-soft)">Ninguna institución coincide con los filtros aplicados.</td></tr>`;
+}
+
+  const getFilteredDirectorioItems = () => {
+    let list = ieDataList.filter(item => {
+      const c = item.colegio;
+      const dir = item.director;
+      const subs = item.subdirectores;
+
+      if (dirFilters.rei && c.rei !== dirFilters.rei) return false;
+      if (dirFilters.distrito && !normalizeStr(c.distrito).includes(normalizeStr(dirFilters.distrito))) return false;
+      if (dirFilters.modalidad && c.modalidad !== dirFilters.modalidad) return false;
+      if (dirFilters.nivelServicio && c.nivelServicio !== dirFilters.nivelServicio) return false;
+      if (dirFilters.tipoGestion && c.tipoGestion !== dirFilters.tipoGestion) return false;
+
+      // Filtro por estado
+      if (dirFilters.estadoDirectivo === 'con_director' && !dir) return false;
+      if (dirFilters.estadoDirectivo === 'sin_director' && dir) return false;
+      if (dirFilters.estadoDirectivo === 'con_subdirector' && subs.length === 0) return false;
+      if (dirFilters.estadoDirectivo === 'incompletos' && !item.tieneIncompleto) return false;
+      if (dirFilters.estadoDirectivo === 'con_aviso' && !item.tieneAviso) return false;
+
+      // Buscador general (IE, código, nombres o DNI de director y subdirectores)
+      if (dirFilters.q) {
+        const q = normalizeStr(dirFilters.q);
+        const ieMatch = normalizeStr(c.ie).includes(q) || cleanTextCode(c.codigoLocal).includes(q);
+        const dirMatch = dir && (normalizeStr(dir.apellidosNombres).includes(q) || cleanTextCode(dir.dni).includes(q));
+        const subMatch = subs.some(s => normalizeStr(s.apellidosNombres).includes(q) || cleanTextCode(s.dni).includes(q));
+        if (!ieMatch && !dirMatch && !subMatch) return false;
+      }
+
+      return true;
+    });
+
+    list.sort((a, b) => {
+      const rA = a.colegio.rei || 'ZZZ';
+      const rB = b.colegio.rei || 'ZZZ';
+      const cmpRei = rA.localeCompare(rB, undefined, { numeric: true });
+      if (cmpRei !== 0) return cmpRei;
+      return (a.colegio.ie || '').localeCompare(b.colegio.ie || '');
+    });
+
+    return list;
+  };
+
+  let filtered = getFilteredDirectorioItems();
+  const rowsHtml = buildDirectorioRowsHtml(filtered);
+
+  const activeEl = document.activeElement;
+  const activeId = activeEl ? activeEl.id : null;
+  const selStart = (activeEl && typeof activeEl.selectionStart === 'number') ? activeEl.selectionStart : null;
+  const selEnd = (activeEl && typeof activeEl.selectionEnd === 'number') ? activeEl.selectionEnd : null;
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
 
   // HTML completo de la pestaña
   container.innerHTML = `
@@ -1193,13 +1206,13 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
               <th style="background:#fbeee4;width:180px">Correo</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="directorioTableBody">
             ${rowsHtml}
           </tbody>
         </table>
       </div>
       <div style="padding:10px 16px;background:var(--surface-2);border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink-soft)">
-        <span>Mostrando <strong>${filtered.length}</strong> de ${totalIE} instituciones educativas</span>
+        <span id="directorioCountLabel">Mostrando <strong>${filtered.length}</strong> de ${totalIE} instituciones educativas</span>
         <span>Haz clic en cualquier institución para ver o gestionar directivos e historial de cambios</span>
       </div>
     </div>
@@ -1208,36 +1221,85 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
     <div id="directorioModalHost"></div>
   `;
 
+  // Restaurar foco y posición de scroll
+  window.scrollTo(scrollX, scrollY);
+  if (activeId) {
+    const newEl = container.querySelector('#' + activeId);
+    if (newEl) {
+      newEl.focus();
+      if (selStart !== null && selEnd !== null) {
+        try { newEl.setSelectionRange(selStart, selEnd); } catch (_) {}
+      }
+    }
+  }
+
+  // -------------------------------------------------------------
+  // ACTUALIZACIÓN REACTIVA DE LA TABLA (SIN PARPADEO NI PÉRDIDA DE FOCO)
+  // -------------------------------------------------------------
+  const updateTableOnly = () => {
+    const tbody = container.querySelector('#directorioTableBody');
+    if (!tbody) {
+      renderDirectorioTab(container, state, dbNs, isAdmin, currentUser, navigate);
+      return;
+    }
+    filtered = getFilteredDirectorioItems();
+    tbody.innerHTML = buildDirectorioRowsHtml(filtered);
+    const countLabel = container.querySelector('#directorioCountLabel');
+    if (countLabel) {
+      countLabel.innerHTML = `Mostrando <strong>${filtered.length}</strong> de ${totalIE} instituciones educativas`;
+    }
+    bindDirectorioRowEvents();
+  };
+
+  const bindDirectorioRowEvents = () => {
+    container.querySelectorAll('.directRow').forEach(tr => {
+      tr.addEventListener('click', () => {
+        const colId = tr.dataset.colId;
+        const targetCol = (state.colegios || []).find(c => c.id === colId);
+        if (targetCol) {
+          openDirectorioDetailModal(targetCol, state, dbNs, isAdmin, currentUser, () => updateTableOnly());
+        }
+      });
+    });
+  };
+
+  bindDirectorioRowEvents();
+
   // -------------------------------------------------------------
   // EVENT LISTENERS DE LA PESTAÑA
   // -------------------------------------------------------------
-  const onFilterChange = () => renderDirectorioTab(container, state, dbNs, isAdmin, currentUser, navigate);
-
   const inpQ = container.querySelector('#dir_fil_q');
-  if (inpQ) inpQ.addEventListener('input', e => { dirFilters.q = e.target.value; onFilterChange(); });
+  if (inpQ) inpQ.addEventListener('input', e => { dirFilters.q = e.target.value; updateTableOnly(); });
 
   const selRei = container.querySelector('#dir_fil_rei');
-  if (selRei) selRei.addEventListener('change', e => { dirFilters.rei = e.target.value; onFilterChange(); });
+  if (selRei) selRei.addEventListener('change', e => { dirFilters.rei = e.target.value; updateTableOnly(); });
 
   const inpDist = container.querySelector('#dir_fil_distrito');
-  if (inpDist) inpDist.addEventListener('input', e => { dirFilters.distrito = e.target.value; onFilterChange(); });
+  if (inpDist) inpDist.addEventListener('input', e => { dirFilters.distrito = e.target.value; updateTableOnly(); });
 
   const selMod = container.querySelector('#dir_fil_modalidad');
-  if (selMod) selMod.addEventListener('change', e => { dirFilters.modalidad = e.target.value; onFilterChange(); });
+  if (selMod) selMod.addEventListener('change', e => { dirFilters.modalidad = e.target.value; updateTableOnly(); });
 
   const selNiv = container.querySelector('#dir_fil_nivel');
-  if (selNiv) selNiv.addEventListener('change', e => { dirFilters.nivelServicio = e.target.value; onFilterChange(); });
+  if (selNiv) selNiv.addEventListener('change', e => { dirFilters.nivelServicio = e.target.value; updateTableOnly(); });
 
   const selGes = container.querySelector('#dir_fil_gestion');
-  if (selGes) selGes.addEventListener('change', e => { dirFilters.tipoGestion = e.target.value; onFilterChange(); });
+  if (selGes) selGes.addEventListener('change', e => { dirFilters.tipoGestion = e.target.value; updateTableOnly(); });
 
   const selEst = container.querySelector('#dir_fil_estado');
-  if (selEst) selEst.addEventListener('change', e => { dirFilters.estadoDirectivo = e.target.value; onFilterChange(); });
+  if (selEst) selEst.addEventListener('change', e => { dirFilters.estadoDirectivo = e.target.value; updateTableOnly(); });
 
   const btnClear = container.querySelector('#btnLimpiarFiltrosDirectorio');
   if (btnClear) btnClear.addEventListener('click', () => {
     dirFilters = { q: '', rei: '', distrito: '', modalidad: '', nivelServicio: '', tipoGestion: '', estadoDirectivo: 'todos' };
-    onFilterChange();
+    if (inpQ) inpQ.value = '';
+    if (selRei) selRei.value = '';
+    if (inpDist) inpDist.value = '';
+    if (selMod) selMod.value = '';
+    if (selNiv) selNiv.value = '';
+    if (selGes) selGes.value = '';
+    if (selEst) selEst.value = 'todos';
+    updateTableOnly();
   });
 
   // Botón Descargar Excel
@@ -1252,7 +1314,7 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
   const btnImport = container.querySelector('#btnImportarExcelDirectorio');
   if (btnImport) {
     btnImport.addEventListener('click', () => {
-      openDirectorioImportModal(state, dbNs, currentUser, () => onFilterChange());
+      openDirectorioImportModal(state, dbNs, currentUser, () => renderDirectorioTab(container, state, dbNs, isAdmin, currentUser, navigate));
     });
   }
 
@@ -1265,7 +1327,7 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
       try {
         const res = await migrateColegiosToDirectivos(dbNs, state, currentUser);
         showToast(`Sincronización completada: ${res.migrated} directivos registrados desde padrón.`);
-        onFilterChange();
+        renderDirectorioTab(container, state, dbNs, isAdmin, currentUser, navigate);
       } catch (err) {
         showToast('Error al sincronizar: ' + err.message);
       } finally {
@@ -1274,17 +1336,6 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
       }
     });
   }
-
-  // Clic en fila para abrir panel de detalle
-  container.querySelectorAll('.directRow').forEach(tr => {
-    tr.addEventListener('click', () => {
-      const colId = tr.dataset.colId;
-      const targetCol = (state.colegios || []).find(c => c.id === colId);
-      if (targetCol) {
-        openDirectorioDetailModal(targetCol, state, dbNs, isAdmin, currentUser, () => onFilterChange());
-      }
-    });
-  });
 }
 
 /* =========================================================================

@@ -227,11 +227,32 @@
     ],
     "tipoRespuesta": "escala_1_3",
     "regla_nivel": {
-      "tipo": "porcentaje",
-      "umbrales": [
-        { "nivel": "Logrado",     "min": 85, "estado_panel": "Logrado"    },
-        { "nivel": "En proceso",  "min": 70, "estado_panel": "En proceso" },
-        { "nivel": "Por mejorar", "min":  0, "estado_panel": "Inicio"     }
+      "tipo": "puntaje",
+      "maxPuntaje": 63,
+      "minPuntaje": 21,
+      "nota": "Regla oficial Ficha de Monitoreo a las Funciones del Coordinador(a) de Tutoría (JEC): Cumple (53 a 63), Cumple parcialmente (42 a 52), No cumple (21 a 41)",
+      "rangos": [
+        {
+          "nivel": "Cumple",
+          "min": 53,
+          "max": 63,
+          "estado_panel": "Logrado",
+          "descripcion": "El/la coordinador(a) de tutoría cumple con la función de manera oportuna, pertinente y sostenida."
+        },
+        {
+          "nivel": "Cumple parcialmente",
+          "min": 42,
+          "max": 52,
+          "estado_panel": "En proceso",
+          "descripcion": "El/la coordinador(a) de tutoría cumple parcialmente con la función o se encuentra en proceso de consolidación."
+        },
+        {
+          "nivel": "No cumple",
+          "min": 21,
+          "max": 41,
+          "estado_panel": "Inicio",
+          "descripcion": "El/la coordinador(a) de tutoría no cumple o cumple de forma mínima, sin responder al propósito pedagógico esperado."
+        }
       ]
     },
     "version": { "anio": 2026, "momento": null, "estado": "publicada" }
@@ -240,13 +261,37 @@
     "descripcion": "Verifica la implementación de los componentes pedagógico, de gestión y de soporte del Modelo de Servicio Educativo Jornada Escolar Completa.",
     "extras": [
       {
-        "label": "Cantidad de estudiantes"
+        "label": "¿La IE implementa el modelo de Servicio Educativo Secundaria con Formación Técnica?",
+        "tipo": "si_no",
+        "required": true
       },
       {
-        "label": "Cantidad de docentes"
+        "label": "N° de secciones",
+        "tipo": "numero"
       },
       {
-        "label": "N° de secciones"
+        "label": "Cantidad de estudiantes",
+        "tipo": "numero"
+      },
+      {
+        "label": "Cantidad de docentes",
+        "tipo": "numero"
+      },
+      {
+        "label": "Directivo que brinda la información",
+        "tipo": "texto"
+      },
+      {
+        "label": "DNI Directivo",
+        "tipo": "texto"
+      },
+      {
+        "label": "Teléfono celular",
+        "tipo": "texto"
+      },
+      {
+        "label": "Correo electrónico",
+        "tipo": "texto"
       }
     ],
     "icono": "🏫",
@@ -797,14 +842,44 @@
       }
     ],
     "tipoRespuesta": "ips",
+    "escala": "IPL",
     "regla_nivel": {
-      "tipo": "porcentaje",
-      "nota": "Escala Inicio(0)/Proceso(0.5)/Logrado(1) — pesos D1 opción b",
-      "umbrales": [
-        { "nivel": "Logrado",     "min": 85, "estado_panel": "Logrado"    },
-        { "nivel": "En proceso",  "min": 70, "estado_panel": "En proceso" },
-        { "nivel": "Por mejorar", "min":  0, "estado_panel": "Inicio"     }
-      ]
+      "tipo": "puntaje",
+      "escala": "IPL",
+      "nota": "Regla oficial 2do Momento: Inicio (0–23), Proceso (24–46), Logrado (47–69). 1er Momento: Inicio (0–19), Proceso (20–38), Logrado (39–57)",
+      "maxPuntaje": 69,
+      "minPuntaje": 0,
+      "rangos": [
+        {
+          "nivel": "Logrado",
+          "min": 47,
+          "max": 69,
+          "estado_panel": "Logrado",
+          "descripcion": "Nivel Logrado: La IE evidencia un nivel óptimo en las condiciones y compromisos de gestión escolar (47 a 69 puntos en 2do momento / 39 a 57 puntos en 1er momento)."
+        },
+        {
+          "nivel": "Proceso",
+          "min": 24,
+          "max": 46,
+          "estado_panel": "En proceso",
+          "descripcion": "Nivel Proceso: La IE se encuentra en proceso de implementación y requiere consolidar acciones de mejora (24 a 46 puntos en 2do momento / 20 a 38 puntos en 1er momento)."
+        },
+        {
+          "nivel": "Inicio",
+          "min": 0,
+          "max": 23,
+          "estado_panel": "Inicio",
+          "descripcion": "Nivel Inicio: La IE requiere asistencia técnica prioritaria para el cumplimiento de las condiciones de gestión (0 a 23 puntos en 2do momento / 0 a 19 puntos en 1er momento)."
+        }
+      ],
+      "momento1": {
+        "maxPuntaje": 57,
+        "rangos": [
+          { "nivel": "Logrado", "min": 39, "max": 57, "estado_panel": "Logrado", "descripcion": "Nivel Logrado: 39 a 57 puntos." },
+          { "nivel": "Proceso", "min": 20, "max": 38, "estado_panel": "En proceso", "descripcion": "Nivel Proceso: 20 a 38 puntos." },
+          { "nivel": "Inicio", "min": 0, "max": 19, "estado_panel": "Inicio", "descripcion": "Nivel Inicio: 0 a 19 puntos." }
+        ]
+      }
     },
     "version": { "anio": 2026, "momento": "2do", "estado": "publicada" }
   },

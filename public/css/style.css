@@ -933,19 +933,23 @@ tr.clickable {
   transition: width 0.4s ease;
 }
 
-.barFill.ok {
+.barFill.ok,
+.barFill.st-logrado {
   background: var(--ok);
 }
 
-.barFill.warn {
+.barFill.warn,
+.barFill.st-proceso {
   background: var(--warn);
 }
 
-.barFill.danger {
+.barFill.danger,
+.barFill.st-inicio {
   background: var(--danger);
 }
 
-.barFill.none {
+.barFill.none,
+.barFill.st-none {
   background: var(--neutral);
 }
 
@@ -1216,7 +1220,7 @@ tr.clickable {
 }
 
 .secDetails summary {
-  padding: 12px 18px;
+  padding: 13px 18px;
   background: #FFFFFF;
   cursor: pointer;
   display: flex;
@@ -1229,6 +1233,7 @@ tr.clickable {
   border-bottom: 1px solid transparent;
   transition: background 0.12s ease;
   user-select: none;
+  position: relative;
 }
 
 .secDetails summary::-webkit-details-marker {
@@ -1240,9 +1245,14 @@ tr.clickable {
 }
 
 .secDetails summary:focus-visible {
+<<<<<<< HEAD
   outline: 2px solid var(--primary, #1D4ED8);
   outline-offset: -2px;
   background: #F8FAFC;
+=======
+  outline: 2px solid var(--blue-600, #1F5FA8);
+  outline-offset: -2px;
+>>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
 }
 
 .secDetails[open] summary {
@@ -1250,13 +1260,41 @@ tr.clickable {
   background: #F8FAFC;
 }
 
-.secSummaryLeft {
+/* Cabecera del acordeón: Distribución horizontal */
+.secHeaderTitle {
   display: flex;
   align-items: center;
   gap: 10px;
+<<<<<<< HEAD
   flex: 0 1 auto;
   min-width: 220px;
   max-width: 42%;
+=======
+  flex: 0 1 clamp(240px, 34%, 420px);
+  min-width: 220px;
+  line-height: 1.35;
+}
+
+.secTitleText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  word-break: normal;
+}
+
+.secTitleText strong {
+  color: var(--navy-900);
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.secCount {
+  font-size: 12px;
+  color: var(--text-600);
+  font-weight: 400;
+>>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
 }
 
 .secChevron {
@@ -1267,14 +1305,18 @@ tr.clickable {
   font-size: 11px;
   color: var(--text-600);
   flex-shrink: 0;
+<<<<<<< HEAD
   width: 14px;
   text-align: center;
+=======
+>>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
 }
 
 .secDetails[open] .secChevron {
   transform: rotate(90deg);
 }
 
+<<<<<<< HEAD
 .secSummaryTitleWrap {
   display: flex;
   align-items: baseline;
@@ -1296,6 +1338,72 @@ tr.clickable {
   font-weight: 400;
   color: var(--text-600);
   white-space: nowrap;
+=======
+/* Barra de progreso de cabecera: ocupa todo el espacio libre (flex: 1) */
+.secHeaderBar {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+}
+
+.secHeaderBarTrack {
+  height: 15px;
+  background: #E2E8F0;
+  border-radius: 8px;
+  overflow: hidden;
+  width: 100%;
+  position: relative;
+}
+
+.secHeaderBarFill {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.4s ease;
+}
+
+.secHeaderBarFill.ok {
+  background: var(--ok);
+}
+
+.secHeaderBarFill.warn {
+  background: var(--warn);
+}
+
+.secHeaderBarFill.danger {
+  background: var(--danger);
+}
+
+.secHeaderBarFill.none {
+  background: var(--neutral);
+}
+
+/* Porcentaje con ancho fijo y alineado a la derecha */
+.secHeaderPct {
+  font-weight: 700;
+  font-size: 13.5px;
+  width: 52px;
+  min-width: 52px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  color: var(--navy-900);
+}
+
+/* Insignia de estado */
+.secHeaderBadge {
+  flex-shrink: 0;
+  min-width: 86px;
+  text-align: center;
+}
+
+/* Clases de compatibilidad */
+.secSummaryLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+>>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
 }
 
 .secSummaryRight {
@@ -1352,6 +1460,7 @@ tr.clickable {
   flex-shrink: 0;
 }
 
+<<<<<<< HEAD
 .secSummaryRight .badge {
   flex-shrink: 0;
   min-width: 82px;
@@ -1382,6 +1491,36 @@ tr.clickable {
   }
   .secBarTrack {
     min-width: 70px;
+=======
+/* Responsive: por debajo de ~768 px */
+@media (max-width: 768px) {
+  .secDetails summary {
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    padding: 12px 14px;
+  }
+
+  .secHeaderTitle {
+    flex: 1 0 100%;
+    max-width: 100%;
+    min-width: 100%;
+    margin-bottom: 2px;
+  }
+
+  .secHeaderBar {
+    flex: 1 1 0;
+    min-width: 120px;
+  }
+
+  .secHeaderPct {
+    font-size: 13px;
+    width: 48px;
+    min-width: 48px;
+  }
+
+  .secHeaderBadge {
+    min-width: auto;
+>>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
   }
 }
 
@@ -4476,4 +4615,56 @@ button:focus-visible {
   color: var(--ink-soft);
   font-size: 11px;
   font-style: italic;
+}
+
+/* =========================================================================
+   ESTILOS ESPECÍFICOS: FICHA MONITOREO MSE JEC (UGEL 03)
+   ========================================================================= */
+.jecFormContainer .btnJecOpt {
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
+}
+
+.jecFormContainer .btnJecOpt:hover {
+  filter: brightness(0.96);
+  transform: translateY(-1px);
+}
+
+.jecFormContainer .btnJecOpt.active-si {
+  background-color: #16A34A !important;
+  color: #FFFFFF !important;
+  border-color: #16A34A !important;
+  box-shadow: 0 1px 3px rgba(22, 163, 74, 0.35);
+}
+
+.jecFormContainer .btnJecOpt.active-no {
+  background-color: #DC2626 !important;
+  color: #FFFFFF !important;
+  border-color: #DC2626 !important;
+  box-shadow: 0 1px 3px rgba(220, 38, 38, 0.35);
+}
+
+.jecFormContainer .jecItemCard {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.jecFormContainer .jecItemCard:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.jecFormContainer .jecDocRubInp {
+  font-family: inherit;
+  font-weight: 600;
+  text-align: center;
+}
+
+.jecFormContainer .jecDocRubInp:focus {
+  border-color: var(--primary);
+  background-color: #FFFFFF;
+}
+
+.jecLiveHeader {
+  backdrop-filter: blur(8px);
+  transition: border-color 0.3s ease;
 }

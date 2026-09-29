@@ -4,9 +4,9 @@
    ========================================================================= */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { FIREBASE_CONFIG } from './firebase-config.js?v=20260918_v10';
-import { getFirestore, makeDbAdapter } from './firestore.js?v=20260918_v10';
-import { getAuth, signOut, setupAuthListeners } from './auth.js?v=20260918_v10';
+import { FIREBASE_CONFIG } from './firebase-config.js?v=20260918_v11';
+import { getFirestore, makeDbAdapter } from './firestore.js?v=20260918_v11';
+import { getAuth, signOut, setupAuthListeners } from './auth.js?v=20260918_v11';
 import {
   esc,
   showToast,
@@ -25,11 +25,11 @@ import {
   computeStats,
   forceResetBodyScroll,
   setAppState,
-} from './ui.js?v=20260925_v8';
+} from './ui.js?v=20260928_v11';
 
-import { renderDirectorioTab } from './directorio.js?v=20260925_v8';
+import { renderDirectorioTab } from './directorio.js?v=20260928_v11';
 
-import { renderAlertasTab, getAlertCount } from './alertas.js';
+import { renderAlertasTab, getAlertCount } from './alertas.js?v=20260928_v11';
 
 /* ============================= MANEJADORES GLOBALES DE ERROR ============================= */
 if (typeof window !== 'undefined') {
@@ -183,132 +183,154 @@ function render() {
 }
 
 /* ============================= FIRESTORE LISTENERS ============================= */
+let activeUnsubscribers = [];
+
+function stopListeners() {
+  if (Array.isArray(activeUnsubscribers)) {
+    activeUnsubscribers.forEach(unsub => {
+      try {
+        if (typeof unsub === 'function') unsub();
+      } catch (_) {}
+    });
+  }
+  activeUnsubscribers = [];
+  startListeners._started = false;
+}
+
 function startListeners() {
   if (startListeners._started) return;
   startListeners._started = true;
+  stopListeners(); // Limpieza defensiva
 
-  dbNs.collection('fichaTypes').onSnapshot(snap => {
-    state.fichaTypes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    state.fichaTypes.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
-    render();
-  }, err => {
-    console.error('fichaTypes snapshot error', err);
-    showToast('Error leyendo tipos de ficha: [' + (err.code || 'error') + '] ' + err.message);
-  });
-
-  dbNs.collection('submissions').orderBy('createdAt', 'desc').limit(1000).onSnapshot(snap => {
-    state.submissions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    // No destruir el formulario si el usuario está en la pestaña registrar
-    if (state.activeTab !== 'registrar') {
-      render();
+  const handleSnapErr = (colName, err, showUserToast = false) => {
+    // Si la sesión se cerró o se está cerrando, los listeners devuelven permission-denied de forma natural
+    if (!currentUser || err?.code === 'permission-denied') {
+      return;
     }
-  }, err => {
-    console.error('submissions snapshot error', err);
-    showToast('Error leyendo fichas: [' + (err.code || 'error') + '] ' + err.message);
-  });
-
-  dbNs.collection('colegios').onSnapshot(snap => {
-    state.colegios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    state.colegios.sort((a, b) => (a.ie || '').localeCompare(b.ie || ''));
-    if (state.activeTab !== 'registrar') {
-      render();
+    console.error(`${colName} snapshot error`, err);
+    if (showUserToast) {
+      showToast('Error leyendo ' + colName + ': [' + (err.code || 'error') + '] ' + err.message);
     }
-  }, err => {
-    console.error('colegios snapshot error', err);
-    showToast('Error leyendo el padrón: [' + (err.code || 'error') + '] ' + err.message);
-  });
+  };
 
-  dbNs.collection('directivos').onSnapshot(snap => {
-    state.directivos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (state.activeTab === 'directorio' || state.activeTab === 'colegios') {
+  activeUnsubscribers.push(
+    dbNs.collection('fichaTypes').onSnapshot(snap => {
+      state.fichaTypes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      state.fichaTypes.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
       render();
-    }
-  }, err => {
-    console.error('directivos snapshot error', err);
-    showToast('Error leyendo el directorio: [' + (err.code || 'error') + '] ' + err.message);
-  });
+    }, err => handleSnapErr('fichaTypes', err, true))
+  );
 
-  dbNs.collection('responsables').onSnapshot(snap => {
-    state.responsables = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    state.responsables.sort((a, b) => (a.nombresApellidos || a.especialista || '').localeCompare(b.nombresApellidos || b.especialista || ''));
-    if (state.activeTab !== 'registrar') {
-      render();
-    }
-  }, err => {
-    console.error('responsables snapshot error', err);
-  });
+  activeUnsubscribers.push(
+    dbNs.collection('submissions').orderBy('createdAt', 'desc').limit(1000).onSnapshot(snap => {
+      state.submissions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // No destruir el formulario si el usuario está en la pestaña registrar
+      if (state.activeTab !== 'registrar') {
+        render();
+      }
+    }, err => handleSnapErr('submissions', err, true))
+  );
+
+  activeUnsubscribers.push(
+    dbNs.collection('colegios').onSnapshot(snap => {
+      state.colegios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      state.colegios.sort((a, b) => (a.ie || '').localeCompare(b.ie || ''));
+      if (state.activeTab !== 'registrar') {
+        render();
+      }
+    }, err => handleSnapErr('colegios', err, true))
+  );
+
+  activeUnsubscribers.push(
+    dbNs.collection('directivos').onSnapshot(snap => {
+      state.directivos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (state.activeTab === 'directorio' || state.activeTab === 'colegios') {
+        render();
+      }
+    }, err => handleSnapErr('directivos', err, true))
+  );
+
+  activeUnsubscribers.push(
+    dbNs.collection('responsables').onSnapshot(snap => {
+      state.responsables = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      state.responsables.sort((a, b) => (a.nombresApellidos || a.especialista || '').localeCompare(b.nombresApellidos || b.especialista || ''));
+      if (state.activeTab !== 'registrar') {
+        render();
+      }
+    }, err => handleSnapErr('responsables', err, false))
+  );
 
   // Catálogo de tipos de concurso
-  dbNs.collection('tiposConcurso').onSnapshot(snap => {
-    state.tiposConcurso = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    state.tiposConcurso.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
-    if (state.activeTab === 'concursos') {
-      render();
-    }
-  }, err => {
-    console.error('tiposConcurso snapshot error', err);
-  });
+  activeUnsubscribers.push(
+    dbNs.collection('tiposConcurso').onSnapshot(snap => {
+      state.tiposConcurso = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      state.tiposConcurso.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+      if (state.activeTab === 'concursos') {
+        render();
+      }
+    }, err => handleSnapErr('tiposConcurso', err, false))
+  );
 
   // Registros de concursos
-  dbNs.collection('concursoRegistros').orderBy('createdAt', 'desc').limit(2000).onSnapshot(snap => {
-    state.concursoRegistros = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (state.activeTab === 'concursos') {
-      render();
-    }
-  }, err => {
-    console.error('concursoRegistros snapshot error', err);
-  });
+  activeUnsubscribers.push(
+    dbNs.collection('concursoRegistros').orderBy('createdAt', 'desc').limit(2000).onSnapshot(snap => {
+      state.concursoRegistros = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (state.activeTab === 'concursos') {
+        render();
+      }
+    }, err => handleSnapErr('concursoRegistros', err, false))
+  );
 
   // Cuerpo técnico por grupo de concurso (JEDPA u otros)
-  dbNs.collection('concursoCuerpoTecnico').onSnapshot(snap => {
-    state.concursoCuerpoTecnico = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (state.activeTab === 'concursos') {
-      render();
-    }
-  }, err => {
-    console.error('concursoCuerpoTecnico snapshot error', err);
-  });
+  activeUnsubscribers.push(
+    dbNs.collection('concursoCuerpoTecnico').onSnapshot(snap => {
+      state.concursoCuerpoTecnico = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (state.activeTab === 'concursos') {
+        render();
+      }
+    }, err => handleSnapErr('concursoCuerpoTecnico', err, false))
+  );
 
   // Catálogo administrable de áreas de firma
-  dbNs.collection('areasFirma').onSnapshot(snap => {
-    state.areasFirma = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    state.areasFirma.sort((a, b) => (a.orden || 99) - (b.orden || 99));
-    if (state.activeTab === 'tipos' || state.activeTab === 'registrar') {
-      render();
-    }
-  }, err => {
-    console.error('areasFirma snapshot error', err);
-  });
+  activeUnsubscribers.push(
+    dbNs.collection('areasFirma').onSnapshot(snap => {
+      state.areasFirma = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      state.areasFirma.sort((a, b) => (a.orden || 99) - (b.orden || 99));
+      if (state.activeTab === 'tipos' || state.activeTab === 'registrar') {
+        render();
+      }
+    }, err => handleSnapErr('areasFirma', err, false))
+  );
 
   // Plantillas de firmantes por área y tipo de reporte
-  dbNs.collection('plantillasFirmantes').onSnapshot(snap => {
-    state.plantillasFirmantes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    state.plantillasFirmantes.sort((a, b) => (a.orden || 99) - (b.orden || 99));
-    if (state.activeTab === 'tipos' || state.activeTab === 'registrar') {
-      render();
-    }
-  }, err => {
-    console.error('plantillasFirmantes snapshot error', err);
-  });
+  activeUnsubscribers.push(
+    dbNs.collection('plantillasFirmantes').onSnapshot(snap => {
+      state.plantillasFirmantes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      state.plantillasFirmantes.sort((a, b) => (a.orden || 99) - (b.orden || 99));
+      if (state.activeTab === 'tipos' || state.activeTab === 'registrar') {
+        render();
+      }
+    }, err => handleSnapErr('plantillasFirmantes', err, false))
+  );
 
   // Compromisos de mejora
-  dbNs.collection('compromisos').onSnapshot(snap => {
-    state.compromisos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (state.activeTab === 'alertas' || state.activeTab === 'registrar' || state.activeTab === 'dashboard') {
-      render();
-    }
-  }, err => {
-    console.error('compromisos snapshot error', err);
-  });
+  activeUnsubscribers.push(
+    dbNs.collection('compromisos').onSnapshot(snap => {
+      state.compromisos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (state.activeTab === 'alertas' || state.activeTab === 'registrar' || state.activeTab === 'dashboard') {
+        render();
+      }
+    }, err => handleSnapErr('compromisos', err, false))
+  );
 
   if (isAdmin()) {
-    dbNs.collection('roles').onSnapshot(snap => {
-      state.roles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      state.roles.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
-      render();
-    }, err => {
-      console.error('roles snapshot error', err);
-    });
+    activeUnsubscribers.push(
+      dbNs.collection('roles').onSnapshot(snap => {
+        state.roles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        state.roles.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
+        render();
+      }, err => handleSnapErr('roles', err, false))
+    );
   }
 
   render();
@@ -386,13 +408,21 @@ function onLogin(user, role) {
   // 3. Listener del botón Cerrar Sesión en la barra superior
   const logoutBtn = document.getElementById('topLogoutBtn');
   if (logoutBtn) {
-    logoutBtn.onclick = () => signOut(auth);
+    logoutBtn.onclick = async () => {
+      stopListeners();
+      try {
+        await signOut(auth);
+      } catch (err) {
+        console.warn('Aviso al cerrar sesión:', err);
+      }
+    };
   }
 
   startListeners();
 }
 
 function onLogout() {
+  stopListeners();
   if (connectionTimer) {
     clearTimeout(connectionTimer);
     connectionTimer = null;

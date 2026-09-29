@@ -5,8 +5,20 @@
    de docentes R1–R5, I–IV), cálculo en tiempo real, validaciones y modelo de datos.
    ========================================================================= */
 
+<<<<<<< HEAD
 import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, clearEditMode } from './ui.js?v=20260925_v8';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260925_v8';
+=======
+import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui.js?v=20260928_v11';
+import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260928_v11';
+import {
+  REGLA_NIVEL_EBR_GESTION_M1,
+  REGLA_NIVEL_EBR_GESTION_M2,
+  getReglaNivelEbrGestion,
+  getNivelEbrGestion,
+  getMomentoVisitaEbr
+} from './calcEngine.js?v=20260928_v11';
+>>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
 
 /** Rúbricas oficiales de observación de aula (MINEDU) */
 export const RUBRICAS_OBSERVACION_AULA = [
@@ -344,11 +356,10 @@ export const EBR_GESTION_VISITA_2_SECCIONES = [
  */
 export function isFichaEbrGestionEscolar(ft) {
   if (!ft) return false;
-  if (ft.id === 'ft_gestion_ugel03_ebr') return true;
-  const n = normalizeText(ft.nombre || '');
-  // Excluir la ficha de 1er momento (diagnostico) que tambien menciona gestion escolar EBR
-  if (n.includes('1er momento') || n.includes('1.er momento') || n.includes('diagnostico') || ft.id === 'ft_ebr_gestion_1er') return false;
-  return n.includes('gestion escolar') && (n.includes('ebr') || n.includes('ugel 03 ebr') || n.includes('ugel 03'));
+  const id = String(ft.id || ft.fichaTypeId || '').toLowerCase();
+  if (id === 'ft_gestion_ugel03_ebr' || id === 'ft_ebr_gestion_1er' || id === 'ft_ebr_gestion_2do' || id === 'ft_ebr_gestion') return true;
+  const n = normalizeText(ft.nombre || ft.fichaTypeNombre || '');
+  return n.includes('gestion escolar') && (n.includes('ebr') || n.includes('ugel 03'));
 }
 
 /**
@@ -1087,6 +1098,103 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
     </div>
   `;
 
+  // =========================================================================
+  // PANEL OFICIAL DE RESULTADOS Y PUNTAJE EN TIEMPO REAL
+  // =========================================================================
+  const reglaEbr = isV2 ? REGLA_NIVEL_EBR_GESTION_M2 : REGLA_NIVEL_EBR_GESTION_M1;
+  const maxPtsOficial = reglaEbr.maxPuntaje;
+  const momentoTitulo = isV2 ? '2DO MOMENTO (Visita 2 · 23 ítems · Máx 69 pts)' : '1ER MOMENTO (Visita 1 · 19 ítems · Máx 57 pts)';
+
+  const panelResultadosHtml = `
+    <div class="panel ebrScoreLivePanel" id="ebrScoreLivePanel" style="background:var(--surface);border:2px solid var(--primary);border-radius:var(--radius);padding:18px;margin-bottom:20px;box-shadow:var(--shadow-md)">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px;border-bottom:1px solid var(--line);padding-bottom:12px">
+        <div>
+          <span style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">
+            📊 Escala de Valoración Oficial UGEL 03 · ${momentoTitulo}
+          </span>
+          <h3 style="margin:4px 0 0;font-size:17px;color:var(--ink);display:flex;align-items:center;gap:8px">
+            Resultado y Nivel de Cumplimiento
+          </h3>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="text-align:right">
+            <div style="font-size:11px;color:var(--ink-soft);font-weight:600">Puntaje obtenido</div>
+            <div style="font-size:22px;font-weight:900;color:var(--primary)" id="ebrLivePoints">0 / ${maxPtsOficial} pts</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;color:var(--ink-soft);font-weight:600">Porcentaje</div>
+            <div style="font-size:22px;font-weight:900;color:var(--ink)" id="ebrLivePct">0%</div>
+          </div>
+          <div id="ebrLiveBadgeWrap">
+            <span class="badge st-inicio" id="ebrLiveBadge" style="font-size:13px;padding:6px 14px;font-weight:800;border-radius:14px;background:#DC2626;color:#FFFFFF">
+              INICIO
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barra visual de puntaje -->
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:4px;color:var(--ink-soft);flex-wrap:wrap;gap:6px">
+          <span style="color:#DC2626">INICIO: 0 a ${isV2 ? 23 : 19} pts</span>
+          <span style="color:#D97706">PROCESO: ${isV2 ? 24 : 20} a ${isV2 ? 46 : 38} pts</span>
+          <span style="color:#16A34A">LOGRADO: ${isV2 ? 47 : 39} a ${isV2 ? 69 : 57} pts</span>
+        </div>
+        <div class="barTrack" style="height:14px;background:var(--surface-2);border-radius:7px;overflow:hidden">
+          <div class="barFill" id="ebrLiveBarFill" style="width:0%;height:100%;transition:width 0.3s ease, background 0.3s ease;background:#DC2626"></div>
+        </div>
+      </div>
+
+      <!-- Tabla oficial de baremos del momento -->
+      <div style="overflow-x:auto">
+        <table class="table" style="width:100%;border-collapse:collapse;font-size:12px;margin:0" id="ebrCriteriaTable">
+          <thead>
+            <tr style="background:var(--surface-2);color:var(--ink);font-weight:700">
+              <th style="padding:6px 10px;text-align:left;width:25%">Nivel de logro</th>
+              <th style="padding:6px 10px;text-align:center;width:25%">Rango de puntaje oficial</th>
+              <th style="padding:6px 10px;text-align:left;width:50%">Criterio pedagógico</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="rowCrit_Logrado" style="border-top:1px solid var(--line)">
+              <td style="padding:7px 10px;font-weight:700;color:#16A34A">
+                <span class="critStatusIcon">○</span> LOGRADO
+              </td>
+              <td style="padding:7px 10px;text-align:center;font-weight:700">
+                ${isV2 ? '47 a 69 puntos' : '39 a 57 puntos'}
+              </td>
+              <td style="padding:7px 10px;color:var(--ink-soft);font-size:11.5px">
+                La institución educativa evidencia un nivel óptimo en la gestión escolar y condiciones pedagógicas.
+              </td>
+            </tr>
+            <tr id="rowCrit_Proceso" style="border-top:1px solid var(--line)">
+              <td style="padding:7px 10px;font-weight:700;color:#D97706">
+                <span class="critStatusIcon">○</span> PROCESO
+              </td>
+              <td style="padding:7px 10px;text-align:center;font-weight:700">
+                ${isV2 ? '24 a 46 puntos' : '20 a 38 puntos'}
+              </td>
+              <td style="padding:7px 10px;color:var(--ink-soft);font-size:11.5px">
+                La institución educativa se encuentra en proceso de implementación y requiere consolidar acciones de mejora.
+              </td>
+            </tr>
+            <tr id="rowCrit_Inicio" style="border-top:1px solid var(--line)">
+              <td style="padding:7px 10px;font-weight:700;color:#DC2626">
+                <span class="critStatusIcon">○</span> INICIO
+              </td>
+              <td style="padding:7px 10px;text-align:center;font-weight:700">
+                ${isV2 ? '0 a 23 puntos' : '0 a 19 puntos'}
+              </td>
+              <td style="padding:7px 10px;color:var(--ink-soft);font-size:11.5px">
+                La institución educativa requiere asistencia técnica prioritaria para el cumplimiento de las condiciones básicas.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
   // Barra inferior con indicador de avance y botones
   const submitLabel = isEditing ? 'Actualizar ficha' : 'Guardar ficha';
   const bottomBarHtml = `
@@ -1117,6 +1225,7 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
       </div>
       ${seccionLogrosHtml}
       ${seccionCompromisosHtml}
+      ${panelResultadosHtml}
       ${seccionFirmasHtml}
       ${bottomBarHtml}
     </form>
@@ -1127,6 +1236,7 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
   attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEditing);
   updateAllSectionTotals(host);
   updateEbrProgressBadge(host, totalItemsCount);
+  updateEbrLiveScore(host);
 }
 
 /**
@@ -1945,6 +2055,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
         : (ft.seccionesVisita2 || EBR_GESTION_VISITA_2_SECCIONES);
       const totalItemsCount = seccionesActuales.reduce((a, s) => a + (s.items || []).length, 0);
       updateEbrProgressBadge(host, totalItemsCount);
+      updateEbrLiveScore(host);
     };
   });
 
@@ -2258,6 +2369,92 @@ function updateEbrProgressBadge(host, totalItems) {
 }
 
 /**
+ * Calcula el puntaje oficial de EBR Gestión Escolar según los valores respondidos y la visita activa.
+ * Visita 1 (1er Momento · 19 ítems · Máx 57 pts): 0-19 Inicio, 20-38 Proceso, 39-57 Logrado.
+ * Visita 2 (2do Momento · 23 ítems · Máx 69 pts): 0-23 Inicio, 24-46 Proceso, 47-69 Logrado.
+ */
+export function calculateEbrCurrentScore(visita, respuestas) {
+  const v = Number(visita) === 2 ? 2 : 1;
+  const maxPts = v === 2 ? 69 : 57;
+  let pts = 0;
+  let answered = 0;
+
+  const respMap = respuestas || {};
+  Object.values(respMap).forEach(val => {
+    if (!val) return;
+    const vLower = String(val).trim().toLowerCase();
+    if (vLower === 'logrado') { pts += 3; answered++; }
+    else if (vLower === 'proceso') { pts += 2; answered++; }
+    else if (vLower === 'inicio') { pts += 1; answered++; }
+    else if (vLower === 'si') { pts += 3; answered++; }
+    else if (vLower === 'no') { pts += 1; answered++; }
+    else if (vLower === 'na') { answered++; }
+  });
+
+  const nivelInfo = getNivelEbrGestion(pts, v);
+  return {
+    visita: v,
+    maxPuntaje: maxPts,
+    puntaje: pts,
+    pct: maxPts > 0 ? Math.round((pts / maxPts) * 100) : 0,
+    nivelInfo,
+    answered
+  };
+}
+
+/**
+ * Actualiza en tiempo real la puntuación, barra de avance y resaltado de baremos oficiales
+ */
+export function updateEbrLiveScore(host) {
+  if (!host) return;
+  const currentVisita = ebrFormState.visita || 1;
+  const scoreData = calculateEbrCurrentScore(currentVisita, ebrFormState.respuestas);
+
+  const elPoints = host.querySelector('#ebrLivePoints');
+  const elPct = host.querySelector('#ebrLivePct');
+  const elBadge = host.querySelector('#ebrLiveBadge');
+  const elFill = host.querySelector('#ebrLiveBarFill');
+
+  if (elPoints) elPoints.textContent = `${scoreData.puntaje} / ${scoreData.maxPuntaje} pts`;
+  if (elPct) elPct.textContent = `${scoreData.pct}%`;
+
+  const lvl = scoreData.nivelInfo.nivel;
+  const col = scoreData.nivelInfo.color;
+
+  if (elBadge) {
+    elBadge.textContent = lvl.toUpperCase();
+    elBadge.className = `badge ${scoreData.nivelInfo.cls}`;
+    elBadge.style.background = col;
+    elBadge.style.color = '#FFFFFF';
+  }
+
+  if (elFill) {
+    elFill.style.width = `${Math.min(100, scoreData.pct)}%`;
+    elFill.style.background = col;
+  }
+
+  // Resaltar fila de baremos en la tabla oficial
+  ['Logrado', 'Proceso', 'Inicio'].forEach(rowKey => {
+    const rowEl = host.querySelector(`#rowCrit_${rowKey}`);
+    if (rowEl) {
+      const isCurrent = rowKey.toLowerCase() === lvl.toLowerCase();
+      rowEl.style.background = isCurrent ? (rowKey === 'Logrado' ? 'rgba(22,163,74,0.12)' : (rowKey === 'Proceso' ? 'rgba(217,119,6,0.12)' : 'rgba(220,38,38,0.12)')) : '';
+      rowEl.style.fontWeight = isCurrent ? '700' : 'normal';
+      const iconEl = rowEl.querySelector('.critStatusIcon');
+      if (iconEl) iconEl.textContent = isCurrent ? '✓' : '○';
+    }
+  });
+
+  const badge = host.querySelector('#regProgressBadge');
+  if (badge) {
+    const answered = Object.keys(ebrFormState.respuestas || {}).length;
+    const totalItems = currentVisita === 2 ? 23 : 19;
+    const pct = totalItems ? Math.round((answered / totalItems) * 100) : 0;
+    badge.innerHTML = `Avance: <strong>${answered} de ${totalItems}</strong> respondidos (${pct}%) · Puntaje: <strong>${scoreData.puntaje}/${scoreData.maxPuntaje} pts</strong> · <span class="badge ${scoreData.nivelInfo.cls}" style="font-size:11px;padding:2px 8px">${lvl}</span>`;
+  }
+}
+
+/**
  * Recolecta y valida todos los datos estructurados del formulario EBR para guardado en Firestore
  */
 export function collectEbrGestionFormData(host, ft, isEdit = false) {
@@ -2402,8 +2599,13 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
     extrasFlat.push({ label: 'Total docentes Secundaria 2do momento', value: (m2.find(r => r.nivel === 'Secundaria') || {}).total || 0 });
   }
 
+<<<<<<< HEAD
   const respEl = host.querySelector('#ebr_responsable');
   const responsableVal = (respEl ? respEl.value.trim() : '') || ebrFormState.responsable || '';
+=======
+  // Cálculo del puntaje oficial y nivel de cumplimiento
+  const scoreData = calculateEbrCurrentScore(visita, ebrFormState.respuestas);
+>>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
 
   // Modelo estructurado exacto según Requerimiento 8
   return {
@@ -2413,8 +2615,20 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
     visita: Number(visita),
     visitaTipo: visita === 1 ? 'Visita 1 · Primer momento' : 'Visita 2 · Segundo momento',
     institucion,
+<<<<<<< HEAD
     colegioId: ebrFormState.colegioId || null,
     responsable: responsableVal,
+=======
+    puntaje: scoreData.puntaje,
+    puntaje_max: scoreData.maxPuntaje,
+    puntaje_maximo: scoreData.maxPuntaje,
+    pct: scoreData.pct,
+    porcentaje: scoreData.pct,
+    nivel_cumplimiento: scoreData.nivelInfo.nivel,
+    estado_panel: scoreData.nivelInfo.estado_panel,
+    descripcion_cumplimiento: scoreData.nivelInfo.descripcion,
+    regla_nivel: getReglaNivelEbrGestion(visita),
+>>>>>>> ea3f76781c69c629c9cdab1c1c68b7e67539f3f1
     fecha,
     ie: {
       codigoLocal: ebrFormState.codigoLocal,

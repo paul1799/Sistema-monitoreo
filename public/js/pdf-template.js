@@ -11,7 +11,23 @@ import {
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES,
   migrateLegacyEbrTotals
-} from './ebr-gestion.js?v=20260925_v8';
+} from './ebr-gestion.js?v=20260928_v11';
+
+import {
+  isFichaJec,
+  JEC_SECCIONES,
+  getNivelLogroJec
+} from './jec-monitoreo.js?v=20260928_v11';
+
+import {
+  isFichaCoordTutoriaJec,
+  getNivelCoordTutoriaJec,
+  REGLA_NIVEL_COORD_TUTORIA_JEC,
+  calcScore,
+  getNivelEbrGestion,
+  getReglaNivelEbrGestion,
+  getMomentoVisitaEbr
+} from './calcEngine.js?v=20260928_v11';
 
 /**
  * Obtiene la instancia de jsPDF desde window.jspdf
@@ -2460,6 +2476,65 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
   });
 
   // -------------------------------------------------------------------------
+  // RESULTADO Y NIVEL DE CUMPLIMIENTO OFICIAL (UGEL 03 EBR)
+  // -------------------------------------------------------------------------
+  const ebrVisitaNum = isV2 ? 2 : 1;
+  const maxPtsOficial = isV2 ? 69 : 57;
+  let ebrPuntaje = (sub.puntaje !== undefined && sub.puntaje !== null) ? Number(sub.puntaje) : null;
+  if (ebrPuntaje === null && Array.isArray(sub.respuestas) && sub.respuestas.length > 0) {
+    let pSum = 0;
+    sub.respuestas.forEach(r => {
+      const vL = String(r?.valor || '').toLowerCase();
+      if (vL === 'logrado' || vL === 'si') pSum += 3;
+      else if (vL === 'proceso') pSum += 2;
+      else if (vL === 'inicio' || vL === 'no') pSum += 1;
+    });
+    ebrPuntaje = pSum;
+  }
+  if (ebrPuntaje === null) ebrPuntaje = 0;
+  const ebrNivelObj = getNivelEbrGestion(ebrPuntaje, ebrVisitaNum);
+  const momentoSubTitle = isV2
+    ? 'Escala oficial 2do Momento: Inicio (0–23 pts) · Proceso (24–46 pts) · Logrado (47–69 pts)'
+    : 'Escala oficial 1er Momento: Inicio (0–19 pts) · Proceso (20–38 pts) · Logrado (39–57 pts)';
+
+  const isLogradoRow = ebrPuntaje >= (isV2 ? 47 : 39);
+  const isProcesoRow = ebrPuntaje >= (isV2 ? 24 : 20) && ebrPuntaje <= (isV2 ? 46 : 38);
+  const isInicioRow = ebrPuntaje <= (isV2 ? 23 : 19);
+
+  customTables.push({
+    title: 'NIVEL DE CUMPLIMIENTO OFICIAL (SEGÚN PUNTAJE OBTENIDO)',
+    subtitle: `${momentoSubTitle} — Puntaje obtenido: ${ebrPuntaje} de ${maxPtsOficial} puntos (${ebrNivelObj.pct}%) · Nivel: ${ebrNivelObj.nivel.toUpperCase()}`,
+    minHeight: 70,
+    tableHeaders: ['Nivel de cumplimiento', 'Rango oficial', 'Puntaje obtenido', 'Criterio pedagógico'],
+    tableRows: [
+      [
+        { content: 'LOGRADO' + (isLogradoRow ? '  ✓ (OBTENIDO)' : ''), styles: { halign: 'center', fontStyle: 'bold', fillColor: isLogradoRow ? [209, 250, 229] : [255, 255, 255], textColor: [4, 120, 87] } },
+        { content: isV2 ? 'De 47 a 69 pts' : 'De 39 a 57 pts', styles: { halign: 'center', fontStyle: 'bold', fillColor: isLogradoRow ? [209, 250, 229] : [255, 255, 255] } },
+        { content: isLogradoRow ? `${ebrPuntaje} pts (${ebrNivelObj.pct}%)` : '—', styles: { halign: 'center', fontStyle: 'bold', fillColor: isLogradoRow ? [209, 250, 229] : [255, 255, 255] } },
+        { content: 'Evidencia un nivel óptimo en las condiciones y compromisos de gestión escolar.', styles: { fontSize: 7.2, fillColor: isLogradoRow ? [209, 250, 229] : [255, 255, 255] } }
+      ],
+      [
+        { content: 'PROCESO' + (isProcesoRow ? '  ✓ (OBTENIDO)' : ''), styles: { halign: 'center', fontStyle: 'bold', fillColor: isProcesoRow ? [254, 243, 199] : [255, 255, 255], textColor: [180, 83, 9] } },
+        { content: isV2 ? 'De 24 a 46 pts' : 'De 20 a 38 pts', styles: { halign: 'center', fontStyle: 'bold', fillColor: isProcesoRow ? [254, 243, 199] : [255, 255, 255] } },
+        { content: isProcesoRow ? `${ebrPuntaje} pts (${ebrNivelObj.pct}%)` : '—', styles: { halign: 'center', fontStyle: 'bold', fillColor: isProcesoRow ? [254, 243, 199] : [255, 255, 255] } },
+        { content: 'En proceso de implementación; requiere consolidar acciones de mejora.', styles: { fontSize: 7.2, fillColor: isProcesoRow ? [254, 243, 199] : [255, 255, 255] } }
+      ],
+      [
+        { content: 'INICIO' + (isInicioRow ? '  ✓ (OBTENIDO)' : ''), styles: { halign: 'center', fontStyle: 'bold', fillColor: isInicioRow ? [254, 226, 226] : [255, 255, 255], textColor: [185, 28, 28] } },
+        { content: isV2 ? 'De 0 a 23 pts' : 'De 0 a 19 pts', styles: { halign: 'center', fontStyle: 'bold', fillColor: isInicioRow ? [254, 226, 226] : [255, 255, 255] } },
+        { content: isInicioRow ? `${ebrPuntaje} pts (${ebrNivelObj.pct}%)` : '—', styles: { halign: 'center', fontStyle: 'bold', fillColor: isInicioRow ? [254, 226, 226] : [255, 255, 255] } },
+        { content: 'Requiere asistencia técnica prioritaria para el cumplimiento de las condiciones de gestión.', styles: { fontSize: 7.2, fillColor: isInicioRow ? [254, 226, 226] : [255, 255, 255] } }
+      ]
+    ],
+    columnStyles: {
+      0: { cellWidth: 120 },
+      1: { cellWidth: 80 },
+      2: { cellWidth: 80 },
+      3: { cellWidth: 231 }
+    }
+  });
+
+  // -------------------------------------------------------------------------
   // LOGROS, ASPECTOS POR MEJORAR Y RECOMENDACIONES
   // -------------------------------------------------------------------------
   const secLogrosRomano = isV1 ? 'V' : 'VII';
@@ -2566,6 +2641,397 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
 }
 
 /**
+ * Exporta la Ficha oficial "Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC"
+ * a PDF en formato vertical oficial, reproduciendo con exactitud las secciones III, IV, V (R1-R5),
+ * VI (31 Indicadores con Hallazgos) y VII (Tabla Oficial de Nivel MSE JEC)
+ */
+export async function exportJecFichaPdf(sub, fichaType, colegio = null, downloadConfig = {}) {
+  if (!sub || !fichaType) {
+    throw new Error('Ficha o Tipo de Ficha no definido');
+  }
+
+  const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+  const ieName = sub.institucion || (colegio ? colegio.ie : 'Institución Educativa');
+  const fechaVisita = formatDate(sub.fecha);
+  const codModular = sub.codigoModular || (sub.ie && sub.ie.codigoModular) || (colegio ? (colegio.codigoModular || colegio.codigoLocal) : '') || '—';
+  const rei = sub.rei || sub.red || (sub.ie && (sub.ie.rei || sub.ie.red)) || (colegio ? colegio.rei : '') || '—';
+  const ugel = sub.ugel || 'UGEL 03';
+
+  // Extras
+  const subExtras = sub.extras || [];
+  const getExtraVal = (pattern) => {
+    const found = subExtras.find(x => x && x.label && norm(x.label).includes(norm(pattern)));
+    return found ? found.value : '';
+  };
+
+  const secciones = sub.secciones || getExtraVal('secciones') || '—';
+  const estudiantes = sub.estudiantes || getExtraVal('estudiantes') || '—';
+  const docentesTotal = sub.docentesTotal || getExtraVal('docentes') || '—';
+
+  let formacionTecnica = false;
+  if (sub.formacionTecnica !== undefined) formacionTecnica = sub.formacionTecnica === true;
+  else if (sub.ie && sub.ie.formacionTecnica !== undefined) formacionTecnica = sub.ie.formacionTecnica === true;
+  else {
+    const ftVal = getExtraVal('formacion tecnica') || getExtraVal('técnica');
+    formacionTecnica = ftVal === 'Sí' || ftVal === 'si' || ftVal === true;
+  }
+
+  const title = 'FICHA DE MONITOREO Y ASISTENCIA TÉCNICA A LA IMPLEMENTACIÓN DEL MODELO JEC';
+  const subtitle = 'Modelo de Servicio Educativo Jornada Escolar Completa — UGEL 03 · Lima Metropolitana';
+
+  const metaGrid = [
+    { label: 'INSTITUCIÓN EDUCATIVA', value: ieName },
+    { label: 'CÓDIGO MODULAR', value: codModular },
+    { label: 'UGEL', value: ugel },
+    { label: 'REI', value: rei ? `REI ${rei}` : '—' },
+    { label: 'FECHA DE VISITA', value: fechaVisita },
+    { label: 'SECCIONES', value: String(secciones) },
+    { label: 'CANTIDAD ESTUDIANTES', value: String(estudiantes) },
+    { label: 'CANTIDAD DOCENTES', value: String(docentesTotal) },
+    { label: 'SEC. FORMACIÓN TÉCNICA', value: formacionTecnica ? 'Sí' : 'No' }
+  ];
+
+  const customTables = [];
+
+  // -------------------------------------------------------------------------
+  // IV. DATOS DEL DIRECTIVO QUE BRINDA LA INFORMACIÓN SOLICITADA
+  // -------------------------------------------------------------------------
+  const dirObj = sub.director && typeof sub.director === 'object' ? sub.director : {};
+  const dirNombre = dirObj.nombres || (typeof sub.director === 'string' ? sub.director : '') || (colegio && colegio.director ? colegio.director.nombre : '—');
+  const dirDni = dirObj.dni || sub.directorDni || (colegio && colegio.director ? colegio.director.dni : '—') || '—';
+  const dirTel = dirObj.telefono || '—';
+  const dirCorreo = dirObj.correo || '—';
+
+  customTables.push({
+    title: 'IV. DATOS DEL DIRECTIVO QUE BRINDA LA INFORMACIÓN SOLICITADA',
+    minHeight: 45,
+    tableHeaders: ['Nombres y Apellido', 'DNI', 'Teléfono celular', 'Correo Electrónico'],
+    tableRows: [
+      [
+        formatPersonName(dirNombre),
+        dirDni,
+        dirTel,
+        dirCorreo
+      ]
+    ],
+    columnStyles: {
+      0: { cellWidth: 180, fontStyle: 'bold' },
+      1: { cellWidth: 70, halign: 'center' },
+      2: { cellWidth: 80, halign: 'center' },
+      3: { cellWidth: 181 }
+    },
+    headStyles: {
+      fillColor: [18, 41, 77],
+      fontSize: 8,
+      fontStyle: 'bold'
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // V. DATA DE DOCENTES MONITOREADOS A LA FECHA DE LA VISITA NIVEL SECUNDARIA
+  // -------------------------------------------------------------------------
+  const docData = sub.docentes || sub.docentesMonitoreo || {};
+
+  const buildJecDocTable = (momentoKey, letraSub, titleText) => {
+    let row = docData[momentoKey] || {};
+    if (Array.isArray(row)) {
+      row = row.find(r => r.nivel === 'Secundaria') || row[0] || {};
+    }
+    const t = Number(row.total) || 0;
+    const m = Number(row.monitoreados) || 0;
+    const nm = Math.max(0, t - m);
+
+    const pctM = t > 0 ? Math.round((m / t) * 100) + '%' : '—';
+    const pctNm = t > 0 ? Math.round((nm / t) * 100) + '%' : '—';
+
+    const rubKeys = ['R1', 'R2', 'R3', 'R4', 'R5'];
+
+    // Fila 1: Cantidades
+    const cantCells = rubKeys.flatMap(rId => {
+      const arr = Array.isArray(row[rId]) ? row[rId] : ['', '', '', ''];
+      return [0, 1, 2, 3].map(idx => {
+        const val = arr[idx] !== undefined && arr[idx] !== '' ? String(arr[idx]) : '—';
+        return { content: val, styles: { halign: 'center' } };
+      });
+    });
+
+    // Fila 2: Porcentajes
+    const pctCells = rubKeys.flatMap(rId => {
+      const arr = Array.isArray(row[rId]) ? row[rId] : ['', '', '', ''];
+      return [0, 1, 2, 3].map(idx => {
+        const val = Number(arr[idx]) || 0;
+        const p = (val > 0 && t > 0) ? Math.round((val / t) * 100) + '%' : (arr[idx] !== '' && arr[idx] !== undefined ? '0%' : '—');
+        return { content: p, styles: { halign: 'center', fontSize: 6.2, fontStyle: 'italic', textColor: [70, 70, 70] } };
+      });
+    });
+
+    const tableRows = [
+      [
+        { content: t > 0 ? String(t) : '—', styles: { halign: 'center', fontStyle: 'bold' } },
+        { content: `${m > 0 ? m : '—'}\n(${pctM})`, styles: { halign: 'center', fontStyle: 'bold' } },
+        { content: `${nm > 0 ? nm : (t > 0 ? '0' : '—')}\n(${pctNm})`, styles: { halign: 'center', fontStyle: 'bold' } },
+        ...cantCells
+      ],
+      [
+        { content: 'PORCENTAJE', styles: { halign: 'center', fontStyle: 'bold', fontSize: 6.2, fillColor: [245, 247, 250] } },
+        { content: pctM, styles: { halign: 'center', fontStyle: 'bold', fontSize: 6.2, fillColor: [245, 247, 250] } },
+        { content: pctNm, styles: { halign: 'center', fontStyle: 'bold', fontSize: 6.2, fillColor: [245, 247, 250] } },
+        ...pctCells
+      ]
+    ];
+
+    const docColStyles = {
+      0: { cellWidth: 42, halign: 'center', fontSize: 6.8 },
+      1: { cellWidth: 46, halign: 'center', fontSize: 6.5 },
+      2: { cellWidth: 46, halign: 'center', fontSize: 6.5 }
+    };
+    for (let c = 3; c < 23; c++) {
+      docColStyles[c] = { cellWidth: 18.85, halign: 'center', fontSize: 6.2 };
+    }
+
+    customTables.push({
+      title: `V. DATA DE DOCENTES MONITOREADOS A LA FECHA DE LA VISITA NIVEL SECUNDARIA — ${letraSub}) ${titleText}`,
+      subtitle: 'Rúbricas oficiales: R1 Involucra · R2 Razonamiento · R3 Retroalimenta · R4 Respeto · R5 Comportamiento (Niveles I, II, III y IV)',
+      minHeight: 55,
+      head: [
+        [
+          { content: 'TOTAL DOCENTES', rowSpan: 2, styles: { halign: 'center', valign: 'middle', fillColor: [18, 41, 77] } },
+          { content: 'DOCENTES MONIT.', rowSpan: 2, styles: { halign: 'center', valign: 'middle', fillColor: [18, 41, 77] } },
+          { content: 'DOCENTES NO MON.', rowSpan: 2, styles: { halign: 'center', valign: 'middle', fillColor: [18, 41, 77] } },
+          { content: 'R1 INVOLUCRA', colSpan: 4, styles: { halign: 'center', fillColor: [24, 55, 100] } },
+          { content: 'R2 RAZONAMIENTO', colSpan: 4, styles: { halign: 'center', fillColor: [20, 75, 120] } },
+          { content: 'R3 RETROALIMENTA', colSpan: 4, styles: { halign: 'center', fillColor: [24, 55, 100] } },
+          { content: 'R4 RESPETO', colSpan: 4, styles: { halign: 'center', fillColor: [20, 75, 120] } },
+          { content: 'R5 COMPORTAMIENTO', colSpan: 4, styles: { halign: 'center', fillColor: [24, 55, 100] } }
+        ],
+        [
+          'I', 'II', 'III', 'IV',
+          'I', 'II', 'III', 'IV',
+          'I', 'II', 'III', 'IV',
+          'I', 'II', 'III', 'IV',
+          'I', 'II', 'III', 'IV'
+        ]
+      ],
+      tableRows,
+      columnStyles: docColStyles,
+      styles: {
+        cellPadding: { top: 3, right: 1.5, bottom: 3, left: 1.5 }
+      }
+    });
+  };
+
+  buildJecDocTable('momento1', 'a', '1er monitoreo');
+  buildJecDocTable('momento2', 'b', '2do monitoreo');
+
+  // -------------------------------------------------------------------------
+  // VI. COMPONENTES E INDICADORES DE MONITOREO (31 ÍTEMS CON HALLAZGOS)
+  // -------------------------------------------------------------------------
+  const respuestas = sub.respuestas || [];
+  const hallazgosMap = sub.observacionesItems || {};
+  let totalSi = 0;
+  let totalNo = 0;
+
+  JEC_SECCIONES.forEach(sec => {
+    let secSi = 0, secNo = 0;
+
+    const secRows = (sec.items || []).map(it => {
+      const resp = respuestas.find(r => r.id === it.id || Number(r.num) === Number(it.num)) || {};
+      const val = (resp.valor || '').toLowerCase();
+      const hallazgo = resp.hallazgos || resp.observaciones || hallazgosMap[it.id] || '—';
+
+      const isSi = val === 'si' || val === 'sí';
+      const isNo = val === 'no';
+
+      if (isSi) { secSi++; totalSi++; }
+      else if (isNo) { secNo++; totalNo++; }
+
+      const makeCheckCell = (active, color) => {
+        if (active) {
+          return {
+            content: '',
+            raw: { isCheckmark: true, color },
+            styles: { halign: 'center', valign: 'middle' }
+          };
+        }
+        return { content: '', styles: { halign: 'center' } };
+      };
+
+      let itemDesc = it.texto;
+      if (it.evidencia) {
+        itemDesc += `\n• Evidencia sugerida: ${it.evidencia}`;
+      }
+
+      return [
+        String(it.num),
+        itemDesc,
+        makeCheckCell(isSi, [5, 150, 105]),
+        makeCheckCell(isNo, [220, 38, 38]),
+        hallazgo || '—'
+      ];
+    });
+
+    // Fila resumen por componente
+    secRows.push([
+      {
+        content: `TOTAL ${sec.nombre.toUpperCase()} — Sí: ${secSi}  ·  No: ${secNo}`,
+        colSpan: 5,
+        styles: {
+          halign: 'right',
+          fontStyle: 'bold',
+          fillColor: [240, 244, 250],
+          textColor: [18, 41, 77],
+          fontSize: 7.5
+        }
+      }
+    ]);
+
+    customTables.push({
+      title: `VI. ${sec.nombre.toUpperCase()}`,
+      subtitle: 'Registra en la columna "Hallazgos" información breve y objetiva sobre lo verificado en cada ítem.',
+      minHeight: 70,
+      tableHeaders: ['N.°', 'Indicador / Aspecto Verificado', 'Sí', 'No', 'Hallazgos'],
+      tableRows: secRows,
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 22, fontStyle: 'bold' },
+        1: { halign: 'left', cellWidth: 260, fontSize: 7.2 },
+        2: { halign: 'center', cellWidth: 26 },
+        3: { halign: 'center', cellWidth: 26 },
+        4: { halign: 'left', cellWidth: 177, fontSize: 7 }
+      },
+      headStyles: {
+        fillColor: [18, 41, 77],
+        fontSize: 8,
+        fontStyle: 'bold'
+      },
+      didDrawCell: (data) => {
+        if (data.cell && data.cell.raw && data.cell.raw.isCheckmark) {
+          const doc = data.doc;
+          if (!doc) return;
+          const cx = data.cell.x + data.cell.width / 2;
+          const cy = data.cell.y + data.cell.height / 2;
+          const col = data.cell.raw.color || [5, 150, 105];
+          drawVectorCheckmark(doc, cx, cy, 7.5, col, 1.4);
+        }
+      }
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // VII. NIVEL DE IMPLEMENTACIÓN DEL MSE JEC (TABLA OFICIAL DE RESULTADOS)
+  // -------------------------------------------------------------------------
+  const conteoFinalSi = sub.conteo_si !== undefined ? sub.conteo_si : totalSi;
+  const nivelFinal = getNivelLogroJec(conteoFinalSi);
+
+  customTables.push({
+    title: 'VII. NIVEL DE IMPLEMENTACIÓN DEL MSE JEC',
+    subtitle: 'Nota: El nivel de implementación se determina a partir del total de respuestas afirmativas registradas en la ficha (MINEDU).',
+    minHeight: 50,
+    tableHeaders: ['Nivel de Implementación', 'Rango Oficial de Respuestas "Sí"', 'Resultado Obtenido'],
+    tableRows: [
+      [
+        'Implementación lograda',
+        'De 24 a 31 respuestas "Sí"',
+        conteoFinalSi >= 24 ? `✓ NIVEL ALCANZADO (${conteoFinalSi} respuestas "Sí")` : '—'
+      ],
+      [
+        'Implementación parcial',
+        'De 12 a 23 respuestas "Sí"',
+        (conteoFinalSi >= 12 && conteoFinalSi <= 23) ? `✓ NIVEL ALCANZADO (${conteoFinalSi} respuestas "Sí")` : '—'
+      ],
+      [
+        'Implementación incipiente',
+        'De 0 a 11 respuestas "Sí"',
+        conteoFinalSi <= 11 ? `✓ NIVEL ALCANZADO (${conteoFinalSi} respuestas "Sí")` : '—'
+      ]
+    ],
+    columnStyles: {
+      0: { cellWidth: 170, fontStyle: 'bold' },
+      1: { cellWidth: 170, halign: 'center' },
+      2: { cellWidth: 171, halign: 'center', fontStyle: 'bold' }
+    },
+    headStyles: {
+      fillColor: [18, 41, 77],
+      fontSize: 8,
+      fontStyle: 'bold'
+    },
+    didParseCell: (data) => {
+      // Resaltar la fila ganadora
+      if (data.section === 'body') {
+        const isTargetRow = (data.row.index === 0 && conteoFinalSi >= 24) ||
+                            (data.row.index === 1 && conteoFinalSi >= 12 && conteoFinalSi <= 23) ||
+                            (data.row.index === 2 && conteoFinalSi <= 11);
+        if (isTargetRow) {
+          data.cell.styles.fillColor = conteoFinalSi >= 24 ? [220, 252, 231] : (conteoFinalSi >= 12 ? [254, 243, 199] : [254, 226, 226]);
+          data.cell.styles.textColor = conteoFinalSi >= 24 ? [21, 128, 61] : (conteoFinalSi >= 12 ? [180, 83, 9] : [185, 28, 28]);
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // VIII. COMPROMISOS Y OBSERVACIONES
+  // -------------------------------------------------------------------------
+  const compDir = sub.compromisoDirector || (sub.compromisos && sub.compromisos.directivo) || '—';
+  const compEsp = sub.compromisoMonitor || (sub.compromisos && sub.compromisos.especialista) || '—';
+  const obsGen = sub.observaciones || '—';
+
+  customTables.push({
+    title: 'VIII. COMPROMISOS ASUMIDOS Y OBSERVACIONES GENERALES',
+    minHeight: 45,
+    tableHeaders: ['Actor / Aspecto', 'Compromiso / Detalle Registrado'],
+    tableRows: [
+      ['Compromiso del Directivo de la I.E.', compDir],
+      ['Compromiso del Especialista / Monitor UGEL 03', compEsp],
+      ['Observaciones Generales de la Visita', obsGen]
+    ],
+    columnStyles: {
+      0: { cellWidth: 160, fontStyle: 'bold', fontSize: 8 },
+      1: { cellWidth: 351, fontSize: 7.5 }
+    },
+    headStyles: {
+      fillColor: [18, 41, 77],
+      fontSize: 8,
+      fontStyle: 'bold'
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // FIRMAS
+  // -------------------------------------------------------------------------
+  const signaturesList = [
+    {
+      cargo: 'Director(a) de la Institución Educativa',
+      nombre: formatPersonName(dirNombre),
+      entidad: ieName,
+      leyenda: `DNI: ${dirDni}`
+    },
+    {
+      cargo: 'Especialista / Monitor JEC',
+      nombre: formatPersonName(sub.responsable || 'Especialista UGEL 03'),
+      entidad: 'UGEL 03 · AGEBRE',
+      leyenda: `DNI: ${sub.monitorDni || '—'}`
+    }
+  ];
+
+  const pdfFilename = `Ficha_JEC_${(ieName || 'IE').replace(/[^a-zA-Z0-9]/g, '_')}_2026.pdf`;
+
+  return await createOfficialPdfDocument({
+    title,
+    subtitle,
+    orientation: 'portrait',
+    introParagraph: `En Lima, a la fecha ${fechaVisita}, se procedió a realizar la jornada de monitoreo y asistencia técnica a la implementación del Modelo de Servicio Educativo Jornada Escolar Completa (JEC) en la IE ${ieName} (${codModular}), a cargo del especialista ${sub.responsable || 'Especialista UGEL 03'}.`,
+    metaGrid,
+    customTables,
+    signatures: signaturesList,
+    lugarFecha: `Lima, ${fechaVisita}`,
+    filename: pdfFilename,
+    marcaBorrador: sub.esBorrador === true
+  });
+}
+
+/**
  * Exporta una Ficha de Monitoreo Individual a PDF en orientación VERTICAL (Portrait)
  */
 export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, downloadConfig = {}) {
@@ -2575,6 +3041,10 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
 
   if (isFichaEbrGestionEscolar(fichaType)) {
     return await exportEbrGestionFichaPdf(sub, fichaType, colegio, downloadConfig);
+  }
+
+  if (isFichaJec(fichaType)) {
+    return await exportJecFichaPdf(sub, fichaType, colegio, downloadConfig);
   }
 
   const rawTypeName = (fichaType.nombre || 'EVALUACIÓN').trim();
@@ -2616,6 +3086,27 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
   const horaTermino = sub.horaTermino || getExtraVal('hora de término') || getExtraVal('hora de termino') || '';
   const horarioStr = (horaInicio && horaTermino) ? `${horaInicio} – ${horaTermino}` : (horaInicio || horaTermino || '—');
   const codLocal = sub.codigoModular || (colegio ? (colegio.codigoLocal || colegio.codigoModular) : '') || '';
+
+  const isCoordTutoria = isFichaCoordTutoriaJec(fichaType);
+  let tutoriaPts = sub.puntaje;
+  let tutoriaNivel = sub.nivel_cumplimiento;
+  let tutoriaDesc = sub.descripcion_cumplimiento;
+  let tutoriaPct = null;
+
+  if (isCoordTutoria) {
+    if (tutoriaPts === undefined || tutoriaPts === null || !tutoriaNivel) {
+      const stats = calcScore(sub.respuestas || [], { ...fichaType, regla_nivel: fichaType.regla_nivel || REGLA_NIVEL_COORD_TUTORIA_JEC });
+      tutoriaPts = stats.puntaje;
+      tutoriaNivel = stats.estado.nivel;
+      tutoriaDesc = stats.estado.descripcion;
+      tutoriaPct = stats.pct;
+    } else {
+      tutoriaPct = Math.round((tutoriaPts / 63) * 100);
+      if (!tutoriaDesc) {
+        tutoriaDesc = getNivelCoordTutoriaJec(tutoriaPts).descripcion;
+      }
+    }
+  }
 
   const customTables = [];
   let tableHeaders = [];
@@ -3132,7 +3623,40 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
     // =========================================================================
     // Modo tradicional para los otros tipos de ficha
     // =========================================================================
-    tableHeaders = ['N.°', 'Sección / Indicador de Evaluación', 'Resultado'];
+    if (isCoordTutoria) {
+      customTables.push({
+        title: 'NIVEL DE CUMPLIMIENTO OFICIAL (SEGÚN PUNTAJE OBTENIDO)',
+        subtitle: 'Escala de valoración establecida en la Ficha de Monitoreo a las Funciones del Coordinador(a) de Tutoría (JEC)',
+        minHeight: 75,
+        tableHeaders: ['Nivel de cumplimiento', 'Puntaje', 'Descripción oficial de la función'],
+        tableRows: [
+          [
+            { content: 'Cumple' + (tutoriaNivel === 'Cumple' ? '  ✓ (OBTENIDO)' : ''), styles: { halign: 'center', fontStyle: 'bold', fillColor: tutoriaNivel === 'Cumple' ? [209, 250, 229] : [255, 255, 255], textColor: [4, 120, 87] } },
+            { content: 'De 53 a 63', styles: { halign: 'center', fontStyle: 'bold', fillColor: tutoriaNivel === 'Cumple' ? [209, 250, 229] : [255, 255, 255] } },
+            { content: 'El/la coordinador(a) de tutoría cumple con la función de manera oportuna, pertinente y sostenida.', styles: { fontSize: 7.5, fillColor: tutoriaNivel === 'Cumple' ? [209, 250, 229] : [255, 255, 255] } }
+          ],
+          [
+            { content: 'Cumple parcialmente' + (tutoriaNivel === 'Cumple parcialmente' ? '  ✓ (OBTENIDO)' : ''), styles: { halign: 'center', fontStyle: 'bold', fillColor: tutoriaNivel === 'Cumple parcialmente' ? [254, 243, 199] : [255, 255, 255], textColor: [180, 83, 9] } },
+            { content: 'De 42 a 52', styles: { halign: 'center', fontStyle: 'bold', fillColor: tutoriaNivel === 'Cumple parcialmente' ? [254, 243, 199] : [255, 255, 255] } },
+            { content: 'El/la coordinador(a) de tutoría cumple parcialmente con la función o se encuentra en proceso de consolidación.', styles: { fontSize: 7.5, fillColor: tutoriaNivel === 'Cumple parcialmente' ? [254, 243, 199] : [255, 255, 255] } }
+          ],
+          [
+            { content: 'No cumple' + (tutoriaNivel === 'No cumple' ? '  ✓ (OBTENIDO)' : ''), styles: { halign: 'center', fontStyle: 'bold', fillColor: tutoriaNivel === 'No cumple' ? [254, 226, 226] : [255, 255, 255], textColor: [185, 28, 28] } },
+            { content: 'De 21 a 41', styles: { halign: 'center', fontStyle: 'bold', fillColor: tutoriaNivel === 'No cumple' ? [254, 226, 226] : [255, 255, 255] } },
+            { content: 'El/la coordinador(a) de tutoría no cumple o cumple de forma mínima, sin responder al propósito pedagógico esperado.', styles: { fontSize: 7.5, fillColor: tutoriaNivel === 'No cumple' ? [254, 226, 226] : [255, 255, 255] } }
+          ]
+        ],
+        columnStyles: {
+          0: { cellWidth: 110 },
+          1: { cellWidth: 65 },
+          2: { cellWidth: 336 }
+        }
+      });
+    }
+
+    tableHeaders = isCoordTutoria
+      ? ['N.°', 'Sección / Función Monitoreada', 'Calificación (1–3)']
+      : ['N.°', 'Sección / Indicador de Evaluación', 'Resultado'];
     let itemCounter = 1;
 
     if (fichaType.secciones && fichaType.secciones.length > 0) {
@@ -3140,19 +3664,21 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
         (sec.items || []).forEach(it => {
           const resp = respuestas.find(r => r.id === it.id);
           const val = resp ? resp.valor : 'Sin datos';
+          const valText = (isCoordTutoria && val && val !== 'Sin datos') ? `${val} pts` : val;
           tableRows.push([
             String(itemCounter++),
             `${sec.nombre}\n${it.texto}`,
-            val
+            valText
           ]);
         });
       });
     } else {
       respuestas.forEach(r => {
+        const valText = (isCoordTutoria && r.valor && r.valor !== '—') ? `${r.valor} pts` : (r.valor || '—');
         tableRows.push([
           String(itemCounter++),
           `${r.seccion || 'General'}\n${r.texto || 'Indicador'}`,
-          r.valor || '—'
+          valText
         ]);
       });
     }
@@ -3189,7 +3715,11 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
     { label: 'N.° de Visita', value: numVisita },
     { label: 'Especialista / Monitor', value: responsable },
     { label: 'Director(a)', value: director },
-    { label: 'Código Modular / Local', value: codLocal || '—' }
+    { label: 'Código Modular / Local', value: codLocal || '—' },
+    ...(isCoordTutoria ? [
+      { label: 'Puntaje Total Obtenido', value: `${tutoriaPts} / 63 puntos (${tutoriaPct}%)` },
+      { label: 'Nivel de Cumplimiento', value: `${(tutoriaNivel || '').toUpperCase()}` }
+    ] : [])
   ];
 
   await createOfficialPdfDocument({
@@ -3257,9 +3787,15 @@ export async function exportConsolidadoReportPdf(statsList, fichaType, filters =
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
   statsList.forEach(x => {
     if (x.st.pct === null) dist.none++;
-    else if (x.st.pct >= 85) dist.logrado++;
-    else if (x.st.pct >= 70) dist.proceso++;
-    else dist.inicio++;
+    else {
+      const lbl = (x.st?.estado?.estado_panel || x.st?.estado?.label || '').toLowerCase();
+      if (lbl.includes('no cumple') || lbl.includes('inici') || lbl.includes('incipient') || lbl.includes('mejorar')) dist.inicio++;
+      else if (lbl.includes('parcial') || lbl.includes('proces')) dist.proceso++;
+      else if (lbl.includes('lograd') || lbl.includes('cumple')) dist.logrado++;
+      else if (x.st.pct >= 85) dist.logrado++;
+      else if (x.st.pct >= 70) dist.proceso++;
+      else dist.inicio++;
+    }
   });
 
   const pctLogrado = totalFichas ? Math.round((dist.logrado / totalFichas) * 100) : 0;
@@ -3929,8 +4465,17 @@ export async function exportConsolidadoReportPdf(statsList, fichaType, filters =
   const detailTableRows = detailSortedStats.map((x, idx) => {
     const s = x.s;
     const st = x.st;
-    const pctVal = st.pct !== null ? `${st.pct}%` : '—';
-    const statusLabel = st.pct === null ? 'Sin datos' : (st.pct >= 85 ? 'Logrado' : (st.pct >= 70 ? 'En proceso' : 'Por mejorar'));
+    const isEbr = isFichaEbrGestionEscolar(s);
+    const isCoord = isFichaCoordTutoriaJec(s);
+    let pctVal = st.pct !== null ? `${st.pct}%` : '—';
+    if (isEbr && st.puntaje !== undefined && st.puntaje !== null) {
+      const v = getMomentoVisitaEbr(s);
+      const maxPts = st.puntaje_max || (v === 2 ? 69 : 57);
+      pctVal = `${st.puntaje}/${maxPts} (${st.pct}%)`;
+    } else if (isCoord && st.puntaje !== undefined && st.puntaje !== null) {
+      pctVal = `${st.puntaje}/63 (${st.pct}%)`;
+    }
+    const statusLabel = (st.estado && st.estado.label) ? st.estado.label : (st.pct === null ? 'Sin datos' : (st.pct >= 85 ? 'Logrado' : (st.pct >= 70 ? 'En proceso' : 'Por mejorar')));
     const ugelText = s.ugel || 'UGEL 03';
     const redText = s.red ? (s.red.toLowerCase().includes('red') || s.red.toLowerCase().includes('rei') ? s.red : 'RED ' + s.red) : 'No aplica';
     const ugelRed = `${ugelText}\n${redText}`;

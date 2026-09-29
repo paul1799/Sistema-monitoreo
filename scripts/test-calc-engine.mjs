@@ -9,7 +9,19 @@
  * No requiere instalación de dependencias adicionales.
  */
 
-import { calcScore, puntajeItem, estadoPorRegla, REGLA_NIVEL_JEC, REGLA_NIVEL_GENERICA } from '../public/js/calcEngine.js';
+import {
+  calcScore,
+  puntajeItem,
+  estadoPorRegla,
+  REGLA_NIVEL_JEC,
+  REGLA_NIVEL_GENERICA,
+  REGLA_NIVEL_EBR_GESTION_M1,
+  REGLA_NIVEL_EBR_GESTION_M2,
+  getReglaNivelEbrGestion,
+  getNivelEbrGestion,
+  getMomentoVisitaEbr,
+  isFichaEbrGestionEscolar,
+} from '../public/js/calcEngine.js';
 
 /* ─── Mini-framework de tests ─────────────────────────────────────────── */
 let passed = 0;
@@ -273,13 +285,65 @@ suite('Anexo B.1 — JEC: casos límite', () => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════
-   SUITE 4 — B.4: EBR 2do momento con escala IPL y "No corresponde"
+   SUITE 4 — EBR Gestión Escolar: Reglas oficiales 1er y 2do Momento
+   1ER MOMENTO (19 ítems · Máx 57 pts):
+     0 - 19  → INICIO
+     20 - 38 → PROCESO
+     39 - 57 → LOGRADO
+   2DO MOMENTO (23 ítems · Máx 69 pts):
+     0 - 23  → INICIO
+     24 - 46 → PROCESO
+     47 - 69 → LOGRADO
    ═══════════════════════════════════════════════════════════════════════ */
-suite('Anexo B.4 — EBR IPL con No corresponde (ítem 16 = nc/na)', () => {
-  // 23 ítems; ítem 16 = No corresponde; ítems 2 y 15 = Proceso; el resto = Logrado
-  // Ítems aplicables: 22; Logrado: 20; Proceso: 2
-  // pct = round((20*1 + 2*0.5) / 22 * 100) = round(21/22 * 100) = round(95.45) = 95%
-  // Estado: 95% → Logrado (≥ 85%)
+suite('EBR Gestión Escolar — Cortes exactos 1er Momento (Máx 57 pts)', () => {
+  assertEqual(estadoPorRegla({ puntaje: 0 },  REGLA_NIVEL_EBR_GESTION_M1).nivel, 'Inicio',  'M1: 0 pts → Inicio');
+  assertEqual(estadoPorRegla({ puntaje: 19 }, REGLA_NIVEL_EBR_GESTION_M1).nivel, 'Inicio',  'M1: 19 pts (límite sup) → Inicio');
+  assertEqual(estadoPorRegla({ puntaje: 20 }, REGLA_NIVEL_EBR_GESTION_M1).nivel, 'Proceso', 'M1: 20 pts (límite inf) → Proceso');
+  assertEqual(estadoPorRegla({ puntaje: 38 }, REGLA_NIVEL_EBR_GESTION_M1).nivel, 'Proceso', 'M1: 38 pts (límite sup) → Proceso');
+  assertEqual(estadoPorRegla({ puntaje: 39 }, REGLA_NIVEL_EBR_GESTION_M1).nivel, 'Logrado', 'M1: 39 pts (límite inf) → Logrado');
+  assertEqual(estadoPorRegla({ puntaje: 57 }, REGLA_NIVEL_EBR_GESTION_M1).nivel, 'Logrado', 'M1: 57 pts (límite sup) → Logrado');
+
+  // Validar estado_panel y clase CSS
+  const res38 = estadoPorRegla({ puntaje: 38 }, REGLA_NIVEL_EBR_GESTION_M1);
+  assertEqual(res38.estado_panel, 'En proceso', 'M1: 38 pts estado_panel = En proceso');
+  assertEqual(res38.cls, 'st-proceso', 'M1: 38 pts cls = st-proceso');
+});
+
+suite('EBR Gestión Escolar — Cortes exactos 2do Momento (Máx 69 pts)', () => {
+  assertEqual(estadoPorRegla({ puntaje: 0 },  REGLA_NIVEL_EBR_GESTION_M2).nivel, 'Inicio',  'M2: 0 pts → Inicio');
+  assertEqual(estadoPorRegla({ puntaje: 23 }, REGLA_NIVEL_EBR_GESTION_M2).nivel, 'Inicio',  'M2: 23 pts (límite sup) → Inicio');
+  assertEqual(estadoPorRegla({ puntaje: 24 }, REGLA_NIVEL_EBR_GESTION_M2).nivel, 'Proceso', 'M2: 24 pts (límite inf) → Proceso');
+  assertEqual(estadoPorRegla({ puntaje: 46 }, REGLA_NIVEL_EBR_GESTION_M2).nivel, 'Proceso', 'M2: 46 pts (límite sup) → Proceso');
+  assertEqual(estadoPorRegla({ puntaje: 47 }, REGLA_NIVEL_EBR_GESTION_M2).nivel, 'Logrado', 'M2: 47 pts (límite inf) → Logrado');
+  assertEqual(estadoPorRegla({ puntaje: 69 }, REGLA_NIVEL_EBR_GESTION_M2).nivel, 'Logrado', 'M2: 69 pts (límite sup) → Logrado');
+
+  // Validar estado_panel y clase CSS
+  const res46 = estadoPorRegla({ puntaje: 46 }, REGLA_NIVEL_EBR_GESTION_M2);
+  assertEqual(res46.estado_panel, 'En proceso', 'M2: 46 pts estado_panel = En proceso');
+  assertEqual(res46.cls, 'st-proceso', 'M2: 46 pts cls = st-proceso');
+});
+
+suite('EBR Gestión Escolar — Helpers de momento y regla', () => {
+  assertEqual(getMomentoVisitaEbr({ visita: 1 }), 1, 'Visita 1 → momento 1');
+  assertEqual(getMomentoVisitaEbr({ visita: '2' }), 2, 'Visita "2" → momento 2');
+  assertEqual(getMomentoVisitaEbr({ nombre: 'Ficha 1er Momento' }), 1, 'Nombre "1er Momento" → momento 1');
+  assertEqual(getMomentoVisitaEbr({ nombre: 'Ficha 2do Momento' }), 2, 'Nombre "2do Momento" → momento 2');
+
+  const regla1 = getReglaNivelEbrGestion(1);
+  assertEqual(regla1.maxPuntaje, 57, 'Regla M1 maxPuntaje = 57');
+  const regla2 = getReglaNivelEbrGestion(2);
+  assertEqual(regla2.maxPuntaje, 69, 'Regla M2 maxPuntaje = 69');
+
+  assertEqual(getNivelEbrGestion(19, 1).nivel, 'Inicio', 'getNivelEbrGestion 19 pts M1 → Inicio');
+  assertEqual(getNivelEbrGestion(20, 1).nivel, 'Proceso', 'getNivelEbrGestion 20 pts M1 → Proceso');
+  assertEqual(getNivelEbrGestion(39, 1).nivel, 'Logrado', 'getNivelEbrGestion 39 pts M1 → Logrado');
+
+  assertEqual(getNivelEbrGestion(23, 2).nivel, 'Inicio', 'getNivelEbrGestion 23 pts M2 → Inicio');
+  assertEqual(getNivelEbrGestion(24, 2).nivel, 'Proceso', 'getNivelEbrGestion 24 pts M2 → Proceso');
+  assertEqual(getNivelEbrGestion(47, 2).nivel, 'Logrado', 'getNivelEbrGestion 47 pts M2 → Logrado');
+});
+
+suite('EBR 2do Momento — calcScore con escala IPL oficial y exclusión de NC', () => {
   const itemIds = [
     'ge_1','ge_2','ge_3','ge_4','ge_5','ge_6','ge_7','ge_8','ge_9',
     'ge_10','ge_11','ge_12','ge_13','ge_14','ge_15','ge_16','ge_17','ge_18','ge_19',
@@ -288,7 +352,7 @@ suite('Anexo B.4 — EBR IPL con No corresponde (ítem 16 = nc/na)', () => {
 
   const valoresBase = {};
   for (const id of itemIds) valoresBase[id] = 'logrado';
-  // Ítems en Proceso
+  // Ítems en Proceso (2 pts cada uno)
   valoresBase['ge_2']  = 'proceso';
   valoresBase['ge_15'] = 'proceso';
   // Ítem 16 = No corresponde (excluido)
@@ -296,14 +360,18 @@ suite('Anexo B.4 — EBR IPL con No corresponde (ítem 16 = nc/na)', () => {
 
   const result = calcScore(resp(valoresBase), {
     ...FT_EBR,
+    visita: 2,
     secciones: [
       { nombre: 'Todos los ítems', items: itemIds.map(id => ({ id })) },
     ],
   });
 
-  // 22 ítems aplicables: 20 Logrado (×1) + 2 Proceso (×0.5) = 21/22 ≈ 95%
-  assertEqual(result.pct, 95, 'pct = 95% (ge_16 excluido del denominador)');
-  assertEqual(result.estado.estado_panel, 'Logrado', 'Estado = Logrado (≥ 85%)');
+  // 20 Logrado (20 * 3 = 60) + 2 Proceso (2 * 2 = 4) = 64 puntos de 69 oficiales
+  assertEqual(result.puntaje, 64, 'Puntaje total = 64 pts');
+  assertEqual(result.puntaje_max, 69, 'Puntaje máximo oficial M2 = 69 pts');
+  assertEqual(result.pct, 93, 'pct = 93% (64 / 69 * 100)');
+  assertEqual(result.estado.nivel, 'Logrado', 'Nivel = Logrado (64 pts está en 47-69)');
+  assertEqual(result.estado.estado_panel, 'Logrado', 'Estado panel = Logrado');
   assert(result.secciones[0].answered === 22, 'answered = 22 (ge_16 excluido)');
 });
 
@@ -325,6 +393,7 @@ suite('B.4 — EBR legacy: fichas guardadas con si/no deben calcular (no "Sin da
   assert(result.pct !== null, 'pct no es null (fichas legacy sí calculan)');
   assert(result.estado.estado_panel !== 'Sin datos', 'No aparece "Sin datos" con valores legacy');
 });
+
 
 /* ═══════════════════════════════════════════════════════════════════════
    SUITE 5 — B.5: Materiales CEBE con N/A e ítem sin responder
