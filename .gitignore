@@ -3,3 +3,5 @@ node_modules/
 scripts/serviceAccountKey.json
 *.log
 scripts/serviceAccountKey*
+.vscode/
+.antigravity/
