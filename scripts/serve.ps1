@@ -23,9 +23,32 @@ try {
     $response = $context.Response
     
     $rawPath = $request.Url.LocalPath.TrimStart('/')
+    if ($request.HttpMethod -eq "POST" -and $rawPath -eq "save-sample") {
+      try {
+        $fileName = $request.Headers["X-File-Name"]
+        if ([string]::IsNullOrWhiteSpace($fileName)) { $fileName = "MATRIZ_DE_SEGUIMIENTO_2026_MODELO_JEC_2026-09-30.xlsx" }
+        $destDir = (Resolve-Path (Join-Path $PSScriptRoot "..\docs\muestras")).Path
+        $destPath = Join-Path $destDir $fileName
+        $fs = [System.IO.File]::Create($destPath)
+        $request.InputStream.CopyTo($fs)
+        $fs.Close()
+        $respBytes = [System.Text.Encoding]::UTF8.GetBytes("OK")
+        $response.StatusCode = 200
+        $response.Headers.Add("Access-Control-Allow-Origin", "*")
+        $response.OutputStream.Write($respBytes, 0, $respBytes.Length)
+      } catch {
+        $response.StatusCode = 500
+        $errBytes = [System.Text.Encoding]::UTF8.GetBytes("Error: $_")
+        $response.OutputStream.Write($errBytes, 0, $errBytes.Length)
+      } finally {
+        $response.Close()
+      }
+      continue
+    }
+
     if ([string]::IsNullOrWhiteSpace($rawPath)) { $rawPath = "index.html" }
     $filePath = Join-Path $root ($rawPath -replace '/', '\')
-    
+
     try {
       if (Test-Path $filePath -PathType Leaf) {
         $bytes = [System.IO.File]::ReadAllBytes($filePath)

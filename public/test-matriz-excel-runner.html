@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Runner: Matriz de Seguimiento 2026 Excel (.xlsx)</title>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <style>
+    body {
+      padding: 24px;
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    h1 { color: #38bdf8; margin-top: 0; }
+    .testCard {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      border: 1px solid #334155;
+    }
+    .badge-test {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 12px;
+    }
+    .badge-pass { background: #166534; color: #4ade80; }
+    .badge-fail { background: #991b1b; color: #f87171; }
+    table.resTable {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    table.resTable th, table.resTable td {
+      border: 1px solid #334155;
+      padding: 10px;
+      text-align: left;
+      font-size: 13.5px;
+    }
+    table.resTable th { background: #0f172a; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <h1>Suite de Pruebas: Exportación Matriz de Seguimiento 2026 (ExcelJS)</h1>
+  <div id="statusCard" class="testCard">Ejecutando pruebas unitarias y de integración...</div>
+  
+  <div id="resultsCard" class="testCard" style="display:none;">
+    <h3>Resultados de Verificación Automatizada</h3>
+    <table class="resTable">
+      <thead>
+        <tr>
+          <th style="width: 50px;">#</th>
+          <th style="width: 300px;">Criterio / Prueba</th>
+          <th style="width: 100px;">Estado</th>
+          <th>Detalle de Verificación</th>
+        </tr>
+      </thead>
+      <tbody id="resultsTbody"></tbody>
+    </table>
+  </div>
+
+  <script type="module">
+    import {
+      exportarMatrizSeguimiento,
+      colToLetter,
+      normalizarPersona,
+      formatDni,
+      normalizarCondicion,
+      cleanEmail,
+      cleanTelefono,
+      isPlaceholderPersona,
+      normalizarEscala1_3,
+      normalizarSiNoNa,
+      parseDateOnlyToUtcDate,
+      formatDateOnlyForExcel,
+      formatObservaciones,
+      formatCompromisos,
+      setSafeCellValue,
+      _construirHojaMatrizJec,
+      _construirHojaMonitoreoDocente
+    } from './js/exportarMatriz.js?v=20260930_v2';
+    import {
+      getMatrizConfig,
+      ITEMS_MODELO_JEC,
+      ITEMS_COORD_TUTORIA_JEC,
+      ITEMS_COORD_PEDAGOGICO,
+      LIMITES_NIVEL_FICHAS,
+      MAPEO_COLUMNAS_JEC
+    } from './js/matrizConfig.js?v=20260930_v2';
+
+    const testResults = [];
+
+    function assert(name, condition, detail = '') {
+      testResults.push({ name, pass: !!condition, detail: detail || (condition ? 'OK' : 'FALLÓ') });
+    }
+
+    async function runSuite() {
+      try {
+        // Test 1: Helper colToLetter
+        assert('colToLetter convierte índices correctamente',
+          colToLetter(1) === 'A' &&
+          colToLetter(26) === 'Z' &&
+          colToLetter(27) === 'AA' &&
+          colToLetter(28) === 'AB' &&
+          colToLetter(55) === 'BC' &&
+          colToLetter(75) === 'BW' &&
+          colToLetter(80) === 'CB' &&
+          colToLetter(82) === 'CD',
+          `1=A, 26=Z, 27=AA, 28=AB, 75=BW, 80=CB, 82=CD`
+        );
+
+        // Test 2: Configuración Ficha A (MODELO JEC)
+        const configJec = getMatrizConfig({ id: 'ft_msejec_2do', nombre: 'Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC' });
+        assert('Config Ficha A tiene 31 indicadores oficiales en 3 componentes',
+          configJec.items.length === 31,
+          `Total ítems: ${configJec.items.length} (Pedagógico: 9, Gestión: 11, Soporte: 11)`
+        );
+
+        assert('Config Ficha A límites de nivel según regla oficial del sistema (conteo de Sí)',
+          configJec.limites.tipo === 'conteo' && configJec.limites.max === 31 && configJec.limites.limInicio === 11 && configJec.limites.limProceso === 23,
+          `MAX: ${configJec.limites.max}, INICIO <= ${configJec.limites.limInicio}, PROCESO <= ${configJec.limites.limProceso}`
+        );
+
+        // Test 3: Configuración Ficha B (COORD. TUTORIA JEC)
+        const configTutoria = getMatrizConfig({ id: 'ft_coord_tutoria_jec', nombre: 'Monitoreo a las Funciones del Coordinador(a) de Tutoría (JEC)' });
+        assert('Config Ficha B tiene 21 ítems oficiales en 5 aspectos',
+          configTutoria.items.length === 21,
+          `Total ítems: ${configTutoria.items.length} en 5 aspectos`
+        );
+
+        assert('Config Ficha B límites de nivel configurados',
+          configTutoria.limites.max === 63 && configTutoria.limites.limInicio === 41 && configTutoria.limites.limProceso === 52,
+          `MAX: ${configTutoria.limites.max}, INICIO <= ${configTutoria.limites.limInicio}, PROCESO <= ${configTutoria.limites.limProceso}`
+        );
+
+        // Test 4: Configuración Ficha C (COORD. PEDAGOGICO)
+        const configPedag = getMatrizConfig({ id: 'ft_coord_pedagogico', nombre: 'Ficha de Monitoreo a las funciones que cumple el/la Coordinador(a) Pedagógico' });
+        assert('Config Ficha C tiene 21 ítems oficiales en 5 aspectos',
+          configPedag.items.length === 21,
+          `Total ítems: ${configPedag.items.length}`
+        );
+
+        // Test 5: Manejo de 0 registros (debe rechazar sin descargar archivo vacío)
+        let errorZeroCaught = false;
+        try {
+          await exportarMatrizSeguimiento({ statsList: [] });
+        } catch (e) {
+          errorZeroCaught = true;
+        }
+        assert('0 registros lanza error y no descarga archivo vacío',
+          errorZeroCaught,
+          'Rechazó lista vacía con mensaje claro'
+        );
+
+        // =====================================================================
+        // PRUEBAS DE NORMALIZACIÓN DE PERSONAS (normalizarPersona)
+        // =====================================================================
+
+        // Test 6: Persona como objeto plano con alias
+        const pObj = normalizarPersona({
+          nombres: 'JUAN PEREZ GARCIA',
+          num_doc: '6191791',
+          celular: '987654321',
+          condicion_laboral: 'D',
+          email: 'DIRECTOR@UGEL03.GOB.PE'
+        });
+        assert('normalizarPersona procesa objeto con alias correctamente',
+          pObj.nombres === 'JUAN PEREZ GARCIA' &&
+          pObj.dni === '06191791' &&
+          pObj.telefono === '987654321' &&
+          pObj.condicion === 'Designado(a)' &&
+          pObj.correo === 'director@ugel03.gob.pe',
+          `Nombres: ${pObj.nombres}, DNI: ${pObj.dni}, Tel: ${pObj.telefono}, Cond: ${pObj.condicion}, Correo: ${pObj.correo}`
+        );
+
+        // Test 7: Persona como string JSON (caso real de "022 REPUBLICA DE GUATEMALA")
+        const pJsonGuatemala = normalizarPersona(
+          '{"dni":"29672110","telefono":"933483306","condicion":"D","nombres":"PINEDO VEGA LUIS ALBERTO"}'
+        );
+        assert('normalizarPersona extrae JSON string de Director correctamente',
+          pJsonGuatemala.nombres === 'PINEDO VEGA LUIS ALBERTO' &&
+          pJsonGuatemala.dni === '29672110' &&
+          pJsonGuatemala.telefono === '933483306' &&
+          pJsonGuatemala.condicion === 'Designado(a)' &&
+          !pJsonGuatemala.nombres.startsWith('{'),
+          `Nombres: ${pJsonGuatemala.nombres}, DNI: ${pJsonGuatemala.dni}, Tel: ${pJsonGuatemala.telefono}, Cond: ${pJsonGuatemala.condicion}`
+        );
+
+        // Test 8: Persona como string JSON (caso real "24 ROSA IRENE INFANTES DE CANALES")
+        const pJsonCanales = normalizarPersona(
+          '{"dni":"66932770","correo":"misabela28@hotmail.com","condicion":"D","nombres":"ALVAREZ ROBLES ISABELA"}'
+        );
+        assert('normalizarPersona extrae JSON con correo y condición D',
+          pJsonCanales.dni === '66932770' &&
+          pJsonCanales.correo === 'misabela28@hotmail.com' &&
+          pJsonCanales.condicion === 'Designado(a)' &&
+          pJsonCanales.nombres === 'ALVAREZ ROBLES ISABELA',
+          `DNI: ${pJsonCanales.dni}, Correo: ${pJsonCanales.correo}, Cond: ${pJsonCanales.condicion}`
+        );
+
+        // Test 9: String JSON inválido no rompe la ejecución
+        const pJsonInvalido = normalizarPersona('{nombres: invalid_json, dni: 123');
+        assert('String JSON inválido no rompe y se usa como nombre limpio',
+          pJsonInvalido.nombres.includes('nombres:') &&
+          !pJsonInvalido.nombres.startsWith('{') &&
+          pJsonInvalido.dni === '',
+          `Nombres resultantes: "${pJsonInvalido.nombres}"`
+        );
+
+        // Test 10: DNI 7 dígitos completa con cero a 8 dígitos (formatDni)
+        assert('formatDni rellena ceros iniciales hasta 8 dígitos',
+          formatDni('6191791') === '06191791' &&
+          formatDni(6191791) === '06191791' &&
+          formatDni('29672110') === '29672110' &&
+          formatDni('40656140') === '40656140',
+          `6191791 -> ${formatDni('6191791')}, 29672110 -> ${formatDni('29672110')}`
+        );
+
+        // Test 11: Catálogo de condición convierte códigos a etiquetas oficiales
+        assert('normalizarCondicion convierte códigos D, E, N, C a etiquetas oficiales',
+          normalizarCondicion('D') === 'Designado(a)' &&
+          normalizarCondicion('E') === 'Encargado(a)' &&
+          normalizarCondicion('N') === 'Nombrado(a)' &&
+          normalizarCondicion('C') === 'Contratado(a)' &&
+          normalizarCondicion('Designado (D)') === 'Designado(a)' &&
+          normalizarCondicion('Encargado (E)') === 'Encargado(a)',
+          `D->${normalizarCondicion('D')}, E->${normalizarCondicion('E')}, N->${normalizarCondicion('N')}, C->${normalizarCondicion('C')}`
+        );
+
+        // Test 12: Múltiples subdirectores como arreglo
+        const pArreglo = normalizarPersona([
+          { nombres: 'SUBDIRECTOR PRIMARIA', dni: '10293847', telefono: '911223344', condicion: 'D', correo: 'sub1@ugel03.gob.pe' },
+          { nombres: 'SUBDIRECTOR SECUNDARIA', dni: '20394857', telefono: '955667788', condicion: 'E', correo: 'sub2@ugel03.gob.pe' }
+        ]);
+        assert('Múltiples subdirectores se combinan con salto de línea (\\n)',
+          pArreglo.nombres === 'SUBDIRECTOR PRIMARIA\nSUBDIRECTOR SECUNDARIA' &&
+          pArreglo.dni === '10293847\n20394857' &&
+          pArreglo.telefono === '911223344\n955667788' &&
+          pArreglo.condicion === 'Designado(a)\nEncargado(a)' &&
+          pArreglo.correo === 'sub1@ugel03.gob.pe\nsub2@ugel03.gob.pe',
+          `Nombres unidos: "${pArreglo.nombres.replace('\n', ' // ')}"`
+        );
+
+        // Test 13: Persona vacía o placeholder devuelve celdas vacías, nunca null o undefined
+        const pVacia = normalizarPersona(null);
+        const pPlaceholder = normalizarPersona('NO CUENTA CON SUB DIRECTOR');
+        assert('Persona vacía o placeholder no genera texto null, undefined ni [object Object]',
+          pVacia.nombres === '' && pVacia.dni === '' && pVacia.correo === '' &&
+          pPlaceholder.nombres === '' && pPlaceholder.dni === '',
+          'Celdas vacías generadas limpiamente'
+        );
+
+        // Test 14: Enriquecimiento desde Directorio (state.directivos) cuando la ficha no trae teléfono/correo
+        const mockState = {
+          directivos: [
+            {
+              codigoModular: '0345678',
+              cargo: 'Director',
+              apellidosNombres: 'GONZALES PEREZ JUAN CARLOS',
+              dni: '08765432',
+              telefono: '998877665',
+              condicion: 'D',
+              correo: 'dir_directorio@ugel03.gob.pe',
+              estado: 'activo'
+            },
+            {
+              codigoModular: '0345678',
+              cargo: 'Subdirector',
+              apellidosNombres: 'RAMIREZ CHAVEZ ANA MARIA',
+              dni: '10293847',
+              telefono: '912345678',
+              condicion: 'E',
+              correo: 'sub_directorio@ugel03.gob.pe',
+              estado: 'activo'
+            }
+          ],
+          colegios: []
+        };
+
+        const mockSubFichaSinContacto = {
+          codigoModular: '0345678',
+          director: 'GONZALES PEREZ JUAN CARLOS',
+          directorDni: '08765432'
+          // no tiene directorTelefono ni directorCorreo en la ficha
+        };
+
+        const pEnriquecida = normalizarPersona(mockSubFichaSinContacto.director, mockSubFichaSinContacto, 'director', mockState);
+        assert('Enriquecimiento desde Directorio completa teléfono y correo si el DNI coincide',
+          pEnriquecida.dni === '08765432' &&
+          pEnriquecida.telefono === '998877665' &&
+          pEnriquecida.correo === 'dir_directorio@ugel03.gob.pe' &&
+          pEnriquecida.condicion === 'Designado(a)',
+          `Tel: ${pEnriquecida.telefono}, Correo: ${pEnriquecida.correo}, Cond: ${pEnriquecida.condicion}`
+        );
+
+        // Test 15: No mezclar datos si el DNI de la ficha y el del Directorio son diferentes
+        const mockSubOtroDni = {
+          codigoModular: '0345678',
+          director: 'NUEVO DIRECTOR ENCARGADO',
+          directorDni: '44556677' // DNI diferente al del directorio
+        };
+        const pNoMezclada = normalizarPersona(mockSubOtroDni.director, mockSubOtroDni, 'director', mockState);
+        assert('Regla de no mezcla: si los DNI no coinciden no se toman los datos del Directorio',
+          pNoMezclada.dni === '44556677' &&
+          pNoMezclada.telefono === '' &&
+          pNoMezclada.correo === '',
+          `DNI: ${pNoMezclada.dni}, Teléfono se mantuvo vacío: "${pNoMezclada.telefono}"`
+        );
+
+        // Test 16: Obtención de Subdirector desde Directorio para Ficha JEC (que no captura subdirector en su form)
+        const mockSubJecSinSubdir = {
+          codigoModular: '0345678',
+          institucion: 'I.E. 1036 REPUBLICA DE COSTA RICA'
+        };
+        const pSubdirJec = normalizarPersona(null, mockSubJecSinSubdir, 'subdirector', mockState);
+        assert('Subdirector de ficha JEC se obtiene automáticamente del Directorio',
+          pSubdirJec.nombres === 'RAMIREZ CHAVEZ ANA MARIA' &&
+          pSubdirJec.dni === '10293847' &&
+          pSubdirJec.telefono === '912345678' &&
+          pSubdirJec.condicion === 'Encargado(a)' &&
+          pSubdirJec.correo === 'sub_directorio@ugel03.gob.pe',
+          `Subdirector obtenido: ${pSubdirJec.nombres}, DNI: ${pSubdirJec.dni}, Cond: ${pSubdirJec.condicion}`
+        );
+
+        // =====================================================================
+        // TEST 17: Normalizador de escala 1-2-3 (normalizarEscala1_3)
+        // =====================================================================
+        assert('normalizarEscala1_3 convierte valores numéricos, textos y niveles correctamente',
+          normalizarEscala1_3(1) === 1 &&
+          normalizarEscala1_3('1') === 1 &&
+          normalizarEscala1_3('Inicio') === 1 &&
+          normalizarEscala1_3('INICIO') === 1 &&
+          normalizarEscala1_3('I') === 1 &&
+          normalizarEscala1_3(2) === 2 &&
+          normalizarEscala1_3('2') === 2 &&
+          normalizarEscala1_3('Proceso') === 2 &&
+          normalizarEscala1_3('PROCESO') === 2 &&
+          normalizarEscala1_3('P') === 2 &&
+          normalizarEscala1_3(3) === 3 &&
+          normalizarEscala1_3('3') === 3 &&
+          normalizarEscala1_3('Logrado') === 3 &&
+          normalizarEscala1_3('LOGRADO') === 3 &&
+          normalizarEscala1_3('L') === 3 &&
+          normalizarEscala1_3({ valor: 3 }) === 3 &&
+          normalizarEscala1_3({ value: 2 }) === 2 &&
+          normalizarEscala1_3('') === '' &&
+          normalizarEscala1_3(null) === '' &&
+          normalizarEscala1_3(undefined) === '',
+          'Inicio->1, Proceso->2, Logrado->3, {valor:3}->3, vacío->""'
+        );
+
+        // =====================================================================
+        // TEST 17.B: Normalizador Sí / No / N/A de la Ficha JEC (normalizarSiNoNa)
+        // =====================================================================
+        assert('normalizarSiNoNa normaliza SI, NO, N/A sin inventar escala 1-2-3',
+          normalizarSiNoNa('SI') === 'SI' &&
+          normalizarSiNoNa('Sí') === 'SI' &&
+          normalizarSiNoNa('si') === 'SI' &&
+          normalizarSiNoNa('cumple') === 'SI' &&
+          normalizarSiNoNa(true) === 'SI' &&
+          normalizarSiNoNa(1) === 'SI' &&
+          normalizarSiNoNa('NO') === 'NO' &&
+          normalizarSiNoNa('no') === 'NO' &&
+          normalizarSiNoNa('no cumple') === 'NO' &&
+          normalizarSiNoNa(false) === 'NO' &&
+          normalizarSiNoNa(0) === 'NO' &&
+          normalizarSiNoNa('N/A') === 'N/A' &&
+          normalizarSiNoNa('NA') === 'N/A' &&
+          normalizarSiNoNa('no aplica') === 'N/A' &&
+          normalizarSiNoNa('') === '' &&
+          normalizarSiNoNa(null) === '',
+          'SI/Sí/true/1->SI, NO/no/false/0->NO, N/A/no aplica->N/A, vacío->""'
+        );
+
+        // =====================================================================
+        // TEST 18: Formateador de fecha real para Excel (parseDateOnlyToUtcDate)
+        // =====================================================================
+        const dUtc1 = parseDateOnlyToUtcDate('2026-09-29');
+        const dUtc2 = parseDateOnlyToUtcDate('24/09/2026');
+        assert('parseDateOnlyToUtcDate genera Date UTC a medianoche para fecha real Excel',
+          dUtc1 instanceof Date && dUtc1.getUTCFullYear() === 2026 && dUtc1.getUTCMonth() === 8 && dUtc1.getUTCDate() === 29 &&
+          dUtc2 instanceof Date && dUtc2.getUTCFullYear() === 2026 && dUtc2.getUTCMonth() === 8 && dUtc2.getUTCDate() === 24,
+          `2026-09-29 -> ${dUtc1.toISOString()}, 24/09/2026 -> ${dUtc2.toISOString()}`
+        );
+
+        // =====================================================================
+        // TEST 18.B: Formateador de fecha texto sin desfase horario (formatDateOnlyForExcel)
+        // =====================================================================
+        const fIso = formatDateOnlyForExcel('2026-09-29');
+        const fIsoTime = formatDateOnlyForExcel('2026-09-29 05:00');
+        const fDateObj = formatDateOnlyForExcel(new Date(2026, 8, 29));
+        assert('formatDateOnlyForExcel formatea fechas estrictamente a dd/mm/yyyy sin desfase UTC',
+          fIso === '29/09/2026' && fIsoTime === '29/09/2026' && fDateObj === '29/09/2026',
+          `2026-09-29 -> ${fIso}, 2026-09-29 05:00 -> ${fIsoTime}`
+        );
+
+        // =====================================================================
+        // TEST 19: Formateadores de Observaciones y Compromisos
+        // =====================================================================
+        const mockSubCierre = {
+          observaciones: 'Reunión directiva completada.',
+          observacionesItems: { 'Aspecto 02': 'Plan TOECE aprobado.', 'Aspecto 03': 'Horarios colegiados coordinados.' },
+          compromisos: { directivo: 'Cumplir 9 horas de jornada diaria.', especialista: 'Asistencia técnica presencial.' }
+        };
+        const obsFormatted = formatObservaciones(mockSubCierre);
+        const compFormatted = formatCompromisos(mockSubCierre);
+        assert('formatObservaciones y formatCompromisos unen textos con formato oficial',
+          obsFormatted.includes('Reunión directiva completada.') &&
+          obsFormatted.includes('Aspecto 02: Plan TOECE aprobado.') &&
+          compFormatted.includes('• Directivo: Cumplir 9 horas de jornada diaria.') &&
+          compFormatted.includes('• Especialista: Asistencia técnica presencial.'),
+          'Observaciones por aspecto y compromisos con viñetas'
+        );
+
+        // =====================================================================
+        // TEST 20: Protección de celda contra objetos y strings JSON (setSafeCellValue)
+        // =====================================================================
+        const mockCell1 = { value: null };
+        const mockCell2 = { value: null };
+        const mockCell3 = { value: null };
+        setSafeCellValue(mockCell1, { momento1: { total: 33 } }, 'docentes', 'I');
+        setSafeCellValue(mockCell2, '{"momento1":{"total":"33"}}', 'docentes', 'I');
+        setSafeCellValue(mockCell3, 33, 'docentes', 'I');
+        assert('setSafeCellValue bloquea objetos y strings JSON dejando la celda vacía',
+          mockCell1.value === '' && mockCell2.value === '' && mockCell3.value === 33,
+          'Objeto bloqueado, String JSON bloqueado, Número 33 permitido'
+        );
+
+        // =====================================================================
+        // TEST 21: Generación completa de Ficha JEC con los dos registros reales
+        // =====================================================================
+        const mockRespuestasJecCanales = {};
+        // Componente Pedagógico (9 indicadores jec_1 a jec_9)
+        for (let i = 1; i <= 9; i++) mockRespuestasJecCanales[`jec_${i}`] = 'SI';
+        // Componente de Gestión (11 indicadores jec_10 a jec_20)
+        for (let i = 10; i <= 19; i++) mockRespuestasJecCanales[`jec_${i}`] = 'SI';
+        mockRespuestasJecCanales['jec_20'] = 'NO';
+        // Componente de Soporte (11 indicadores jec_21 a jec_31)
+        for (let i = 21; i <= 30; i++) mockRespuestasJecCanales[`jec_${i}`] = 'SI';
+        mockRespuestasJecCanales['jec_31'] = 'N/A';
+
+        const mockRespuestasJecGuatemala = {};
+        // Componente Pedagógico (6 SI, 3 NO)
+        for (let i = 1; i <= 6; i++) mockRespuestasJecGuatemala[`jec_${i}`] = 'SI';
+        for (let i = 7; i <= 9; i++) mockRespuestasJecGuatemala[`jec_${i}`] = 'NO';
+        // Componente de Gestión (7 SI, 4 NO)
+        for (let i = 10; i <= 16; i++) mockRespuestasJecGuatemala[`jec_${i}`] = 'SI';
+        for (let i = 17; i <= 20; i++) mockRespuestasJecGuatemala[`jec_${i}`] = 'NO';
+        // Componente de Soporte (6 SI, 5 NO)
+        for (let i = 21; i <= 26; i++) mockRespuestasJecGuatemala[`jec_${i}`] = 'SI';
+        for (let i = 27; i <= 31; i++) mockRespuestasJecGuatemala[`jec_${i}`] = 'NO';
+
+        const mockStatsListJec = [
+          {
+            s: {
+              id: 'sub_jec_canales',
+              fichaTypeId: 'ft_msejec_2do',
+              institucion: '24 ROSA IRENE INFANTES DE CANALES',
+              codigoModular: '0337766',
+              ugel: 'UGEL 03',
+              red: 'REI 02',
+              fecha: '2026-09-29',
+              secciones: 18,
+              estudiantes: 520,
+              docentesTotal: 33,
+              docentes: {
+                momento1: { total: '33', monitoreados: '33', noMonitoreados: 0, R1: [1, 2, 20, 10], R2: [0, 3, 15, 15], R3: [2, 5, 18, 8], R4: [0, 1, 12, 20], R5: [0, 2, 16, 15] },
+                momento2: { total: '33', monitoreados: '30', noMonitoreados: 3, R1: [0, 1, 22, 7], R2: [0, 2, 18, 10], R3: [1, 3, 20, 6], R4: [0, 0, 10, 20], R5: [0, 1, 15, 14] }
+              },
+              director: '{"dni":"66932770","correo":"misabela28@hotmail.com","condicion":"D","nombres":"ALVAREZ ROBLES ISABELA"}',
+              extras: [
+                { label: 'IE implementa el modelo de Servicio Educativo Secundaria con Formación Técnica', value: 'SI' },
+                { label: 'Cantidad de C.P', value: 3 },
+                { label: 'Cantidad de C.T', value: 2 },
+                { label: 'Porcentaje de avance del monitoreo de inicio', value: '100%' }
+              ],
+              respuestas: mockRespuestasJecCanales,
+              observaciones: 'Visita de asistencia técnica desarrollada con normalidad.',
+              compromisos: {
+                directivo: 'Actualizar las carpetas pedagógicas de los docentes.',
+                especialista: 'Brindar acompañamiento en trabajo colegiado.'
+              }
+            }
+          },
+          {
+            s: {
+              id: 'sub_jec_guatemala',
+              fichaTypeId: 'ft_msejec_2do',
+              institucion: '022 REPUBLICA DE GUATEMALA',
+              codigoModular: '0345678',
+              ugel: 'UGEL 03',
+              red: 'REI 03',
+              fecha: '2026-09-24',
+              secciones: 12,
+              estudiantes: 360,
+              docentesTotal: 24,
+              docentes: {
+                momento1: { total: '24', monitoreados: '24', noMonitoreados: 0, R1: [0, 2, 14, 8], R2: [1, 4, 12, 7], R3: [0, 3, 15, 6], R4: [0, 0, 8, 16], R5: [0, 1, 10, 13] }
+              },
+              director: '{"dni":"29672110","telefono":"933483306","condicion":"D","nombres":"PINEDO VEGA LUIS ALBERTO"}',
+              extras: [
+                { label: 'IE implementa el modelo de Servicio Educativo Secundaria con Formación Técnica', value: 'NO' },
+                { label: 'Cantidad de C.P', value: 2 },
+                { label: 'Cantidad de C.T', value: 1 }
+              ],
+              respuestas: mockRespuestasJecGuatemala,
+              observaciones: 'El directivo cuenta con los planes TOECE al día.',
+              compromisos: {
+                directivo: 'Reunión semanal con el equipo de psicólogos y CIST.',
+                especialista: 'Monitoreo de soporte técnico.'
+              }
+            }
+          }
+        ];
+
+        // Crear Workbook con ExcelJS en memoria y verificar hojas generadas
+        const wb = new ExcelJS.Workbook();
+        const configJecReal = getMatrizConfig({ id: 'ft_msejec_2do', nombre: 'Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC' });
+        
+        // 1. Hoja MODELO JEC (primera)
+        const wsJec = wb.addWorksheet('MODELO JEC', {
+          views: [{ state: 'frozen', xSplit: 0, ySplit: 3, zoomScale: 70 }]
+        });
+
+        // 2. Hoja MONITOREO DOCENTE JEC (segunda)
+        const wsDocentes = wb.addWorksheet('MONITOREO DOCENTE JEC', {
+          views: [{ state: 'frozen', xSplit: 0, ySplit: 2, zoomScale: 85 }]
+        });
+
+        // 3. Hoja Listas (al final y oculta)
+        const wsListas = wb.addWorksheet('Listas', { state: 'hidden' });
+        wsListas.getCell('B2').value = 'SI';
+        wsListas.getCell('B3').value = 'NO';
+        wsListas.getCell('B4').value = 'N/A';
+        wsListas.getCell('B6').value = 1;
+        wsListas.getCell('B7').value = 2;
+        wsListas.getCell('B8').value = 3;
+
+        assert('Hoja MODELO JEC es la primera hoja del libro',
+          wb.worksheets[0].name === 'MODELO JEC',
+          'Hoja 1: MODELO JEC'
+        );
+
+        assert('Hoja MONITOREO DOCENTE JEC es la segunda hoja del libro',
+          wb.worksheets[1].name === 'MONITOREO DOCENTE JEC',
+          'Hoja 2: MONITOREO DOCENTE JEC'
+        );
+
+        assert('Hoja Listas es la última hoja y está oculta',
+          wb.worksheets[2].name === 'Listas' && wb.worksheets[2].state === 'hidden',
+          'Hoja 3: Listas (hidden)'
+        );
+
+        // Construir contenido en las hojas con la lógica oficial
+        _construirHojaMatrizJec(wsJec, configJecReal, mockStatsListJec, mockState);
+        _construirHojaMonitoreoDocente(wsDocentes, mockStatsListJec, mockState);
+
+        // Verificación 1: Encabezados de componentes
+        assert('Componente Pedagógico inicia en Col X (24) con % en Col AG (33)',
+          wsJec.getCell('X1').value === 'Componente pedagógico (Implementación TOECE)' &&
+          wsJec.getCell('AG1').value === '% CUMPLIMIENTO',
+          'Col X: Componente pedagógico, Col AG: % CUMPLIMIENTO'
+        );
+
+        assert('Componente de Gestión inicia en Col AH (34) con % en Col AS (45)',
+          wsJec.getCell('AH1').value === 'Componente de gestión' &&
+          wsJec.getCell('AS1').value === '% CUMPLIMIENTO',
+          'Col AH: Componente de gestión, Col AS: % CUMPLIMIENTO'
+        );
+
+        assert('Componente de Soporte inicia en Col AT (46) con % en Col BE (57)',
+          wsJec.getCell('AT1').value === 'Componente de soporte' &&
+          wsJec.getCell('BE1').value === '% CUMPLIMIENTO',
+          'Col AT: Componente de soporte, Col BE: % CUMPLIMIENTO'
+        );
+
+        // Verificación 2: Columnas finales
+        assert('Columnas finales oficiales: BF Observaciones, BG Compromiso, BH % General, BI Nivel',
+          wsJec.getCell('BF1').value === 'OBSERVACIONES / RECOMENDACIONES' &&
+          wsJec.getCell('BG1').value === 'COMPROMISO' &&
+          wsJec.getCell('BH1').value === '% Cumplimiento General por IIEE' &&
+          wsJec.getCell('BI1').value === 'Nivel de Implementación por IIEE',
+          'Cols BF, BG, BH, BI verificadas'
+        );
+
+        // Verificación 3: Fila 4 (Rosa Irene Infantes de Canales)
+        const fecFila4 = wsJec.getCell('F4').value;
+        assert('Fila 4 Fecha es Date real de Excel con formato dd/mm/yyyy',
+          fecFila4 instanceof Date && wsJec.getCell('F4').numFmt === 'dd/mm/yyyy',
+          `Fecha real: ${fecFila4 ? fecFila4.toISOString().slice(0, 10) : 'null'} (Formato dd/mm/yyyy)`
+        );
+
+        assert('Fila 4 Respuestas de indicadores son SI, NO, N/A (sin números 1, 2, 3)',
+          wsJec.getCell('X4').value === 'SI' &&
+          wsJec.getCell('AR4').value === 'NO' &&
+          wsJec.getCell('BD4').value === 'N/A',
+          `X4=${wsJec.getCell('X4').value}, AR4=${wsJec.getCell('AR4').value}, BD4=${wsJec.getCell('BD4').value}`
+        );
+
+        assert('Fila 4 Fórmulas de % y Nivel presentes',
+          typeof wsJec.getCell('AG4').value === 'object' &&
+          typeof wsJec.getCell('BH4').value === 'object' &&
+          typeof wsJec.getCell('BI4').value === 'object' &&
+          wsJec.getCell('BI4').value.formula.includes('"Implementación lograda"'),
+          'Fórmulas automáticas de % y Nivel verificadas'
+        );
+
+        // Verificación 4: Cuadros RESULTADO y CUMPLIMIENTO POR COMPONENTE
+        assert('Cuadros oficiales RESULTADO y CUMPLIMIENTO POR COMPONENTE en BN:BP',
+          wsJec.getCell('BN4').value === 'RESULTADO' &&
+          wsJec.getCell('BN7').value === 'Implementación lograda' &&
+          wsJec.getCell('BN10').value === 'CUMPLIMIENTO POR COMPONENTE' &&
+          wsJec.getCell('BN14').value === 'GENERAL',
+          'Cuadros de resumen y análisis verificados'
+        );
+
+        // Guardar archivo Excel generado en el servidor docs/muestras
+        try {
+          const buffer = await wb.xlsx.writeBuffer();
+          await fetch('/save-sample', {
+            method: 'POST',
+            headers: { 'X-File-Name': 'MATRIZ_DE_SEGUIMIENTO_2026_MODELO_JEC_2026-09-30.xlsx' },
+            body: buffer
+          });
+          console.info('[Test Runner] Muestra MATRIZ_DE_SEGUIMIENTO_2026_MODELO_JEC_2026-09-30.xlsx guardada en docs/muestras');
+        } catch (postErr) {
+          console.warn('[Test Runner] No se pudo enviar muestra al servidor local:', postErr);
+        }
+
+        // Renderizar tabla de resultados
+        document.getElementById('statusCard').innerHTML = `<strong>Pruebas finalizadas con éxito:</strong> ${testResults.filter(t => t.pass).length} / ${testResults.length} pasadas.`;
+        document.getElementById('statusCard').style.borderColor = '#166534';
+        document.getElementById('resultsCard').style.display = 'block';
+
+        const tbody = document.getElementById('resultsTbody');
+        testResults.forEach((t, i) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${i + 1}</td>
+            <td><strong>${t.name}</strong></td>
+            <td><span class="badge-test ${t.pass ? 'badge-pass' : 'badge-fail'}">${t.pass ? 'PASÓ' : 'FALLÓ'}</span></td>
+            <td>${t.detail}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+      } catch (err) {
+        console.error('Error en suite de pruebas:', err);
+        document.getElementById('statusCard').innerHTML = `<strong>Error inesperado:</strong> ${err.message}`;
+        document.getElementById('statusCard').style.borderColor = '#991b1b';
+      }
+    }
+
+    runSuite();
+  </script>
+</body>
+</html>

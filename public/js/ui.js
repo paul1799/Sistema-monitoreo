@@ -79,6 +79,8 @@ import {
   getDirectivosActivosForColegio
 } from './directorio.js?v=20260928_v12';
 
+import { exportarMatrizSeguimiento } from './exportarMatriz.js?v=20260930_v4';
+
 /* ============================= CONSTANTES COMPARTIDAS ============================= */
 export const RESPONSE_OPTIONS = {
   si_no: [{ v: 'si', l: 'Sí' }, { v: 'no', l: 'No' }, { v: 'na', l: 'N/A' }],
@@ -4276,7 +4278,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     '<div class="field"><label>Hasta</label><input type="date" id="fil_hasta" value="' + esc(consFilters.hasta) + '"></div>' +
     '<button class="btn secondary small" id="fil_clear" type="button">Limpiar</button>' +
     (isAdmin ? '<button class="btn secondary small" id="btnBackfillUgel" type="button" title="Completar UGEL y RED en fichas antiguas desde el padrón">🔄 Sincronizar UGEL/RED</button>' : '') +
-    '<button class="btn secondary small" id="exportCsv" type="button" style="margin-left:auto">Exportar CSV</button>' +
+    '<button class="btn secondary small" id="exportExcel" type="button" style="margin-left:auto"><span class="ic">📊</span> Exportar Excel</button>' +
     '<button class="btn small" id="exportPdf" type="button">⬇ Descargar reporte oficial (PDF)</button>' +
     '</div>' +
     '<div class="tblWrap"><table><thead><tr><th>Fecha</th><th>Institución</th>' + tblTypeHeader + '<th>UGEL / RED</th><th>Visita</th><th>Responsable</th><th>%</th><th>Estado</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
@@ -4388,17 +4390,35 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
       }
     });
   }
-  document.getElementById('exportCsv').addEventListener('click', () => {
-    if (isAllMode) {
-      const allStatsList = statsList.map(x => {
-        const xFt = getFichaType(x.s.fichaTypeId);
-        return { ...x, _ft: xFt };
-      });
-      exportCsv({ nombre: 'Todas las fichas', secciones: [] }, allStatsList);
-    } else {
-      exportCsv(ft, statsList);
-    }
-  });
+  const btnExportExcel = document.getElementById('exportExcel');
+  if (btnExportExcel) {
+    btnExportExcel.addEventListener('click', async () => {
+      if (!statsList || statsList.length === 0) {
+        showToast('No hay registros para exportar con los filtros seleccionados.');
+        return;
+      }
+      btnExportExcel.disabled = true;
+      const originalHtml = btnExportExcel.innerHTML;
+      btnExportExcel.innerHTML = '<span class="ic">⏳</span> Generando…';
+      try {
+        const res = await exportarMatrizSeguimiento({
+          statsList,
+          consFilters,
+          isAllMode,
+          ft,
+          state,
+          getFichaType
+        });
+        showToast(`Excel generado con éxito (${res.fileName})`);
+      } catch (err) {
+        console.error('Error al exportar Matriz a Excel:', err);
+        showToast('Error al generar Excel: ' + (err.message || 'Error desconocido'));
+      } finally {
+        btnExportExcel.disabled = false;
+        btnExportExcel.innerHTML = originalHtml;
+      }
+    });
+  }
 
   // Exportar PDF oficial consolidado
   document.getElementById('exportPdf').addEventListener('click', () => {

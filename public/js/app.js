@@ -25,7 +25,7 @@ import {
   computeStats,
   forceResetBodyScroll,
   setAppState,
-} from './ui.js?v=20260929_v15';
+} from './ui.js?v=20260930_v4';
 
 import { renderDirectorioTab } from './directorio.js?v=20260928_v12';
 
