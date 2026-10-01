@@ -1016,21 +1016,21 @@ export function openDownloadConfigModal({
 
           <div class="downloadModalSection">
             <label class="secLabel">Opciones</label>
-            <div style="display:flex;flex-direction:column;gap:6px">
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                <input type="checkbox" id="dl_opt_encabezado" ${mostrarEncabezadoArea ? 'checked' : ''}>
-                Mostrar logo y nombre del área en el encabezado (4.° recuadro)
+            <div class="downloadModalOptionsList" style="display:flex;flex-direction:column;gap:8px">
+              <label class="dlCheckLabel" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer">
+                <input type="checkbox" id="dl_opt_encabezado" style="margin-top:2px;flex-shrink:0" ${mostrarEncabezadoArea ? 'checked' : ''}>
+                <span>Mostrar logo y nombre del área en el encabezado (4.° recuadro)</span>
               </label>
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                <input type="checkbox" id="dl_opt_qr" ${incluirQr ? 'checked' : ''}>
-                Incluir código y QR oficial de verificación
+              <label class="dlCheckLabel" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer">
+                <input type="checkbox" id="dl_opt_qr" style="margin-top:2px;flex-shrink:0" ${incluirQr ? 'checked' : ''}>
+                <span>Incluir código y QR oficial de verificación</span>
               </label>
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                <input type="checkbox" id="dl_opt_sin_firmas" ${isSinFirmas ? 'checked' : ''}>
-                Sin bloque de firmas
+              <label class="dlCheckLabel" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer">
+                <input type="checkbox" id="dl_opt_sin_firmas" style="margin-top:2px;flex-shrink:0" ${isSinFirmas ? 'checked' : ''}>
+                <span>Sin bloque de firmas</span>
               </label>
 
-              <div style="display:flex;align-items:center;gap:14px;margin-top:4px">
+              <div class="downloadOrientationRow" style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:4px">
                 <span style="font-size:12px;font-weight:600;color:var(--ink-soft)">Orientación:</span>
                 <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
                   <input type="radio" name="dl_orientation" value="auto" ${orientationChoice === 'auto' ? 'checked' : ''}> Automática
@@ -4094,7 +4094,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     }
     criticosHtml += '</div>';
 
-    fase4Html = sugHtml + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">' + criticosHtml + '</div>';
+    fase4Html = sugHtml + '<div class="criticosGrid" style="margin-bottom:20px;">' + criticosHtml + '</div>';
   }
 
   const visAgg = {};

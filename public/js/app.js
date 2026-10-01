@@ -410,7 +410,16 @@ function onLogin(user, role) {
   const elAvatar = document.getElementById('topUserAvatar');
   const elName = document.getElementById('topUserName');
   const elBadge = document.getElementById('topUserBadge');
-  if (elAvatar) elAvatar.textContent = initials;
+  if (elAvatar) {
+    elAvatar.textContent = initials;
+    elAvatar.title = emailStr + ' (' + roleLabel + ')';
+    elAvatar.style.cursor = 'pointer';
+    elAvatar.onclick = () => {
+      if (window.innerWidth <= 640) {
+        showToast('👤 ' + emailStr + ' · ' + (isAdmin() ? 'Administrador' : 'Especialista General'));
+      }
+    };
+  }
   if (elName) elName.textContent = emailStr;
   if (elBadge) elBadge.textContent = roleLabel;
 
