@@ -823,7 +823,7 @@ export function getReglaNivelEbrGestion(visitaOrSub) {
  * @param {number|string|Object} visitaOrMomento - 1 o 2
  * @returns {{ nivel: string, estado_panel: string, cls: string, color: string, rangoTexto: string, rangoMin: number, rangoMax: number, maxPuntaje: number, puntaje: number, pct: number, descripcion: string }}
  */
-export function getNivelEbrGestion(puntaje, visitaOrMomento) {
+export function getNivelEbrGestion(puntaje, visitaOrMomento, maxAplicable = null) {
   const p = Number(puntaje) || 0;
   const v = (typeof visitaOrMomento === 'object' && visitaOrMomento !== null)
     ? getMomentoVisitaEbr(visitaOrMomento)
@@ -831,8 +831,17 @@ export function getNivelEbrGestion(puntaje, visitaOrMomento) {
   const regla = getReglaNivelEbrGestion(v);
   const maxPts = regla.maxPuntaje;
   const rangos = regla.rangos;
+
+  // Proyectar el puntaje a la base oficial para no penalizar ítems N/A
+  let pEval = p;
+  let realPct = Math.round((p / maxPts) * 100);
+  if (maxAplicable !== null && maxAplicable > 0 && maxAplicable < maxPts) {
+    pEval = (p / maxAplicable) * maxPts;
+    realPct = Math.round((p / maxAplicable) * 100);
+  }
+
   for (const r of rangos) {
-    if (p >= r.min && p <= r.max) {
+    if (pEval >= r.min && pEval <= r.max) {
       return {
         nivel: r.nivel,
         estado_panel: r.estado_panel,
@@ -843,12 +852,12 @@ export function getNivelEbrGestion(puntaje, visitaOrMomento) {
         rangoMax: r.max,
         maxPuntaje: maxPts,
         puntaje: p,
-        pct: Math.round((p / maxPts) * 100),
+        pct: realPct,
         descripcion: r.descripcion
       };
     }
   }
-  if (p > maxPts) {
+  if (pEval > maxPts) {
     const top = rangos[0];
     return {
       nivel: top.nivel,

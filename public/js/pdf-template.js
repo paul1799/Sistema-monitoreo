@@ -1947,7 +1947,7 @@ export async function createOfficialPdfDocument({
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(15, 27, 45);
-      doc.text(splitSec, margin, curY, { align: 'left', maxWidth: pageW - 2 * margin, lineHeightFactor: 1.25 });
+      doc.text(splitSec, margin, curY, { align: 'left', lineHeightFactor: 1.25 });
       curY += splitSec.length * 10 + 14;
     });
   }
@@ -3971,19 +3971,13 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
   statsList.forEach(x => {
     if (x.st.pct === null || x.st.pct === undefined) dist.none++;
     else {
-      if (isEbr) {
-        if (x.st.pct >= logCut) dist.logrado++;
-        else if (x.st.pct >= procCut) dist.proceso++;
-        else dist.inicio++;
-      } else {
-        const lbl = (x.st?.estado?.estado_panel || x.st?.estado?.label || '').toLowerCase();
-        if (lbl.includes('no cumple') || lbl.includes('inici') || lbl.includes('incipient') || lbl.includes('mejorar')) dist.inicio++;
-        else if (lbl.includes('parcial') || lbl.includes('proces')) dist.proceso++;
-        else if (lbl.includes('lograd') || lbl.includes('cumple')) dist.logrado++;
-        else if (x.st.pct >= logCut) dist.logrado++;
-        else if (x.st.pct >= procCut) dist.proceso++;
-        else dist.inicio++;
-      }
+      const lbl = (x.st?.estado?.estado_panel || x.st?.estado?.label || '').toLowerCase();
+      if (lbl.includes('no cumple') || lbl.includes('inici') || lbl.includes('incipient') || lbl.includes('mejorar')) dist.inicio++;
+      else if (lbl.includes('parcial') || lbl.includes('proces')) dist.proceso++;
+      else if (lbl.includes('lograd') || lbl.includes('cumple')) dist.logrado++;
+      else if (x.st.pct >= logCut) dist.logrado++;
+      else if (x.st.pct >= procCut) dist.proceso++;
+      else dist.inicio++;
     }
   });
 
@@ -4043,8 +4037,8 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
 
       curY += cardH + 12;
 
-      // 2. PANEL DE GRÁFICO DE DONA (AGRANDADA 1.75X) + LEYENDA + HALLAZGOS CLAVE
-      const panelH = isLandscape ? 114 : 118;
+      // 2. PANEL DE GRÁFICO DE DONA + LEYENDA (Sin hallazgos)
+      const panelH = 135;
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
       doc.setLineWidth(0.75);
@@ -4056,11 +4050,11 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
       doc.setTextColor(15, 23, 42);
       doc.text('Distribución de resultados', margin + 14, curY + 15);
 
-      // Gráfica de dona más grande (~1.72x diámetro: radio exterior 48pt, radio interior 29pt)
-      const donutCx = margin + 70;
-      const donutCy = curY + 62;
-      const donutOuterR = 48;
-      const donutInnerR = 29;
+      // Gráfica de dona más grande para que no cubra el texto
+      const donutCx = margin + CONTENT_WIDTH / 2 - 60;
+      const donutCy = curY + 70;
+      const donutOuterR = 56;
+      const donutInnerR = 38;
 
       const donutSegments = [
         { val: dist.logrado, color: [22, 163, 74], label: 'Logrado' },
@@ -4071,39 +4065,18 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
 
       drawPdfDonutChart(doc, donutCx, donutCy, donutOuterR, donutInnerR, donutSegments, String(totalFichas), totalFichas === 1 ? 'ficha' : 'fichas');
 
-      // Leyenda vertical proporcional a la derecha de la dona
-      const legX = donutCx + donutOuterR + 24;
-      let legY = curY + 44;
+      // Leyenda vertical
+      const legX = donutCx + donutOuterR + 40;
+      let legY = curY + 50;
       donutSegments.forEach(s => {
         doc.setFillColor(s.color[0], s.color[1], s.color[2]);
         doc.circle(legX + 5, legY - 3, 4, 'F');
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
+        doc.setFontSize(10);
         doc.setTextColor(30, 41, 59);
         doc.text(`${s.label} (${s.val})`, legX + 14, legY);
-        legY += 16;
+        legY += 18;
       });
-
-      // R6.2: Hallazgos clave calculados automáticamente en lugar de resumen repetido
-      const hallazgos = getHallazgosClave(statsList, fichaType, isEbr);
-      if (isLandscape && CONTENT_WIDTH > 480 && hallazgos.length > 0) {
-        const noteX = margin + 275;
-        const noteW = CONTENT_WIDTH - 285;
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.5);
-        doc.setTextColor(18, 41, 77);
-        doc.text('Hallazgos clave del monitoreo:', noteX, curY + 28);
-
-        let hY = curY + 44;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.5);
-        doc.setTextColor(51, 65, 85);
-        hallazgos.forEach(h => {
-          const splitH = doc.splitTextToSize(`• ${h}`, noteW);
-          doc.text(splitH, noteX, hY, { maxWidth: noteW, lineHeightFactor: 1.2 });
-          hY += splitH.length * 10 + 4;
-        });
-      }
 
       return curY + panelH + 10;
     },
@@ -4779,19 +4752,13 @@ export async function exportConsolidadoReportPdfV1(statsList, fichaType, filters
   statsList.forEach(x => {
     if (x.st.pct === null) dist.none++;
     else {
-      if (isEbr) {
-        if (x.st.pct >= logCut) dist.logrado++;
-        else if (x.st.pct >= procCut) dist.proceso++;
-        else dist.inicio++;
-      } else {
-        const lbl = (x.st?.estado?.estado_panel || x.st?.estado?.label || '').toLowerCase();
-        if (lbl.includes('no cumple') || lbl.includes('inici') || lbl.includes('incipient') || lbl.includes('mejorar')) dist.inicio++;
-        else if (lbl.includes('parcial') || lbl.includes('proces')) dist.proceso++;
-        else if (lbl.includes('lograd') || lbl.includes('cumple')) dist.logrado++;
-        else if (x.st.pct >= logCut) dist.logrado++;
-        else if (x.st.pct >= procCut) dist.proceso++;
-        else dist.inicio++;
-      }
+      const lbl = (x.st?.estado?.estado_panel || x.st?.estado?.label || '').toLowerCase();
+      if (lbl.includes('no cumple') || lbl.includes('inici') || lbl.includes('incipient') || lbl.includes('mejorar')) dist.inicio++;
+      else if (lbl.includes('parcial') || lbl.includes('proces')) dist.proceso++;
+      else if (lbl.includes('lograd') || lbl.includes('cumple')) dist.logrado++;
+      else if (x.st.pct >= logCut) dist.logrado++;
+      else if (x.st.pct >= procCut) dist.proceso++;
+      else dist.inicio++;
     }
   });
 

@@ -442,7 +442,18 @@ export function computeStats(sub, ft) {
     descripcion: result.estado.descripcion || '',
     puntaje: result.estado.puntaje ?? result.puntaje
   };
-  if ((isEbr || ftForCalc.escala === 'IPL' || ftForCalc.tipoRespuesta === 'ips') && result.pct !== null) {
+
+  if (isEbr && result.puntaje !== null && result.puntaje !== undefined) {
+    // Para EBR Gestión Escolar, proyectar puntaje si hay ítems N/A
+    const maxAplicable = (result.total_items && result.total_items > 0) ? (result.total_items * 3) : null;
+    const nivelEbr = getNivelEbrGestion(result.puntaje, ftForCalc.visita, maxAplicable);
+    
+    finalEstado.label = nivelEbr.estado_panel || nivelEbr.nivel;
+    finalEstado.estado_panel = nivelEbr.estado_panel;
+    finalEstado.cls = nivelEbr.cls;
+    finalEstado.descripcion = nivelEbr.descripcion || '';
+    result.pct = nivelEbr.pct; // Alinear el porcentaje general al puntaje
+  } else if ((ftForCalc.escala === 'IPL' || ftForCalc.tipoRespuesta === 'ips') && result.pct !== null) {
     if (result.pct >= 67) {
       finalEstado.label = 'Logrado';
       finalEstado.estado_panel = 'Logrado';
@@ -461,6 +472,7 @@ export function computeStats(sub, ft) {
     pct: result.pct,
     puntaje: result.puntaje,
     puntaje_max: result.puntaje_max,
+    total_items: result.total_items,
     secciones: result.secciones,
     conteo_si: result.conteo_si,
     estado: finalEstado,
@@ -4811,11 +4823,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     const sFt = isAllMode ? getFichaType(s.fichaTypeId) : ft;
     const isEbr = isFichaEbrGestionEscolar(sFt || ft || s);
     let status = null;
-    if (isEbr && st && st.pct !== null) {
-      if (st.pct >= 67) status = { label: 'Logrado', cls: 'st-logrado' };
-      else if (st.pct >= 34) status = { label: 'Proceso', cls: 'st-proceso' };
-      else status = { label: 'Inicio', cls: 'st-inicio' };
-    } else if (st && st.estado && st.estado.label) {
+    if (st && st.estado && st.estado.label) {
       status = { label: st.estado.label, cls: st.estado.cls };
     } else {
       status = statusFromPct(st.pct, sFt, st?.conteo_si, st?.puntaje, s.visita);
@@ -4896,19 +4904,20 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     const withSi = g.visitas.filter(x => x.st && x.st.conteo_si !== undefined && x.st.conteo_si !== null);
     const avgSi = withSi.length ? Math.round(withSi.reduce((a, x) => a + x.st.conteo_si, 0) / withSi.length) : null;
 
+    const vLast = isEbr ? getMomentoVisitaEbr(last.s) : 1;
+    const maxPts = isEbr ? (vLast === 2 ? 69 : 57) : 63;
+
     let gst = null;
-    if (isEbr && avg !== null) {
-      if (avg >= 67) gst = { label: 'Logrado', cls: 'st-logrado' };
-      else if (avg >= 34) gst = { label: 'Proceso', cls: 'st-proceso' };
-      else gst = { label: 'Inicio', cls: 'st-inicio' };
+    if (isEbr && avgPts !== null) {
+      const avgItems = g.visitas.reduce((acc, x) => acc + (x.st?.total_items || 23), 0) / g.visitas.length;
+      const maxAplicable = avgItems > 0 ? avgItems * 3 : null;
+      const nivelEbr = getNivelEbrGestion(avgPts, vLast, maxAplicable);
+      gst = { label: nivelEbr.estado_panel || nivelEbr.nivel, cls: nivelEbr.cls };
     } else if (g.visitas.length === 1 && last.st && last.st.estado && last.st.estado.label) {
       gst = { label: last.st.estado.label, cls: last.st.estado.cls };
     } else {
       gst = statusFromPct(avg, sFt, avgSi, avgPts, last.s.visita);
     }
-
-    const vLast = isEbr ? getMomentoVisitaEbr(last.s) : 1;
-    const maxPts = isEbr ? (vLast === 2 ? 69 : 57) : 63;
     const scoreTitle = ((isCoordTutoria || isEbr) && avgPts !== null) ? ' title="' + avgPts + '/' + maxPts + ' pts"' : '';
     
     // Group counts by visit number
@@ -5635,6 +5644,7 @@ function buildDetail(s) {
     let puntaje = (s.puntaje !== undefined && s.puntaje !== null) ? Number(s.puntaje) : null;
     if ((puntaje === null || puntaje > maxPts) && Array.isArray(s.respuestas) && s.respuestas.length > 0) {
       let pSum = 0;
+      let itemsAnswered = 0;
       const seenNums = new Set();
       const maxCount = v === 2 ? 23 : 19;
       s.respuestas.forEach(r => {
@@ -5646,17 +5656,24 @@ function buildDetail(s) {
         if (num && num >= 1 && num <= maxCount && !seenNums.has(num)) {
           seenNums.add(num);
           const vL = String(r?.valor || '').toLowerCase();
-          if (vL === 'logrado' || vL === 'si') pSum += 3;
-          else if (vL === 'proceso') pSum += 2;
-          else if (vL === 'inicio' || vL === 'no') pSum += 1;
+          if (vL === 'logrado' || vL === 'si') { pSum += 3; itemsAnswered++; }
+          else if (vL === 'proceso') { pSum += 2; itemsAnswered++; }
+          else if (vL === 'inicio' || vL === 'no') { pSum += 1; itemsAnswered++; }
         }
       });
       puntaje = Math.min(maxPts, pSum);
+      s._tempItemsAnswered = itemsAnswered;
     } else if (puntaje !== null && puntaje > maxPts) {
       puntaje = maxPts;
     }
+    
+    let maxAplicable = null;
+    if (s._tempItemsAnswered > 0 && s._tempItemsAnswered < (v === 2 ? 23 : 19)) {
+      maxAplicable = s._tempItemsAnswered * 3;
+    }
+
     if (puntaje === null) puntaje = 0;
-    const nivelObj = getNivelEbrGestion(puntaje, v);
+    const nivelObj = getNivelEbrGestion(puntaje, v, maxAplicable);
     const momentoStr = v === 2 ? '2.° Momento (Visita 2 · 23 ítems · Máx 69 pts)' : '1.er Momento (Visita 1 · 19 ítems · Máx 57 pts)';
 
     ebrGestionBanner = `
