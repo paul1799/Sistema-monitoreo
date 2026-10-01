@@ -14,6 +14,13 @@ import {
   getNivelEbrGestion,
   getMomentoVisitaEbr
 } from './calcEngine.js?v=20260929_v15';
+import {
+  INSTRUMENTO_EBR,
+  calcularResultadoEbrDesdeRespuestas,
+  COLORES_ESTADO_EBR
+} from './instrumentoGestionEBR.js?v=20261001_v1';
+
+
 
 /** Rúbricas oficiales de observación de aula (MINEDU) */
 export const RUBRICAS_OBSERVACION_AULA = [
@@ -1149,7 +1156,16 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
         </div>
       </div>
 
+      <!-- Panel de promedios por aspecto del Tablero (escala 1-3) -->
+      <div id="ebrTableroAspectos" style="margin-bottom:14px;padding:8px 10px;background:var(--surface-2);border-radius:6px;border:1px solid var(--line)">
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">
+          Promedios por Aspecto · Escala Tablero (1=Inicio, 2=Proceso, 3=Logrado)
+        </div>
+        <div style="color:var(--ink-soft);font-size:11px;font-style:italic">Complete al menos un ítem para ver los promedios del tablero.</div>
+      </div>
+
       <!-- Tabla oficial de baremos del momento -->
+
       <div style="overflow-x:auto">
         <table class="table" style="width:100%;border-collapse:collapse;font-size:12px;margin:0" id="ebrCriteriaTable">
           <thead>
@@ -1670,15 +1686,26 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
   if (instInput && dropdown) {
     const showDropdown = () => {
       const q = normalizeText(instInput.value);
-      const colegios = state.colegios || [];
-      const matches = colegios.filter(c => !q || normalizeText(c.ie).includes(q) || normalizeText(c.codigoLocal).includes(q)).slice(0, 25);
+      const todosColegios = state.colegios || [];
+      // Filtro EBR: mostrar solo IEs con modalidad='EBR' o sin campo modalidad (retrocompatibilidad)
+      const colegiosEbr = todosColegios.filter(c => {
+        const mod = String(c.modalidad || '').trim().toUpperCase();
+        return mod === 'EBR' || mod === ''; // sin dato de modalidad: incluir (no excluir por defecto)
+      });
+      const matches = colegiosEbr.filter(c =>
+        !q || normalizeText(c.ie).includes(q) || normalizeText(c.codigoLocal).includes(q) || normalizeText(c.rei || '').includes(q)
+      ).slice(0, 25);
       if (!matches.length) { dropdown.style.display = 'none'; return; }
-      dropdown.innerHTML = matches.map(c => `
-        <div class="ieDropdownItem" data-col-id="${c.id}">
-          <div class="ieDropMain">${esc(c.ie)}</div>
-          <div class="ieDropSub">${esc(c.codigoLocal || '')} ${c.rei ? '· RED ' + esc(c.rei) : ''} ${c.director && c.director.nombre ? '· Dir: ' + esc(c.director.nombre) : ''}</div>
-        </div>
-      `).join('');
+
+      dropdown.innerHTML = matches.map(c => {
+        const modTag = c.modalidad ? ` <span class="badge" style="font-size:10px;padding:1px 5px;background:#DEEBF7;color:#2E75B6;margin-left:4px">${esc(c.modalidad)}</span>` : '';
+        return `
+          <div class="ieDropdownItem" data-col-id="${c.id}">
+            <div class="ieDropMain">${esc(c.ie)}${modTag}</div>
+            <div class="ieDropSub">${esc(c.codigoLocal || '')} ${c.rei ? '· RED ' + esc(c.rei) : ''} ${c.director && c.director.nombre ? '· Dir: ' + esc(c.director.nombre) : ''}</div>
+          </div>
+        `;
+      }).join('');
       dropdown.style.display = 'block';
 
       dropdown.querySelectorAll('.ieDropdownItem').forEach(item => {
@@ -1695,6 +1722,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
     instInput.addEventListener('focus', () => { if (!instInput.value) showDropdown(); });
     instInput.addEventListener('blur', () => { setTimeout(() => { dropdown.style.display = 'none'; }, 200); });
   }
+
 
   // ---- Autocompletado del Especialista / Monitor Responsable ----
   const respInput = host.querySelector('#ebr_responsable');
@@ -2407,7 +2435,8 @@ export function calculateEbrCurrentScore(visita, respuestas) {
 }
 
 /**
- * Actualiza en tiempo real la puntuación, barra de avance y resaltado de baremos oficiales
+ * Actualiza en tiempo real la puntuacion, barra de avance y resaltado de baremos oficiales.
+ * Tambien actualiza el mini-panel de promedios por aspecto del tablero (si existe en el DOM).
  */
 export function updateEbrLiveScore(host) {
   if (!host) return;
@@ -2456,7 +2485,32 @@ export function updateEbrLiveScore(host) {
     const pct = totalItems ? Math.round((answered / totalItems) * 100) : 0;
     badge.innerHTML = `Avance: <strong>${answered} de ${totalItems}</strong> respondidos (${pct}%) · Puntaje: <strong>${scoreData.puntaje}/${scoreData.maxPuntaje} pts</strong> · <span class="badge ${scoreData.nivelInfo.cls}" style="font-size:11px;padding:2px 8px">${lvl}</span>`;
   }
+
+  // ─── Panel de promedios por aspecto del tablero (en tiempo real) ──────────
+  const tableroPanel = host.querySelector('#ebrTableroAspectos');
+  if (tableroPanel) {
+    try {
+      const tabResult = calcularResultadoEbrDesdeRespuestas(ebrFormState.respuestas, currentVisita);
+      const estadoKey = tabResult.estado || 'NO INICIO';
+      const colorEstado = COLORES_ESTADO_EBR[estadoKey] || COLORES_ESTADO_EBR['NO INICIO'];
+
+      tableroPanel.innerHTML = `
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px">
+          ${tabResult.promediosPorAspecto.map(a => {
+            const p = a.promedio;
+            const bg = p >= 2.5 ? '#C6EFCE' : p >= 1.5 ? '#FFEB9C' : p > 0 ? '#FFC7CE' : '#F2F2F2';
+            const cl = p >= 2.5 ? '#006100' : p >= 1.5 ? '#9C5700' : p > 0 ? '#9C0006' : '#595959';
+            return `<span title="${a.nombre}" style="background:${bg};color:${cl};border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600;cursor:default">${a.codigo} ${p > 0 ? p.toFixed(2) : '—'}</span>`;
+          }).join('')}
+          <span style="margin-left:6px;font-size:11px;font-weight:700;background:${colorEstado.hex || '#D9D9D9'};color:#${colorEstado.letra || '595959'};padding:2px 10px;border-radius:4px">
+            RESULTADO: ${tabResult.resultado > 0 ? tabResult.resultado.toFixed(2) : '—'} · ${estadoKey}
+          </span>
+        </div>`;
+    } catch (_) {}
+  }
 }
+
+
 
 /**
  * Recolecta y valida todos los datos estructurados del formulario EBR para guardado en Firestore

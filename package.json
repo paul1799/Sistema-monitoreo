@@ -9,6 +9,12 @@
     "deploy": "firebase deploy"
   },
   "dependencies": {
-    "firebase-admin": "^12.5.0"
+    "firebase-admin": "^12.5.0",
+    "jszip": "^3.10.2"
+  },
+  "devDependencies": {
+    "exceljs": "^4.4.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8"
   }
 }

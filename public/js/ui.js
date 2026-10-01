@@ -52,7 +52,7 @@ import {
   PALETA_ESTANDAR,
   formatCodigoModular,
   JEDPA_THEME
-} from './pdf-template.js?v=20260929_v18';
+} from './pdf-template.js?v=20260930_v21';
 
 import {
   renderEbrGestionForm,
@@ -80,6 +80,9 @@ import {
 } from './directorio.js?v=20260928_v12';
 
 import { exportarMatrizSeguimiento } from './exportarMatriz.js?v=20260930_v4';
+import { exportarTableroEBRCompleto } from './exportarTableroEBR.js?v=20261001_v1';
+import { calcularResultadoEbr, calcularResultadoEbrDesdeRespuestas, COLORES_ESTADO_EBR, estadoEbr, INSTRUMENTO_EBR } from './instrumentoGestionEBR.js?v=20261001_v1';
+
 
 /* ============================= CONSTANTES COMPARTIDAS ============================= */
 export const RESPONSE_OPTIONS = {
@@ -3813,6 +3816,18 @@ export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdm
   });
   const responsableOptions = Array.from(respSet).sort((a, b) => a.localeCompare(b));
 
+  const isEbrGestionSelected = ft && isFichaEbrGestionEscolar(ft);
+  const visitaSelectHtml = isEbrGestionSelected
+    ? '<select id="top_fil_visita" required>' +
+    '<option value="">— Elige Visita (obligatorio) —</option>' +
+    '<option value="1"' + (String(consFilters.visita) === '1' ? ' selected' : '') + '>Visita 1 · Primer momento</option>' +
+    '<option value="2"' + (String(consFilters.visita) === '2' ? ' selected' : '') + '>Visita 2 · Segundo momento</option>' +
+    '</select>'
+    : '<select id="top_fil_visita">' +
+    '<option value="">Todas</option>' +
+    visitaOptions.map(v => '<option value="' + v + '"' + (String(v) === String(consFilters.visita) ? ' selected' : '') + '>Visita ' + v + '</option>').join('') +
+    '</select>';
+
   container.innerHTML = '' +
     '<div class="pageHead"><h2>Reportes</h2><p>Gráficas, reporte por ítem, resumen por institución y descarga en PDF.</p></div>' +
     '<div class="panel">' +
@@ -3828,12 +3843,9 @@ export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdm
     ['Logrado', 'En proceso', 'Inicio'].map(v => '<option value="' + v + '"' + (v === consFilters.estado ? ' selected' : '') + '>' + v + '</option>').join('') +
     '</select>' +
     '</div>' +
-    '<div class="field" style="flex:1;min-width:120px">' +
-    '<label for="top_fil_visita">Visita</label>' +
-    '<select id="top_fil_visita">' +
-    '<option value="">Todas</option>' +
-    visitaOptions.map(v => '<option value="' + v + '"' + (String(v) === String(consFilters.visita) ? ' selected' : '') + '>Visita ' + v + '</option>').join('') +
-    '</select>' +
+    '<div class="field" style="flex:1;min-width:140px">' +
+    '<label for="top_fil_visita">Visita' + (isEbrGestionSelected ? ' <span style="color:var(--danger,#dc2626)">*</span>' : '') + '</label>' +
+    visitaSelectHtml +
     '</div>' +
     '<div class="field" style="flex:1.5;min-width:180px">' +
     '<label for="top_fil_responsable">Responsable</label>' +
@@ -4246,6 +4258,14 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
   const scrollX = window.scrollX;
   const scrollY = window.scrollY;
 
+  const isEbrGestionEscolar = ft && isFichaEbrGestionEscolar(ft);
+  const isEbrSinVisitaUnica = isEbrGestionEscolar && (!consFilters.visita || (consFilters.visita !== '1' && consFilters.visita !== '2'));
+  const msgVisitaObligatoria = 'Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.';
+
+  const bannerEbrVisitaHtml = isEbrSinVisitaUnica
+    ? '<div style="background:#FFF3CD;border:1px solid #FFEEBA;color:#856404;padding:8px 14px;border-radius:6px;font-size:12px;margin-bottom:12px;display:flex;align-items:center;gap:8px"><span>⚠️</span> <span><strong>Atención:</strong> ' + msgVisitaObligatoria + '</span></div>'
+    : '';
+
   host.innerHTML = '' +
     '<div id="reportCapture">' +
     '<div class="cards">' +
@@ -4263,6 +4283,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     '</div></div>' +
     '<div class="panel">' +
     '<h3>Fichas registradas</h3>' +
+    bannerEbrVisitaHtml +
     '<div class="filterBar">' +
     '<div class="field"><label>Institución</label><input type="search" id="fil_inst" list="dl_fil_inst" value="' + esc(consFilters.institucion) + '" placeholder="Buscar..."></div>' +
     '<datalist id="dl_fil_inst">' + seedSuggestions('institucion', state.submissions).map(v => '<option value="' + esc(v) + '">').join('') + '</datalist>' +
@@ -4278,8 +4299,8 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     '<div class="field"><label>Hasta</label><input type="date" id="fil_hasta" value="' + esc(consFilters.hasta) + '"></div>' +
     '<button class="btn secondary small" id="fil_clear" type="button">Limpiar</button>' +
     (isAdmin ? '<button class="btn secondary small" id="btnBackfillUgel" type="button" title="Completar UGEL y RED en fichas antiguas desde el padrón">🔄 Sincronizar UGEL/RED</button>' : '') +
-    '<button class="btn secondary small" id="exportExcel" type="button" style="margin-left:auto"><span class="ic">📊</span> Exportar Excel</button>' +
-    '<button class="btn small" id="exportPdf" type="button">⬇ Descargar reporte oficial (PDF)</button>' +
+    '<button class="btn secondary small" id="exportExcel" type="button" style="margin-left:auto"' + (isEbrSinVisitaUnica ? ' disabled title="' + esc(msgVisitaObligatoria) + '" style="margin-left:auto;opacity:0.5;cursor:not-allowed"' : '') + '><span class="ic">📊</span> Exportar Excel</button>' +
+    '<button class="btn small" id="exportPdf" type="button"' + (isEbrSinVisitaUnica ? ' disabled title="' + esc(msgVisitaObligatoria) + '" style="opacity:0.5;cursor:not-allowed"' : '') + '>⬇ Descargar reporte oficial (PDF)</button>' +
     '</div>' +
     '<div class="tblWrap"><table><thead><tr><th>Fecha</th><th>Institución</th>' + tblTypeHeader + '<th>UGEL / RED</th><th>Visita</th><th>Responsable</th><th>%</th><th>Estado</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
     '</div>';
@@ -4290,7 +4311,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     if (newEl) {
       newEl.focus();
       if (selStart !== null && selEnd !== null) {
-        try { newEl.setSelectionRange(selStart, selEnd); } catch (_) {}
+        try { newEl.setSelectionRange(selStart, selEnd); } catch (_) { }
       }
     }
   }
@@ -4397,21 +4418,49 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
         showToast('No hay registros para exportar con los filtros seleccionados.');
         return;
       }
+
+      // ─── Ficha EBR: validación estricta de visita única ─────────────────────
+      const isEbrExport = ft && isFichaEbrGestionEscolar(ft);
+      if (isEbrExport) {
+        const vNum = Number(consFilters.visita);
+        if (vNum !== 1 && vNum !== 2) {
+          showToast('Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.');
+          return;
+        }
+      }
+
       btnExportExcel.disabled = true;
       const originalHtml = btnExportExcel.innerHTML;
       btnExportExcel.innerHTML = '<span class="ic">⏳</span> Generando…';
       try {
-        const res = await exportarMatrizSeguimiento({
-          statsList,
-          consFilters,
-          isAllMode,
-          ft,
-          state,
-          getFichaType
-        });
-        showToast(`Excel generado con éxito (${res.fileName})`);
+        if (isEbrExport) {
+          const vNum = Number(consFilters.visita);
+          const subsVisita = statsList.map(x => x.s || x).filter(s => {
+            const sV = Number(s.visita) || (Array.isArray(s.respuestas) && s.respuestas.some(r => String(r?.id || '').startsWith('ge2_')) ? 2 : 1);
+            return sV === vNum;
+          });
+          await exportarTableroEBRCompleto(subsVisita, vNum, state.colegios || [], state);
+          showToast(`✓ Tablero EBR generado: Visita ${vNum} (${vNum === 2 ? 'Segundo' : 'Primer'} momento)`);
+        } else {
+          // ─── Otras fichas o modo consolidado general ──────────────────────
+          let exportStatsList = statsList;
+          if (isAllMode && (!consFilters.visita || (consFilters.visita !== '1' && consFilters.visita !== '2'))) {
+            // Regla 8.1: si es exportación general de varias fichas, no se incluye EBR Gestión Escolar salvo visita única
+            exportStatsList = statsList.filter(x => !isFichaEbrGestionEscolar(x.s || x));
+          }
+
+          const res = await exportarMatrizSeguimiento({
+            statsList: exportStatsList,
+            consFilters,
+            isAllMode,
+            ft,
+            state,
+            getFichaType
+          });
+          showToast(`Excel generado con éxito (${res.fileName})`);
+        }
       } catch (err) {
-        console.error('Error al exportar Matriz a Excel:', err);
+        console.error('Error al exportar a Excel:', err);
         showToast('Error al generar Excel: ' + (err.message || 'Error desconocido'));
       } finally {
         btnExportExcel.disabled = false;
@@ -4421,22 +4470,34 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
   }
 
   // Exportar PDF oficial consolidado
-  document.getElementById('exportPdf').addEventListener('click', () => {
-    openDownloadConfigModal({
-      documentTitle: isAllMode ? 'REPORTE CONSOLIDADO GENERAL DE MONITOREO' : `REPORTE CONSOLIDADO — ${(ft ? ft.nombre : 'MONITOREO').toUpperCase()}`,
-      tipoReporte: 'consolidado',
-      dataRows: statsList,
-      currentUser: user,
-      state,
-      dbNs,
-      isAdmin,
-      onConfirm: async (cfg) => {
-        cfg.getFichaType = getFichaType;
-        cfg.fichaTypes = state.fichaTypes;
-        await exportConsolidadoReportPdf(statsList, ft, consFilters, isAllMode, cfg);
+  const btnExportPdf = document.getElementById('exportPdf');
+  if (btnExportPdf) {
+    btnExportPdf.addEventListener('click', () => {
+      const isEbrPdf = ft && isFichaEbrGestionEscolar(ft);
+      if (isEbrPdf) {
+        const vNum = Number(consFilters.visita);
+        if (vNum !== 1 && vNum !== 2) {
+          showToast('Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.');
+          return;
+        }
       }
+
+      openDownloadConfigModal({
+        documentTitle: isAllMode ? 'REPORTE CONSOLIDADO GENERAL DE MONITOREO' : `REPORTE CONSOLIDADO — ${(ft ? ft.nombre : 'MONITOREO').toUpperCase()}`,
+        tipoReporte: 'consolidado',
+        dataRows: statsList,
+        currentUser: user,
+        state,
+        dbNs,
+        isAdmin,
+        onConfirm: async (cfg) => {
+          cfg.getFichaType = getFichaType;
+          cfg.fichaTypes = state.fichaTypes;
+          await exportConsolidadoReportPdf(statsList, ft, consFilters, isAllMode, cfg);
+        }
+      });
     });
-  });
+  }
 
   // Descargar ficha individual oficial en PDF
   host.querySelectorAll('[data-pdfsub]').forEach(btn => {
@@ -4663,8 +4724,8 @@ function buildDetail(s) {
       if (!m) return '';
       const rubros = ['r1', 'r2', 'r3', 'r4', 'r5'];
       const headers = ['R1', 'R2', 'R3', 'R4', 'R5'];
-      const qCells = rubros.map(r => [1,2,3,4].map(n => `<td style="padding:4px;text-align:center">${m[r]?.[`c${n}`] ?? 0}</td>`).join('')).join('');
-      const pCells = rubros.map(r => [1,2,3,4].map(n => `<td style="padding:4px;text-align:center;font-size:10px;color:var(--text-muted,#64748b)">${m[r]?.[`p${n}`] ?? 0}%</td>`).join('')).join('');
+      const qCells = rubros.map(r => [1, 2, 3, 4].map(n => `<td style="padding:4px;text-align:center">${m[r]?.[`c${n}`] ?? 0}</td>`).join('')).join('');
+      const pCells = rubros.map(r => [1, 2, 3, 4].map(n => `<td style="padding:4px;text-align:center;font-size:10px;color:var(--text-muted,#64748b)">${m[r]?.[`p${n}`] ?? 0}%</td>`).join('')).join('');
       return `
         <div style="margin-top:10px;margin-bottom:12px">
           <div style="font-weight:700;font-size:12px;margin-bottom:4px;color:var(--text-900,#0f172a)">
@@ -5121,7 +5182,7 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
     if (newEl) {
       newEl.focus();
       if (selStart !== null && selEnd !== null) {
-        try { newEl.setSelectionRange(selStart, selEnd); } catch (_) {}
+        try { newEl.setSelectionRange(selStart, selEnd); } catch (_) { }
       }
     }
   }
@@ -7808,7 +7869,7 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
     if (!state.responsables) state.responsables = [];
     state.responsables.push(jecObj);
     if (isAdmin && dbNs) {
-      dbNs.collection('responsables').doc('resp_jec_fanny_arias').set({ ...jecObj, createdAt: Date.now() }).catch(() => {});
+      dbNs.collection('responsables').doc('resp_jec_fanny_arias').set({ ...jecObj, createdAt: Date.now() }).catch(() => { });
     }
   }
 
@@ -7827,44 +7888,44 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
     return m === 'EBR / EBE' || (m.includes('EBR') && m.includes('EBE'));
   }).length;
 
-function buildResponsablesRowsHtml(filtered, respExpanded, isAdmin, state) {
-  return filtered.map(r => {
-    const isOpen = respExpanded === r.id;
-    const subsCount = (state.submissions || []).filter(s => {
-      const respName = (s.responsable || '').trim().toLowerCase();
-      const myName = (r.nombresApellidos || '').trim().toLowerCase();
-      return respName && myName && (respName.includes(myName) || myName.includes(respName));
-    }).length;
+  function buildResponsablesRowsHtml(filtered, respExpanded, isAdmin, state) {
+    return filtered.map(r => {
+      const isOpen = respExpanded === r.id;
+      const subsCount = (state.submissions || []).filter(s => {
+        const respName = (s.responsable || '').trim().toLowerCase();
+        const myName = (r.nombresApellidos || '').trim().toLowerCase();
+        return respName && myName && (respName.includes(myName) || myName.includes(respName));
+      }).length;
 
-    const detailHtml = isOpen
-      ? '<div style="background:var(--surface-2);border-radius:var(--radius);padding:14px;margin:6px 0;font-size:13px;line-height:1.6">' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' +
-      '<div><strong>RED(s) asignadas:</strong> ' + esc(r.red || '—') + '</div>' +
-      '<div><strong>Distrito(s):</strong> ' + esc(r.distrito || '—') + '</div>' +
-      '<div><strong>Área / Especialidad:</strong> ' + esc(r.especialista || '—') + '</div>' +
-      '<div><strong>Cargo oficial:</strong> ' + esc(r.cargo || '—') + '</div>' +
-      '<div><strong>Modalidad:</strong> ' + modalidadBadge(r.modalidad) + '</div>' +
-      '<div><strong>N° Celular:</strong> ' + (r.celular ? (isAdmin ? '<a href="tel:' + esc(r.celular) + '">📞 ' + esc(r.celular) + '</a>' : '📞 ***' + esc(r.celular).slice(-3)) : '—') + '</div>' +
-      '<div><strong>Correo:</strong> ' + (r.correo ? '<a href="mailto:' + esc(r.correo) + '">✉ ' + esc(r.correo) + '</a>' : '—') + '</div>' +
-      '<div><strong>Fichas registradas:</strong> <span class="badge ' + (subsCount ? 'st-logrado' : 'st-none') + '">' + subsCount + ' ficha(s)</span></div>' +
-      '</div>' +
-      '</div>'
-      : '';
+      const detailHtml = isOpen
+        ? '<div style="background:var(--surface-2);border-radius:var(--radius);padding:14px;margin:6px 0;font-size:13px;line-height:1.6">' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' +
+        '<div><strong>RED(s) asignadas:</strong> ' + esc(r.red || '—') + '</div>' +
+        '<div><strong>Distrito(s):</strong> ' + esc(r.distrito || '—') + '</div>' +
+        '<div><strong>Área / Especialidad:</strong> ' + esc(r.especialista || '—') + '</div>' +
+        '<div><strong>Cargo oficial:</strong> ' + esc(r.cargo || '—') + '</div>' +
+        '<div><strong>Modalidad:</strong> ' + modalidadBadge(r.modalidad) + '</div>' +
+        '<div><strong>N° Celular:</strong> ' + (r.celular ? (isAdmin ? '<a href="tel:' + esc(r.celular) + '">📞 ' + esc(r.celular) + '</a>' : '📞 ***' + esc(r.celular).slice(-3)) : '—') + '</div>' +
+        '<div><strong>Correo:</strong> ' + (r.correo ? '<a href="mailto:' + esc(r.correo) + '">✉ ' + esc(r.correo) + '</a>' : '—') + '</div>' +
+        '<div><strong>Fichas registradas:</strong> <span class="badge ' + (subsCount ? 'st-logrado' : 'st-none') + '">' + subsCount + ' ficha(s)</span></div>' +
+        '</div>' +
+        '</div>'
+        : '';
 
-    return '<tr class="clickable" data-resprow="' + esc(r.id) + '">' +
-      '<td>' + (r.red ? '<span class="badge badge-red">' + esc(r.red) + '</span>' : '<span style="color:var(--ink-soft)">—</span>') + '</td>' +
-      '<td>' + esc(r.distrito || '—') + '</td>' +
-      '<td><strong>' + esc(r.especialista || '—') + '</strong></td>' +
-      '<td>' + esc(r.nombresApellidos || '—') + '</td>' +
-      '<td>' + esc(r.cargo || '—') + '</td>' +
-      '<td>' + modalidadBadge(r.modalidad) + '</td>' +
-      '<td>' + (r.celular ? (isAdmin ? '<a href="tel:' + esc(r.celular) + '" style="color:inherit;text-decoration:none">📞 ' + esc(r.celular) + '</a>' : '📞 ***' + esc(r.celular).slice(-3)) : '<span style="color:var(--ink-soft)">—</span>') + '</td>' +
-      '<td>' + (r.correo ? '<a href="mailto:' + esc(r.correo) + '" style="color:var(--primary);text-decoration:none">✉ ' + esc(r.correo) + '</a>' : '<span style="color:var(--ink-soft)">—</span>') + '</td>' +
-      (isAdmin ? '<td><button class="iconBtn" data-respenit="' + esc(r.id) + '" title="Editar">✎</button> <button class="iconBtn" data-respdel="' + esc(r.id) + '" title="Eliminar">✕</button></td>' : '<td></td>') +
-      '</tr>' +
-      (isOpen ? '<tr class="detailRow"><td colspan="' + (isAdmin ? 9 : 8) + '">' + detailHtml + '</td></tr>' : '');
-  }).join('') || '<tr><td colspan="' + (isAdmin ? 9 : 8) + '" style="text-align:center;color:var(--ink-soft);padding:22px">Ningún especialista coincide con los filtros.</td></tr>';
-}
+      return '<tr class="clickable" data-resprow="' + esc(r.id) + '">' +
+        '<td>' + (r.red ? '<span class="badge badge-red">' + esc(r.red) + '</span>' : '<span style="color:var(--ink-soft)">—</span>') + '</td>' +
+        '<td>' + esc(r.distrito || '—') + '</td>' +
+        '<td><strong>' + esc(r.especialista || '—') + '</strong></td>' +
+        '<td>' + esc(r.nombresApellidos || '—') + '</td>' +
+        '<td>' + esc(r.cargo || '—') + '</td>' +
+        '<td>' + modalidadBadge(r.modalidad) + '</td>' +
+        '<td>' + (r.celular ? (isAdmin ? '<a href="tel:' + esc(r.celular) + '" style="color:inherit;text-decoration:none">📞 ' + esc(r.celular) + '</a>' : '📞 ***' + esc(r.celular).slice(-3)) : '<span style="color:var(--ink-soft)">—</span>') + '</td>' +
+        '<td>' + (r.correo ? '<a href="mailto:' + esc(r.correo) + '" style="color:var(--primary);text-decoration:none">✉ ' + esc(r.correo) + '</a>' : '<span style="color:var(--ink-soft)">—</span>') + '</td>' +
+        (isAdmin ? '<td><button class="iconBtn" data-respenit="' + esc(r.id) + '" title="Editar">✎</button> <button class="iconBtn" data-respdel="' + esc(r.id) + '" title="Eliminar">✕</button></td>' : '<td></td>') +
+        '</tr>' +
+        (isOpen ? '<tr class="detailRow"><td colspan="' + (isAdmin ? 9 : 8) + '">' + detailHtml + '</td></tr>' : '');
+    }).join('') || '<tr><td colspan="' + (isAdmin ? 9 : 8) + '" style="text-align:center;color:var(--ink-soft);padding:22px">Ningún especialista coincide con los filtros.</td></tr>';
+  }
 
   const getFilteredResponsables = () => {
     let list = (state.responsables || []).slice();
@@ -7961,7 +8022,7 @@ function buildResponsablesRowsHtml(filtered, respExpanded, isAdmin, state) {
     if (newEl) {
       newEl.focus();
       if (selStart !== null && selEnd !== null) {
-        try { newEl.setSelectionRange(selStart, selEnd); } catch (_) {}
+        try { newEl.setSelectionRange(selStart, selEnd); } catch (_) { }
       }
     }
   }

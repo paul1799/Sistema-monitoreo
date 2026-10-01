@@ -1289,8 +1289,8 @@ async function generateQrDataUrl(text) {
       container.style.display = 'none';
       document.body.appendChild(container);
 
-      // Limitar a 300 caracteres para evitar overflow en librerías QRCode.js estándar
-      const safeText = String(text || '').slice(0, 300);
+      // Limitar a 150 caracteres para evitar overflow en librerías QRCode.js estándar
+      const safeText = String(text || '').slice(0, 150);
 
       new window.QRCode(container, {
         text: safeText,
@@ -1321,7 +1321,6 @@ async function generateQrDataUrl(text) {
         resolve(dataUrl);
       }, 50);
     } catch (e) {
-      console.warn('No se pudo generar QR:', e);
       try {
         if (container && container.parentNode) {
           document.body.removeChild(container);
@@ -4672,10 +4671,33 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
     }
   ];
 
+  // Validación estricta de visita única para EBR Gestión Escolar (Regla 8.2)
+  if (isFichaEbrGestionEscolar(fichaType)) {
+    const v = Number(filters.visita);
+    if (v !== 1 && v !== 2) {
+      const err = new Error('Error 400: Para generar el reporte oficial PDF de Gestión Escolar EBR debes elegir Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.');
+      err.status = 400;
+      throw err;
+    }
+  }
+
   const safeName = sanitizeFilename(isAllMode ? 'general' : (fichaType ? (isDirectivoType ? 'Monitoreo_Directivo_IE' : fichaType.nombre) : 'reporte'));
   const visitaTag = filters.visita ? `_V${filters.visita}` : '';
   const itemsTag = incluirReporteItem ? '_con_items' : '';
-  const filename = `Reporte_Consolidado_${safeName}${visitaTag}_${getLimaDateStr()}${itemsTag}.pdf`;
+  let filename = `Reporte_Consolidado_${safeName}${visitaTag}_${getLimaDateStr()}${itemsTag}.pdf`;
+
+  let officialTitle = title;
+  let officialSubtitle = `Consolidado Oficial de Monitoreo y Acompañamiento 2026 · UGEL 03 · ${filterSubtitle}`;
+
+  if (isFichaEbrGestionEscolar(fichaType)) {
+    const v = Number(filters.visita) || 1;
+    const momRomano = v === 2 ? 'II' : 'I';
+    const momNombre = v === 2 ? 'Visita 2 · Segundo momento' : 'Visita 1 · Primer momento';
+    const fechaLimaStr = getLimaDateStr().replace(/-/g, '');
+    filename = `REPORTE_MONITOREO_GESTION_EBR_${momRomano}_MOMENTO_${fechaLimaStr}.pdf`;
+    officialTitle = `REPORTE OFICIAL DE MONITOREO Y ASISTENCIA TÉCNICA A LA GESTIÓN ESCOLAR — ${momNombre.toUpperCase()}`;
+    officialSubtitle = `${momNombre} · UGEL 03 · AGEBRE · ${filterSubtitle}`;
+  }
 
   // Bloque de firmas oficial dinámico
   const areaSigla = (downloadConfig.areaConfig && downloadConfig.areaConfig.sigla) ? downloadConfig.areaConfig.sigla : 'AGEBRE';
@@ -4691,8 +4713,8 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
   ];
 
   await createOfficialPdfDocument({
-    title,
-    subtitle: `Consolidado Oficial de Monitoreo y Acompañamiento 2026 · UGEL 03 · ${filterSubtitle}`,
+    title: officialTitle,
+    subtitle: officialSubtitle,
     orientation: isLandscape ? 'landscape' : 'portrait',
     introParagraph,
     soloEncabezadoPagina1: true,
