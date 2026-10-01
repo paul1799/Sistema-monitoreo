@@ -49,27 +49,27 @@ if (typeof window !== 'undefined') {
 
 /* ============================= ESTADO GLOBAL ============================= */
 let firebaseApp = null;
-let firestoreDb  = null;
-let auth         = null;
-let dbNs         = null;
+let firestoreDb = null;
+let auth = null;
+let dbNs = null;
 
 let currentUser = null;
 let currentRole = null; // 'admin' | 'general'
 let connectionTimer = null;
 
 const state = {
-  activeTab:         'dashboard',
-  fichaTypes:        [],  // {id, nombre, descripcion, icono, tipoRespuesta, secciones, extras}
-  submissions:       [],  // {id, fichaTypeId, ...}
-  roles:             [],  // {id(=uid), email, role, createdAt}  — solo admin
-  colegios:          [],  // {id, rei, codigoLocal, ie, ...}
-  directivos:        [],  // {id, colegioId, codigoLocal, cargo, apellidosNombres, dni, telefono, correo, condicion, estado, fuente, historial, ...}
-  responsables:      [],  // {id, red, distrito, especialista, nombresApellidos, cargo, modalidad, celular, correo}
-  tiposConcurso:     [],  // {id, nombre, tipoParticipacion, tieneGenero, tieneDisciplina, tieneTituloTrabajo, categorias, ...}
+  activeTab: 'dashboard',
+  fichaTypes: [],  // {id, nombre, descripcion, icono, tipoRespuesta, secciones, extras}
+  submissions: [],  // {id, fichaTypeId, ...}
+  roles: [],  // {id(=uid), email, role, createdAt}  — solo admin
+  colegios: [],  // {id, rei, codigoLocal, ie, ...}
+  directivos: [],  // {id, colegioId, codigoLocal, cargo, apellidosNombres, dni, telefono, correo, condicion, estado, fuente, historial, ...}
+  responsables: [],  // {id, red, distrito, especialista, nombresApellidos, cargo, modalidad, celular, correo}
+  tiposConcurso: [],  // {id, nombre, tipoParticipacion, tieneGenero, tieneDisciplina, tieneTituloTrabajo, categorias, ...}
   concursoRegistros: [],  // {id, tipoConcursoId, etapa, categoria, institucion, participantes, asesores, ...}
   concursoCuerpoTecnico: [], // {id, grupoKey, tipoConcursoId, etapa, categoria, disciplina, genero, personas, bitacora, ...}
-  compromisos:       [],  // {id, fichaId, institucion, ugel, responsable, texto, plazo, estado, ...}
-  areasFirma:        [],  // {id, nombre, sigla, descripcionEncabezado, logo, activa, esPredeterminada}
+  compromisos: [],  // {id, fichaId, institucion, ugel, responsable, texto, plazo, estado, ...}
+  areasFirma: [],  // {id, nombre, sigla, descripcionEncabezado, logo, activa, esPredeterminada}
   plantillasFirmantes: [], // {id, areaId, tipoReporte, orden, cargo, nombreOpcional, entidad, leyenda}
   preferenciasDescarga: [], // {usuarioId, tipoReporte, areaId, firmantesJson, opcionesJson}
 };
@@ -192,7 +192,7 @@ function stopListeners() {
     activeUnsubscribers.forEach(unsub => {
       try {
         if (typeof unsub === 'function') unsub();
-      } catch (_) {}
+      } catch (_) { }
     });
   }
   activeUnsubscribers = [];
@@ -492,9 +492,9 @@ async function initApp() {
 
   try {
     firebaseApp = initializeApp(FIREBASE_CONFIG);
-    firestoreDb  = getFirestore(firebaseApp);
-    dbNs         = makeDbAdapter(firestoreDb);
-    auth         = getAuth(firebaseApp);
+    firestoreDb = getFirestore(firebaseApp);
+    dbNs = makeDbAdapter(firestoreDb);
+    auth = getAuth(firebaseApp);
   } catch (e) {
     console.error('No se pudo inicializar Firebase. Revisa FIREBASE_CONFIG.', e);
     setConnectionState('offline');
