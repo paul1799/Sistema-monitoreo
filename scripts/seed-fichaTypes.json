@@ -1,5 +1,9 @@
 {
   "ft_materiales_cebe": {
+    "grupo": "CEBE / PRITE",
+    "nombreCorto": "Materiales educativos (CEBE/PRITE)",
+    "orden": 32,
+    "tieneVisitas": false,
     "descripcion": "Verifica la recepción, distribución, uso pedagógico, seguimiento y conservación de los materiales educativos en CEBE y PRITE.",
     "extras": [
       {
@@ -103,6 +107,10 @@
     "version": { "anio": 2026, "momento": null, "estado": "publicada" }
   },
   "ft_coord_tutoria_jec": {
+    "grupo": "Modelo JEC",
+    "nombreCorto": "Coord. de Tutoría (JEC)",
+    "orden": 11,
+    "tieneVisitas": true,
     "descripcion": "Evalúa el cumplimiento de las funciones del coordinador de tutoría: planificación, visitas de aula, reuniones colegiadas, tutoría individual y trabajo con familias.",
     "extras": [
       {
@@ -258,6 +266,10 @@
     "version": { "anio": 2026, "momento": null, "estado": "publicada" }
   },
   "ft_msejec_2do": {
+    "grupo": "Modelo JEC",
+    "nombreCorto": "Implementación del Modelo JEC",
+    "orden": 10,
+    "tieneVisitas": true,
     "descripcion": "Verifica la implementación de los componentes pedagógico, de gestión y de soporte del Modelo de Servicio Educativo Jornada Escolar Completa.",
     "extras": [
       {
@@ -451,6 +463,10 @@
     "version": { "anio": 2026, "momento": "2do", "estado": "publicada" }
   },
   "ft_gestion_cebe": {
+    "grupo": "CEBE / PRITE",
+    "nombreCorto": "Gestión Escolar CEBE",
+    "orden": 30,
+    "tieneVisitas": true,
     "descripcion": "Monitorea el acompañamiento a la práctica docente, fortalecimiento docente, evaluación de aprendizajes, uso de materiales, Plan Lector, enfoque ambiental e innovación educativa en los CEBE.",
     "extras": [
       {
@@ -647,6 +663,10 @@
     "version": { "anio": 2026, "momento": null, "estado": "publicada" }
   },
   "ft_rubricas_aula": {
+    "grupo": "Gestión escolar y docentes (EBR)",
+    "nombreCorto": "Rúbricas de observación de aula",
+    "orden": 22,
+    "tieneVisitas": false,
     "descripcion": "Registra el nivel de logro del desempeño docente observado en el aula, según las rúbricas de observación de aula de MINEDU.",
     "extras": [
       {
@@ -705,6 +725,10 @@
     "version": { "anio": 2026, "momento": null, "estado": "publicada" }
   },
   "ft_gestion_ugel03_ebr": {
+    "grupo": "Gestión escolar y docentes (EBR)",
+    "nombreCorto": "Gestión Escolar EBR",
+    "orden": 20,
+    "tieneVisitas": true,
     "descripcion": "Monitorea el cumplimiento de la Política Regional 01 (Instituciones Educativas que Aseguran Aprendizajes) en IE de Educación Básica Regular.",
     "extras": [
       {
@@ -884,6 +908,10 @@
     "version": { "anio": 2026, "momento": "2do", "estado": "publicada" }
   },
   "ft_directivo": {
+    "grupo": "Gestión escolar y docentes (EBR)",
+    "nombreCorto": "Directivo de IE",
+    "orden": 21,
+    "tieneVisitas": false,
     "nombre": "Ficha de monitoreo al directivo de IE",
     "descripcion": "Monitoreo y acompañamiento pedagógico e institucional al directivo de Instituciones Educativas de Educación Básica (EBR/EBE).",
     "icono": "👔",

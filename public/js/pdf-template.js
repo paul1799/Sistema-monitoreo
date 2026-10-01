@@ -2506,15 +2506,27 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
   const ebrVisitaNum = isV2 ? 2 : 1;
   const maxPtsOficial = isV2 ? 69 : 57;
   let ebrPuntaje = (sub.puntaje !== undefined && sub.puntaje !== null) ? Number(sub.puntaje) : null;
-  if (ebrPuntaje === null && Array.isArray(sub.respuestas) && sub.respuestas.length > 0) {
+  if ((ebrPuntaje === null || ebrPuntaje > maxPtsOficial) && Array.isArray(sub.respuestas) && sub.respuestas.length > 0) {
     let pSum = 0;
+    const seenNums = new Set();
+    const maxCount = isV2 ? 23 : 19;
     sub.respuestas.forEach(r => {
-      const vL = String(r?.valor || '').toLowerCase();
-      if (vL === 'logrado' || vL === 'si') pSum += 3;
-      else if (vL === 'proceso') pSum += 2;
-      else if (vL === 'inicio' || vL === 'no') pSum += 1;
+      let num = r?.num;
+      if (!num && r?.id) {
+        const m = String(r.id).match(/^(?:ge\d*|num)_?(\d+)$/);
+        if (m) num = parseInt(m[1], 10);
+      }
+      if (num && num >= 1 && num <= maxCount && !seenNums.has(num)) {
+        seenNums.add(num);
+        const vL = String(r?.valor || '').toLowerCase();
+        if (vL === 'logrado' || vL === 'si') pSum += 3;
+        else if (vL === 'proceso') pSum += 2;
+        else if (vL === 'inicio' || vL === 'no') pSum += 1;
+      }
     });
-    ebrPuntaje = pSum;
+    ebrPuntaje = Math.min(maxPtsOficial, pSum);
+  } else if (ebrPuntaje !== null && ebrPuntaje > maxPtsOficial) {
+    ebrPuntaje = maxPtsOficial;
   }
   if (ebrPuntaje === null) ebrPuntaje = 0;
   const ebrNivelObj = getNivelEbrGestion(ebrPuntaje, ebrVisitaNum);

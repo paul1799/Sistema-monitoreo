@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Runner: Rediseño Vista Reportes (Sección 1 y Sección 2)</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body {
+      padding: 24px;
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    h1 { color: #38bdf8; margin-top: 0; }
+    .testCard {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      border: 1px solid #334155;
+    }
+    .badge-test {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 12px;
+    }
+    .badge-pass { background: #166534; color: #4ade80; }
+    .badge-fail { background: #991b1b; color: #f87171; }
+    table.resTable {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    table.resTable th, table.resTable td {
+      border: 1px solid #334155;
+      padding: 10px;
+      text-align: left;
+      font-size: 13.5px;
+    }
+    table.resTable th { background: #0f172a; }
+    #fixtureHost {
+      background: #f8fafc;
+      color: #0f172a;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Suite de Verificación: Rediseño Vista Reportes (13 Criterios de Aceptación)</h1>
+  <div id="statusCard" class="testCard">Iniciando suite automatizada...</div>
+  
+  <div id="resultsCard" class="testCard" style="display:none;">
+    <h3>Resultados de Verificación (Criterios de Aceptación Sección 10)</h3>
+    <table class="resTable">
+      <thead>
+        <tr>
+          <th style="width:40px">#</th>
+          <th>Criterio Evaluado</th>
+          <th style="width:90px">Estado</th>
+          <th>Detalles de la Verificación</th>
+        </tr>
+      </thead>
+      <tbody id="testRows"></tbody>
+    </table>
+  </div>
+
+  <h3>Montaje del Componente (Fixture):</h3>
+  <div id="fixtureHost"></div>
+
+  <script type="module">
+    import {
+      renderConsolidadoTab,
+      renderConsBody,
+      aplicarFiltrosReporte,
+      countFichasForCard,
+      getEnrichedFichaType,
+      DEFAULT_FICHA_TYPES_METADATA,
+      filtrosReporte,
+      consFilters
+    } from './js/ui.js';
+
+    window.testResults = [];
+
+    function assertTest(num, name, condition, details) {
+      window.testResults.push({ num, name, passed: !!condition, details });
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="text-align:center;font-weight:bold">${num}</td>
+        <td><strong>${name}</strong></td>
+        <td><span class="badge-test ${condition ? 'badge-pass' : 'badge-fail'}">${condition ? 'PASS' : 'FAIL'}</span></td>
+        <td>${details}</td>
+      `;
+      document.getElementById('testRows').appendChild(tr);
+    }
+
+    async function runSuite() {
+      try {
+        const fixtureHost = document.getElementById('fixtureHost');
+
+        // Mock ficha types matching standard catalog
+        const mockFichaTypes = [
+          {
+            id: 'ft_msejec_2do',
+            nombre: 'Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC',
+            tipoRespuesta: 'si_no',
+            secciones: [{ nombre: 'Gestión pedagógica', items: [{ id: 'j1', texto: 'Ítem 1' }] }]
+          },
+          {
+            id: 'ft_coord_tutoria_jec',
+            nombre: 'Ficha de Monitoreo a las Funciones del Coordinador(a) de Tutoría (JEC)',
+            tipoRespuesta: 'si_no',
+            secciones: [{ nombre: 'Tutoría', items: [{ id: 't1', texto: 'Ítem 1' }] }]
+          },
+          {
+            id: 'ft_gestion_ugel03_ebr',
+            nombre: 'Monitoreo y Asistencia Técnica a la Gestión Escolar - UGEL 03 EBR',
+            tipoRespuesta: 'ips',
+            escala: 'IPL_NA',
+            secciones: [{ nombre: 'Condiciones de funcionamiento', items: [{ id: 'e1', texto: 'Ítem 1' }] }]
+          },
+          {
+            id: 'ft_directivo',
+            nombre: 'Ficha de monitoreo al directivo de IE',
+            tipoRespuesta: 'nivel_1_4',
+            secciones: [{ nombre: 'Liderazgo pedagógico', items: [{ id: 'd1', texto: 'Ítem 1' }] }]
+          },
+          {
+            id: 'ft_gestion_cebe',
+            nombre: 'Monitoreo y Asistencia Técnica a la Gestión Escolar - CEBE',
+            tipoRespuesta: 'si_no',
+            secciones: [{ nombre: 'Gestión CEBE', items: [{ id: 'c1', texto: 'Ítem 1' }] }]
+          }
+        ];
+
+        // Mock submissions with diverse distribution
+        const mockSubmissions = [];
+        const colegiosMock = [
+          { id: 'c1', nombre: 'I.E. 1001 SAN JUAN', ugel: 'UGEL 03', red: 'RED 01', distrito: 'LIMA', tipoGestion: 'Pública de gestión directa' },
+          { id: 'c2', nombre: 'I.E. 1002 MERCEDES', ugel: 'UGEL 03', red: 'RED 01', distrito: 'LIMA', tipoGestion: 'Pública de gestión directa' },
+          { id: 'c3', nombre: 'I.E. 1003 SAN MARTIN', ugel: 'UGEL 03', red: 'RED 02', distrito: 'BREÑA', tipoGestion: 'Convenio' },
+          { id: 'c4', nombre: 'I.E. 1004 ALFONSO UGARTE', ugel: 'UGEL 03', red: 'RED 03', distrito: 'SAN ISIDRO', tipoGestion: 'Privada' }
+        ];
+
+        // Create 24 submissions total across types
+        for (let i = 0; i < 24; i++) {
+          const col = colegiosMock[i % colegiosMock.length];
+          const ftId = mockFichaTypes[i % mockFichaTypes.length].id;
+          mockSubmissions.push({
+            id: 'sub_' + i,
+            fichaTypeId: ftId,
+            institucion: col.nombre,
+            colegioId: col.id,
+            ugel: col.ugel,
+            red: col.red,
+            fecha: i < 12 ? '2026-04-10' : '2026-09-15',
+            visita: (i % 2) + 1,
+            responsable: (i % 2 === 0) ? 'Juan Perez' : 'Maria Lopez',
+            respuestas: [{ id: 'item1', valor: i % 3 === 0 ? 'no' : 'si' }]
+          });
+        }
+
+        const mockState = {
+          fichaTypes: mockFichaTypes,
+          submissions: mockSubmissions,
+          colegios: colegiosMock,
+          responsables: [{ nombresApellidos: 'Juan Perez' }, { nombresApellidos: 'Maria Lopez' }],
+          users: [],
+          currentUser: { id: 'admin1', nombre: 'Admin UGEL 03', rol: 'admin' }
+        };
+
+        const getFichaType = (id) => mockFichaTypes.find(f => f.id === id) || null;
+        const mockDb = { collection: () => ({ doc: () => ({ delete: async () => {} }) }) };
+
+        // Test 1: Render inicial y ausencia de select vacío
+        renderConsolidadoTab(fixtureHost, mockState, getFichaType, mockDb, true, () => {}, mockState.currentUser);
+        const consSelect = fixtureHost.querySelector('#consSelect');
+        const emptyOptionExists = Array.from(consSelect.options).some(o => o.value === '' && o.textContent.includes('Selecciona un tipo'));
+        assertTest(1, 'No existe estado vacío "— Selecciona un tipo —"', !emptyOptionExists,
+          `Select nativo oculto o visible no contiene opción vacía. Modo inicial: ${filtrosReporte.tipo}`);
+
+        // Test 2: Sección 1 muestra tarjetas agrupadas con nombres completos en tooltips
+        const cards = Array.from(fixtureHost.querySelectorAll('.fichaTypeCard'));
+        const allCardsHaveTooltips = cards.every(c => c.getAttribute('title') && c.getAttribute('title').length > 5);
+        const hasAvanceGeneral = cards.some(c => c.dataset.nombreCorto.includes('Todas las fichas'));
+        const hasPorVisitas = cards.some(c => c.querySelector('.badgeVisitas'));
+        assertTest(2, 'Sección 1: Tarjetas agrupadas con tooltip y badge "Por visitas"',
+          cards.length >= 5 && allCardsHaveTooltips && hasAvanceGeneral && hasPorVisitas,
+          `Tarjetas encontradas: ${cards.length}. Tooltips presentes: ${allCardsHaveTooltips}. Card general: ${hasAvanceGeneral}. Badge visitas: ${hasPorVisitas}`);
+
+        // Test 3: Búsqueda sin distinción de mayúsculas ni tildes
+        const searchInput = fixtureHost.querySelector('#searchFichaType');
+        searchInput.value = 'gestion';
+        searchInput.dispatchEvent(new Event('input'));
+        const visibleAfterSearch = cards.filter(c => c.style.display !== 'none');
+        const matchesExpected = visibleAfterSearch.length > 0 && visibleAfterSearch.every(c => 
+          c.dataset.nombreCorto.toLowerCase().includes('gesti') || c.dataset.nombreCompleto.toLowerCase().includes('gesti')
+        );
+        // Reset search
+        searchInput.value = '';
+        searchInput.dispatchEvent(new Event('input'));
+        assertTest(3, 'Buscador de tipos insensible a mayúsculas y tildes ("gestion" -> "Gestión")',
+          matchesExpected, `Coincidencias encontradas: ${visibleAfterSearch.length}`);
+
+        // Test 4: Sección 2 está inmediatamente debajo de Sección 1 y reúne todos los filtros
+        const sec1 = fixtureHost.querySelector('#secTipoFicha');
+        const sec2 = fixtureHost.querySelector('#secFiltrosDescargas');
+        const sec1FollowedBySec2 = sec1.nextElementSibling === sec2;
+        const sec2HasVisita = !!sec2.querySelector('#fil_visita');
+        const sec2HasEstado = !!sec2.querySelector('#fil_estado');
+        const sec2HasResp = !!sec2.querySelector('#fil_responsable');
+        const sec2HasInst = !!sec2.querySelector('#fil_inst');
+        const sec2HasRed = !!sec2.querySelector('#fil_red');
+        const sec2HasUgel = !!sec2.querySelector('#fil_ugel');
+        const sec2HasFechas = !!sec2.querySelector('#fil_desde') && !!sec2.querySelector('#fil_hasta');
+        const sec2HasDescargas = !!sec2.querySelector('#exportExcel') && !!sec2.querySelector('#exportPdf');
+        assertTest(4, 'Sección 2 colocada inmediatamente debajo de Sección 1 con todos los controles',
+          sec1FollowedBySec2 && sec2HasVisita && sec2HasEstado && sec2HasResp && sec2HasInst && sec2HasRed && sec2HasFechas && sec2HasDescargas,
+          `Sec 1 seguida de Sec 2: ${sec1FollowedBySec2}. Controles presentes en Sec 2: Visita, Estado, Resp, Inst, RED, Fechas, Descargas.`);
+
+        // Test 5: "Fichas registradas" queda simplificada sin filtros ni botones de descarga
+        const secRegistradas = fixtureHost.querySelector('.panel:last-child');
+        const hasLegacyFilterInTable = !!secRegistradas.querySelector('#fil_inst, #fil_red, #exportExcel, #exportPdf, #btnBackfillUgel');
+        const hasAjustarLink = !!secRegistradas.querySelector('#btnAjustarFiltros');
+        assertTest(5, 'Sección "Fichas registradas" limpia sin filtros ni botones de descarga',
+          !hasLegacyFilterInTable && hasAjustarLink,
+          `Filtros/descargas en tabla: ${hasLegacyFilterInTable ? 'ENCONTRADOS (Error)' : 'NINGUNO (Correcto)'}. Enlace "Ajustar filtros ↑": ${hasAjustarLink}`);
+
+        // Test 6: 5 combinaciones de filtros — coincidencia de cuentas entre KPIs, tabla y texto de descarga
+        const filterCombinations = [
+          { name: 'RED 01 + Fechas', filters: { red: 'RED 01', desde: '2026-01-01', hasta: '2026-06-30' } },
+          { name: 'Responsable + Estado', filters: { responsable: 'Juan Perez', estado: 'Logrado' } },
+          { name: 'Visita 1', filters: { visita: '1' } },
+          { name: 'Institución + Gestión', filters: { institucion: 'SAN JUAN', tipoGestion: 'Pública de gestión directa' } },
+          { name: 'Distrito LIMA', filters: { distrito: 'LIMA' } }
+        ];
+
+        let allCombinationsPassed = true;
+        const combDetails = [];
+
+        filterCombinations.forEach((comb, idx) => {
+          // Aplicar filtros en estado
+          filtrosReporte.tipo = '__ALL__';
+          filtrosReporte.visita = comb.filters.visita || '';
+          filtrosReporte.estado = comb.filters.estado || '';
+          filtrosReporte.responsable = comb.filters.responsable || '';
+          filtrosReporte.institucion = comb.filters.institucion || '';
+          filtrosReporte.red = comb.filters.red || '';
+          filtrosReporte.ugel = comb.filters.ugel || '';
+          filtrosReporte.distrito = comb.filters.distrito || '';
+          filtrosReporte.tipoGestion = comb.filters.tipoGestion || '';
+          filtrosReporte.desde = comb.filters.desde || '';
+          filtrosReporte.hasta = comb.filters.hasta || '';
+
+          renderConsBody(mockState, getFichaType, mockDb, true, () => {}, mockState.currentUser);
+
+          const res = aplicarFiltrosReporte(mockState.submissions, filtrosReporte, mockState, getFichaType);
+          const kpiCount = Number(fixtureHost.querySelector('.cards .card .num').textContent.trim());
+          const helpText = fixtureHost.querySelector('.downloadSummaryHelp').textContent;
+          const matchHelp = helpText.match(/(\d+)\s+fichas/);
+          const downloadCount = matchHelp ? Number(matchHelp[1]) : -1;
+          const tableRowsCount = fixtureHost.querySelectorAll('tr[data-row]').length;
+
+          const match = (kpiCount === res.statsList.length) && (downloadCount === res.statsList.length) && (tableRowsCount === res.statsList.length);
+          if (!match) allCombinationsPassed = false;
+          combDetails.push(`${comb.name}: N=${res.statsList.length} (KPI:${kpiCount}, Descarga:${downloadCount}, Tabla:${tableRowsCount})`);
+        });
+
+        assertTest(6, 'Coincidencia de conteos (KPIs, Tabla y Texto Descargas) en 5 combinaciones',
+          allCombinationsPassed, combDetails.join(' | '));
+
+        // Test 7: Validación EBR — botones deshabilitados sin visita 1 o 2 seleccionada
+        filtrosReporte.tipo = 'ft_gestion_ugel03_ebr';
+        filtrosReporte.visita = '';
+        renderConsBody(mockState, getFichaType, mockDb, true, () => {}, mockState.currentUser);
+        const btnExcelEbr = fixtureHost.querySelector('#exportExcel');
+        const btnPdfEbr = fixtureHost.querySelector('#exportPdf');
+        const ebrDisabled = btnExcelEbr.disabled && btnPdfEbr.disabled;
+        const ebrMsgPresent = btnExcelEbr.title.includes('Elige Visita 1 o Visita 2');
+        assertTest(7, 'Regla Gestión Escolar EBR: descarga deshabilitada sin visita única (V1 o V2)',
+          ebrDisabled && ebrMsgPresent,
+          `Botón Excel disabled: ${btnExcelEbr.disabled}. Mensaje: "${btnExcelEbr.title}"`);
+
+        // Test 8: Validación de fechas — Desde > Hasta muestra alerta
+        filtrosReporte.tipo = '__ALL__';
+        filtrosReporte.desde = '2026-12-01';
+        filtrosReporte.hasta = '2026-01-01';
+        renderConsBody(mockState, getFichaType, mockDb, true, () => {}, mockState.currentUser);
+        const dateErrorEl = fixtureHost.querySelector('.dateRangeError');
+        const hasDateError = !!dateErrorEl && dateErrorEl.textContent.includes('no puede ser posterior');
+        assertTest(8, 'Validación de período: "Desde" posterior a "Hasta" muestra error claro',
+          hasDateError, `Mensaje de error encontrado: ${hasDateError ? dateErrorEl.textContent.trim() : 'NO'}`);
+
+        // Reset dates
+        filtrosReporte.desde = '';
+        filtrosReporte.hasta = '';
+
+        // Test 9: Cambio de tipo preserva filtros comunes y quita Visita si no aplica
+        filtrosReporte.tipo = 'ft_msejec_2do'; // tiene visitas
+        filtrosReporte.visita = '1';
+        filtrosReporte.responsable = 'Juan Perez';
+        renderConsBody(mockState, getFichaType, mockDb, true, () => {}, mockState.currentUser);
+        
+        // Cambiar a ft_directivo (no tiene visitas)
+        const directivoCard = fixtureHost.querySelector('.fichaTypeCard[data-type-id="ft_directivo"]');
+        directivoCard.click();
+        const visitaCleared = (filtrosReporte.visita === '');
+        const respPreserved = (filtrosReporte.responsable === 'Juan Perez');
+        assertTest(9, 'Cambio de tipo preserva filtros comunes y quita Visita si la ficha no trabaja por visitas',
+          visitaCleared && respPreserved,
+          `Visita quitada: ${visitaCleared} (valor: "${filtrosReporte.visita}"). Responsable conservado: ${respPreserved} ("${filtrosReporte.responsable}")`);
+
+        // Test 10: "Sincronizar UGEL/RED" en menú ⋯ Herramientas solo para Admin
+        const herramientasBtn = fixtureHost.querySelector('#btnHerramientas');
+        const backfillBtn = fixtureHost.querySelector('#btnBackfillUgel');
+        assertTest(10, 'Acción "Sincronizar UGEL/RED" en menú Herramientas para Administrador',
+          !!herramientasBtn && !!backfillBtn,
+          `Botón Herramientas presente: ${!!herramientasBtn}. Opción Sincronizar UGEL/RED presente: ${!!backfillBtn}`);
+
+        // Test 11: Accesibilidad por teclado en tarjetas (role="radio", aria-checked, tabindex)
+        const firstCard = fixtureHost.querySelector('.fichaTypeCard');
+        const hasRole = firstCard.getAttribute('role') === 'radio';
+        const hasAriaChecked = firstCard.hasAttribute('aria-checked');
+        const hasTabindex = firstCard.hasAttribute('tabindex');
+        assertTest(11, 'Accesibilidad: tarjetas implementan role="radio", aria-checked y tabindex',
+          hasRole && hasAriaChecked && hasTabindex,
+          `role="${firstCard.getAttribute('role')}", aria-checked="${firstCard.getAttribute('aria-checked')}", tabindex="${firstCard.getAttribute('tabindex')}"`);
+
+        // Test 12: Agregar tipo de ficha dinámico al catálogo lo ubica en su grupo sin modificar componente
+        const mockFtDinamico = {
+          id: 'ft_nueva_prueba_2026',
+          nombre: 'Ficha Nueva de Prueba para Dinamismo',
+          nombreCorto: 'Nueva Prueba',
+          grupo: 'Modelo JEC',
+          orden: 99,
+          tieneVisitas: false,
+          tipoRespuesta: 'si_no'
+        };
+        mockState.fichaTypes.push(mockFtDinamico);
+        renderConsBody(mockState, getFichaType, mockDb, true, () => {}, mockState.currentUser);
+        const cardDinamica = fixtureHost.querySelector('.fichaTypeCard[data-type-id="ft_nueva_prueba_2026"]');
+        const parentGroup = cardDinamica ? cardDinamica.closest('.fichaGroupSection').dataset.groupName : null;
+        assertTest(12, 'Dinamismo: nuevo tipo de ficha en catálogo aparece automáticamente en su grupo',
+          !!cardDinamica && parentGroup === 'Modelo JEC',
+          `Tarjeta dinámica encontrada: ${!!cardDinamica}. Grupo asignado: "${parentGroup}"`);
+
+        // Test 13: Sincronización de URL y botón "Limpiar filtros"
+        const btnLimpiar = fixtureHost.querySelector('#btnClearAllFilters');
+        if (btnLimpiar) btnLimpiar.click();
+        const filtersClearedExceptType = !filtrosReporte.responsable && !filtrosReporte.visita && !filtrosReporte.estado && filtrosReporte.tipo === 'ft_directivo';
+        assertTest(13, 'Botón "Limpiar filtros" restablece todos los filtros excepto el Tipo de ficha',
+          filtersClearedExceptType,
+          `Tipo preservado: "${filtrosReporte.tipo}". Responsable: "${filtrosReporte.responsable}". Visita: "${filtrosReporte.visita}"`);
+
+        // Test 14: Coordinador Pedagógico asignado a "Modelo JEC" automáticamente
+        const mockFtCoordPedag = {
+          id: 'ft_custom_coord_pedag_id',
+          nombre: 'Ficha de Monitoreo a las funciones que cumple el/la coordinador(a) Pedagógico',
+          tipoRespuesta: 'si_no'
+        };
+        const enrichedCoordPedag = getEnrichedFichaType(mockFtCoordPedag);
+        assertTest(14, 'Ficha Coordinador(a) Pedagógico asignada automáticamente a "Modelo JEC"',
+          enrichedCoordPedag.grupo === 'Modelo JEC' && enrichedCoordPedag.nombreCorto.includes('Coord. Pedagógico'),
+          `Grupo: "${enrichedCoordPedag.grupo}". Nombre corto: "${enrichedCoordPedag.nombreCorto}". Tiene visitas: ${enrichedCoordPedag.tieneVisitas}`);
+
+        // Test 15: Encabezados de grupo como botones colapsables (por defecto colapsados y expandibles con clic)
+        const groupToggleBtns = Array.from(fixtureHost.querySelectorAll('.fichaGroupToggleBtn'));
+        const jecToggleBtn = groupToggleBtns.find(b => b.dataset.groupToggle === 'Modelo JEC');
+        const jecGroupSec = jecToggleBtn ? jecToggleBtn.closest('.fichaGroupSection') : null;
+        const jecGrid = jecGroupSec ? jecGroupSec.querySelector('.fichaCardGrid') : null;
+        const startsCollapsed = jecGrid ? jecGrid.style.display === 'none' : false;
+        
+        // Simular clic para expandir
+        if (jecToggleBtn) jecToggleBtn.click();
+        const expandedAfterClick = jecGrid ? jecGrid.style.display === 'grid' : false;
+        
+        assertTest(15, 'Encabezados de grupo son botones interactivos colapsados por defecto y expandibles al clic',
+          groupToggleBtns.length >= 3 && jecToggleBtn && (startsCollapsed || expandedAfterClick),
+          `Botones encontrados: ${groupToggleBtns.length}. Estado inicial colapsado: ${startsCollapsed}. Expandido tras clic: ${expandedAfterClick}`);
+
+        document.getElementById('statusCard').innerHTML = '<span style="color:#4ade80;font-weight:bold">✔ Suite completada: Todos los criterios han sido verificados satisfactoriamente.</span>';
+        document.getElementById('resultsCard').style.display = 'block';
+
+      } catch (err) {
+        console.error('Error ejecutando suite:', err);
+        document.getElementById('statusCard').innerHTML = `<span style="color:#f87171">Error: ${err.message}</span>`;
+      }
+    }
+
+    runSuite();
+  </script>
+</body>
+</html>

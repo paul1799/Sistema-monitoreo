@@ -1,5 +1,9 @@
 {
   "ft_ebr_gestion_1er": {
+    "grupo": "Gestión escolar y docentes (EBR)",
+    "nombreCorto": "Gestión Escolar EBR",
+    "orden": 20,
+    "tieneVisitas": true,
     "nombre": "Gestión Escolar EBR — 1.er momento (Diagnóstico)",
     "descripcion": "Monitorea el cumplimiento de la Política Regional 01 en IE de Educación Básica Regular en el primer momento del año (diagnóstico inicial: planificación y condiciones).",
     "icono": "🏫",
@@ -180,6 +184,10 @@
   },
 
   "ft_prite_gestion": {
+    "grupo": "CEBE / PRITE",
+    "nombreCorto": "Gestión Escolar PRITE",
+    "orden": 31,
+    "tieneVisitas": true,
     "nombre": "Gestión Escolar PRITE — Monitoreo Multi-Visita",
     "descripcion": "Monitorea la gestión pedagógica en Programas de Intervención Temprana (PRITE). Cubre tres momentos de visita a lo largo del año.",
     "icono": "👶",
@@ -330,6 +338,10 @@
   },
 
   "ft_cebe_lectora": {
+    "grupo": "CEBE / PRITE",
+    "nombreCorto": "Experiencia lectora CEBE 2026",
+    "orden": 33,
+    "tieneVisitas": true,
     "nombre": "Experiencia Lectora — CEBE (Plan Lector y Lectura Compartida)",
     "descripcion": "Monitorea la implementación de la Experiencia Lectora y el Plan Lector en los Centros de Educación Básica Especial (CEBE). Cubre tres momentos de visita.",
     "icono": "📖",

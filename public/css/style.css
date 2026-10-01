@@ -5229,3 +5229,681 @@ button:focus-visible {
   backdrop-filter: blur(8px);
   transition: border-color 0.3s ease;
 }
+
+/* =========================================================================
+   REDISEÑO VISTA REPORTES: SECCIÓN TIPO DE FICHA Y FILTROS UNIFICADOS
+   ========================================================================= */
+
+.secReportesTipoFicha,
+.secReportesFiltros {
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.secHeaderFlex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+
+.secTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.secStepBadge {
+  background: var(--navy-900);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 3px 8px;
+  line-height: 1.2;
+}
+
+.secTitleText {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--navy-900);
+}
+
+.btnToggleTipos {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-600);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnToggleTipos:hover {
+  background: #F1F5F9;
+  color: var(--navy-900);
+  border-color: var(--navy-700);
+}
+
+.searchFichaBox {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.searchFichaBox input {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  font-size: 13.5px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: var(--text-900);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.searchFichaBox input:focus {
+  border-color: var(--blue-600);
+  box-shadow: 0 0 0 3px rgba(31, 95, 168, 0.15);
+  outline: none;
+}
+
+.searchFichaBox .searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-400);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+.fichaGroupSection {
+  margin-bottom: 18px;
+}
+
+.fichaGroupSection:last-child {
+  margin-bottom: 0;
+}
+
+.fichaGroupToggleBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  padding: 6px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  margin-bottom: 8px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+
+.fichaGroupToggleBtn:hover {
+  background: #F1F5F9;
+}
+
+.fichaGroupToggleBtn:focus-visible {
+  outline: 2px solid var(--gold-500);
+  outline-offset: 2px;
+}
+
+.groupToggleLeft {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.groupToggleChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+  color: var(--blue-600);
+  font-weight: 800;
+  border-radius: 4px;
+  background: #EEF2F6;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.fichaGroupToggleBtn:hover .groupToggleChevron {
+  background: #E2E8F0;
+}
+
+.groupToggleTitle {
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--navy-900);
+}
+
+.groupToggleBadge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-600);
+  background: #EEF2F6;
+  border: 1px solid #CBD5E1;
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+
+.groupToggleDivider {
+  flex: 1;
+  height: 1px;
+  background: #E2E8F0;
+  margin: 0 4px;
+}
+
+.groupToggleAction {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--blue-600);
+  background: #F0F6FF;
+  border: 1px solid #BFDBFE;
+  padding: 2px 10px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.fichaGroupToggleBtn:hover .groupToggleAction {
+  background: var(--blue-600);
+  color: #FFFFFF;
+  border-color: var(--blue-600);
+}
+
+.fichaCardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.fichaTypeCard {
+  background: #FFFFFF;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+  user-select: none;
+  min-height: 82px;
+  outline: none;
+}
+
+.fichaTypeCard:hover {
+  border-color: var(--blue-600);
+  box-shadow: 0 3px 10px rgba(11, 27, 54, 0.08);
+  transform: translateY(-1px);
+}
+
+.fichaTypeCard:focus-visible {
+  border-color: var(--gold-500);
+  box-shadow: 0 0 0 3px rgba(224, 165, 38, 0.35);
+}
+
+.fichaTypeCard.isSelected {
+  border-color: var(--blue-600);
+  background: #F0F6FF;
+  box-shadow: 0 0 0 2px rgba(31, 95, 168, 0.25);
+}
+
+.fichaTypeCard.isZero {
+  opacity: 0.65;
+}
+
+.cardShortName {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--navy-900);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 8px;
+  padding-right: 22px;
+}
+
+.selCheck {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: var(--blue-600);
+  color: #FFFFFF;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.cardMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.badgeVisitas {
+  background: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  color: #334155;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.cardCount {
+  font-size: 12px;
+  color: var(--text-600);
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.noFichaMatches {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-600);
+  font-size: 13.5px;
+  background: #F8FAFC;
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+}
+
+.fichaTypeCollapsed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--text-900);
+}
+
+.btnCambiarTipoFicha,
+.btnCambiarFichaLink {
+  background: transparent;
+  color: var(--blue-600);
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.btnCambiarTipoFicha:hover,
+.btnCambiarFichaLink:hover {
+  color: var(--navy-900);
+  background: #EEF2F6;
+}
+
+.selectedFichaIndicator {
+  font-size: 13.5px;
+  color: var(--text-600);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filtersSubgroupsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.filterSubgroup {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filterSubgroupTitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--navy-800);
+  margin-bottom: 2px;
+  border-bottom: 1px solid #E2E8F0;
+  padding-bottom: 4px;
+}
+
+.dateQuickRow {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.btnDateQuick {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnDateQuick:hover {
+  background: #F1F5F9;
+  border-color: var(--blue-600);
+  color: var(--blue-600);
+}
+
+.dateRangeError {
+  background: #FDECEA;
+  border: 1px solid #FCA5A5;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-top: 4px;
+}
+
+.activeFiltersRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 10px;
+  min-height: 28px;
+}
+
+.filterChip {
+  background: #EEF2F6;
+  border: 1px solid #CBD5E1;
+  color: var(--navy-900);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px 3px 10px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filterChip button {
+  background: transparent;
+  border: none;
+  color: #64748B;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.filterChip button:hover {
+  color: var(--danger);
+}
+
+.btnClearAllFilters {
+  background: transparent;
+  border: none;
+  color: var(--blue-600);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 2px 8px;
+}
+
+.btnClearAllFilters:hover {
+  color: var(--navy-900);
+}
+
+.filtersSummaryLine {
+  font-size: 13.5px;
+  color: var(--text-600);
+  margin-bottom: 12px;
+}
+
+.downloadActionBar {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.downloadSummaryHelp {
+  font-size: 13px;
+  color: var(--text-600);
+}
+
+.downloadButtonsWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.btnDownloadAction {
+  padding: 9px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btnDownloadAction.btnExcel {
+  background: #107C41;
+  color: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(16, 124, 65, 0.25);
+}
+
+.btnDownloadAction.btnExcel:hover:not(:disabled) {
+  background: #0D6535;
+}
+
+.btnDownloadAction.btnPdf {
+  background: #DC2626;
+  color: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(220, 38, 38, 0.25);
+}
+
+.btnDownloadAction.btnPdf:hover:not(:disabled) {
+  background: #B91C1C;
+}
+
+.btnDownloadAction:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.herramientasMenuWrap {
+  position: relative;
+}
+
+.btnHerramientas {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  color: var(--text-900);
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btnHerramientas:hover {
+  background: #F1F5F9;
+}
+
+.herramientasDropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  padding: 6px 0;
+  min-width: 210px;
+  z-index: 50;
+}
+
+.herramientasItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-900);
+  cursor: pointer;
+}
+
+.herramientasItem:hover {
+  background: #F8FAFC;
+  color: var(--blue-600);
+}
+
+.sectionRegistradasHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.btnAjustarFiltros {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blue-600);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.emptyTableMsg {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-600);
+}
+
+.emptyTableMsg p {
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.stickyReportesBar {
+  position: fixed;
+  top: 54px;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 12px rgba(11, 27, 54, 0.08);
+  padding: 8px 24px;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.stickyReportesInfo {
+  font-size: 13px;
+  color: var(--navy-900);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stickyReportesActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stickyBtnExcel {
+  background: #107C41;
+  color: #FFFFFF;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.stickyBtnPdf {
+  background: #DC2626;
+  color: #FFFFFF;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 992px) {
+  .filtersSubgroupsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .fichaCardGrid {
+    grid-template-columns: 1fr;
+  }
+  .downloadActionBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .downloadButtonsWrap {
+    flex-direction: column;
+    width: 100%;
+  }
+  .downloadButtonsWrap .btnDownloadAction {
+    width: 100%;
+    justify-content: center;
+  }
+  .stickyReportesBar {
+    display: none !important;
+  }
+}

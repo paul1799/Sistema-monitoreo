@@ -240,7 +240,7 @@
         // Abrimos la sección 1
         sec1.querySelector('summary').click();
         // Cambiar filtro de visita
-        const filVis = fixtureHost.querySelector('#top_fil_visita');
+        const filVis = fixtureHost.querySelector('#fil_visita') || fixtureHost.querySelector('#top_fil_visita');
         filVis.value = '1';
         filVis.dispatchEvent(new Event('change'));
         const refreshedDetails = Array.from(fixtureHost.querySelectorAll('.secDetails'));

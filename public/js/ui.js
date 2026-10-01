@@ -61,7 +61,7 @@ import {
   resetEbrFormState,
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES
-} from './ebr-gestion.js?v=20260928_v12';
+} from './ebr-gestion.js?v=20261001_v1';
 
 import {
   isFichaJec,
@@ -3775,166 +3775,305 @@ export function colegioFichaTypeStats(subs, getFichaType) {
   return Object.values(byType).map(b => ({ ...b, avg: b.cnt ? Math.round(b.sum / b.cnt) : null })).sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
-/* ============================= CONSOLIDADO TAB ============================= */
-let consSelectedTypeId = null;
-let consFilters = { institucion: '', ugel: '', red: '', estado: '', visita: '', responsable: '', desde: '', hasta: '', distrito: '', tipoGestion: '' };
-let consExpanded = null;
+/* ============================= CONSOLIDADO TAB (REPORTES REDISEÑADO) ============================= */
 
-export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdmin, navigate, currentUser = null) {
-  if (currentUser) _currentSessionUser = currentUser;
-  const user = currentUser || _currentSessionUser || (state && state.currentUser) || null;
+export const DEFAULT_FICHA_TYPES_METADATA = {
+  'ft_msejec_2do': { grupo: 'Modelo JEC', nombreCorto: 'Implementación del Modelo JEC', orden: 10, tieneVisitas: true },
+  'ft_coord_tutoria_jec': { grupo: 'Modelo JEC', nombreCorto: 'Coord. de Tutoría (JEC)', orden: 11, tieneVisitas: true },
+  'ft_coord_pedagogico': { grupo: 'Modelo JEC', nombreCorto: 'Coord. Pedagógico (JEC)', orden: 12, tieneVisitas: true },
+  'ft_coord_pedagogico_jec': { grupo: 'Modelo JEC', nombreCorto: 'Coord. Pedagógico (JEC)', orden: 12, tieneVisitas: true },
+  'ft_gestion_ugel03_ebr': { grupo: 'Gestión escolar y docentes (EBR)', nombreCorto: 'Gestión Escolar EBR', orden: 20, tieneVisitas: true },
+  'ft_ebr_gestion_1er': { grupo: 'Gestión escolar y docentes (EBR)', nombreCorto: 'Gestión Escolar EBR', orden: 20, tieneVisitas: true },
+  'ft_directivo': { grupo: 'Gestión escolar y docentes (EBR)', nombreCorto: 'Directivo de IE', orden: 21, tieneVisitas: false },
+  'ft_rubricas_aula': { grupo: 'Gestión escolar y docentes (EBR)', nombreCorto: 'Rúbricas de observación de aula', orden: 22, tieneVisitas: false },
+  'ft_gestion_cebe': { grupo: 'CEBE / PRITE', nombreCorto: 'Gestión Escolar CEBE', orden: 30, tieneVisitas: true },
+  'ft_prite_gestion': { grupo: 'CEBE / PRITE', nombreCorto: 'Gestión Escolar PRITE', orden: 31, tieneVisitas: true },
+  'ft_materiales_cebe': { grupo: 'CEBE / PRITE', nombreCorto: 'Materiales educativos (CEBE/PRITE)', orden: 32, tieneVisitas: false },
+  'ft_cebe_lectora': { grupo: 'CEBE / PRITE', nombreCorto: 'Experiencia lectora CEBE 2026', orden: 33, tieneVisitas: true }
+};
 
-  if (state.fichaTypes.length === 0) {
-    container.innerHTML = '<div class="pageHead"><h2>Reportes</h2></div>' +
-      '<div class="empty"><h4>Aún no hay tipos de ficha</h4><p>Crea un tipo de ficha y registra visitas para ver reportes de avance aquí.</p></div>';
-    return;
-  }
-  if (consSelectedTypeId && consSelectedTypeId !== '__ALL__' && !getFichaType(consSelectedTypeId)) consSelectedTypeId = null;
-  if (!consSelectedTypeId && state.fichaTypes.length > 0) {
-    consSelectedTypeId = state.fichaTypes[0].id;
-  }
+export function getEnrichedFichaType(ft) {
+  if (!ft) return null;
+  const def = DEFAULT_FICHA_TYPES_METADATA[ft.id] || {};
+  const hasVisitasInSections = Boolean(
+    ft.secciones && ft.secciones.some(s => s.visitas || s.momento || (s.items && s.items.some(i => i.visitas || i.momento)))
+  );
 
-  const opts = '<option value="__ALL__"' + (consSelectedTypeId === '__ALL__' ? ' selected' : '') + '>📊 Todas las fichas (avance general)</option>' +
-    state.fichaTypes.map(ft =>
-      '<option value="' + ft.id + '"' + (ft.id === consSelectedTypeId ? ' selected' : '') + '>' + esc(ft.nombre) + '</option>'
-    ).join('');
+  const nNorm = normalizeText(ft.nombre || ft.nombreCorto || '');
+  const idNorm = normalizeText(ft.id || '');
 
-  const isAllMode = consSelectedTypeId === '__ALL__';
-  const ft = (!isAllMode && consSelectedTypeId) ? getFichaType(consSelectedTypeId) : null;
-  const subsForVisitas = isAllMode ? state.submissions : (ft ? state.submissions.filter(s => s.fichaTypeId === ft.id) : []);
+  let autoGrupo = ft.grupo || def.grupo || null;
+  let autoNombreCorto = ft.nombreCorto || def.nombreCorto || null;
+  let autoOrden = typeof ft.orden === 'number' ? ft.orden : (typeof def.orden === 'number' ? def.orden : null);
+  let autoTieneVisitas = typeof ft.tieneVisitas === 'boolean'
+    ? ft.tieneVisitas
+    : (typeof def.tieneVisitas === 'boolean' ? def.tieneVisitas : null);
 
-  // Opciones de visitas disponibles
-  const visitaSet = new Set(subsForVisitas.map(s => Number(s.visita)).filter(Boolean));
-  if (visitaSet.size === 0) [1, 2, 3].forEach(v => visitaSet.add(v));
-  const visitaOptions = Array.from(visitaSet).sort((a, b) => a - b);
-
-  // Opciones de responsables: especialistas/coordinadores de state.responsables + Especialista de JEC
-  const respSet = new Set();
-  respSet.add(ESPECIALISTA_JEC_OFICIAL.nombresApellidos);
-  (state.responsables || []).forEach(r => {
-    if (r.nombresApellidos) respSet.add(r.nombresApellidos.trim());
-  });
-  const responsableOptions = Array.from(respSet).sort((a, b) => a.localeCompare(b));
-
-  const isEbrGestionSelected = ft && isFichaEbrGestionEscolar(ft);
-  const visitaSelectHtml = isEbrGestionSelected
-    ? '<select id="top_fil_visita" required>' +
-    '<option value="">— Elige Visita (obligatorio) —</option>' +
-    '<option value="1"' + (String(consFilters.visita) === '1' ? ' selected' : '') + '>Visita 1 · Primer momento</option>' +
-    '<option value="2"' + (String(consFilters.visita) === '2' ? ' selected' : '') + '>Visita 2 · Segundo momento</option>' +
-    '</select>'
-    : '<select id="top_fil_visita">' +
-    '<option value="">Todas</option>' +
-    visitaOptions.map(v => '<option value="' + v + '"' + (String(v) === String(consFilters.visita) ? ' selected' : '') + '>Visita ' + v + '</option>').join('') +
-    '</select>';
-
-  container.innerHTML = '' +
-    '<div class="pageHead"><h2>Reportes</h2><p>Gráficas, reporte por ítem, resumen por institución y descarga en PDF.</p></div>' +
-    '<div class="panel">' +
-    '<div class="filterBar" style="margin-bottom:0">' +
-    '<div class="field" style="flex:2;min-width:240px">' +
-    '<label for="consSelect">Tipo de ficha</label>' +
-    '<select id="consSelect"><option value="">— Selecciona un tipo —</option>' + opts + '</select>' +
-    '</div>' +
-    '<div class="field" style="flex:1;min-width:130px">' +
-    '<label for="top_fil_estado">Estado</label>' +
-    '<select id="top_fil_estado">' +
-    '<option value="">Todos</option>' +
-    ['Logrado', 'En proceso', 'Inicio'].map(v => '<option value="' + v + '"' + (v === consFilters.estado ? ' selected' : '') + '>' + v + '</option>').join('') +
-    '</select>' +
-    '</div>' +
-    '<div class="field" style="flex:1;min-width:140px">' +
-    '<label for="top_fil_visita">Visita' + (isEbrGestionSelected ? ' <span style="color:var(--danger,#dc2626)">*</span>' : '') + '</label>' +
-    visitaSelectHtml +
-    '</div>' +
-    '<div class="field" style="flex:1.5;min-width:180px">' +
-    '<label for="top_fil_responsable">Responsable</label>' +
-    '<input type="search" id="top_fil_responsable" list="dl_resp_filter" value="' + esc(consFilters.responsable) + '" placeholder="Buscar especialista..." autocomplete="off">' +
-    '<datalist id="dl_resp_filter">' + responsableOptions.map(r => '<option value="' + esc(r) + '">').join('') + '</datalist>' +
-    '</div>' +
-    ((consFilters.estado || consFilters.visita || consFilters.responsable) ? (
-      '<button type="button" class="btn secondary small" id="top_fil_clear" style="align-self:flex-end;margin-bottom:2px" title="Limpiar filtros de tipo de ficha">Limpiar</button>'
-    ) : '') +
-    '</div>' +
-    '</div>' +
-    '<div id="consHost"></div>';
-
-  document.getElementById('consSelect').addEventListener('change', e => {
-    consSelectedTypeId = e.target.value || null;
-    consExpanded = null;
-    renderConsolidadoTab(container, state, getFichaType, dbNs, isAdmin, navigate, user);
-  });
-  document.getElementById('top_fil_estado').addEventListener('change', e => {
-    consFilters.estado = e.target.value;
-    renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
-  });
-  document.getElementById('top_fil_visita').addEventListener('change', e => {
-    consFilters.visita = e.target.value;
-    renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
-  });
-  const respInput = document.getElementById('top_fil_responsable');
-  let respDebounce = null;
-  respInput.addEventListener('input', e => {
-    clearTimeout(respDebounce);
-    respDebounce = setTimeout(() => {
-      consFilters.responsable = e.target.value;
-      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
-    }, 300);
-  });
-  const topClear = document.getElementById('top_fil_clear');
-  if (topClear) {
-    topClear.addEventListener('click', () => {
-      consFilters.estado = '';
-      consFilters.visita = '';
-      consFilters.responsable = '';
-      renderConsolidadoTab(container, state, getFichaType, dbNs, isAdmin, navigate, user);
-    });
+  const standardGroups = ['Avance general', 'Modelo JEC', 'Gestión escolar y docentes (EBR)', 'CEBE / PRITE'];
+  if (!autoGrupo || !standardGroups.includes(autoGrupo)) {
+    // 1. Coordinador pedagógico (JEC)
+    if (isFichaCoordPedagogico(ft) || ((nNorm.includes('coordinador') || idNorm.includes('coord')) && nNorm.includes('pedagog'))) {
+      autoGrupo = 'Modelo JEC';
+      if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Coord. Pedagógico (JEC)';
+      if (autoOrden === null) autoOrden = 12;
+      if (autoTieneVisitas === null) autoTieneVisitas = true;
+    }
+    // 2. Coordinador de tutoría (JEC)
+    else if (isFichaCoordTutoriaJec(ft) || ((nNorm.includes('tutor') || idNorm.includes('tutor')) && (nNorm.includes('jec') || idNorm.includes('jec') || nNorm.includes('coord') || idNorm.includes('coord')))) {
+      autoGrupo = 'Modelo JEC';
+      if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Coord. de Tutoría (JEC)';
+      if (autoOrden === null) autoOrden = 11;
+      if (autoTieneVisitas === null) autoTieneVisitas = true;
+    }
+    // 3. Implementación del Modelo JEC
+    else if (isFichaJec(ft) || nNorm.includes('jec') || idNorm.includes('jec') || idNorm.includes('msejec')) {
+      autoGrupo = 'Modelo JEC';
+      if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Implementación del Modelo JEC';
+      if (autoOrden === null) autoOrden = 10;
+      if (autoTieneVisitas === null) autoTieneVisitas = true;
+    }
+    // 4. Directivo de IE
+    else if (nNorm.includes('directivo') || idNorm.includes('directivo')) {
+      autoGrupo = 'Gestión escolar y docentes (EBR)';
+      if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Directivo de IE';
+      if (autoOrden === null) autoOrden = 21;
+      if (autoTieneVisitas === null) autoTieneVisitas = false;
+    }
+    // 5. Rúbricas de observación de aula
+    else if (nNorm.includes('rubrica') || idNorm.includes('rubrica') || (nNorm.includes('aula') && nNorm.includes('docente'))) {
+      autoGrupo = 'Gestión escolar y docentes (EBR)';
+      if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Rúbricas de observación de aula';
+      if (autoOrden === null) autoOrden = 22;
+      if (autoTieneVisitas === null) autoTieneVisitas = false;
+    }
+    // 6. Gestión Escolar EBR
+    else if (isFichaEbrGestionEscolar(ft) || (nNorm.includes('gestion escolar') && (nNorm.includes('ebr') || nNorm.includes('ugel'))) || idNorm.includes('ebr')) {
+      autoGrupo = 'Gestión escolar y docentes (EBR)';
+      if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Gestión Escolar EBR';
+      if (autoOrden === null) autoOrden = 20;
+      if (autoTieneVisitas === null) autoTieneVisitas = true;
+    }
+    // 7. CEBE / PRITE
+    else if (nNorm.includes('cebe') || nNorm.includes('prite') || idNorm.includes('cebe') || idNorm.includes('prite')) {
+      autoGrupo = 'CEBE / PRITE';
+      if (nNorm.includes('material')) {
+        if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Materiales educativos (CEBE/PRITE)';
+        if (autoOrden === null) autoOrden = 32;
+        if (autoTieneVisitas === null) autoTieneVisitas = false;
+      } else if (nNorm.includes('lector')) {
+        if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Experiencia lectora CEBE 2026';
+        if (autoOrden === null) autoOrden = 33;
+        if (autoTieneVisitas === null) autoTieneVisitas = true;
+      } else if (nNorm.includes('prite')) {
+        if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Gestión Escolar PRITE';
+        if (autoOrden === null) autoOrden = 31;
+        if (autoTieneVisitas === null) autoTieneVisitas = true;
+      } else {
+        if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Gestión Escolar CEBE';
+        if (autoOrden === null) autoOrden = 30;
+        if (autoTieneVisitas === null) autoTieneVisitas = true;
+      }
+    }
   }
 
-  renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+  return {
+    ...ft,
+    grupo: autoGrupo || ft.modalidad || 'Otras fichas',
+    nombreCorto: autoNombreCorto || ft.nombre || 'Ficha',
+    orden: autoOrden !== null ? autoOrden : 99,
+    tieneVisitas: autoTieneVisitas !== null ? autoTieneVisitas : (isFichaEbrGestionEscolar(ft) || hasVisitasInSections)
+  };
 }
 
-function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUser = null) {
-  if (currentUser) _currentSessionUser = currentUser;
-  const user = currentUser || _currentSessionUser || (state && state.currentUser) || null;
-  const host = document.getElementById('consHost');
-  if (!host) return;
-  if (!consSelectedTypeId) { host.innerHTML = ''; return; }
+export let consSelectedTypeId = '__ALL__';
+export let consFilters = { institucion: '', ugel: '', red: '', estado: '', visita: '', responsable: '', desde: '', hasta: '', distrito: '', tipoGestion: '' };
+export let filtrosReporte = { tipo: '__ALL__', visita: '', estado: '', responsable: '', institucion: '', red: '', ugel: '', distrito: '', tipoGestion: '', desde: '', hasta: '' };
+let consExpanded = null;
+let reportesHideTypes = false;
+let reportesSearchTerm = '';
+let reportesFiltersInitialized = false;
 
-  const isAllMode = consSelectedTypeId === '__ALL__';
-  const ft = isAllMode ? null : getFichaType(consSelectedTypeId);
-  if (!isAllMode && !ft) { host.innerHTML = ''; return; }
+// Estado de grupos colapsados/expandidos en Sección 1
+// Por defecto los grupos de fichas inician colapsados para dar clic y visualizarse
+export let reportesExpandedGroups = new Set(['Avance general']);
 
+function syncFiltersState(newFilters) {
+  filtrosReporte = { ...filtrosReporte, ...newFilters };
+  consSelectedTypeId = filtrosReporte.tipo || '__ALL__';
+  consFilters.institucion = filtrosReporte.institucion || '';
+  consFilters.ugel = filtrosReporte.ugel || '';
+  consFilters.red = filtrosReporte.red || '';
+  consFilters.estado = filtrosReporte.estado || '';
+  consFilters.visita = filtrosReporte.visita || '';
+  consFilters.responsable = filtrosReporte.responsable || '';
+  consFilters.desde = filtrosReporte.desde || '';
+  consFilters.hasta = filtrosReporte.hasta || '';
+  consFilters.distrito = filtrosReporte.distrito || '';
+  consFilters.tipoGestion = filtrosReporte.tipoGestion || '';
+}
+
+export function syncReportesUrl(filters) {
+  if (typeof window === 'undefined' || !window.location) return;
+  try {
+    const url = new URL(window.location.href);
+    if (filters.tipo && filters.tipo !== '__ALL__') {
+      url.searchParams.set('tipo', filters.tipo);
+    } else {
+      url.searchParams.set('tipo', 'all');
+    }
+    const filterKeys = ['visita', 'estado', 'responsable', 'institucion', 'red', 'ugel', 'distrito', 'tipoGestion', 'desde', 'hasta'];
+    filterKeys.forEach(k => {
+      const val = filters[k];
+      const paramName = k === 'tipoGestion' ? 'tipogestion' : (k === 'institucion' ? 'inst' : k);
+      if (val && String(val).trim()) {
+        url.searchParams.set(paramName, String(val).trim());
+      } else {
+        url.searchParams.delete(paramName);
+      }
+    });
+    window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+  } catch (e) {
+    console.warn('Error sincronizando URL de reportes:', e);
+  }
+}
+
+export function loadReportesFiltersFromUrl(state) {
+  const f = {
+    tipo: '__ALL__',
+    visita: '',
+    estado: '',
+    responsable: '',
+    institucion: '',
+    red: '',
+    ugel: '',
+    distrito: '',
+    tipoGestion: '',
+    desde: '',
+    hasta: ''
+  };
+  if (typeof window === 'undefined' || !window.location) return f;
+  try {
+    const url = new URL(window.location.href);
+    const pTipo = url.searchParams.get('tipo');
+    if (pTipo) {
+      if (pTipo === 'all' || pTipo === '__ALL__') {
+        f.tipo = '__ALL__';
+      } else if (state.fichaTypes.some(ft => ft.id === pTipo)) {
+        f.tipo = pTipo;
+      }
+    } else {
+      try {
+        const last = sessionStorage.getItem('reportes_last_type');
+        if (last && (last === '__ALL__' || state.fichaTypes.some(ft => ft.id === last))) {
+          f.tipo = last;
+        } else {
+          f.tipo = '__ALL__';
+        }
+      } catch (_) {
+        f.tipo = '__ALL__';
+      }
+    }
+    if (url.searchParams.get('visita')) f.visita = url.searchParams.get('visita');
+    if (url.searchParams.get('estado')) f.estado = url.searchParams.get('estado');
+    if (url.searchParams.get('responsable')) f.responsable = url.searchParams.get('responsable');
+    if (url.searchParams.get('inst')) f.institucion = url.searchParams.get('inst');
+    else if (url.searchParams.get('institucion')) f.institucion = url.searchParams.get('institucion');
+    if (url.searchParams.get('red')) f.red = url.searchParams.get('red');
+    if (url.searchParams.get('ugel')) f.ugel = url.searchParams.get('ugel');
+    if (url.searchParams.get('distrito')) f.distrito = url.searchParams.get('distrito');
+    if (url.searchParams.get('tipogestion')) f.tipoGestion = url.searchParams.get('tipogestion');
+    if (url.searchParams.get('desde')) f.desde = url.searchParams.get('desde');
+    if (url.searchParams.get('hasta')) f.hasta = url.searchParams.get('hasta');
+  } catch (e) {
+    console.warn('Error leyendo filtros desde URL:', e);
+  }
+  return f;
+}
+
+export function aplicarFiltrosReporte(submissions, filters, state, getFichaType, user = null) {
+  const f = filters || {};
+  const isAllMode = !f.tipo || f.tipo === '__ALL__';
+  const targetFt = !isAllMode ? getEnrichedFichaType(getFichaType(f.tipo)) : null;
+
+  // 1. Filtrar por tipo
   let subs = isAllMode
-    ? state.submissions.slice()
-    : state.submissions.filter(s => s.fichaTypeId === ft.id);
-  if (consFilters.institucion) subs = subs.filter(s => (s.institucion || '').toLowerCase().includes(consFilters.institucion.toLowerCase()));
-  if (consFilters.ugel) subs = subs.filter(s => (s.ugel || '').toLowerCase().includes(consFilters.ugel.toLowerCase()));
-  if (consFilters.red) subs = subs.filter(s => (s.red || '').toLowerCase().includes(consFilters.red.toLowerCase()));
-  if (consFilters.visita) subs = subs.filter(s => String(s.visita || 1) === String(consFilters.visita));
-  if (consFilters.responsable) {
-    const rNorm = consFilters.responsable.trim().toLowerCase();
+    ? submissions.slice()
+    : submissions.filter(s => s.fichaTypeId === (targetFt ? targetFt.id : f.tipo));
+
+  // 2. Institución (nombre o código modular / local)
+  if (f.institucion && f.institucion.trim()) {
+    const q = normalizeText(f.institucion.trim());
     subs = subs.filter(s => {
-      const respName = getSubmissionResponsable(s, state, user);
-      return respName.toLowerCase().includes(rNorm);
+      const instName = normalizeText(s.institucion || '');
+      const codMod = normalizeText(s.codigoModular || s.codModular || s.cod_mod || '');
+      const codLoc = normalizeText(s.codigoLocal || s.codLocal || s.cod_local || '');
+      return instName.includes(q) || codMod.includes(q) || codLoc.includes(q);
     });
   }
-  if (consFilters.desde) subs = subs.filter(s => s.fecha >= consFilters.desde);
-  if (consFilters.hasta) subs = subs.filter(s => s.fecha <= consFilters.hasta);
+
+  // 3. UGEL
+  if (f.ugel && f.ugel.trim()) {
+    const q = normalizeText(f.ugel.trim());
+    subs = subs.filter(s => normalizeText(s.ugel || 'UGEL 03').includes(q));
+  }
+
+  // 4. RED
+  if (f.red && f.red.trim()) {
+    const q = normalizeText(f.red.trim());
+    subs = subs.filter(s => normalizeText(s.red || '').includes(q));
+  }
+
+  // 5. Visita
+  if (f.visita && String(f.visita).trim()) {
+    const vStr = String(f.visita).trim();
+    subs = subs.filter(s => String(s.visita || 1) === vStr);
+  }
+
+  // 6. Responsable
+  if (f.responsable && f.responsable.trim()) {
+    const q = normalizeText(f.responsable.trim());
+    subs = subs.filter(s => {
+      const respName = normalizeText(getSubmissionResponsable(s, state, user));
+      return respName.includes(q);
+    });
+  }
+
+  // 7. Fechas (Desde / Hasta) con validación
+  const hasInvalidDates = Boolean(f.desde && f.hasta && f.desde > f.hasta);
+  if (!hasInvalidDates) {
+    if (f.desde) subs = subs.filter(s => (s.fecha || '') >= f.desde);
+    if (f.hasta) subs = subs.filter(s => (s.fecha || '') <= f.hasta);
+  }
+
+  // 8. Distrito y Tipo de Gestión (mediante colegios)
   const colegioIdx = buildColegioIndex(state);
-  if (consFilters.distrito) subs = subs.filter(s => normalizeText((matchColegio(s, colegioIdx) || {}).distrito).includes(normalizeText(consFilters.distrito)));
-  if (consFilters.tipoGestion) subs = subs.filter(s => (matchColegio(s, colegioIdx) || {}).tipoGestion === consFilters.tipoGestion);
+  if (f.distrito && f.distrito.trim()) {
+    const q = normalizeText(f.distrito.trim());
+    subs = subs.filter(s => {
+      const col = matchColegio(s, colegioIdx);
+      return normalizeText((col && col.distrito) || '').includes(q);
+    });
+  }
+  if (f.tipoGestion && f.tipoGestion.trim()) {
+    subs = subs.filter(s => {
+      const col = matchColegio(s, colegioIdx);
+      return (col && col.tipoGestion) === f.tipoGestion;
+    });
+  }
+
   subs.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '') || (b.createdAt || 0) - (a.createdAt || 0));
 
-  // En modo "Todas", cada submission se evalúa contra su propio tipo de ficha
   let statsList = subs.map(s => {
-    const sFt = isAllMode ? getFichaType(s.fichaTypeId) : ft;
+    const sFt = isAllMode ? getFichaType(s.fichaTypeId) : targetFt;
     return { s, st: sFt ? computeStats(s, sFt) : { pct: null, secciones: [] } };
   });
-  if (consFilters.estado) {
+
+  // 9. Estado
+  if (f.estado && f.estado.trim()) {
+    const est = f.estado.trim();
     statsList = statsList.filter(x => {
-      const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : ft;
-      const isEbr = isFichaEbrGestionEscolar(sFt || ft || x.s);
+      const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : targetFt;
+      const isEbr = isFichaEbrGestionEscolar(sFt || targetFt || x.s);
       let lbl = '';
       let pnl = '';
       if (isEbr && x.st && x.st.pct !== null) {
@@ -3943,12 +4082,14 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
         else { lbl = 'Inicio'; pnl = 'Inicio'; }
       } else {
         const v = x.s ? getMomentoVisitaEbr(x.s) : undefined;
-        lbl = x.st?.estado?.label || statusFromPct(x.st.pct, sFt, x.st?.conteo_si, x.st?.puntaje, v).label;
+        lbl = x.st?.estado?.label || statusFromPct(x.st?.pct, sFt, x.st?.conteo_si, x.st?.puntaje, v).label;
         pnl = x.st?.estado?.estado_panel || '';
       }
-      return lbl === consFilters.estado || pnl === consFilters.estado;
+      return lbl === est || pnl === est;
     });
+    subs = statsList.map(x => x.s);
   }
+
   const withPct = statsList.filter(x => x.st.pct !== null);
   const avgPct = withPct.length ? Math.round(withPct.reduce((a, x) => a + x.st.pct, 0) / withPct.length) : null;
   const instCount = new Set(statsList.map(x => {
@@ -3959,14 +4100,14 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
 
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
   statsList.forEach(x => {
-    const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : ft;
-    const isEbr = isFichaEbrGestionEscolar(sFt || ft || x.s)
+    const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : targetFt;
+    const isEbr = isFichaEbrGestionEscolar(sFt || targetFt || x.s)
       || (sFt?.tipoRespuesta === 'ips')
       || (sFt?.escala === 'IPL')
-      || (ft?.tipoRespuesta === 'ips')
-      || (ft?.escala === 'IPL');
+      || (targetFt?.tipoRespuesta === 'ips')
+      || (targetFt?.escala === 'IPL');
     let l = '';
-    if ((isEbr || sFt?.escala === 'IPL' || ft?.escala === 'IPL') && x.st && x.st.pct !== null) {
+    if ((isEbr || sFt?.escala === 'IPL' || targetFt?.escala === 'IPL') && x.st && x.st.pct !== null) {
       l = x.st.pct >= 67 ? 'logrado' : (x.st.pct >= 34 ? 'proceso' : 'inicio');
     } else if (x.st && x.st.estado && (x.st.estado.estado_panel || x.st.estado.label)) {
       l = String(x.st.estado.estado_panel || x.st.estado.label).toLowerCase();
@@ -3980,6 +4121,563 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     else dist.none++;
   });
 
+  return { subs, statsList, instCount, avgPct, dist, withPct, targetFt, isAllMode, hasInvalidDates };
+}
+
+export function countFichasForCard(typeId, submissions, filters, state, getFichaType, user) {
+  const filterCopy = { ...filters, tipo: typeId };
+  const enriched = typeId === '__ALL__' ? null : getEnrichedFichaType(getFichaType(typeId));
+  if (enriched && !enriched.tieneVisitas) {
+    delete filterCopy.visita;
+  }
+  const res = aplicarFiltrosReporte(submissions, filterCopy, state, getFichaType, user);
+  return res.subs.length;
+}
+
+function getPeriodoFechas(tipo) {
+  const now = new Date();
+  const y = now.getFullYear();
+  if (tipo === 'mes') {
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
+    return { desde: `${y}-${m}-01`, hasta: `${y}-${m}-${String(lastDay).padStart(2, '0')}` };
+  } else if (tipo === 'trimestre') {
+    const qStartMonth = Math.floor(now.getMonth() / 3) * 3 + 1;
+    const qEndMonth = qStartMonth + 2;
+    const lastDayQ = new Date(y, qEndMonth, 0).getDate();
+    return {
+      desde: `${y}-${String(qStartMonth).padStart(2, '0')}-01`,
+      hasta: `${y}-${String(qEndMonth).padStart(2, '0')}-${String(lastDayQ).padStart(2, '0')}`
+    };
+  } else if (tipo === 'anio') {
+    return { desde: '2026-01-01', hasta: '2026-12-31' };
+  }
+  return { desde: '', hasta: '' };
+}
+
+function renderSection1Html(state, getFichaType, user) {
+  const isCollapsed = reportesHideTypes;
+  const isAllMode = !filtrosReporte.tipo || filtrosReporte.tipo === '__ALL__';
+  const selectedFt = !isAllMode ? getEnrichedFichaType(getFichaType(filtrosReporte.tipo)) : null;
+  const selectedShortName = isAllMode ? 'Todas las fichas' : (selectedFt ? selectedFt.nombreCorto : '—');
+  const selectedCount = countFichasForCard(filtrosReporte.tipo || '__ALL__', state.submissions, filtrosReporte, state, getFichaType, user);
+
+  if (isCollapsed) {
+    return `
+      <div class="secHeaderFlex" style="margin-bottom:0">
+        <div class="secTitleWrap">
+          <span class="secStepBadge">1</span>
+          <h3 class="secTitleText">Tipo de ficha</h3>
+        </div>
+        <button type="button" class="btnToggleTipos" id="btnToggleTipos" title="Mostrar sección de tipos">Mostrar tipos ▼</button>
+      </div>
+      <div class="fichaTypeCollapsed" style="margin-top:10px">
+        <div>Tipo de ficha: <strong>${esc(selectedShortName)}</strong> · <span class="badge st-none" style="font-size:11px">${selectedCount} fichas</span></div>
+        <button type="button" class="btnCambiarTipoFicha" id="btnExpandirTipos">Cambiar</button>
+      </div>
+    `;
+  }
+
+  const groupOrder = ['Avance general', 'Modelo JEC', 'Gestión escolar y docentes (EBR)', 'CEBE / PRITE'];
+  const groupsMap = {};
+  groupOrder.forEach(g => { groupsMap[g] = []; });
+
+  const allCardCount = countFichasForCard('__ALL__', state.submissions, filtrosReporte, state, getFichaType, user);
+  groupsMap['Avance general'].push({
+    id: '__ALL__',
+    nombreCorto: '📊 Todas las fichas',
+    nombre: 'Todas las fichas (avance general)',
+    grupo: 'Avance general',
+    orden: 1,
+    tieneVisitas: false,
+    count: allCardCount,
+    isSelected: isAllMode
+  });
+
+  state.fichaTypes.forEach(rawFt => {
+    const ft = getEnrichedFichaType(rawFt);
+    const gName = ft.grupo || 'Otras fichas';
+    if (!groupsMap[gName]) groupsMap[gName] = [];
+    const count = countFichasForCard(ft.id, state.submissions, filtrosReporte, state, getFichaType, user);
+    groupsMap[gName].push({
+      ...ft,
+      count,
+      isSelected: !isAllMode && (ft.id === filtrosReporte.tipo)
+    });
+  });
+
+  let groupsHtml = '';
+  const allGroupKeys = Object.keys(groupsMap).filter(k => groupsMap[k].length > 0);
+
+  allGroupKeys.forEach(gName => {
+    const cards = groupsMap[gName];
+    cards.sort((a, b) => (a.orden || 99) - (b.orden || 99) || (a.nombreCorto || '').localeCompare(b.nombreCorto || ''));
+
+    const totalGroupFichas = cards.reduce((sum, c) => sum + (c.count || 0), 0);
+    const hasSelected = cards.some(c => c.isSelected);
+    if (hasSelected && !isAllMode) {
+      reportesExpandedGroups.add(gName);
+    }
+    const isExpanded = reportesExpandedGroups.has(gName);
+
+    const cardsHtml = cards.map(c => {
+      const isZero = c.count === 0;
+      return `
+        <div class="fichaTypeCard ${c.isSelected ? 'isSelected' : ''} ${isZero ? 'isZero' : ''}"
+             data-type-id="${esc(c.id)}"
+             data-nombre-corto="${esc(c.nombreCorto)}"
+             data-nombre-completo="${esc(c.nombre)}"
+             role="radio"
+             aria-checked="${c.isSelected ? 'true' : 'false'}"
+             tabindex="${c.isSelected ? '0' : '-1'}"
+             title="${esc(c.nombre)}"
+             aria-label="${esc(c.nombre)} (${c.count} fichas)">
+          ${c.isSelected ? '<span class="selCheck" aria-hidden="true">✓</span>' : ''}
+          <div class="cardShortName"><strong>${esc(c.nombreCorto)}</strong></div>
+          <div class="cardMetaRow">
+            ${c.tieneVisitas ? '<span class="badgeVisitas">Por visitas</span>' : '<span></span>'}
+            <span class="cardCount">${c.count} fichas</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    groupsHtml += `
+      <div class="fichaGroupSection" data-group-name="${esc(gName)}">
+        <button type="button" class="fichaGroupToggleBtn ${isExpanded ? 'isExpanded' : ''}"
+                data-group-toggle="${esc(gName)}"
+                aria-expanded="${isExpanded ? 'true' : 'false'}"
+                title="${isExpanded ? 'Ocultar fichas de ' + esc(gName) : 'Visualizar fichas de ' + esc(gName)}">
+          <span class="groupToggleLeft">
+            <span class="groupToggleChevron" aria-hidden="true">${isExpanded ? '▼' : '▶'}</span>
+            <span class="groupToggleTitle">${esc(gName)}</span>
+            <span class="groupToggleBadge">${cards.length} ${cards.length === 1 ? 'tipo' : 'tipos'} · ${totalGroupFichas} fichas</span>
+          </span>
+          <span class="groupToggleDivider"></span>
+          <span class="groupToggleAction">${isExpanded ? 'Ocultar fichas ▲' : 'Ver fichas ▼'}</span>
+        </button>
+        <div class="fichaCardGrid" role="radiogroup" aria-label="Tipos de ficha en ${esc(gName)}" style="${isExpanded ? '' : 'display:none;'}">
+          ${cardsHtml}
+        </div>
+      </div>
+    `;
+  });
+
+  const hiddenSelectOpts = '<option value="__ALL__"' + (isAllMode ? ' selected' : '') + '>📊 Todas las fichas (avance general)</option>' +
+    state.fichaTypes.map(ft => '<option value="' + ft.id + '"' + (ft.id === filtrosReporte.tipo ? ' selected' : '') + '>' + esc(ft.nombre) + '</option>').join('');
+
+  return `
+    <select id="consSelect" style="display:none" aria-hidden="true">${hiddenSelectOpts}</select>
+    <div class="secHeaderFlex">
+      <div class="secTitleWrap">
+        <span class="secStepBadge">1</span>
+        <h3 class="secTitleText">Tipo de ficha</h3>
+      </div>
+      <button type="button" class="btnToggleTipos" id="btnToggleTipos" title="Ocultar sección de tipos">Ocultar tipos ▲</button>
+    </div>
+    <div class="searchFichaBox">
+      <span class="searchIcon">🔍</span>
+      <input type="search" id="searchFichaType" placeholder="Buscar tipo de ficha…" value="${esc(reportesSearchTerm)}" autocomplete="off">
+    </div>
+    <div id="fichaGroupsContainer">
+      ${groupsHtml}
+      <div id="noFichaMatches" class="noFichaMatches" style="display:none">No hay tipos de ficha con ese nombre</div>
+    </div>
+  `;
+}
+
+function renderSection2Html(statsList, instCount, state, getFichaType, user, isAdmin) {
+  const isAllMode = !filtrosReporte.tipo || filtrosReporte.tipo === '__ALL__';
+  const ft = !isAllMode ? getEnrichedFichaType(getFichaType(filtrosReporte.tipo)) : null;
+  const isEbr = ft && isFichaEbrGestionEscolar(ft);
+  const selectedShortName = isAllMode ? 'Todas las fichas' : (ft ? ft.nombreCorto : '—');
+
+  let visitaSelectHtml = '';
+  if (isEbr) {
+    visitaSelectHtml = `
+      <select id="fil_visita" required>
+        <option value="">— Elige Visita (obligatorio) —</option>
+        <option value="1"${String(filtrosReporte.visita) === '1' ? ' selected' : ''}>Visita 1 · Primer momento</option>
+        <option value="2"${String(filtrosReporte.visita) === '2' ? ' selected' : ''}>Visita 2 · Segundo momento</option>
+      </select>
+    `;
+  } else if (!isAllMode && ft && ft.tieneVisitas) {
+    const subsForVisitas = state.submissions.filter(s => s.fichaTypeId === ft.id);
+    const visitaSet = new Set(subsForVisitas.map(s => Number(s.visita)).filter(Boolean));
+    if (visitaSet.size === 0) [1, 2, 3].forEach(v => visitaSet.add(v));
+    const visitaOptions = Array.from(visitaSet).sort((a, b) => a - b);
+    visitaSelectHtml = `
+      <select id="fil_visita">
+        <option value="">Todas</option>
+        ${visitaOptions.map(v => `<option value="${v}"${String(v) === String(filtrosReporte.visita) ? ' selected' : ''}>Visita ${v}</option>`).join('')}
+      </select>
+    `;
+  } else {
+    visitaSelectHtml = `
+      <select id="fil_visita" disabled title="Esta ficha no trabaja por visitas">
+        <option value="">No aplica</option>
+      </select>
+    `;
+  }
+
+  const respSet = new Set();
+  respSet.add(ESPECIALISTA_JEC_OFICIAL.nombresApellidos);
+  (state.responsables || []).forEach(r => {
+    if (r.nombresApellidos) respSet.add(r.nombresApellidos.trim());
+  });
+  const responsableOptions = Array.from(respSet).sort((a, b) => a.localeCompare(b));
+
+  const redOptions = Array.from(new Set([
+    ...state.submissions.map(s => s.red).filter(Boolean),
+    ...state.colegios.map(c => c.red || c.rei).filter(Boolean)
+  ])).sort();
+
+  const ugelOptions = Array.from(new Set([
+    'UGEL 03',
+    ...state.submissions.map(s => s.ugel).filter(Boolean),
+    ...state.colegios.map(c => c.ugel).filter(Boolean)
+  ])).sort();
+
+  let colegiosFiltradosRed = state.colegios || [];
+  if (filtrosReporte.red) {
+    const normRed = normalizeText(filtrosReporte.red);
+    colegiosFiltradosRed = colegiosFiltradosRed.filter(c => normalizeText(c.red || c.rei || '').includes(normRed));
+  }
+  const distritoOptions = Array.from(new Set(colegiosFiltradosRed.map(c => c.distrito).filter(Boolean))).sort();
+
+  const gestionOptions = Array.from(new Set(state.colegios.map(c => c.tipoGestion).filter(Boolean))).sort();
+
+  const activeChips = [];
+  if (filtrosReporte.visita) activeChips.push({ key: 'visita', label: `Visita ${filtrosReporte.visita}` });
+  if (filtrosReporte.estado) activeChips.push({ key: 'estado', label: `Estado: ${filtrosReporte.estado}` });
+  if (filtrosReporte.responsable) activeChips.push({ key: 'responsable', label: `Resp: ${filtrosReporte.responsable}` });
+  if (filtrosReporte.institucion) activeChips.push({ key: 'institucion', label: `IE: ${filtrosReporte.institucion}` });
+  if (filtrosReporte.red) activeChips.push({ key: 'red', label: `RED: ${filtrosReporte.red}` });
+  if (filtrosReporte.ugel) activeChips.push({ key: 'ugel', label: `UGEL: ${filtrosReporte.ugel}` });
+  if (filtrosReporte.distrito) activeChips.push({ key: 'distrito', label: `Distrito: ${filtrosReporte.distrito}` });
+  if (filtrosReporte.tipoGestion) activeChips.push({ key: 'tipoGestion', label: `Gestión: ${filtrosReporte.tipoGestion}` });
+  if (filtrosReporte.desde) activeChips.push({ key: 'desde', label: `Desde: ${fmtDate(filtrosReporte.desde)}` });
+  if (filtrosReporte.hasta) activeChips.push({ key: 'hasta', label: `Hasta: ${fmtDate(filtrosReporte.hasta)}` });
+
+  const hasAnyFilter = activeChips.length > 0;
+  const chipsHtml = activeChips.map(ch => `
+    <span class="filterChip">
+      ${esc(ch.label)}
+      <button type="button" data-clear-filter="${esc(ch.key)}" title="Quitar filtro ${esc(ch.label)}">×</button>
+    </span>
+  `).join('');
+
+  const isEbrSinVisita = isEbr && (filtrosReporte.visita !== '1' && filtrosReporte.visita !== '2');
+  const msgVisitaObligatoria = 'Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.';
+
+  const isZeroSubmissions = statsList.length === 0;
+  const downloadDisabled = isZeroSubmissions || isEbrSinVisita;
+  const downloadDisabledTitle = isEbrSinVisita
+    ? msgVisitaObligatoria
+    : (isZeroSubmissions ? 'No hay fichas con los filtros activos' : '');
+
+  const bannerEbrHtml = isEbrSinVisita ? `
+    <div style="background:#FFF3CD;border:1px solid #FFEEBA;color:#856404;padding:10px 14px;border-radius:6px;font-size:12.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      <span>⚠️</span> <span><strong>Atención:</strong> ${msgVisitaObligatoria}</span>
+    </div>
+  ` : '';
+
+  const hasInvalidDates = Boolean(filtrosReporte.desde && filtrosReporte.hasta && filtrosReporte.desde > filtrosReporte.hasta);
+
+  return `
+    <div class="secHeaderFlex">
+      <div class="secTitleWrap">
+        <span class="secStepBadge">2</span>
+        <h3 class="secTitleText">Filtros y descargas</h3>
+      </div>
+      <div class="selectedFichaIndicator">
+        Ficha seleccionada: <strong>${esc(selectedShortName)}</strong>
+        <button type="button" class="btnCambiarFichaLink" id="btnCambiarFichaLink">Cambiar</button>
+      </div>
+    </div>
+
+    ${bannerEbrHtml}
+
+    <div class="filtersSubgroupsGrid">
+      <!-- 1. Ficha y resultado -->
+      <div class="filterSubgroup">
+        <div class="filterSubgroupTitle">Ficha y resultado</div>
+        <div class="field" style="margin-bottom:0">
+          <label for="fil_visita">Visita ${isEbr ? '<span style="color:var(--danger,#dc2626)">*</span>' : ''}</label>
+          ${visitaSelectHtml}
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label for="fil_estado">Estado</label>
+          <select id="fil_estado">
+            <option value="">Todos</option>
+            ${['Logrado', 'En proceso', 'Inicio'].map(v => `<option value="${v}"${v === filtrosReporte.estado ? ' selected' : ''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label for="fil_responsable">Responsable</label>
+          <input type="search" id="fil_responsable" list="dl_fil_responsable" value="${esc(filtrosReporte.responsable)}" placeholder="Buscar especialista..." autocomplete="off">
+          <datalist id="dl_fil_responsable">
+            ${responsableOptions.map(r => `<option value="${esc(r)}">`).join('')}
+          </datalist>
+        </div>
+      </div>
+
+      <!-- 2. Institución -->
+      <div class="filterSubgroup">
+        <div class="filterSubgroupTitle">Institución</div>
+        <div class="field" style="margin-bottom:0">
+          <label for="fil_inst">Institución / Código</label>
+          <input type="search" id="fil_inst" list="dl_fil_inst" value="${esc(filtrosReporte.institucion)}" placeholder="Nombre o cód. modular..." autocomplete="off">
+          <datalist id="dl_fil_inst">
+            ${seedSuggestions('institucion', state.submissions).map(v => `<option value="${esc(v)}">`).join('')}
+          </datalist>
+        </div>
+        <div style="display:flex;gap:8px">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="fil_red">RED</label>
+            <select id="fil_red">
+              <option value="">Todas</option>
+              ${redOptions.map(r => `<option value="${esc(r)}"${r === filtrosReporte.red ? ' selected' : ''}>${esc(r)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="fil_ugel">UGEL</label>
+            <select id="fil_ugel">
+              <option value="">Todas</option>
+              ${ugelOptions.map(u => `<option value="${esc(u)}"${u === filtrosReporte.ugel ? ' selected' : ''}>${esc(u)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="fil_distrito">Distrito</label>
+            <select id="fil_distrito">
+              <option value="">Todos</option>
+              ${distritoOptions.map(d => `<option value="${esc(d)}"${d === filtrosReporte.distrito ? ' selected' : ''}>${esc(d)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="fil_tipogestion">Gestión</label>
+            <select id="fil_tipogestion">
+              <option value="">Todos</option>
+              ${gestionOptions.map(g => `<option value="${esc(g)}"${g === filtrosReporte.tipoGestion ? ' selected' : ''}>${esc(g)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Período -->
+      <div class="filterSubgroup">
+        <div class="filterSubgroupTitle">Período</div>
+        <div style="display:flex;gap:8px">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="fil_desde">Desde</label>
+            <input type="date" id="fil_desde" value="${esc(filtrosReporte.desde)}">
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="fil_hasta">Hasta</label>
+            <input type="date" id="fil_hasta" value="${esc(filtrosReporte.hasta)}">
+          </div>
+        </div>
+        ${hasInvalidDates ? '<div class="dateRangeError">⚠️ La fecha "Desde" no puede ser posterior a "Hasta".</div>' : ''}
+        <div class="dateQuickRow">
+          <button type="button" class="btnDateQuick" data-quick-date="mes">Este mes</button>
+          <button type="button" class="btnDateQuick" data-quick-date="trimestre">Este trimestre</button>
+          <button type="button" class="btnDateQuick" data-quick-date="anio">Año 2026</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fila de filtros activos -->
+    <div class="activeFiltersRow">
+      <span style="font-size:12px;font-weight:700;color:var(--text-600);margin-right:4px">Filtros activos:</span>
+      ${chipsHtml || '<span style="color:var(--text-400);font-size:12px;font-style:italic">Ningún filtro adicional</span>'}
+      ${hasAnyFilter ? '<button type="button" class="btnClearAllFilters" id="btnClearAllFilters">Limpiar filtros</button>' : ''}
+    </div>
+
+    <div style="border-top:1px solid var(--border);margin:12px 0 10px"></div>
+
+    <div class="filtersSummaryLine">
+      <strong>${statsList.length} fichas · ${instCount} instituciones</strong> con los filtros activos
+    </div>
+
+    <!-- Barra de descargas unificada -->
+    <div class="downloadActionBar">
+      <div class="downloadSummaryHelp">
+        Se descargarán <strong>${statsList.length}</strong> fichas con los filtros activos.
+      </div>
+      <div class="downloadButtonsWrap">
+        <button type="button" class="btnDownloadAction btnExcel" id="exportExcel"
+                ${downloadDisabled ? 'disabled' : ''}
+                title="${esc(downloadDisabledTitle)}">
+          <span class="ic">📊</span> Exportar Excel
+        </button>
+        <button type="button" class="btnDownloadAction btnPdf" id="exportPdf"
+                ${downloadDisabled ? 'disabled' : ''}
+                title="${esc(downloadDisabledTitle)}">
+          <span class="ic">📄</span> Descargar reporte oficial (PDF)
+        </button>
+        ${isAdmin ? `
+          <div class="herramientasMenuWrap">
+            <button type="button" class="btnHerramientas" id="btnHerramientas" title="Herramientas de administración">⋯ Herramientas</button>
+            <div class="herramientasDropdown" id="herramientasDropdown" style="display:none">
+              <button type="button" class="herramientasItem" id="btnBackfillUgel">🔄 Sincronizar UGEL/RED</button>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function updateStickyReportesBar(statsList, getFichaType) {
+  const bar = document.getElementById('stickyReportesBar');
+  if (!bar) return;
+  const isAllMode = !filtrosReporte.tipo || filtrosReporte.tipo === '__ALL__';
+  const ft = !isAllMode ? getEnrichedFichaType(getFichaType(filtrosReporte.tipo)) : null;
+  const shortName = isAllMode ? 'Todas las fichas' : (ft ? ft.nombreCorto : '—');
+  const isEbr = ft && isFichaEbrGestionEscolar(ft);
+  const isEbrSinVisita = isEbr && (filtrosReporte.visita !== '1' && filtrosReporte.visita !== '2');
+  const isZero = statsList.length === 0;
+  const disabled = isZero || isEbrSinVisita;
+
+  bar.innerHTML = `
+    <div class="stickyReportesInfo">
+      <span>Tipo: <strong>${esc(shortName)}</strong></span>
+      <span>·</span>
+      <span>${statsList.length} fichas</span>
+      <button type="button" class="btnCambiarFichaLink" id="btnStickyAjustar" style="margin-left:8px">Editar filtros ↑</button>
+    </div>
+    <div class="stickyReportesActions">
+      <button type="button" class="stickyBtnExcel" id="stickyExportExcel" ${disabled ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>📊 Excel</button>
+      <button type="button" class="stickyBtnPdf" id="stickyExportPdf" ${disabled ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>📄 PDF</button>
+    </div>
+  `;
+
+  const btnAdj = document.getElementById('btnStickyAjustar');
+  if (btnAdj) {
+    btnAdj.addEventListener('click', () => {
+      const secF = document.getElementById('secFiltrosDescargas');
+      if (secF) secF.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+  const sExcel = document.getElementById('stickyExportExcel');
+  if (sExcel) sExcel.addEventListener('click', () => {
+    const mainBtn = document.getElementById('exportExcel');
+    if (mainBtn) mainBtn.click();
+  });
+  const sPdf = document.getElementById('stickyExportPdf');
+  if (sPdf) sPdf.addEventListener('click', () => {
+    const mainBtn = document.getElementById('exportPdf');
+    if (mainBtn) mainBtn.click();
+  });
+}
+
+export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdmin, navigate, currentUser = null) {
+  if (currentUser) _currentSessionUser = currentUser;
+  const user = currentUser || _currentSessionUser || (state && state.currentUser) || null;
+
+  if (state.fichaTypes.length === 0) {
+    container.innerHTML = '<div class="pageHead"><h2>Reportes</h2></div>' +
+      '<div class="empty"><h4>Aún no hay tipos de ficha</h4><p>Crea un tipo de ficha y registra visitas para ver reportes de avance aquí.</p></div>';
+    return;
+  }
+
+  // Cargar estado inicial desde URL o sessionStorage
+  if (!reportesFiltersInitialized) {
+    const loaded = loadReportesFiltersFromUrl(state);
+    syncFiltersState(loaded);
+    reportesFiltersInitialized = true;
+  }
+
+  try {
+    const savedHide = localStorage.getItem('reportes_hide_types');
+    if (savedHide !== null) reportesHideTypes = (savedHide === 'true');
+  } catch (_) {}
+
+  container.innerHTML = `
+    <div class="pageHead">
+      <h2>Reportes</h2>
+      <p>Gráficas, reporte por ítem, resumen por institución y descarga en PDF.</p>
+    </div>
+    <div id="stickyReportesBar" class="stickyReportesBar" style="display:none"></div>
+    <div id="secTipoFicha" class="panel secReportesTipoFicha"></div>
+    <div id="secFiltrosDescargas" class="panel secReportesFiltros"></div>
+    <div id="consHost"></div>
+  `;
+
+  const secTipo = document.getElementById('secTipoFicha');
+  if (secTipo) secTipo.innerHTML = renderSection1Html(state, getFichaType, user);
+
+  renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+
+  // Listener para barra compacta flotante al hacer scroll
+  const handleScroll = () => {
+    const secF = document.getElementById('secFiltrosDescargas');
+    const sBar = document.getElementById('stickyReportesBar');
+    if (!secF || !sBar) return;
+    const rect = secF.getBoundingClientRect();
+    if (rect.bottom < 54 && window.innerWidth > 768) {
+      sBar.style.display = 'flex';
+    } else {
+      sBar.style.display = 'none';
+    }
+  };
+  window.removeEventListener('scroll', window._reportesScrollHandler || (() => {}));
+  window._reportesScrollHandler = handleScroll;
+  window.addEventListener('scroll', handleScroll, { passive: true });
+}
+
+export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUser = null) {
+  if (currentUser) _currentSessionUser = currentUser;
+  const user = currentUser || _currentSessionUser || (state && state.currentUser) || null;
+
+  const host = document.getElementById('consHost');
+  const secTipo = document.getElementById('secTipoFicha');
+  const secFiltros = document.getElementById('secFiltrosDescargas');
+  if (!host) return;
+
+  // Actualizar URL
+  syncReportesUrl(filtrosReporte);
+
+  // Guardar última ficha seleccionada en sessionStorage
+  try {
+    sessionStorage.setItem('reportes_last_type', filtrosReporte.tipo || '__ALL__');
+  } catch (_) {}
+
+  // 1. Aplicar todos los filtros en el motor central
+  const { subs, statsList, instCount, avgPct, dist, targetFt, isAllMode, hasInvalidDates } = aplicarFiltrosReporte(
+    state.submissions,
+    filtrosReporte,
+    state,
+    getFichaType,
+    user
+  );
+
+  const ft = targetFt;
+
+  // 2. Actualizar o renderizar Sección 1 (Tipo de Ficha)
+  if (secTipo) {
+    const prevSearch = reportesSearchTerm;
+    secTipo.innerHTML = renderSection1Html(state, getFichaType, user);
+    const searchInp = secTipo.querySelector('#searchFichaType');
+    if (searchInp && prevSearch) {
+      searchInp.value = prevSearch;
+      filterCardsInDom(prevSearch);
+    }
+    attachSection1Listeners(secTipo, state, getFichaType, dbNs, isAdmin, navigate, user);
+  }
+
+  // 3. Renderizar Sección 2 (Filtros y Descargas)
+  if (secFiltros) {
+    secFiltros.innerHTML = renderSection2Html(statsList, instCount, state, getFichaType, user, isAdmin);
+    attachSection2Listeners(secFiltros, state, getFichaType, dbNs, isAdmin, navigate, user, statsList);
+  }
+
+  // 4. Actualizar Sticky Bar
+  updateStickyReportesBar(statsList, getFichaType);
+
+  // 5. Renderizar Gráficas, Indicadores y Tablas en consHost
   const colLog = 'var(--ok, #16a34a)';
   const colProc = 'var(--warn, #d97706)';
   const colIni = 'var(--danger, #dc2626)';
@@ -4017,7 +4715,6 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     }));
 
     const itemAgg = computeItemAgg(statsList.map(x => x.s), ft);
-    // Garantizar que cada sección en itemAgg use exactamente el mismo promedio calculado en secAgg
     itemAgg.forEach(sec => {
       const a = secAgg[sec.nombre];
       if (a && a.cnt) {
@@ -4067,36 +4764,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
       '</div>';
   }
 
-  // --- FASE 4: 9 Gráficos y Sugerencias ---
-  let fase4Html = '';
-  if (!isAllMode && ft) {
-    const criticosDS = RepDatos.getRankingCriticosDataset(statsList, ft);
-    const heatmapDS = RepDatos.getMapaCalorDataset(statsList, ft);
-    const sugerencias = RepDatos.getSugerencias(statsList, ft, criticosDS);
-
-    let sugHtml = '';
-    if (sugerencias.length > 0) {
-      sugHtml = '<div class="panel" style="background:#FEF3C7;border:1px solid #F59E0B;border-left:4px solid #D97706;padding:16px;">' +
-        '<h3 style="color:#B45309;margin-top:0">💡 Sugerencias Automáticas</h3>' +
-        '<ul style="margin-bottom:0;color:#92400E;padding-left:20px">' +
-        sugerencias.map(s => '<li><strong>' + s.tipo + ':</strong> ' + s.mensaje + '</li>').join('') +
-        '</ul></div>';
-    }
-
-    let criticosHtml = '<div class="panel"><h3>Top 5 Ítems Críticos (No/Inicio)</h3>';
-    if (criticosDS.length > 0) {
-      criticosHtml += criticosDS.slice(0, 5).map(c =>
-        '<div class="barRow"><div class="name" style="max-width:300px;white-space:normal;line-height:1.2;font-size:11px">' + c.texto + '</div>' +
-        '<div class="barTrack"><div class="barFill danger" style="width:' + c.pctCritico + '%"></div></div><div class="val">' + c.pctCritico + '%</div></div>'
-      ).join('');
-    } else {
-      criticosHtml += '<p class="helpText">No hay ítems críticos detectados.</p>';
-    }
-    criticosHtml += '</div>';
-
-    fase4Html = sugHtml + '<div class="criticosGrid" style="margin-bottom:20px;">' + criticosHtml + '</div>';
-  }
-
+  // Evolución por N° de visita
   const visAgg = {};
   statsList.forEach(x => {
     const v = Number(x.s.visita) || 1;
@@ -4119,17 +4787,11 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     const vNum = Number(v);
     const avg = a.cnt ? Math.round(a.sumPct / a.cnt) : null;
     const avgPts = a.cntPts ? Math.round(a.sumPts / a.cntPts) : null;
-
-    // Obtener la ficha representativa para evaluar la regla de nivel
     const sampleItem = a.items[0];
     const sFt = (sampleItem && (isAllMode ? getFichaType(sampleItem.s.fichaTypeId) : ft)) || ft;
     const isEbr = isFichaEbrGestionEscolar(sFt);
     const isCoordTutoria = isFichaCoordTutoriaJec(sFt);
-
-    // Calcular el estado oficial de la visita según el momento exacto
     const vSt = statusFromPct(avg, sFt, 0, avgPts, vNum);
-
-    // Tooltip y metadatos de puntaje
     const maxPts = isEbr ? (vNum === 2 ? 69 : 57) : (isCoordTutoria ? 63 : null);
     const scoreTitle = ((isEbr || isCoordTutoria) && avgPts !== null)
       ? ' title="' + avgPts + '/' + maxPts + ' pts promedio (' + (avg === null ? '—' : avg + '%') + ')"'
@@ -4142,6 +4804,8 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
       '</div>';
   }).join('') || '<p class="helpText">Sin datos suficientes.</p>';
 
+  // Filas de tabla Fichas registradas
+  const tblTypeHeader = isAllMode ? '<th>Tipo de ficha</th>' : '';
   const rows = statsList.map(x => {
     const s = x.s; const st = x.st;
     const sFt = isAllMode ? getFichaType(s.fichaTypeId) : ft;
@@ -4182,21 +4846,31 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
       (isOpen ? '<tr class="detailRow"><td colspan="' + (isAllMode ? 9 : 8) + '">' + detailContent + '</td></tr>' : '');
   }).join('') || '<tr><td colspan="' + (isAllMode ? 9 : 8) + '" style="text-align:center;color:var(--text-600);padding:22px">No hay fichas que coincidan con los filtros.</td></tr>';
 
+  // Resumen por institución
   const byInst = {};
   statsList.forEach(x => {
     const normInst = normalizeInstName(x.s.institucion || '');
     const normUgel = normalizeText(x.s.ugel || 'UGEL 03');
-    const key = x.s.colegioId ? ('col_' + x.s.colegioId) : (normInst + '|' + normUgel);
+    const baseKey = x.s.colegioId ? ('col_' + x.s.colegioId) : (normInst + '|' + normUgel);
+    // Group by institution AND ficha type
+    const key = baseKey + '|' + x.s.fichaTypeId;
+    
     if (!byInst[key]) {
+      const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : ft;
       byInst[key] = {
         colegioId: x.s.colegioId || null,
         institucion: x.s.institucion,
         ugel: x.s.ugel || 'UGEL 03',
         red: x.s.red || '',
+        fichaTypeId: x.s.fichaTypeId,
+        fichaTypeNombre: sFt ? (sFt.nombreCorto || sFt.nombre) : '',
         visitas: []
       };
     }
-    byInst[key].visitas.push(x);
+    // Evitar duplicados por id de submission en caso de race conditions en el estado local
+    if (!byInst[key].visitas.some(v => v.s.id === x.s.id)) {
+      byInst[key].visitas.push(x);
+    }
     if (x.s.red && (!byInst[key].red || byInst[key].red === '—' || byInst[key].red === 'No aplica')) {
       byInst[key].red = x.s.red;
     }
@@ -4204,6 +4878,7 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
       byInst[key].institucion = x.s.institucion;
     }
   });
+  
   const instRows = Object.values(byInst).sort((a, b) => (a.institucion || '').localeCompare(b.institucion || '')).map(g => {
     g.visitas.sort((a, b) => {
       const fDiff = (b.s.fecha || '').localeCompare(a.s.fecha || '');
@@ -4235,125 +4910,613 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     const vLast = isEbr ? getMomentoVisitaEbr(last.s) : 1;
     const maxPts = isEbr ? (vLast === 2 ? 69 : 57) : 63;
     const scoreTitle = ((isCoordTutoria || isEbr) && avgPts !== null) ? ' title="' + avgPts + '/' + maxPts + ' pts"' : '';
+    
+    // Group counts by visit number
+    const visitaCounts = {};
+    g.visitas.forEach(v => {
+      const vn = Number(v.s.visita) || 1;
+      visitaCounts[vn] = (visitaCounts[vn] || 0) + 1;
+    });
+    
+    const visitBadges = Object.keys(visitaCounts).sort().map(vn => {
+      const count = visitaCounts[vn];
+      return '<span class="badge st-none" style="font-size:10.5px;padding:2px 6px;margin-left:4px;font-weight:700" title="' + count + ' registros en V' + vn + '">V' + vn + ' (' + count + ')</span>';
+    }).join('');
+    
+    const totalVisitas = g.visitas.length;
+    
+    const displayInst = isAllMode 
+      ? esc(g.institucion) + '<br><small style="color:var(--text-muted);font-weight:600">' + esc(g.fichaTypeNombre) + '</small>'
+      : esc(g.institucion);
 
-    // Calcular visitas registradas y total de visitas
-    const visitNums = Array.from(new Set(g.visitas.map(x => Number(x.s.visita) || 1))).sort((a, b) => a - b);
-    const totalVisitas = Math.max(g.visitas.length, ...visitNums);
-    const visitBadges = visitNums.map(v => '<span class="badge st-none" style="font-size:10px;padding:1px 5px;margin-left:4px;font-weight:700">V' + v + '</span>').join('');
-
-    return '<tr><td>' + esc(g.institucion) + '</td><td>' + esc(g.red || '—') + '</td><td>' + esc(g.ugel || '—') + '</td>' +
+    return '<tr><td>' + displayInst + '</td><td>' + esc(g.red || '—') + '</td><td>' + esc(g.ugel || '—') + '</td>' +
       '<td><strong>' + totalVisitas + '</strong>' + visitBadges + '</td><td>' + fmtDate(last.s.fecha) + '</td>' +
       '<td><span' + scoreTitle + '>' + (avg === null ? '—' : avg + '%') + '</span> <span class="badge ' + gst.cls + '">' + gst.label + '</span></td></tr>';
   }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-600);padding:20px">Sin instituciones con los filtros actuales.</td></tr>';
 
-  const subsForRed = isAllMode ? state.submissions : state.submissions.filter(s => s.fichaTypeId === ft.id);
-  const redOptions = Array.from(new Set(subsForRed.filter(s => s.red).map(s => s.red))).sort();
+  // Fichas registradas: Sección simplificada (solo tabla)
+  const secRegistradasHtml = `
+    <div class="panel">
+      <div class="sectionRegistradasHead">
+        <h3 style="margin:0">Fichas registradas · ${statsList.length}</h3>
+        <a href="#secFiltrosDescargas" id="btnAjustarFiltros" class="btnAjustarFiltros">Ajustar filtros ↑</a>
+      </div>
+      ${statsList.length === 0
+        ? `<div class="emptyTableMsg">
+            <p>No hay fichas que coincidan con los filtros activos.</p>
+            <button type="button" class="btn secondary small" id="btnEmptyClearFilters">Limpiar filtros</button>
+          </div>`
+        : `<div class="tblWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Institución</th>
+                  ${tblTypeHeader}
+                  <th>UGEL / RED</th>
+                  <th>Visita</th>
+                  <th>Responsable</th>
+                  <th>%</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>`
+      }
+    </div>
+  `;
 
-  const tblTypeHeader = isAllMode ? '<th>Tipo de ficha</th>' : '';
+  host.innerHTML = `
+    <div id="reportCapture">
+      <div class="cards">
+        <div class="card"><div class="num">${statsList.length}</div><div class="lbl">Fichas registradas</div></div>
+        <div class="card"><div class="num">${instCount}</div><div class="lbl">Instituciones</div></div>
+        ${isAllMode ? `<div class="card"><div class="num">${state.fichaTypes.length}</div><div class="lbl">Tipos de ficha</div></div>` : ''}
+        <div class="card"><div class="num">${avgPct === null ? '—' : avgPct + '%'}</div><div class="lbl">Cumplimiento promedio</div></div>
+      </div>
+      <div class="panel"><h3>Distribución de resultados</h3>${seg}</div>
+      ${allTypesSummaryHtml}
+      ${!isAllMode ? `<div class="panel"><h3>Reporte por ítem <small>resultado de cada indicador</small></h3>${itemReportHtml}</div>` : ''}
+      <div class="panel"><h3>Evolución por N° de visita</h3>${visRows}</div>
+      <div class="panel"><h3>Resumen por institución</h3>
+        <div class="tblWrap"><table><thead><tr><th>Institución</th><th>RED</th><th>UGEL</th><th>N° visitas</th><th>Última visita</th><th>Avance</th></tr></thead><tbody>${instRows}</tbody></table></div>
+      </div>
+    </div>
+    ${secRegistradasHtml}
+  `;
 
-  const activeEl = document.activeElement;
-  const activeId = activeEl ? activeEl.id : null;
-  const selStart = (activeEl && typeof activeEl.selectionStart === 'number') ? activeEl.selectionStart : null;
-  const selEnd = (activeEl && typeof activeEl.selectionEnd === 'number') ? activeEl.selectionEnd : null;
-  const scrollX = window.scrollX;
-  const scrollY = window.scrollY;
+  // Attach handlers in host
+  attachReportHostListeners(host, state, getFichaType, dbNs, isAdmin, navigate, user);
+}
 
-  const isEbrGestionEscolar = ft && isFichaEbrGestionEscolar(ft);
-  const isEbrSinVisitaUnica = isEbrGestionEscolar && (!consFilters.visita || (consFilters.visita !== '1' && consFilters.visita !== '2'));
-  const msgVisitaObligatoria = 'Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.';
+function filterCardsInDom(qNorm) {
+  const container = document.getElementById('fichaGroupsContainer');
+  if (!container) return;
+  const cards = container.querySelectorAll('.fichaTypeCard');
+  let anyVisible = false;
 
-  const bannerEbrVisitaHtml = isEbrSinVisitaUnica
-    ? '<div style="background:#FFF3CD;border:1px solid #FFEEBA;color:#856404;padding:8px 14px;border-radius:6px;font-size:12px;margin-bottom:12px;display:flex;align-items:center;gap:8px"><span>⚠️</span> <span><strong>Atención:</strong> ' + msgVisitaObligatoria + '</span></div>'
-    : '';
+  cards.forEach(c => {
+    const nCorto = normalizeText(c.dataset.nombreCorto || '');
+    const nComp = normalizeText(c.dataset.nombreCompleto || '');
+    const matches = !qNorm || nCorto.includes(qNorm) || nComp.includes(qNorm);
+    c.style.display = matches ? '' : 'none';
+    if (matches) anyVisible = true;
+  });
 
-  host.innerHTML = '' +
-    '<div id="reportCapture">' +
-    '<div class="cards">' +
-    '<div class="card"><div class="num">' + statsList.length + '</div><div class="lbl">Fichas registradas</div></div>' +
-    '<div class="card"><div class="num">' + instCount + '</div><div class="lbl">Instituciones</div></div>' +
-    (isAllMode ? '<div class="card"><div class="num">' + state.fichaTypes.length + '</div><div class="lbl">Tipos de ficha</div></div>' : '') +
-    '<div class="card"><div class="num">' + (avgPct === null ? '—' : avgPct + '%') + '</div><div class="lbl">Cumplimiento promedio</div></div>' +
-    '</div>' +
-    '<div class="panel"><h3>Distribución de resultados</h3>' + seg + '</div>' +
-    allTypesSummaryHtml +
-    (!isAllMode ? '<div class="panel"><h3>Reporte por ítem <small>resultado de cada indicador</small></h3>' + itemReportHtml + '</div>' : '') +
-    '<div class="panel"><h3>Evolución por N° de visita</h3>' + visRows + '</div>' +
-    '<div class="panel"><h3>Resumen por institución</h3>' +
-    '<div class="tblWrap"><table><thead><tr><th>Institución</th><th>RED</th><th>UGEL</th><th>N° visitas</th><th>Última visita</th><th>Avance</th></tr></thead><tbody>' + instRows + '</tbody></table></div>' +
-    '</div></div>' +
-    '<div class="panel">' +
-    '<h3>Fichas registradas</h3>' +
-    bannerEbrVisitaHtml +
-    '<div class="filterBar">' +
-    '<div class="field"><label>Institución</label><input type="search" id="fil_inst" list="dl_fil_inst" value="' + esc(consFilters.institucion) + '" placeholder="Buscar..."></div>' +
-    '<datalist id="dl_fil_inst">' + seedSuggestions('institucion', state.submissions).map(v => '<option value="' + esc(v) + '">').join('') + '</datalist>' +
-    '<div class="field"><label>RED</label><select id="fil_red"><option value="">Todas</option>' + redOptions.map(r => '<option value="' + esc(r) + '"' + (r === consFilters.red ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></div>' +
-    '<div class="field"><label>UGEL</label><input type="search" id="fil_ugel" value="' + esc(consFilters.ugel) + '" placeholder="Buscar..."></div>' +
-    (state.colegios.length ? (
-      '<div class="field"><label>Distrito</label><input type="search" id="fil_distrito" value="' + esc(consFilters.distrito) + '" placeholder="Buscar..."></div>' +
-      '<div class="field"><label>Tipo de gestión</label><select id="fil_tipogestion"><option value="">Todos</option>' +
-      Array.from(new Set(state.colegios.map(c => c.tipoGestion).filter(Boolean))).sort().map(g => '<option value="' + esc(g) + '"' + (g === consFilters.tipoGestion ? ' selected' : '') + '>' + esc(g) + '</option>').join('') +
-      '</select></div>'
-    ) : '') +
-    '<div class="field"><label>Desde</label><input type="date" id="fil_desde" value="' + esc(consFilters.desde) + '"></div>' +
-    '<div class="field"><label>Hasta</label><input type="date" id="fil_hasta" value="' + esc(consFilters.hasta) + '"></div>' +
-    '<button class="btn secondary small" id="fil_clear" type="button">Limpiar</button>' +
-    (isAdmin ? '<button class="btn secondary small" id="btnBackfillUgel" type="button" title="Completar UGEL y RED en fichas antiguas desde el padrón">🔄 Sincronizar UGEL/RED</button>' : '') +
-    '<button class="btn secondary small" id="exportExcel" type="button" style="margin-left:auto"' + (isEbrSinVisitaUnica ? ' disabled title="' + esc(msgVisitaObligatoria) + '" style="margin-left:auto;opacity:0.5;cursor:not-allowed"' : '') + '><span class="ic">📊</span> Exportar Excel</button>' +
-    '<button class="btn small" id="exportPdf" type="button"' + (isEbrSinVisitaUnica ? ' disabled title="' + esc(msgVisitaObligatoria) + '" style="opacity:0.5;cursor:not-allowed"' : '') + '>⬇ Descargar reporte oficial (PDF)</button>' +
-    '</div>' +
-    '<div class="tblWrap"><table><thead><tr><th>Fecha</th><th>Institución</th>' + tblTypeHeader + '<th>UGEL / RED</th><th>Visita</th><th>Responsable</th><th>%</th><th>Estado</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-    '</div>';
+  // Mostrar / ocultar grupos y expandir los que tengan coincidencias al buscar
+  container.querySelectorAll('.fichaGroupSection').forEach(sec => {
+    const secCards = Array.from(sec.querySelectorAll('.fichaTypeCard'));
+    const secHasVisible = secCards.some(c => c.style.display !== 'none');
+    sec.style.display = secHasVisible ? '' : 'none';
 
-  window.scrollTo(scrollX, scrollY);
-  if (activeId) {
-    const newEl = document.getElementById(activeId);
-    if (newEl) {
-      newEl.focus();
-      if (selStart !== null && selEnd !== null) {
-        try { newEl.setSelectionRange(selStart, selEnd); } catch (_) { }
+    const btn = sec.querySelector('[data-group-toggle]');
+    const grid = sec.querySelector('.fichaCardGrid');
+    if (!grid) return;
+
+    if (qNorm && qNorm.length > 0) {
+      if (secHasVisible) {
+        grid.style.display = 'grid';
+        if (btn) {
+          btn.classList.add('isExpanded');
+          btn.setAttribute('aria-expanded', 'true');
+          const chev = btn.querySelector('.groupToggleChevron');
+          if (chev) chev.textContent = '▼';
+          const act = btn.querySelector('.groupToggleAction');
+          if (act) act.textContent = 'Ocultar fichas ▲';
+        }
+      }
+    } else {
+      const gName = btn ? btn.dataset.groupToggle : null;
+      const isExpanded = gName && reportesExpandedGroups.has(gName);
+      grid.style.display = isExpanded ? 'grid' : 'none';
+      if (btn) {
+        btn.classList.toggle('isExpanded', isExpanded);
+        btn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+        const chev = btn.querySelector('.groupToggleChevron');
+        if (chev) chev.textContent = isExpanded ? '▼' : '▶';
+        const act = btn.querySelector('.groupToggleAction');
+        if (act) act.textContent = isExpanded ? 'Ocultar fichas ▲' : 'Ver fichas ▼';
       }
     }
+  });
+
+  const noMatchesMsg = document.getElementById('noFichaMatches');
+  if (noMatchesMsg) {
+    noMatchesMsg.style.display = anyVisible ? 'none' : 'block';
+  }
+}
+
+function attachSection1Listeners(secTipo, state, getFichaType, dbNs, isAdmin, navigate, user) {
+  // Buscador de tipos
+  const searchInput = secTipo.querySelector('#searchFichaType');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      reportesSearchTerm = e.target.value;
+      const q = normalizeText(e.target.value.trim());
+      filterCardsInDom(q);
+    });
   }
 
-  let consDebounceTimer = null;
-  const debouncedRenderCons = () => {
-    if (consDebounceTimer) clearTimeout(consDebounceTimer);
-    consDebounceTimer = setTimeout(() => {
+  // Toggle Ocultar / Mostrar tipos
+  const toggleBtn = secTipo.querySelector('#btnToggleTipos');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      reportesHideTypes = !reportesHideTypes;
+      try { localStorage.setItem('reportes_hide_types', String(reportesHideTypes)); } catch (_) {}
       renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
-    }, 180);
+    });
+  }
+
+  // Botón Cambiar (cuando está colapsado)
+  const btnExpandir = secTipo.querySelector('#btnExpandirTipos');
+  if (btnExpandir) {
+    btnExpandir.addEventListener('click', () => {
+      reportesHideTypes = false;
+      try { localStorage.setItem('reportes_hide_types', 'false'); } catch (_) {}
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+    });
+  }
+
+  // Botones de colapso/expansión de grupo
+  secTipo.querySelectorAll('[data-group-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const gName = btn.dataset.groupToggle;
+      const groupSec = btn.closest('.fichaGroupSection');
+      const grid = groupSec ? groupSec.querySelector('.fichaCardGrid') : null;
+      if (!grid) return;
+
+      const currentlyExpanded = btn.classList.contains('isExpanded');
+      const nextExpanded = !currentlyExpanded;
+
+      if (nextExpanded) {
+        reportesExpandedGroups.add(gName);
+      } else {
+        reportesExpandedGroups.delete(gName);
+      }
+
+      btn.classList.toggle('isExpanded', nextExpanded);
+      btn.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
+      btn.title = nextExpanded ? 'Ocultar fichas de ' + gName : 'Visualizar fichas de ' + gName;
+
+      const chev = btn.querySelector('.groupToggleChevron');
+      if (chev) chev.textContent = nextExpanded ? '▼' : '▶';
+
+      const act = btn.querySelector('.groupToggleAction');
+      if (act) act.textContent = nextExpanded ? 'Ocultar fichas ▲' : 'Ver fichas ▼';
+
+      grid.style.display = nextExpanded ? 'grid' : 'none';
+    });
+  });
+
+  // Selección de tarjeta
+  const onSelectCard = (typeId) => {
+    if (filtrosReporte.tipo === typeId) return;
+
+    const oldFt = filtrosReporte.tipo !== '__ALL__' ? getEnrichedFichaType(getFichaType(filtrosReporte.tipo)) : null;
+    const newFt = typeId !== '__ALL__' ? getEnrichedFichaType(getFichaType(typeId)) : null;
+
+    // Asegurar que el grupo de la ficha seleccionada se mantenga expandido
+    const gName = newFt ? newFt.grupo : 'Avance general';
+    if (gName) reportesExpandedGroups.add(gName);
+
+    // Regla de Visita: si la nueva ficha no trabaja por visitas, quitar filtro de visita
+    let avisoVisitaQuitada = false;
+    if (newFt && !newFt.tieneVisitas && filtrosReporte.visita) {
+      filtrosReporte.visita = '';
+      consFilters.visita = '';
+      avisoVisitaQuitada = true;
+    } else if (typeId === '__ALL__' && filtrosReporte.visita) {
+      filtrosReporte.visita = '';
+      consFilters.visita = '';
+    }
+
+    // Regla de Estado: mantener si aplica, de lo contrario resetear
+    if (filtrosReporte.estado && newFt && isFichaEbrGestionEscolar(newFt)) {
+      // EBR admite Logrado, En proceso, Inicio
+    }
+
+    filtrosReporte.tipo = typeId;
+    consSelectedTypeId = typeId;
+
+    if (avisoVisitaQuitada) {
+      showToast('Se quitó el filtro Visita porque esta ficha no trabaja por visitas.');
+    }
+
+    // Sincronizar select nativo oculto si existe
+    const consSelect = document.getElementById('consSelect');
+    if (consSelect) consSelect.value = typeId;
+
+    renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
   };
 
-  ['inst', 'ugel', 'distrito'].forEach(k => {
-    const el = document.getElementById('fil_' + k);
-    if (!el) return;
-    el.addEventListener('input', () => {
-      consFilters[k === 'inst' ? 'institucion' : k] = el.value;
-      debouncedRenderCons();
+  const cards = secTipo.querySelectorAll('.fichaTypeCard');
+  cards.forEach((card, idx) => {
+    card.addEventListener('click', () => {
+      const tid = card.dataset.typeId;
+      if (tid) onSelectCard(tid);
+    });
+
+    // Accesibilidad con teclado: flechas, Enter y Espacio
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const tid = card.dataset.typeId;
+        if (tid) onSelectCard(tid);
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const visibleCards = Array.from(cards).filter(c => c.style.display !== 'none');
+        const curIdx = visibleCards.indexOf(card);
+        const nextCard = visibleCards[curIdx + 1] || visibleCards[0];
+        if (nextCard) nextCard.focus();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const visibleCards = Array.from(cards).filter(c => c.style.display !== 'none');
+        const curIdx = visibleCards.indexOf(card);
+        const prevCard = visibleCards[curIdx - 1] || visibleCards[visibleCards.length - 1];
+        if (prevCard) prevCard.focus();
+      }
     });
   });
 
-  ['desde', 'hasta'].forEach(k => {
-    const el = document.getElementById('fil_' + k);
-    if (!el) return;
-    el.addEventListener('input', () => {
-      consFilters[k] = el.value;
+  // Soporte para selector legacy oculto si algún test o script externo cambia su valor
+  const legacySelect = secTipo.querySelector('#consSelect');
+  if (legacySelect) {
+    legacySelect.addEventListener('change', (e) => {
+      const val = e.target.value || '__ALL__';
+      onSelectCard(val);
+    });
+  }
+}
+
+function attachSection2Listeners(secFiltros, state, getFichaType, dbNs, isAdmin, navigate, user, statsList) {
+  const ft = filtrosReporte.tipo !== '__ALL__' ? getEnrichedFichaType(getFichaType(filtrosReporte.tipo)) : null;
+  const isAllMode = !filtrosReporte.tipo || filtrosReporte.tipo === '__ALL__';
+
+  // Botón Cambiar (en encabezado de sección 2)
+  const btnCambiar = secFiltros.querySelector('#btnCambiarFichaLink');
+  if (btnCambiar) {
+    btnCambiar.addEventListener('click', () => {
+      reportesHideTypes = false;
+      try { localStorage.setItem('reportes_hide_types', 'false'); } catch (_) {}
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+      const sec1 = document.getElementById('secTipoFicha');
+      if (sec1) sec1.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  // Visita
+  const filVisita = secFiltros.querySelector('#fil_visita');
+  if (filVisita) {
+    filVisita.addEventListener('change', (e) => {
+      filtrosReporte.visita = e.target.value;
+      consFilters.visita = e.target.value;
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+    });
+  }
+
+  // Estado
+  const filEstado = secFiltros.querySelector('#fil_estado');
+  if (filEstado) {
+    filEstado.addEventListener('change', (e) => {
+      filtrosReporte.estado = e.target.value;
+      consFilters.estado = e.target.value;
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+    });
+  }
+
+  // Responsable (debounce 300ms)
+  const filResp = secFiltros.querySelector('#fil_responsable');
+  let debResp = null;
+  if (filResp) {
+    filResp.addEventListener('input', (e) => {
+      clearTimeout(debResp);
+      debResp = setTimeout(() => {
+        filtrosReporte.responsable = e.target.value;
+        consFilters.responsable = e.target.value;
+        renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+      }, 300);
+    });
+  }
+
+  // Institución (debounce 300ms)
+  const filInst = secFiltros.querySelector('#fil_inst');
+  let debInst = null;
+  if (filInst) {
+    filInst.addEventListener('input', (e) => {
+      clearTimeout(debInst);
+      debInst = setTimeout(() => {
+        filtrosReporte.institucion = e.target.value;
+        consFilters.institucion = e.target.value;
+        renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+      }, 300);
+    });
+  }
+
+  // RED
+  const filRed = secFiltros.querySelector('#fil_red');
+  if (filRed) {
+    filRed.addEventListener('change', (e) => {
+      filtrosReporte.red = e.target.value;
+      consFilters.red = e.target.value;
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+    });
+  }
+
+  // UGEL
+  const filUgel = secFiltros.querySelector('#fil_ugel');
+  if (filUgel) {
+    filUgel.addEventListener('change', (e) => {
+      filtrosReporte.ugel = e.target.value;
+      consFilters.ugel = e.target.value;
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+    });
+  }
+
+  // Distrito
+  const filDistrito = secFiltros.querySelector('#fil_distrito');
+  if (filDistrito) {
+    filDistrito.addEventListener('change', (e) => {
+      filtrosReporte.distrito = e.target.value;
+      consFilters.distrito = e.target.value;
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+    });
+  }
+
+  // Tipo de gestión
+  const filTipoGestion = secFiltros.querySelector('#fil_tipogestion');
+  if (filTipoGestion) {
+    filTipoGestion.addEventListener('change', (e) => {
+      filtrosReporte.tipoGestion = e.target.value;
+      consFilters.tipoGestion = e.target.value;
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+    });
+  }
+
+  // Fechas Desde / Hasta
+  const filDesde = secFiltros.querySelector('#fil_desde');
+  if (filDesde) {
+    filDesde.addEventListener('input', (e) => {
+      filtrosReporte.desde = e.target.value;
+      consFilters.desde = e.target.value;
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+    });
+  }
+  const filHasta = secFiltros.querySelector('#fil_hasta');
+  if (filHasta) {
+    filHasta.addEventListener('input', (e) => {
+      filtrosReporte.hasta = e.target.value;
+      consFilters.hasta = e.target.value;
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+    });
+  }
+
+  // Atajos de período
+  secFiltros.querySelectorAll('[data-quick-date]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const qTipo = btn.dataset.quickDate;
+      const { desde, hasta } = getPeriodoFechas(qTipo);
+      filtrosReporte.desde = desde;
+      filtrosReporte.hasta = hasta;
+      consFilters.desde = desde;
+      consFilters.hasta = hasta;
       renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
     });
   });
-  document.getElementById('fil_red').addEventListener('change', e => { consFilters.red = e.target.value; renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user); });
-  const filTipoGestion = document.getElementById('fil_tipogestion');
-  if (filTipoGestion) filTipoGestion.addEventListener('change', e => { consFilters.tipoGestion = e.target.value; renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user); });
-  document.getElementById('fil_clear').addEventListener('click', () => {
-    consFilters = { institucion: '', ugel: '', red: '', estado: '', visita: '', responsable: '', desde: '', hasta: '', distrito: '', tipoGestion: '' };
-    const topEst = document.getElementById('top_fil_estado'); if (topEst) topEst.value = '';
-    const topVis = document.getElementById('top_fil_visita'); if (topVis) topVis.value = '';
-    const topResp = document.getElementById('top_fil_responsable'); if (topResp) topResp.value = '';
-    renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+
+  // Quitar filtro individual desde chip
+  secFiltros.querySelectorAll('[data-clear-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const k = btn.dataset.clearFilter;
+      if (k && filtrosReporte[k] !== undefined) {
+        filtrosReporte[k] = '';
+        consFilters[k] = '';
+        renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+      }
+    });
   });
 
-  // Expandir / Contraer todo en Reporte por Ítem y sincronización de accesibilidad
-  const toggleAllBtn = document.getElementById('toggleAllItemsBtn');
+  // Botón Limpiar filtros (restablece todo excepto tipo)
+  const btnClearAll = secFiltros.querySelector('#btnClearAllFilters');
+  if (btnClearAll) {
+    btnClearAll.addEventListener('click', () => {
+      const currentTipo = filtrosReporte.tipo;
+      filtrosReporte = {
+        tipo: currentTipo,
+        visita: '',
+        estado: '',
+        responsable: '',
+        institucion: '',
+        red: '',
+        ugel: '',
+        distrito: '',
+        tipoGestion: '',
+        desde: '',
+        hasta: ''
+      };
+      syncFiltersState(filtrosReporte);
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+    });
+  }
+
+  // Exportar Excel
+  const btnExportExcel = secFiltros.querySelector('#exportExcel');
+  if (btnExportExcel) {
+    btnExportExcel.addEventListener('click', async () => {
+      if (!statsList || statsList.length === 0) {
+        showToast('No hay registros para exportar con los filtros seleccionados.');
+        return;
+      }
+
+      const isEbrExport = ft && isFichaEbrGestionEscolar(ft);
+      if (isEbrExport) {
+        const vNum = Number(filtrosReporte.visita);
+        if (vNum !== 1 && vNum !== 2) {
+          showToast('Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.');
+          return;
+        }
+      }
+
+      btnExportExcel.disabled = true;
+      const originalHtml = btnExportExcel.innerHTML;
+      btnExportExcel.innerHTML = '<span class="ic">⏳</span> Generando…';
+      try {
+        if (isEbrExport) {
+          const vNum = Number(filtrosReporte.visita);
+          const subsVisita = statsList.map(x => x.s || x).filter(s => {
+            const sV = Number(s.visita) || (Array.isArray(s.respuestas) && s.respuestas.some(r => String(r?.id || '').startsWith('ge2_')) ? 2 : 1);
+            return sV === vNum;
+          });
+          await exportarTableroEBRCompleto(subsVisita, vNum, state.colegios || [], state);
+          showToast(`✓ Tablero EBR generado: Visita ${vNum} (${vNum === 2 ? 'Segundo' : 'Primer'} momento)`);
+        } else {
+          let exportStatsList = statsList;
+          if (isAllMode && (!filtrosReporte.visita || (filtrosReporte.visita !== '1' && filtrosReporte.visita !== '2'))) {
+            exportStatsList = statsList.filter(x => !isFichaEbrGestionEscolar(x.s || x));
+          }
+
+          const res = await exportarMatrizSeguimiento({
+            statsList: exportStatsList,
+            consFilters: filtrosReporte,
+            isAllMode,
+            ft,
+            state,
+            getFichaType
+          });
+          showToast(`Excel generado con éxito (${res.fileName})`);
+        }
+      } catch (err) {
+        console.error('Error al exportar a Excel:', err);
+        showToast('Error al generar Excel: ' + (err.message || 'Error desconocido'));
+      } finally {
+        btnExportExcel.disabled = false;
+        btnExportExcel.innerHTML = originalHtml;
+      }
+    });
+  }
+
+  // Exportar PDF
+  const btnExportPdf = secFiltros.querySelector('#exportPdf');
+  if (btnExportPdf) {
+    btnExportPdf.addEventListener('click', () => {
+      const isEbrPdf = ft && isFichaEbrGestionEscolar(ft);
+      if (isEbrPdf) {
+        const vNum = Number(filtrosReporte.visita);
+        if (vNum !== 1 && vNum !== 2) {
+          showToast('Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.');
+          return;
+        }
+      }
+
+      openDownloadConfigModal({
+        documentTitle: isAllMode ? 'REPORTE CONSOLIDADO GENERAL DE MONITOREO' : `REPORTE CONSOLIDADO — ${(ft ? ft.nombre : 'MONITOREO').toUpperCase()}`,
+        tipoReporte: 'consolidado',
+        dataRows: statsList,
+        currentUser: user,
+        state,
+        dbNs,
+        isAdmin,
+        onConfirm: async (cfg) => {
+          cfg.getFichaType = getFichaType;
+          cfg.fichaTypes = state.fichaTypes;
+          await exportConsolidadoReportPdf(statsList, ft, filtrosReporte, isAllMode, cfg);
+        }
+      });
+    });
+  }
+
+  // Menú ⋯ Herramientas (Admin)
+  const btnHerramientas = secFiltros.querySelector('#btnHerramientas');
+  const dropdownHerramientas = secFiltros.querySelector('#herramientasDropdown');
+  if (btnHerramientas && dropdownHerramientas) {
+    btnHerramientas.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isVisible = dropdownHerramientas.style.display !== 'none';
+      dropdownHerramientas.style.display = isVisible ? 'none' : 'block';
+    });
+    document.addEventListener('click', () => {
+      if (dropdownHerramientas) dropdownHerramientas.style.display = 'none';
+    });
+  }
+
+  // Sincronizar UGEL/RED dentro de Herramientas
+  const btnBackfill = secFiltros.querySelector('#btnBackfillUgel');
+  if (btnBackfill) {
+    btnBackfill.addEventListener('click', async () => {
+      if (!confirm('¿Deseas buscar en el padrón de colegios y actualizar la UGEL y RED/REI en las fichas registradas que no los tengan? Esto revisará las fichas en la base de datos y completará los campos faltantes a partir del código modular o nombre de la institución.')) return;
+      btnBackfill.disabled = true;
+      btnBackfill.textContent = 'Sincronizando...';
+      try {
+        const count = await backfillSubmissionsUgelRed(dbNs, state);
+        showToast(`Se sincronizaron ${count} fichas con éxito.`);
+        renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+      } catch (err) {
+        console.error('Error sincronizando UGEL/RED', err);
+        showToast('Error al sincronizar UGEL/RED.');
+      } finally {
+        btnBackfill.disabled = false;
+        btnBackfill.textContent = '🔄 Sincronizar UGEL/RED';
+      }
+    });
+  }
+}
+
+function attachReportHostListeners(host, state, getFichaType, dbNs, isAdmin, navigate, user) {
+  // Botón Limpiar filtros en estado vacío de tabla
+  const btnEmptyClear = host.querySelector('#btnEmptyClearFilters');
+  if (btnEmptyClear) {
+    btnEmptyClear.addEventListener('click', () => {
+      filtrosReporte = {
+        tipo: filtrosReporte.tipo,
+        visita: '',
+        estado: '',
+        responsable: '',
+        institucion: '',
+        red: '',
+        ugel: '',
+        distrito: '',
+        tipoGestion: '',
+        desde: '',
+        hasta: ''
+      };
+      syncFiltersState(filtrosReporte);
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
+    });
+  }
+
+  // Enlace "Ajustar filtros ↑"
+  const btnAjustar = host.querySelector('#btnAjustarFiltros');
+  if (btnAjustar) {
+    btnAjustar.addEventListener('click', (e) => {
+      e.preventDefault();
+      const secF = document.getElementById('secFiltrosDescargas');
+      if (secF) secF.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  // Expandir / Contraer todo en Reporte por Ítem
+  const toggleAllBtn = host.querySelector('#toggleAllItemsBtn');
   const detailsList = host.querySelectorAll('.secDetails');
   if (toggleAllBtn) {
     toggleAllBtn.addEventListener('click', () => {
@@ -4384,120 +5547,10 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
         if (e.key === ' ' || e.key === 'Spacebar') {
           e.preventDefault();
           d.open = !d.open;
-        } else if (e.key === 'Enter') {
-          // Enter nativamente conmuta el details; toggle event actualiza aria-expanded
         }
       });
     }
   });
-
-  // Sincronizar UGEL / RED en fichas antiguas desde el padrón
-  const btnBackfill = document.getElementById('btnBackfillUgel');
-  if (btnBackfill) {
-    btnBackfill.addEventListener('click', async () => {
-      if (!confirm('¿Deseas buscar en el padrón de colegios y actualizar la UGEL y RED/REI de las fichas registradas que no los tengan?')) return;
-      btnBackfill.disabled = true;
-      btnBackfill.textContent = 'Sincronizando...';
-      try {
-        const count = await backfillSubmissionsUgelRed(dbNs, state);
-        showToast(`Se sincronizaron ${count} fichas con éxito.`);
-        renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
-      } catch (err) {
-        console.error('Error sincronizando UGEL/RED', err);
-        showToast('Error al sincronizar UGEL/RED.');
-      } finally {
-        btnBackfill.disabled = false;
-        btnBackfill.textContent = '🔄 Sincronizar UGEL/RED';
-      }
-    });
-  }
-  const btnExportExcel = document.getElementById('exportExcel');
-  if (btnExportExcel) {
-    btnExportExcel.addEventListener('click', async () => {
-      if (!statsList || statsList.length === 0) {
-        showToast('No hay registros para exportar con los filtros seleccionados.');
-        return;
-      }
-
-      // ─── Ficha EBR: validación estricta de visita única ─────────────────────
-      const isEbrExport = ft && isFichaEbrGestionEscolar(ft);
-      if (isEbrExport) {
-        const vNum = Number(consFilters.visita);
-        if (vNum !== 1 && vNum !== 2) {
-          showToast('Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.');
-          return;
-        }
-      }
-
-      btnExportExcel.disabled = true;
-      const originalHtml = btnExportExcel.innerHTML;
-      btnExportExcel.innerHTML = '<span class="ic">⏳</span> Generando…';
-      try {
-        if (isEbrExport) {
-          const vNum = Number(consFilters.visita);
-          const subsVisita = statsList.map(x => x.s || x).filter(s => {
-            const sV = Number(s.visita) || (Array.isArray(s.respuestas) && s.respuestas.some(r => String(r?.id || '').startsWith('ge2_')) ? 2 : 1);
-            return sV === vNum;
-          });
-          await exportarTableroEBRCompleto(subsVisita, vNum, state.colegios || [], state);
-          showToast(`✓ Tablero EBR generado: Visita ${vNum} (${vNum === 2 ? 'Segundo' : 'Primer'} momento)`);
-        } else {
-          // ─── Otras fichas o modo consolidado general ──────────────────────
-          let exportStatsList = statsList;
-          if (isAllMode && (!consFilters.visita || (consFilters.visita !== '1' && consFilters.visita !== '2'))) {
-            // Regla 8.1: si es exportación general de varias fichas, no se incluye EBR Gestión Escolar salvo visita única
-            exportStatsList = statsList.filter(x => !isFichaEbrGestionEscolar(x.s || x));
-          }
-
-          const res = await exportarMatrizSeguimiento({
-            statsList: exportStatsList,
-            consFilters,
-            isAllMode,
-            ft,
-            state,
-            getFichaType
-          });
-          showToast(`Excel generado con éxito (${res.fileName})`);
-        }
-      } catch (err) {
-        console.error('Error al exportar a Excel:', err);
-        showToast('Error al generar Excel: ' + (err.message || 'Error desconocido'));
-      } finally {
-        btnExportExcel.disabled = false;
-        btnExportExcel.innerHTML = originalHtml;
-      }
-    });
-  }
-
-  // Exportar PDF oficial consolidado
-  const btnExportPdf = document.getElementById('exportPdf');
-  if (btnExportPdf) {
-    btnExportPdf.addEventListener('click', () => {
-      const isEbrPdf = ft && isFichaEbrGestionEscolar(ft);
-      if (isEbrPdf) {
-        const vNum = Number(consFilters.visita);
-        if (vNum !== 1 && vNum !== 2) {
-          showToast('Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.');
-          return;
-        }
-      }
-
-      openDownloadConfigModal({
-        documentTitle: isAllMode ? 'REPORTE CONSOLIDADO GENERAL DE MONITOREO' : `REPORTE CONSOLIDADO — ${(ft ? ft.nombre : 'MONITOREO').toUpperCase()}`,
-        tipoReporte: 'consolidado',
-        dataRows: statsList,
-        currentUser: user,
-        state,
-        dbNs,
-        isAdmin,
-        onConfirm: async (cfg) => {
-          cfg.getFichaType = getFichaType;
-          cfg.fichaTypes = state.fichaTypes;
-          await exportConsolidadoReportPdf(statsList, ft, consFilters, isAllMode, cfg);
-        }
-      });
-    });
-  }
 
   // Descargar ficha individual oficial en PDF
   host.querySelectorAll('[data-pdfsub]').forEach(btn => {
@@ -4530,12 +5583,13 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     });
   });
 
+  // Fila clickeable para detalle
   host.querySelectorAll('tr[data-row]').forEach(tr => {
     tr.addEventListener('click', (e) => {
       if (e.target.closest('[data-del],[data-edit],[data-pdfsub]')) return;
       const id = tr.dataset.row;
       consExpanded = consExpanded === id ? null : id;
-      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate);
+      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
     });
   });
 
@@ -4553,12 +5607,18 @@ function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, currentUse
     });
   });
 
+  // Botón ELIMINAR ficha (solo admin)
   host.querySelectorAll('[data-del]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       if (!confirm('¿Eliminar esta ficha registrada? Esta acción no se puede deshacer.')) return;
-      try { await dbNs.collection('submissions').doc(btn.dataset.del).delete(); showToast('Ficha eliminada.'); }
-      catch (err) { console.error(err); showToast('No se pudo eliminar.'); }
+      try {
+        await dbNs.collection('submissions').doc(btn.dataset.del).delete();
+        showToast('Ficha eliminada.');
+      } catch (err) {
+        console.error(err);
+        showToast('No se pudo eliminar.');
+      }
     });
   });
 }
@@ -4571,18 +5631,30 @@ function buildDetail(s) {
   const isEbr = isFichaEbrGestionEscolar(s);
   if (isEbr) {
     const v = getMomentoVisitaEbr(s);
-    let puntaje = (s.puntaje !== undefined && s.puntaje !== null) ? Number(s.puntaje) : null;
-    if (puntaje === null && Array.isArray(s.respuestas) && s.respuestas.length > 0) {
-      let pSum = 0;
-      s.respuestas.forEach(r => {
-        const vL = String(r?.valor || '').toLowerCase();
-        if (vL === 'logrado' || vL === 'si') pSum += 3;
-        else if (vL === 'proceso') pSum += 2;
-        else if (vL === 'inicio' || vL === 'no') pSum += 1;
-      });
-      puntaje = pSum;
-    }
     const maxPts = v === 2 ? 69 : 57;
+    let puntaje = (s.puntaje !== undefined && s.puntaje !== null) ? Number(s.puntaje) : null;
+    if ((puntaje === null || puntaje > maxPts) && Array.isArray(s.respuestas) && s.respuestas.length > 0) {
+      let pSum = 0;
+      const seenNums = new Set();
+      const maxCount = v === 2 ? 23 : 19;
+      s.respuestas.forEach(r => {
+        let num = r?.num;
+        if (!num && r?.id) {
+          const m = String(r.id).match(/^(?:ge\d*|num)_?(\d+)$/);
+          if (m) num = parseInt(m[1], 10);
+        }
+        if (num && num >= 1 && num <= maxCount && !seenNums.has(num)) {
+          seenNums.add(num);
+          const vL = String(r?.valor || '').toLowerCase();
+          if (vL === 'logrado' || vL === 'si') pSum += 3;
+          else if (vL === 'proceso') pSum += 2;
+          else if (vL === 'inicio' || vL === 'no') pSum += 1;
+        }
+      });
+      puntaje = Math.min(maxPts, pSum);
+    } else if (puntaje !== null && puntaje > maxPts) {
+      puntaje = maxPts;
+    }
     if (puntaje === null) puntaje = 0;
     const nivelObj = getNivelEbrGestion(puntaje, v);
     const momentoStr = v === 2 ? '2.° Momento (Visita 2 · 23 ítems · Máx 69 pts)' : '1.er Momento (Visita 1 · 19 ítems · Máx 57 pts)';

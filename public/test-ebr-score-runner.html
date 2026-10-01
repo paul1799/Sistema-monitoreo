@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Runner - EBR Gestión Escolar Score & Avance</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 20px; background: #0f172a; color: #f8fafc; }
+    .card { background: #1e293b; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .pass { color: #4ade80; font-weight: bold; }
+    .fail { color: #f87171; font-weight: bold; }
+    h1 { font-size: 20px; margin-bottom: 16px; }
+    pre { background: #090d16; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>Validación de Corrección: EBR Gestión Escolar (Cálculo de Puntaje y Avance)</h1>
+  <div id="results"></div>
+
+  <script type="module">
+    import {
+      calculateEbrCurrentScore,
+      preloadEbrFormState,
+      ebrFormState,
+      resetEbrFormState,
+      EBR_GESTION_VISITA_1_SECCIONES,
+      EBR_GESTION_VISITA_2_SECCIONES
+    } from './js/ebr-gestion.js';
+
+    const resultsEl = document.getElementById('results');
+    const tests = [];
+
+    function assert(name, condition, details = '') {
+      tests.push({ name, pass: !!condition, details });
+    }
+
+    try {
+      // Test 1: Visita 2 tiene 23 ítems oficiales y Visita 1 tiene 19
+      const v2ItemsCount = EBR_GESTION_VISITA_2_SECCIONES.reduce((acc, s) => acc + (s.items || []).length, 0);
+      const v1ItemsCount = EBR_GESTION_VISITA_1_SECCIONES.reduce((acc, s) => acc + (s.items || []).length, 0);
+      assert('EBR_GESTION_VISITA_2 tiene exactamente 23 indicadores', v2ItemsCount === 23, `Obtenido: ${v2ItemsCount}`);
+      assert('EBR_GESTION_VISITA_1 tiene exactamente 19 indicadores', v1ItemsCount === 19, `Obtenido: ${v1ItemsCount}`);
+
+      // Test 2: calculateEbrCurrentScore con las 23 respuestas en Logrado
+      const resp23 = {};
+      for (let i = 1; i <= 23; i++) {
+        resp23[`ge2_${i}`] = 'Logrado';
+      }
+      const score23 = calculateEbrCurrentScore(2, resp23);
+      assert('Visita 2 con 23 Logrados: answered === 23', score23.answered === 23, `answered: ${score23.answered}`);
+      assert('Visita 2 con 23 Logrados: puntaje === 69 / 69', score23.puntaje === 69 && score23.maxPuntaje === 69, `puntaje: ${score23.puntaje}`);
+      assert('Visita 2 con 23 Logrados: pct === 100%', score23.pct === 100, `pct: ${score23.pct}%`);
+      assert('Visita 2 con 23 Logrados: nivel === Logrado', score23.nivelInfo.nivel === 'Logrado', `nivel: ${score23.nivelInfo.nivel}`);
+
+      // Test 3: calculateEbrCurrentScore con un mapa inflado/bloated con 92 claves (el bug anterior)
+      const bloatedMap = {};
+      for (let i = 1; i <= 23; i++) {
+        bloatedMap[`ge2_${i}`] = 'Logrado';
+        bloatedMap[`ge_${i}`] = 'Logrado';
+        bloatedMap[`ge1_${i}`] = 'Logrado';
+        bloatedMap[`num_${i}`] = 'Logrado';
+      }
+      assert('Mapa inflado contiene 92 claves', Object.keys(bloatedMap).length === 92, `Total claves: ${Object.keys(bloatedMap).length}`);
+      const scoreBloated = calculateEbrCurrentScore(2, bloatedMap);
+      assert('calculateEbrCurrentScore evalúa solo los 23 indicadores (answered === 23)', scoreBloated.answered === 23, `answered: ${scoreBloated.answered}`);
+      assert('calculateEbrCurrentScore no duplica puntaje (puntaje === 69, no 276+)', scoreBloated.puntaje === 69, `puntaje: ${scoreBloated.puntaje}`);
+      assert('calculateEbrCurrentScore porcentaje tope es 100%, no 400%', scoreBloated.pct === 100, `pct: ${scoreBloated.pct}%`);
+
+      // Test 4: Visita 1 con 19 respuestas
+      const resp19 = {};
+      for (let i = 1; i <= 19; i++) {
+        resp19[`ge1_${i}`] = 'Proceso';
+      }
+      const score19 = calculateEbrCurrentScore(1, resp19);
+      assert('Visita 1 con 19 Proceso: answered === 19', score19.answered === 19, `answered: ${score19.answered}`);
+      assert('Visita 1 con 19 Proceso: puntaje === 38 / 57', score19.puntaje === 38 && score19.maxPuntaje === 57, `puntaje: ${score19.puntaje}`);
+      assert('Visita 1 con 19 Proceso: nivel === Proceso', score19.nivelInfo.nivel === 'Proceso', `nivel: ${score19.nivelInfo.nivel}`);
+
+      // Test 5: calculateEbrCurrentScore con Array de objetos
+      const arrayResp = [];
+      for (let i = 1; i <= 23; i++) {
+        arrayResp.push({ id: `ge2_${i}`, num: i, valor: 'Logrado' });
+      }
+      const scoreArray = calculateEbrCurrentScore(2, arrayResp);
+      assert('calculateEbrCurrentScore con Array: answered === 23', scoreArray.answered === 23, `answered: ${scoreArray.answered}`);
+      assert('calculateEbrCurrentScore con Array: puntaje === 69', scoreArray.puntaje === 69, `puntaje: ${scoreArray.puntaje}`);
+
+      // Test 6: preloadEbrFormState con 23 respuestas para Visita 2 no genera 92 entradas
+      resetEbrFormState();
+      const mockSubVisita2 = {
+        visita: 2,
+        institucion: '1071 ALFONSO UGARTE',
+        respuestas: arrayResp
+      };
+      preloadEbrFormState(mockSubVisita2);
+      const keysCount = Object.keys(ebrFormState.respuestas).length;
+      assert('preloadEbrFormState para Visita 2 genera exactamente 23 claves (no 92)', keysCount === 23, `Claves en ebrFormState.respuestas: ${keysCount}`);
+      const scoreFromState = calculateEbrCurrentScore(ebrFormState.visita, ebrFormState.respuestas);
+      assert('Puntaje desde ebrFormState es 69 pts', scoreFromState.puntaje === 69, `puntaje: ${scoreFromState.puntaje}`);
+      assert('Porcentaje desde ebrFormState es 100%', scoreFromState.pct === 100, `pct: ${scoreFromState.pct}%`);
+
+      // Test 7: preloadEbrFormState con datos legacy (con id 'ge_1' o 'num_1')
+      resetEbrFormState();
+      const legacySub = {
+        visita: 2,
+        respuestas: [
+          { id: 'ge_1', num: 1, valor: 'Inicio' },
+          { id: 'ge_2', num: 2, valor: 'Proceso' },
+          { id: 'ge_3', num: 3, valor: 'Logrado' }
+        ]
+      };
+      preloadEbrFormState(legacySub);
+      assert('preloadEbrFormState normaliza legacy a ge2_1..ge2_3',
+        ebrFormState.respuestas['ge2_1'] === 'Inicio' &&
+        ebrFormState.respuestas['ge2_2'] === 'Proceso' &&
+        ebrFormState.respuestas['ge2_3'] === 'Logrado',
+        JSON.stringify(ebrFormState.respuestas)
+      );
+      assert('preloadEbrFormState no genera claves duplicadas para legacy (exactamente 3 claves)', Object.keys(ebrFormState.respuestas).length === 3);
+
+    } catch (e) {
+      assert('Excepción no controlada en suite de pruebas', false, e.stack || e.message);
+    }
+
+    // Render results
+    let passedCount = 0;
+    resultsEl.innerHTML = tests.map(t => {
+      if (t.pass) passedCount++;
+      return `
+        <div class="card">
+          <span class="${t.pass ? 'pass' : 'fail'}">${t.pass ? 'PASS' : 'FAIL'}</span>: ${t.name}
+          ${t.details ? `<pre>${t.details}</pre>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    const summary = document.createElement('h2');
+    summary.style.color = passedCount === tests.length ? '#4ade80' : '#f87171';
+    summary.textContent = `Resultado: ${passedCount} de ${tests.length} pruebas superadas (${Math.round((passedCount/tests.length)*100)}%)`;
+    resultsEl.prepend(summary);
+  </script>
+</body>
+</html>
