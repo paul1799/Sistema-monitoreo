@@ -5,7 +5,7 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { FIREBASE_CONFIG } from './firebase-config.js?v=20260918_v11';
-import { getFirestore, makeDbAdapter } from './firestore.js?v=20260918_v11';
+import { getFirestore, initFirestore, makeDbAdapter } from './firestore.js?v=20261002_v1';
 import { getAuth, signOut, setupAuthListeners } from './auth.js?v=20260918_v11';
 import {
   esc,
@@ -492,7 +492,7 @@ async function initApp() {
 
   try {
     firebaseApp = initializeApp(FIREBASE_CONFIG);
-    firestoreDb = getFirestore(firebaseApp);
+    firestoreDb = typeof initFirestore === 'function' ? initFirestore(firebaseApp) : getFirestore(firebaseApp);
     dbNs = makeDbAdapter(firestoreDb);
     auth = getAuth(firebaseApp);
   } catch (e) {

@@ -6,6 +6,9 @@
 
 import {
   getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection,
   doc,
   addDoc,
@@ -24,6 +27,35 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 export { getFirestore, runTransaction };
+
+/**
+ * Inicializa la instancia de Firestore optimizada para redes institucionales y gubernamentales
+ * (como UGEL / MINEDU) donde firewalls o proxys bloquean o cierran WebSockets y streams WebChannel,
+ * provocando errores 'Listen' / 'Write' stream transport errored (404 / status: 1) y bloqueos en guardado.
+ * Usa long-polling forzado y cache persistente local en IndexedDB con soporte multi-pestaña.
+ * @param {import('firebase/app').FirebaseApp} firebaseApp
+ * @returns {import('firebase/firestore').Firestore}
+ */
+export function initFirestore(firebaseApp) {
+  try {
+    return initializeFirestore(firebaseApp, {
+      experimentalForceLongPolling: true,
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    });
+  } catch (e1) {
+    console.warn('initFirestore: no se pudo inicializar con persistentLocalCache, intentando fallback sin cache de pestañas:', e1);
+    try {
+      return initializeFirestore(firebaseApp, {
+        experimentalForceLongPolling: true
+      });
+    } catch (e2) {
+      console.warn('initFirestore: fallback a getFirestore por:', e2);
+      return getFirestore(firebaseApp);
+    }
+  }
+}
 
 /**
  * Thin adapter que permite usar dbNs.collection(...).doc(...).set()/add()/

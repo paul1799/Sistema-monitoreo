@@ -447,7 +447,7 @@ export function computeStats(sub, ft) {
     // Para EBR Gestión Escolar, proyectar puntaje si hay ítems N/A
     const maxAplicable = (result.total_items && result.total_items > 0) ? (result.total_items * 3) : null;
     const nivelEbr = getNivelEbrGestion(result.puntaje, ftForCalc.visita, maxAplicable);
-    
+
     finalEstado.label = nivelEbr.estado_panel || nivelEbr.nivel;
     finalEstado.estado_panel = nivelEbr.estado_panel;
     finalEstado.cls = nivelEbr.cls;
@@ -3178,17 +3178,25 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
         updatedAt: Date.now()
       };
 
+      const cleanedDocData = cleanForFirestore(docData);
+
       if (isEdit) {
-        await dbNs.collection('submissions').doc(editingSubmissionId).set(docData, { merge: true });
+        await Promise.race([
+          dbNs.collection('submissions').doc(editingSubmissionId).set(cleanedDocData, { merge: true }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado al guardar en Firestore.')), 25000))
+        ]);
         showToast('✓ Ficha EBR actualizada correctamente.');
       } else {
-        await dbNs.collection('submissions').doc(submissionToken).set(docData);
+        await Promise.race([
+          dbNs.collection('submissions').doc(submissionToken).set(cleanedDocData),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado al guardar en Firestore.')), 25000))
+        ]);
         showToast('✓ Ficha EBR registrada correctamente.');
       }
 
       // Sincronizar directorio de directivos
       try {
-        const syncRes = await syncDirectivosFromFicha(dbNs, { id: isEdit ? editingSubmissionId : submissionToken, ...docData }, activeState, currentUser);
+        const syncRes = await syncDirectivosFromFicha(dbNs, { id: isEdit ? editingSubmissionId : submissionToken, ...cleanedDocData }, activeState, currentUser);
         if (syncRes && syncRes.summary) {
           showToast(`Ficha guardada. Directorio actualizado.`);
         }
@@ -3200,9 +3208,9 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       if (activeState.submissions) {
         const existingIdx = activeState.submissions.findIndex(s => s.id === targetId);
         if (existingIdx >= 0) {
-          activeState.submissions[existingIdx] = { id: targetId, ...docData };
+          activeState.submissions[existingIdx] = { id: targetId, ...cleanedDocData };
         } else {
-          activeState.submissions.unshift({ id: targetId, ...docData });
+          activeState.submissions.unshift({ id: targetId, ...cleanedDocData });
         }
       }
 
@@ -3233,17 +3241,25 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
         updatedAt: Date.now()
       };
 
+      const cleanedDocData = cleanForFirestore(docData);
+
       if (isEdit) {
-        await dbNs.collection('submissions').doc(editingSubmissionId).set(docData, { merge: true });
+        await Promise.race([
+          dbNs.collection('submissions').doc(editingSubmissionId).set(cleanedDocData, { merge: true }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado al guardar en Firestore.')), 25000))
+        ]);
         showToast('✓ Ficha JEC actualizada correctamente.');
       } else {
-        await dbNs.collection('submissions').doc(submissionToken).set(docData);
+        await Promise.race([
+          dbNs.collection('submissions').doc(submissionToken).set(cleanedDocData),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado al guardar en Firestore.')), 25000))
+        ]);
         showToast('✓ Ficha JEC registrada correctamente.');
       }
 
       // Sincronizar directorio de directivos
       try {
-        const syncRes = await syncDirectivosFromFicha(dbNs, { id: isEdit ? editingSubmissionId : submissionToken, ...docData }, activeState, currentUser);
+        const syncRes = await syncDirectivosFromFicha(dbNs, { id: isEdit ? editingSubmissionId : submissionToken, ...cleanedDocData }, activeState, currentUser);
         if (syncRes && syncRes.summary) {
           showToast(`Ficha guardada. Directorio actualizado.`);
         }
@@ -3254,9 +3270,9 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       if (!isEdit && activeState.submissions) {
         const existingIdx = activeState.submissions.findIndex(s => s.id === submissionToken);
         if (existingIdx >= 0) {
-          activeState.submissions[existingIdx] = { id: submissionToken, ...docData };
+          activeState.submissions[existingIdx] = { id: submissionToken, ...cleanedDocData };
         } else {
-          activeState.submissions.unshift({ id: submissionToken, ...docData });
+          activeState.submissions.unshift({ id: submissionToken, ...cleanedDocData });
         }
       }
 
@@ -3541,35 +3557,36 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
     }
 
     const docData = {
-      fichaTypeId: ft.id,
-      fichaTypeNombre: ft.nombre,
-      tipoRespuesta: ft.tipoRespuesta,
-      institucion: instVal,
+      fichaTypeId: ft.id || '',
+      fichaTypeNombre: ft.nombre || '',
+      tipoRespuesta: ft.tipoRespuesta || '',
+      institucion: instVal || '',
       colegioId: (matchedCol && matchedCol.id) || regSelectedColegioId || null,
-      fecha: fechaVal,
+      fecha: fechaVal || '',
       visita: Number(visitaVal) || 1,
-      ugel: ugelVal,
-      red: redVal,
-      codigoModular: codigoVal,
-      responsable: responsableVal,
-      responsableCargo: isFichaEspecialistaJec(ft) ? ESPECIALISTA_JEC_OFICIAL.cargo : undefined,
-      director: directorVal,
-      directorDni: directorDniVal,
-      condicion: condicionVal,
-      nivelAtencion: nivelAtencionVal,
-      turnoAtencion: turnoAtencionVal,
-      turnoVisitado: turnoVisitadoVal,
-      monitorDni: monitorDniVal,
-      horaInicio: horaInicioVal,
-      horaTermino: horaTerminoVal,
-      extras: extrasCollected,
-      respuestas,
-      sintesis: sintesisCollected,
-      compromisoDirector: compDirectorVal,
-      compromisoMonitor: compMonitorVal,
+      ugel: ugelVal || 'UGEL 03',
+      red: redVal || 'No aplica',
+      codigoModular: codigoVal || '',
+      responsable: responsableVal || '',
+      responsableCargo: isFichaEspecialistaJec(ft) ? ESPECIALISTA_JEC_OFICIAL.cargo : '',
+      monitorJec: isFichaEspecialistaJec(ft) ? ESPECIALISTA_JEC_OFICIAL.nombresApellidos : '',
+      director: directorVal || '',
+      directorDni: directorDniVal || '',
+      condicion: condicionVal || '',
+      nivelAtencion: nivelAtencionVal || '',
+      turnoAtencion: turnoAtencionVal || '',
+      turnoVisitado: turnoVisitadoVal || '',
+      monitorDni: monitorDniVal || '',
+      horaInicio: horaInicioVal || '',
+      horaTermino: horaTerminoVal || '',
+      extras: extrasCollected || [],
+      respuestas: respuestas || [],
+      sintesis: sintesisCollected || [],
+      compromisoDirector: compDirectorVal || '',
+      compromisoMonitor: compMonitorVal || '',
       observaciones: document.getElementById('f_observaciones') ? document.getElementById('f_observaciones').value.trim() : '',
-      compromisos: allCompromisos,
-      esBorrador: esBorrador,
+      compromisos: allCompromisos || [],
+      esBorrador: esBorrador || false,
       ...tutoriaExtraData,
       createdBy: isEdit ? (editingSubmissionData?.createdBy || currentUser.uid) : currentUser.uid,
       createdAt: isEdit ? (editingSubmissionData.createdAt || Date.now()) : Date.now(),
@@ -3577,22 +3594,23 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
     };
 
     const targetId = isEdit ? editingSubmissionId : submissionToken;
+    const cleanedDocData = cleanForFirestore(docData);
     const batch = dbNs.batch();
-    batch.set(dbNs.collection('submissions').doc(targetId), docData);
+    batch.set(dbNs.collection('submissions').doc(targetId), cleanedDocData);
 
     allCompromisos.forEach((comp, idx) => {
       if (comp.plazo && comp.plazo.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const compId = targetId + '_c' + idx;
         const cData = {
           fichaId: targetId,
-          institucion: instVal,
-          ugel: ugelVal,
-          red: redVal,
-          responsableFicha: responsableVal,
-          responsableFichaDni: monitorDniVal,
-          texto: comp.texto,
-          responsable: comp.responsable,
-          plazo: comp.plazo,
+          institucion: instVal || '',
+          ugel: ugelVal || 'UGEL 03',
+          red: redVal || 'No aplica',
+          responsableFicha: responsableVal || '',
+          responsableFichaDni: monitorDniVal || '',
+          texto: comp.texto || '',
+          responsable: comp.responsable || '',
+          plazo: comp.plazo || '',
           createdBy: currentUser.uid,
           updatedAt: Date.now()
         };
@@ -3600,23 +3618,21 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
           cData.estado = 'Pendiente';
           cData.createdAt = Date.now();
         }
-        batch.set(dbNs.collection('compromisos').doc(compId), cData, { merge: true });
+        batch.set(dbNs.collection('compromisos').doc(compId), cleanForFirestore(cData), { merge: true });
       }
     });
 
-    await batch.commit();
+    // Timeout preventivo de 25 segundos para asegurar que si la conexión tiene microcortes, no deje la UI congelada
+    const commitPromise = batch.commit();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('La conexión con la base de datos tardó más de lo esperado al guardar. Por favor verifica tu red e inténtalo nuevamente.')), 25000)
+    );
+    await Promise.race([commitPromise, timeoutPromise]);
     showToast(isEdit ? 'Ficha actualizada correctamente.' : 'Ficha registrada correctamente.');
-    /*if (false) {
-      await dbNs.collection('submissions').doc(editingSubmissionId).set(docData);
-      showToast('Ficha actualizada correctamente.');
-    } else {
-      await dbNs.collection('submissions').doc(submissionToken).set(docData);
-      showToast('Ficha registrada correctamente.');
-    }*/
 
     // Sincronizar directorio de directivos
     try {
-      const syncRes = await syncDirectivosFromFicha(dbNs, { id: isEdit ? editingSubmissionId : submissionToken, ...docData }, activeState, currentUser);
+      const syncRes = await syncDirectivosFromFicha(dbNs, { id: isEdit ? editingSubmissionId : submissionToken, ...cleanedDocData }, activeState, currentUser);
       if (syncRes && syncRes.summary) {
         showToast(`Ficha guardada. Directorio actualizado.`);
       }
@@ -3628,9 +3644,9 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
     if (activeState.submissions) {
       const existingIdx = activeState.submissions.findIndex(s => s.id === targetId);
       if (existingIdx >= 0) {
-        activeState.submissions[existingIdx] = { id: targetId, ...docData };
+        activeState.submissions[existingIdx] = { id: targetId, ...cleanedDocData };
       } else {
-        activeState.submissions.unshift({ id: targetId, ...docData });
+        activeState.submissions.unshift({ id: targetId, ...cleanedDocData });
       }
     }
 
@@ -4605,7 +4621,7 @@ export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdm
   try {
     const savedHide = localStorage.getItem('reportes_hide_types');
     if (savedHide !== null) reportesHideTypes = (savedHide === 'true');
-  } catch (_) {}
+  } catch (_) { }
 
   container.innerHTML = `
     <div class="pageHead">
@@ -4635,7 +4651,7 @@ export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdm
       sBar.style.display = 'none';
     }
   };
-  window.removeEventListener('scroll', window._reportesScrollHandler || (() => {}));
+  window.removeEventListener('scroll', window._reportesScrollHandler || (() => { }));
   window._reportesScrollHandler = handleScroll;
   window.addEventListener('scroll', handleScroll, { passive: true });
 }
@@ -4655,7 +4671,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
   // Guardar última ficha seleccionada en sessionStorage
   try {
     sessionStorage.setItem('reportes_last_type', filtrosReporte.tipo || '__ALL__');
-  } catch (_) {}
+  } catch (_) { }
 
   // 1. Aplicar todos los filtros en el motor central
   const { subs, statsList, instCount, avgPct, dist, targetFt, isAllMode, hasInvalidDates } = aplicarFiltrosReporte(
@@ -4862,7 +4878,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     const baseKey = x.s.colegioId ? ('col_' + x.s.colegioId) : (normInst + '|' + normUgel);
     // Group by institution AND ficha type
     const key = baseKey + '|' + x.s.fichaTypeId;
-    
+
     if (!byInst[key]) {
       const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : ft;
       byInst[key] = {
@@ -4886,7 +4902,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
       byInst[key].institucion = x.s.institucion;
     }
   });
-  
+
   const instRows = Object.values(byInst).sort((a, b) => (a.institucion || '').localeCompare(b.institucion || '')).map(g => {
     g.visitas.sort((a, b) => {
       const fDiff = (b.s.fecha || '').localeCompare(a.s.fecha || '');
@@ -4919,22 +4935,22 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
       gst = statusFromPct(avg, sFt, avgSi, avgPts, last.s.visita);
     }
     const scoreTitle = ((isCoordTutoria || isEbr) && avgPts !== null) ? ' title="' + avgPts + '/' + maxPts + ' pts"' : '';
-    
+
     // Group counts by visit number
     const visitaCounts = {};
     g.visitas.forEach(v => {
       const vn = Number(v.s.visita) || 1;
       visitaCounts[vn] = (visitaCounts[vn] || 0) + 1;
     });
-    
+
     const visitBadges = Object.keys(visitaCounts).sort().map(vn => {
       const count = visitaCounts[vn];
       return '<span class="badge st-none" style="font-size:10.5px;padding:2px 6px;margin-left:4px;font-weight:700" title="' + count + ' registros en V' + vn + '">V' + vn + ' (' + count + ')</span>';
     }).join('');
-    
+
     const totalVisitas = g.visitas.length;
-    
-    const displayInst = isAllMode 
+
+    const displayInst = isAllMode
       ? esc(g.institucion) + '<br><small style="color:var(--text-muted);font-weight:600">' + esc(g.fichaTypeNombre) + '</small>'
       : esc(g.institucion);
 
@@ -4951,11 +4967,11 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
         <a href="#secFiltrosDescargas" id="btnAjustarFiltros" class="btnAjustarFiltros">Ajustar filtros ↑</a>
       </div>
       ${statsList.length === 0
-        ? `<div class="emptyTableMsg">
+      ? `<div class="emptyTableMsg">
             <p>No hay fichas que coincidan con los filtros activos.</p>
             <button type="button" class="btn secondary small" id="btnEmptyClearFilters">Limpiar filtros</button>
           </div>`
-        : `<div class="tblWrap">
+      : `<div class="tblWrap">
             <table>
               <thead>
                 <tr>
@@ -4973,7 +4989,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
               <tbody>${rows}</tbody>
             </table>
           </div>`
-      }
+    }
     </div>
   `;
 
@@ -5073,7 +5089,7 @@ function attachSection1Listeners(secTipo, state, getFichaType, dbNs, isAdmin, na
   if (toggleBtn) {
     toggleBtn.addEventListener('click', () => {
       reportesHideTypes = !reportesHideTypes;
-      try { localStorage.setItem('reportes_hide_types', String(reportesHideTypes)); } catch (_) {}
+      try { localStorage.setItem('reportes_hide_types', String(reportesHideTypes)); } catch (_) { }
       renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
     });
   }
@@ -5083,7 +5099,7 @@ function attachSection1Listeners(secTipo, state, getFichaType, dbNs, isAdmin, na
   if (btnExpandir) {
     btnExpandir.addEventListener('click', () => {
       reportesHideTypes = false;
-      try { localStorage.setItem('reportes_hide_types', 'false'); } catch (_) {}
+      try { localStorage.setItem('reportes_hide_types', 'false'); } catch (_) { }
       renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
     });
   }
@@ -5208,7 +5224,7 @@ function attachSection2Listeners(secFiltros, state, getFichaType, dbNs, isAdmin,
   if (btnCambiar) {
     btnCambiar.addEventListener('click', () => {
       reportesHideTypes = false;
-      try { localStorage.setItem('reportes_hide_types', 'false'); } catch (_) {}
+      try { localStorage.setItem('reportes_hide_types', 'false'); } catch (_) { }
       renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
       const sec1 = document.getElementById('secTipoFicha');
       if (sec1) sec1.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -5666,7 +5682,7 @@ function buildDetail(s) {
     } else if (puntaje !== null && puntaje > maxPts) {
       puntaje = maxPts;
     }
-    
+
     let maxAplicable = null;
     if (s._tempItemsAnswered > 0 && s._tempItemsAnswered < (v === 2 ? 23 : 19)) {
       maxAplicable = s._tempItemsAnswered * 3;
@@ -5971,6 +5987,9 @@ export function cleanForFirestore(val) {
     return isNaN(val) ? 0 : val;
   }
   if (val === null || typeof val !== 'object') {
+    return val;
+  }
+  if (val instanceof Date) {
     return val;
   }
   if (Array.isArray(val)) {
