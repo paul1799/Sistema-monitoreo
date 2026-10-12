@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Runner - EBR Gestión Escolar Tablas de Docentes Secciones IV y V</title>
+  <link rel="stylesheet" href="./css/style.css?v=20261012_v5">
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 20px; background: #0f172a; color: #f8fafc; }
+    .card { background: #1e293b; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .pass { color: #4ade80; font-weight: bold; }
+    .fail { color: #f87171; font-weight: bold; }
+    h1 { font-size: 20px; margin-bottom: 16px; }
+    #testHost { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Validación: Tablas de Docentes en EBR Gestión Escolar (Visita 2 - Secciones IV y V)</h1>
+  <div id="results"></div>
+  <div id="testHost"></div>
+
+  <script type="module">
+    import {
+      renderEbrGestionForm,
+      resetEbrFormState,
+      ebrFormState
+    } from './js/ebr-gestion.js?v=20261012_v5';
+
+    const resultsEl = document.getElementById('results');
+    const host = document.getElementById('testHost');
+    const tests = [];
+
+    function assert(name, condition, details = '') {
+      tests.push({ name, pass: !!condition, details });
+    }
+
+    try {
+      resetEbrFormState();
+      // Forzar visita 2
+      ebrFormState.visita = 2;
+
+      const mockFt = {
+        id: 'ft_ebr_gestion',
+        nombre: 'Monitoreo y Asistencia Técnica a la Gestión Escolar – UGEL 03 EBR'
+      };
+      const mockState = { colegios: [], submissions: [] };
+      const mockCurrentUser = { nombre: 'Especialista EBR' };
+
+      // Renderizar formulario en host de prueba
+      renderEbrGestionForm(host, mockFt, mockState, 'testDb', mockCurrentUser, () => {}, false);
+
+      // 1. Verificar presencia de ambas tablas (Momento 1 y Momento 2)
+      const tableM1 = host.querySelector('table[data-momento-table="momento1"]');
+      const tableM2 = host.querySelector('table[data-momento-table="momento2"]');
+      assert('Tabla del Momento 1 (Sección IV) existe en el DOM', !!tableM1);
+      assert('Tabla del Momento 2 (Sección V) existe en el DOM', !!tableM2);
+
+      // 2. Verificar cabeceras en 2 líneas protegidas (.thLine) en Momento 1
+      [tableM1, tableM2].forEach((tbl, idx) => {
+        const mLabel = idx === 0 ? 'Momento 1 (Sección IV)' : 'Momento 2 (Sección V)';
+        const thTot = tbl.querySelector('th.colTotalDoc');
+        const thMon = tbl.querySelector('th.colMonitDoc');
+        const thNoMon = tbl.querySelector('th.colNoMonitDoc');
+
+        assert(`${mLabel}: Cabecera TOTAL DE DOCENTES tiene 2 líneas .thLine`, !!thTot && thTot.querySelectorAll('.thLine').length === 2);
+        assert(`${mLabel}: Cabecera DOCENTES MONITOREADOS tiene 2 líneas .thLine`, !!thMon && thMon.querySelectorAll('.thLine').length === 2);
+        assert(`${mLabel}: Cabecera DOCENTES NO MONITOREADOS tiene 2 líneas .thLine`, !!thNoMon && thNoMon.querySelectorAll('.thLine').length === 2);
+
+        assert(`${mLabel}: DOCENTES NO MONITOREADOS tiene 'DOCENTES NO' en línea 1 y 'MONITOREADOS' en línea 2`,
+          thNoMon?.querySelectorAll('.thLine')[0]?.textContent.trim() === 'DOCENTES NO' &&
+          thNoMon?.querySelectorAll('.thLine')[1]?.textContent.trim() === 'MONITOREADOS');
+
+        // 3. Verificar que las filas de cuerpo tengan las clases .colTotalDoc, .colMonitDoc, .colNoMonitDoc
+        const firstRow = tbl.querySelector('tbody tr');
+        assert(`${mLabel}: Celdas del cuerpo usan .colTotalDoc`, !!firstRow?.querySelector('td.colTotalDoc'));
+        assert(`${mLabel}: Celdas del cuerpo usan .colMonitDoc`, !!firstRow?.querySelector('td.colMonitDoc'));
+        assert(`${mLabel}: Celdas del cuerpo usan .colNoMonitDoc`, !!firstRow?.querySelector('td.colNoMonitDoc'));
+
+        // 4. Verificar que el footer use las clases y conserve sus IDs de cálculo
+        const mKey = idx === 0 ? 'momento1' : 'momento2';
+        const footTot = tbl.querySelector(`td#tot_${mKey}_total.colTotalDoc`);
+        const footMon = tbl.querySelector(`td#tot_${mKey}_monit.colMonitDoc`);
+        const footNoMon = tbl.querySelector(`td#tot_${mKey}_nomonit.colNoMonitDoc`);
+        assert(`${mLabel}: Footer conserva ID de cálculo y clase colTotalDoc`, !!footTot);
+        assert(`${mLabel}: Footer conserva ID de cálculo y clase colMonitDoc`, !!footMon);
+        assert(`${mLabel}: Footer conserva ID de cálculo y clase colNoMonitDoc`, !!footNoMon);
+      });
+
+    } catch (err) {
+      assert('Error inesperado durante la prueba', false, err.message + '\n' + err.stack);
+    }
+
+    // Renderizar resumen de pruebas
+    const total = tests.length;
+    const passed = tests.filter(t => t.pass).length;
+    resultsEl.innerHTML = `
+      <div class="card">
+        <h2>Resultado: ${passed} / ${total} pruebas exitosas</h2>
+        <ul>
+          ${tests.map(t => `<li class="${t.pass ? 'pass' : 'fail'}">${t.pass ? '✓' : '✗'} ${t.name} ${t.details ? `<br><small style="color:#94a3b8">${t.details}</small>` : ''}</li>`).join('')}
+        </ul>
+      </div>
+    `;
+  </script>
+</body>
+</html>

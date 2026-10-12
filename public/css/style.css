@@ -5010,13 +5010,117 @@ button:focus-visible {
 }
 
 .ebrDocentesTable input[type="number"]::-webkit-outer-spin-button,
-.ebrDocentesTable input[type="number"]::-webkit-inner-spin-button {
+.ebrDocentesTable input[type="number"]::-webkit-inner-spin-button,
+.jecDocTable input[type="number"]::-webkit-outer-spin-button,
+.jecDocTable input[type="number"]::-webkit-inner-spin-button,
+input.jecDocInp::-webkit-outer-spin-button,
+input.jecDocInp::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-.ebrDocentesTable input[type="number"] {
+.ebrDocentesTable input[type="number"],
+.jecDocTable input[type="number"],
+input.jecDocInp {
   -moz-appearance: textfield;
+}
+
+/* Columnas compactas de la tabla de docentes (Gestión Escolar EBR y JEC) (cabeceras en 2 líneas sin desborde) */
+.jecDocTable th.jecThNarrow,
+.ebrDocentesTable th.ebrThNarrow {
+  padding: 6px 4px !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.25 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.jecDocTable th.jecThNarrow .thLine,
+.ebrDocentesTable th.ebrThNarrow .thLine {
+  display: block !important;
+  white-space: nowrap !important;
+  line-height: 1.25 !important;
+  margin: 1px 0 !important;
+  overflow: visible !important;
+}
+
+.jecDocTable .colTotalDoc,
+.ebrDocentesTable .colTotalDoc {
+  width: 76px !important;
+  min-width: 74px !important;
+  max-width: 80px !important;
+  box-sizing: border-box !important;
+}
+
+.jecDocTable .colMonitDoc,
+.ebrDocentesTable .colMonitDoc {
+  width: 90px !important;
+  min-width: 88px !important;
+  max-width: 94px !important;
+  box-sizing: border-box !important;
+}
+
+.jecDocTable .colNoMonitDoc,
+.ebrDocentesTable .colNoMonitDoc {
+  width: 96px !important;
+  min-width: 94px !important;
+  max-width: 100px !important;
+  box-sizing: border-box !important;
+}
+
+.jecDocTable input.jecDocInp,
+.ebrDocentesTable input.ebrDocInp {
+  width: 48px;
+  max-width: 52px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 3px 2px;
+  border-radius: 4px;
+  border: 1px solid var(--line-strong);
+  box-sizing: border-box;
+}
+
+.ebrDocentesTable input.ebrDocTotal,
+.ebrDocentesTable input.ebrDocMonit {
+  width: 48px !important;
+  max-width: 52px !important;
+  text-align: center !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  padding: 3px 2px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--line-strong) !important;
+  box-sizing: border-box !important;
+}
+
+.jecDocTable input.jecDocRubInp {
+  width: 34px !important;
+  max-width: 36px !important;
+  font-size: 12px !important;
+  box-sizing: border-box !important;
+}
+
+/* Barra inferior fija para Formulario JEC (estilo Gestión Escolar) */
+.jecFormContainer .formBottomBar {
+  position: sticky;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border-top: 1.5px solid var(--border);
+  box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.10);
+  padding: 14px 24px;
+  margin: 24px 0 0 0;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  z-index: 30;
 }
 
 .ebrStickyCol {

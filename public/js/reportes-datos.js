@@ -3,11 +3,11 @@ import {
   isFichaEbrGestionEscolar,
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES
-} from './ebr-gestion.js?v=20260929_v15';
+} from './ebr-gestion.js?v=20261012_v5';
 import {
   isFichaJec,
   JEC_SECCIONES
-} from './jec-monitoreo.js?v=20260928_v12';
+} from './jec-monitoreo.js?v=20261012_v5';
 
 function _normStr(str) {
   return String(str || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');

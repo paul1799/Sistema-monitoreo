@@ -5,7 +5,7 @@
    de docentes R1–R5, I–IV), cálculo en tiempo real, validaciones y modelo de datos.
    ========================================================================= */
 
-import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, clearEditMode } from './ui.js?v=20260929_v15';
+import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, clearEditMode } from './ui.js?v=20261012_v5';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260928_v12';
 import {
   REGLA_NIVEL_EBR_GESTION_M1,
@@ -1292,15 +1292,15 @@ function renderDocentesTableHtml(momentoKey, rows) {
           </div>
         </td>
         <!-- Total -->
-        <td>
-          <input type="number" min="0" class="ebrDocInp ebrDocTotal" data-f="total" value="${esc(row.total)}" placeholder="0" ${disabledAttr} style="width:58px;text-align:center">
+        <td class="colTotalDoc" style="text-align:center">
+          <input type="number" min="0" class="ebrDocInp ebrDocTotal" data-f="total" value="${esc(row.total)}" placeholder="0" ${disabledAttr} style="width:48px;text-align:center">
         </td>
         <!-- Monitoreados -->
-        <td>
-          <input type="number" min="0" class="ebrDocInp ebrDocMonit" data-f="monitoreados" value="${esc(row.monitoreados)}" placeholder="0" ${disabledAttr} style="width:58px;text-align:center">
+        <td class="colMonitDoc" style="text-align:center">
+          <input type="number" min="0" class="ebrDocInp ebrDocMonit" data-f="monitoreados" value="${esc(row.monitoreados)}" placeholder="0" ${disabledAttr} style="width:48px;text-align:center">
         </td>
         <!-- No Monitoreados (calculado) -->
-        <td style="background:var(--surface-2);text-align:center;font-weight:700" class="ebrDocNoMonit">
+        <td class="colNoMonitDoc ebrDocNoMonit" style="background:var(--surface-2);text-align:center;font-weight:700">
           ${esc(row.noMonitoreados !== undefined ? row.noMonitoreados : (Number(row.total || 0) - Number(row.monitoreados || 0)))}
         </td>
 
@@ -1334,9 +1334,18 @@ function renderDocentesTableHtml(momentoKey, rows) {
             <th rowspan="2" class="ebrStickyCol" style="position:sticky;left:0;background:var(--primary);z-index:3;width:130px;min-width:130px;vertical-align:middle">
               Nivel
             </th>
-            <th rowspan="2" style="width:68px;vertical-align:middle">Total de Docentes</th>
-            <th rowspan="2" style="width:68px;vertical-align:middle">Docentes Monitoreados</th>
-            <th rowspan="2" style="width:68px;vertical-align:middle">Docentes No Monitoreados</th>
+            <th rowspan="2" class="colTotalDoc ebrThNarrow" style="vertical-align:middle;text-align:center;border-right:1px solid rgba(255,255,255,0.25)">
+              <span class="thLine">TOTAL DE</span>
+              <span class="thLine">DOCENTES</span>
+            </th>
+            <th rowspan="2" class="colMonitDoc ebrThNarrow" style="vertical-align:middle;text-align:center;border-right:1px solid rgba(255,255,255,0.25)">
+              <span class="thLine">DOCENTES</span>
+              <span class="thLine">MONITOREADOS</span>
+            </th>
+            <th rowspan="2" class="colNoMonitDoc ebrThNarrow" style="vertical-align:middle;text-align:center;border-right:1.5px solid #fff">
+              <span class="thLine">DOCENTES NO</span>
+              <span class="thLine">MONITOREADOS</span>
+            </th>
             <th colspan="4" style="background:#1E40AF;border-left:1.5px solid #fff">R1 Involucra <span class="rubCheck" data-rc="R1"></span></th>
             <th colspan="4" style="background:#0F766E;border-left:1.5px solid #fff">R2 Razonamiento <span class="rubCheck" data-rc="R2"></span></th>
             <th colspan="4" style="background:#047857;border-left:1.5px solid #fff">R3 Evalúa y retroalim. <span class="rubCheck" data-rc="R3"></span></th>
@@ -1365,9 +1374,9 @@ function renderDocentesTableHtml(momentoKey, rows) {
             <td class="ebrStickyCol" style="position:sticky;left:0;background:var(--surface-3);z-index:2;text-align:left;padding-left:8px">
               TOTAL
             </td>
-            <td id="tot_${momentoKey}_total">0</td>
-            <td id="tot_${momentoKey}_monit">0</td>
-            <td id="tot_${momentoKey}_nomonit">0</td>
+            <td class="colTotalDoc" id="tot_${momentoKey}_total">0</td>
+            <td class="colMonitDoc" id="tot_${momentoKey}_monit">0</td>
+            <td class="colNoMonitDoc" id="tot_${momentoKey}_nomonit">0</td>
             <!-- Totales R1 -->
             <td id="tot_${momentoKey}_R1_0" style="border-left:1.5px solid var(--line)">0</td>
             <td id="tot_${momentoKey}_R1_1">0</td>

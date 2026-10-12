@@ -11,13 +11,13 @@ import {
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES,
   migrateLegacyEbrTotals
-} from './ebr-gestion.js?v=20260929_v15';
+} from './ebr-gestion.js?v=20261012_v5';
 
 import {
   isFichaJec,
   JEC_SECCIONES,
   getNivelLogroJec
-} from './jec-monitoreo.js?v=20260928_v12';
+} from './jec-monitoreo.js?v=20261012_v5';
 
 import {
   isFichaCoordTutoriaJec,
@@ -2829,7 +2829,7 @@ export async function exportJecFichaPdf(sub, fichaType, colegio = null, download
       const arr = Array.isArray(row[rId]) ? row[rId] : ['', '', '', ''];
       return [0, 1, 2, 3].map(idx => {
         const val = Number(arr[idx]) || 0;
-        const p = (val > 0 && t > 0) ? Math.round((val / t) * 100) + '%' : (arr[idx] !== '' && arr[idx] !== undefined ? '0%' : '—');
+        const p = (val > 0 && m > 0) ? Math.round((val / m) * 100) + '%' : (arr[idx] !== '' && arr[idx] !== undefined ? '0%' : '—');
         return { content: p, styles: { halign: 'center', fontSize: 6.2, fontStyle: 'italic', textColor: [70, 70, 70] } };
       });
     });

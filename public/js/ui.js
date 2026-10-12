@@ -61,7 +61,7 @@ import {
   resetEbrFormState,
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES
-} from './ebr-gestion.js?v=20261001_v1';
+} from './ebr-gestion.js?v=20261012_v5';
 
 import {
   isFichaJec,
@@ -71,7 +71,7 @@ import {
   resetJecFormState,
   JEC_SECCIONES,
   getNivelLogroJec
-} from './jec-monitoreo.js?v=20260928_v12';
+} from './jec-monitoreo.js?v=20261012_v5';
 
 import {
   syncDirectivosFromFicha,

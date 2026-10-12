@@ -15,7 +15,7 @@
        * Implementación incipiente: De 0 a 11 respuestas "Sí"  (Inicio)
    ========================================================================= */
 
-import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui.js?v=20260928_v12';
+import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui.js?v=20261012_v5';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260928_v12';
 import { RUBRICAS_OBSERVACION_AULA } from './ebr-gestion.js?v=20260928_v12';
 import { isFichaJec, REGLA_NIVEL_JEC, estadoPorRegla, ESPECIALISTA_JEC_OFICIAL, isFichaEspecialistaJec } from './calcEngine.js?v=20260928_v12';
@@ -504,9 +504,12 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
 
   // Calcular conteo actual de respuestas Sí en tiempo real
   const conteoSi = Object.values(jecFormState.respuestas).filter(v => v === 'si').length;
+  const conteoRespondidos = Object.values(jecFormState.respuestas).filter(v => v).length;
   const nivelActual = getNivelLogroJec(conteoSi);
   const totalItems = JEC_ITEMS.length; // 31
   const pctAvance = Math.round((conteoSi / totalItems) * 100);
+  const pctRespondidos = Math.round((conteoRespondidos / totalItems) * 100);
+  const submitLabel = isEditing ? 'Actualizar registro' : 'Guardar registro';
 
   host.innerHTML = `
     <form id="regForm" autocomplete="off" class="jecFormContainer" style="max-width:1120px;margin:0 auto">
@@ -802,22 +805,27 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
         </div>
       </div>
 
-      <!-- ─── BARRA DE ACCIÓN GUARDAR ─── -->
-      <div class="formActions" style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px;margin-bottom:40px">
-        <button type="button" class="btn secondary" id="btnCancelJec">Cancelar</button>
-        <button type="submit" class="btn" id="btnSaveJec" style="background:var(--primary);color:#fff;font-weight:700;padding:10px 24px;font-size:14px">
-          💾 Guardar Ficha JEC
-        </button>
+      <!-- ─── BARRA INFERIOR FIJA FLOTANTE (ESTILO GESTIÓN ESCOLAR) ─── -->
+      <div class="formBottomBar">
+        <div class="regProgressBadge" id="regProgressBadge">
+          Avance: <strong>${conteoRespondidos} de ${totalItems}</strong> ítems respondidos (${pctRespondidos}%)
+        </div>
+        <button type="button" class="btn secondary" id="cancelFormBtn">Cancelar</button>
+        <button type="submit" class="btn" id="saveFormBtn">${submitLabel}</button>
       </div>
     </form>
   `;
 
   attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEditing);
+  updateDocenteRowCalculations('momento1', host);
+  updateDocenteRowCalculations('momento2', host);
+  updateLiveNivelJec(host);
 }
 
 /**
  * Renderiza la tabla oficial de docentes monitoreados de secundaria (1er o 2do monitoreo)
- * con dos filas: Fila 1 = Cantidad, Fila 2 = Porcentaje (%)
+ * con diseño oficial estilo Gestión Escolar (sin flechas/steppers de aumento/disminución)
+ * y cálculo dinámico de porcentajes sobre la cantidad de docentes monitoreados (100%).
  */
 function renderDocentesTableJec(momentoKey, data) {
   const d = data || createDocenteMomentoRow();
@@ -828,16 +836,48 @@ function renderDocentesTableJec(momentoKey, data) {
   const pctMonit = total > 0 ? Math.round((monit / total) * 100) : 0;
   const pctNoMonit = total > 0 ? Math.round((noMonit / total) * 100) : 0;
 
-  const renderRubCell = (rubId, idx) => {
+  const rubricasConfig = [
+    { id: 'R1', nombre: 'R1 Involucra', color: '#1E40AF', tint: 'rgba(30, 64, 175, 0.05)' },
+    { id: 'R2', nombre: 'R2 Razonamiento', color: '#0F766E', tint: 'rgba(13, 148, 136, 0.05)' },
+    { id: 'R3', nombre: 'R3 Retroalimenta', color: '#047857', tint: 'rgba(5, 150, 105, 0.05)' },
+    { id: 'R4', nombre: 'R4 Respeto', color: '#6D28D9', tint: 'rgba(124, 58, 237, 0.05)' },
+    { id: 'R5', nombre: 'R5 Comportamiento', color: '#B45309', tint: 'rgba(217, 119, 6, 0.05)' }
+  ];
+
+  const renderRubCell = (rubCfg, idx) => {
+    const rubId = rubCfg.id;
     const arr = d[rubId] || ['', '', '', ''];
     const val = arr[idx] !== undefined && arr[idx] !== '' ? Number(arr[idx]) : '';
-    const pct = (val !== '' && total > 0) ? Math.round((Number(val) / total) * 100) : 0;
+    // El porcentaje es respecto a los docentes monitoreados para que la suma alcance el 100%
+    const pct = (val !== '' && monit > 0) ? Math.round((Number(val) / monit) * 100) : 0;
 
     return `
-      <td style="text-align:center;padding:4px 2px;border:1px solid var(--line)">
-        <input type="number" min="0" class="jecDocRubInp" data-momento="${momentoKey}" data-rub="${rubId}" data-idx="${idx}" value="${val !== '' ? val : ''}" placeholder="0" style="width:40px;text-align:center;font-size:12px;font-weight:600;padding:3px 2px">
+      <td style="text-align:center;padding:5px 2px;background:${rubCfg.tint};${idx === 0 ? 'border-left:1.5px solid var(--line);' : ''}">
+        <input type="number" min="0" class="jecDocInp jecDocRubInp" data-momento="${momentoKey}" data-rub="${rubId}" data-idx="${idx}" value="${val !== '' ? val : ''}" placeholder="0" style="width:36px;text-align:center;font-size:12px;font-weight:600;padding:3px 2px">
         <div class="jecRubPctLbl" data-rub-pct="${momentoKey}_${rubId}_${idx}" style="font-size:10px;color:var(--ink-soft);font-weight:600;margin-top:2px">
-          ${val !== '' ? pct + '%' : '0%'}
+          ${val !== '' && monit > 0 ? pct + '%' : '0%'}
+        </div>
+      </td>
+    `;
+  };
+
+  const renderRubFooterCell = (rubCfg) => {
+    const rubId = rubCfg.id;
+    const arr = d[rubId] || ['', '', '', ''];
+    const rubSum = arr.reduce((acc, v) => acc + (Number(v) || 0), 0);
+    const pctTotal = monit > 0 ? Math.round((rubSum / monit) * 100) : 0;
+    const isMatch = monit > 0 && rubSum === monit;
+    const isMismatch = monit > 0 && rubSum !== monit;
+
+    return `
+      <td colspan="4" class="jecRubTotalCell" data-rub-tot="${momentoKey}_${rubId}" style="text-align:center;padding:6px 4px;background:${rubCfg.tint};border-left:1.5px solid var(--line);font-size:11px">
+        <div class="jecRubSumDisplay" style="font-weight:700;color:${isMatch ? '#047857' : (isMismatch ? '#B45309' : 'var(--ink)')}">
+          <span class="jecRubSumIcon">${isMatch ? '✓ ' : (isMismatch ? '⚠️ ' : '')}</span>
+          <span class="jecRubSumText">${rubSum}</span> / <span class="jecRubExpectedText">${monit}</span>
+          (<span class="jecRubPctText">${pctTotal}%</span>)
+        </div>
+        <div class="jecRubSumSub" style="font-size:9.5px;color:${isMatch ? '#047857' : (isMismatch ? '#B45309' : 'var(--ink-soft)')};margin-top:1px">
+          ${isMatch ? '100% de monitoreados' : (monit > 0 ? (rubSum < monit ? `Faltan ${monit - rubSum}` : `Excede en ${rubSum - monit}`) : '—')}
         </div>
       </td>
     `;
@@ -845,100 +885,92 @@ function renderDocentesTableJec(momentoKey, data) {
 
   return `
     <div style="overflow-x:auto;max-width:100%;border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow-sm)">
-      <table class="table jecDocTable" style="width:100%;border-collapse:collapse;font-size:12px;min-width:980px" data-momento="${momentoKey}">
+      <table class="table jecDocTable ebrDocentesTable" style="width:100%;border-collapse:collapse;font-size:12px;min-width:960px" data-momento="${momentoKey}">
         <thead>
           <tr style="background:var(--primary);color:#FFFFFF;text-align:center">
-            <th rowspan="2" style="width:90px;vertical-align:middle;border-right:1px solid rgba(255,255,255,0.2)">TOTAL DE DOCENTES</th>
-            <th rowspan="2" style="width:95px;vertical-align:middle;border-right:1px solid rgba(255,255,255,0.2)">DOCENTES MONITOREADOS</th>
-            <th rowspan="2" style="width:95px;vertical-align:middle;border-right:1.5px solid #fff">DOCENTES NO MONITOREADOS</th>
-            <th colspan="20" style="background:#0F294D;border-left:1.5px solid #fff;padding:6px">
+            <th rowspan="3" class="colTotalDoc jecThNarrow" style="vertical-align:middle;text-align:center;border-right:1px solid rgba(255,255,255,0.25)">
+              <span class="thLine">TOTAL DE</span>
+              <span class="thLine">DOCENTES</span>
+            </th>
+            <th rowspan="3" class="colMonitDoc jecThNarrow" style="vertical-align:middle;text-align:center;border-right:1px solid rgba(255,255,255,0.25)">
+              <span class="thLine">DOCENTES</span>
+              <span class="thLine">MONITOREADOS</span>
+            </th>
+            <th rowspan="3" class="colNoMonitDoc jecThNarrow" style="vertical-align:middle;text-align:center;border-right:1.5px solid #fff">
+              <span class="thLine">DOCENTES NO</span>
+              <span class="thLine">MONITOREADOS</span>
+            </th>
+            <th colspan="20" style="background:#0F294D;border-left:1.5px solid #fff;padding:6px;font-size:11px;font-weight:700;letter-spacing:0.02em">
               CANTIDAD DE DOCENTES QUE ALCANZARON EL NIVEL DE LOGRO EN LOS MONITOREOS
             </th>
           </tr>
-          <tr style="background:#1E40AF;color:#FFFFFF;text-align:center;font-size:11px">
+          <tr style="color:#FFFFFF;text-align:center;font-size:11px">
             <!-- R1 -->
-            <th colspan="4" style="background:#1E40AF;border-left:1.5px solid #fff;border-right:1px solid rgba(255,255,255,0.2)">R1 Involucra</th>
+            <th colspan="4" style="background:#1E40AF;border-left:1.5px solid #fff;border-right:1px solid rgba(255,255,255,0.2);padding:5px 2px">R1 Involucra</th>
             <!-- R2 -->
-            <th colspan="4" style="background:#0F766E;border-right:1px solid rgba(255,255,255,0.2)">R2 Razonamiento</th>
+            <th colspan="4" style="background:#0F766E;border-right:1px solid rgba(255,255,255,0.2);padding:5px 2px">R2 Razonamiento</th>
             <!-- R3 -->
-            <th colspan="4" style="background:#047857;border-right:1px solid rgba(255,255,255,0.2)">R3 Retroalimenta</th>
+            <th colspan="4" style="background:#047857;border-right:1px solid rgba(255,255,255,0.2);padding:5px 2px">R3 Retroalimenta</th>
             <!-- R4 -->
-            <th colspan="4" style="background:#6D28D9;border-right:1px solid rgba(255,255,255,0.2)">R4 Respeto</th>
+            <th colspan="4" style="background:#6D28D9;border-right:1px solid rgba(255,255,255,0.2);padding:5px 2px">R4 Respeto</th>
             <!-- R5 -->
-            <th colspan="4" style="background:#B45309">R5 Comportamiento</th>
+            <th colspan="4" style="background:#B45309;padding:5px 2px">R5 Comportamiento</th>
           </tr>
-          <tr style="background:var(--surface-2);color:var(--ink);text-align:center;font-size:11px">
-            <th style="border-right:1px solid var(--line)">—</th>
-            <th style="border-right:1px solid var(--line)">%</th>
-            <th style="border-right:1.5px solid var(--line)">%</th>
+          <tr style="background:var(--surface-2);color:var(--ink);text-align:center;font-size:10.5px">
             <!-- Subniveles R1 -->
-            <th style="width:34px;border-left:1.5px solid var(--line)">I</th><th style="width:34px">II</th><th style="width:34px">III</th><th style="width:34px;border-right:1px solid var(--line)">IV</th>
+            <th style="width:36px;min-width:34px;border-left:1.5px solid var(--line);padding:4px 1px">I</th><th style="width:36px;min-width:34px;padding:4px 1px">II</th><th style="width:36px;min-width:34px;padding:4px 1px">III</th><th style="width:36px;min-width:34px;padding:4px 1px">IV</th>
             <!-- Subniveles R2 -->
-            <th style="width:34px">I</th><th style="width:34px">II</th><th style="width:34px">III</th><th style="width:34px;border-right:1px solid var(--line)">IV</th>
+            <th style="width:36px;min-width:34px;border-left:1.5px solid var(--line);padding:4px 1px">I</th><th style="width:36px;min-width:34px;padding:4px 1px">II</th><th style="width:36px;min-width:34px;padding:4px 1px">III</th><th style="width:36px;min-width:34px;padding:4px 1px">IV</th>
             <!-- Subniveles R3 -->
-            <th style="width:34px">I</th><th style="width:34px">II</th><th style="width:34px">III</th><th style="width:34px;border-right:1px solid var(--line)">IV</th>
+            <th style="width:36px;min-width:34px;border-left:1.5px solid var(--line);padding:4px 1px">I</th><th style="width:36px;min-width:34px;padding:4px 1px">II</th><th style="width:36px;min-width:34px;padding:4px 1px">III</th><th style="width:36px;min-width:34px;padding:4px 1px">IV</th>
             <!-- Subniveles R4 -->
-            <th style="width:34px">I</th><th style="width:34px">II</th><th style="width:34px">III</th><th style="width:34px;border-right:1px solid var(--line)">IV</th>
+            <th style="width:36px;min-width:34px;border-left:1.5px solid var(--line);padding:4px 1px">I</th><th style="width:36px;min-width:34px;padding:4px 1px">II</th><th style="width:36px;min-width:34px;padding:4px 1px">III</th><th style="width:36px;min-width:34px;padding:4px 1px">IV</th>
             <!-- Subniveles R5 -->
-            <th style="width:34px">I</th><th style="width:34px">II</th><th style="width:34px">III</th><th style="width:34px">IV</th>
+            <th style="width:36px;min-width:34px;border-left:1.5px solid var(--line);padding:4px 1px">I</th><th style="width:36px;min-width:34px;padding:4px 1px">II</th><th style="width:36px;min-width:34px;padding:4px 1px">III</th><th style="width:36px;min-width:34px;padding:4px 1px">IV</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <!-- Total de Docentes -->
-            <td style="text-align:center;padding:8px 4px;border-right:1px solid var(--line);background:var(--surface)">
-              <input type="number" min="0" class="jecDocTotalInp" data-momento="${momentoKey}" value="${esc(d.total)}" placeholder="24" style="width:65px;text-align:center;font-weight:700;font-size:14px;padding:4px">
+            <td class="colTotalDoc" style="text-align:center;padding:6px 2px;border-right:1px solid var(--line);background:var(--surface)">
+              <input type="number" min="0" class="jecDocInp jecDocTotalInp" data-momento="${momentoKey}" value="${esc(d.total)}" placeholder="0">
             </td>
             <!-- Docentes Monitoreados -->
-            <td style="text-align:center;padding:8px 4px;border-right:1px solid var(--line);background:var(--surface)">
-              <input type="number" min="0" class="jecDocMonitInp" data-momento="${momentoKey}" value="${esc(d.monitoreados)}" placeholder="0" style="width:65px;text-align:center;font-weight:700;font-size:14px;padding:4px">
-              <div class="jecMonitPctLbl" data-momento="${momentoKey}" style="font-size:11px;font-weight:700;color:var(--ok);margin-top:2px">
+            <td class="colMonitDoc" style="text-align:center;padding:6px 2px;border-right:1px solid var(--line);background:var(--surface)">
+              <input type="number" min="0" class="jecDocInp jecDocMonitInp" data-momento="${momentoKey}" value="${esc(d.monitoreados)}" placeholder="0">
+              <div class="jecMonitPctLbl" data-momento="${momentoKey}" style="font-size:10.5px;font-weight:700;color:var(--ok);margin-top:2px">
                 ${total > 0 ? pctMonit + '%' : '—'}
               </div>
             </td>
             <!-- Docentes No Monitoreados -->
-            <td style="text-align:center;padding:8px 4px;border-right:1.5px solid var(--line);background:var(--surface-2)">
-              <strong class="jecNoMonitVal" data-momento="${momentoKey}" style="font-size:14px;color:var(--ink)">
+            <td class="colNoMonitDoc" style="text-align:center;padding:6px 2px;border-right:1.5px solid var(--line);background:var(--surface-2)">
+              <strong class="jecNoMonitVal" data-momento="${momentoKey}" style="font-size:13px;color:var(--ink)">
                 ${total > 0 ? noMonit : (d.total ? '0' : '—')}
               </strong>
-              <div class="jecNoMonitPctLbl" data-momento="${momentoKey}" style="font-size:11px;font-weight:700;color:var(--danger);margin-top:2px">
+              <div class="jecNoMonitPctLbl" data-momento="${momentoKey}" style="font-size:10.5px;font-weight:700;color:var(--danger);margin-top:2px">
                 ${total > 0 ? pctNoMonit + '%' : '—'}
               </div>
             </td>
 
-            <!-- R1 -->
-            ${renderRubCell('R1', 0)}
-            ${renderRubCell('R1', 1)}
-            ${renderRubCell('R1', 2)}
-            ${renderRubCell('R1', 3)}
-
-            <!-- R2 -->
-            ${renderRubCell('R2', 0)}
-            ${renderRubCell('R2', 1)}
-            ${renderRubCell('R2', 2)}
-            ${renderRubCell('R2', 3)}
-
-            <!-- R3 -->
-            ${renderRubCell('R3', 0)}
-            ${renderRubCell('R3', 1)}
-            ${renderRubCell('R3', 2)}
-            ${renderRubCell('R3', 3)}
-
-            <!-- R4 -->
-            ${renderRubCell('R4', 0)}
-            ${renderRubCell('R4', 1)}
-            ${renderRubCell('R4', 2)}
-            ${renderRubCell('R4', 3)}
-
-            <!-- R5 -->
-            ${renderRubCell('R5', 0)}
-            ${renderRubCell('R5', 1)}
-            ${renderRubCell('R5', 2)}
-            ${renderRubCell('R5', 3)}
+            <!-- Celdas R1 a R5 -->
+            ${rubricasConfig.map(rc => [0, 1, 2, 3].map(lvl => renderRubCell(rc, lvl)).join('')).join('')}
           </tr>
         </tbody>
+        <tfoot>
+          <tr style="background:var(--surface-3);border-top:2px solid var(--primary);font-weight:800;text-align:center">
+            <td class="colTotalDoc" style="text-align:center;font-size:10.5px;color:var(--ink-soft);padding:6px 2px">—</td>
+            <td class="colMonitDoc" style="text-align:center;font-size:10.5px;padding:6px 2px">
+              <span style="font-size:9.5px;color:var(--ink-soft)">Monitoreados:</span><br>
+              <strong class="jecFootMonitVal" data-momento="${momentoKey}" style="color:var(--primary)">${monit}</strong>
+            </td>
+            <td class="colNoMonitDoc" style="text-align:center;font-size:10.5px;color:var(--ink-soft);padding:6px 2px">—</td>
+            <!-- Totales de cada rúbrica con validación de suma vs monitoreados y % alcanzado -->
+            ${rubricasConfig.map(rc => renderRubFooterCell(rc)).join('')}
+          </tr>
+        </tfoot>
       </table>
     </div>
+    <div class="jecDocNotice" data-momento-notice="${momentoKey}" style="margin-top:8px"></div>
   `;
 }
 
@@ -1138,18 +1170,7 @@ function attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
   host.querySelectorAll('.jecDocRubInp').forEach(inp => {
     inp.addEventListener('input', () => {
       const momento = inp.dataset.momento;
-      const rub = inp.dataset.rub;
-      const idx = inp.dataset.idx;
-      const val = Number(inp.value) || 0;
-
-      const totalInp = host.querySelector(`.jecDocTotalInp[data-momento="${momento}"]`);
-      const total = Number(totalInp?.value) || 0;
-      const pct = (val > 0 && total > 0) ? Math.round((val / total) * 100) : 0;
-
-      const lbl = host.querySelector(`[data-rub-pct="${momento}_${rub}_${idx}"]`);
-      if (lbl) {
-        lbl.textContent = val > 0 ? pct + '%' : '0%';
-      }
+      updateDocenteRowCalculations(momento, host);
     });
   });
 
@@ -1197,7 +1218,7 @@ function attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
         }
       }
 
-      // Recalcular nivel de logro general en tiempo real
+      // Recalcular nivel de logro general en tiempo real y avance
       updateLiveNivelJec(host);
     };
   });
@@ -1210,7 +1231,7 @@ function attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
   });
 
   // 7. Cancelar
-  const btnCancel = host.querySelector('#btnCancelJec');
+  const btnCancel = host.querySelector('#cancelFormBtn') || host.querySelector('#btnCancelJec');
   if (btnCancel) {
     btnCancel.onclick = () => {
       if (confirm('¿Estás seguro de cancelar? Se perderán los datos no guardados.')) {
@@ -1222,15 +1243,31 @@ function attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
 }
 
 /**
- * Actualiza los cálculos de No Monitoreados y porcentajes de una fila de momento
+ * Actualiza los cálculos de No Monitoreados y porcentajes de una fila de momento,
+ * validando que la suma de niveles de cada rúbrica coincida con los docentes monitoreados (100%).
  */
 function updateDocenteRowCalculations(momentoKey, host) {
+  if (!host) return;
+
   const totInp = host.querySelector(`.jecDocTotalInp[data-momento="${momentoKey}"]`);
   const monitInp = host.querySelector(`.jecDocMonitInp[data-momento="${momentoKey}"]`);
 
   const total = Number(totInp?.value) || 0;
   const monit = Number(monitInp?.value) || 0;
   const noMonit = Math.max(0, total - monit);
+
+  // Advertir visualmente si monitoreados supera al total de docentes
+  if (monit > total && total > 0) {
+    if (monitInp) {
+      monitInp.style.borderColor = 'var(--danger)';
+      monitInp.style.backgroundColor = '#FEF2F2';
+      monitInp.title = `Docentes monitoreados (${monit}) no puede exceder el Total de docentes (${total})`;
+    }
+  } else if (monitInp) {
+    monitInp.style.borderColor = '';
+    monitInp.style.backgroundColor = '';
+    monitInp.title = '';
+  }
 
   const pctMonit = total > 0 ? Math.round((monit / total) * 100) : 0;
   const pctNoMonit = total > 0 ? Math.round((noMonit / total) * 100) : 0;
@@ -1244,16 +1281,144 @@ function updateDocenteRowCalculations(momentoKey, host) {
   const noMonitPctEl = host.querySelector(`.jecNoMonitPctLbl[data-momento="${momentoKey}"]`);
   if (noMonitPctEl) noMonitPctEl.textContent = total > 0 ? pctNoMonit + '%' : '—';
 
-  // Recalcular porcentajes de cada celda de rúbrica
-  host.querySelectorAll(`.jecDocRubInp[data-momento="${momentoKey}"]`).forEach(inp => {
-    const rub = inp.dataset.rub;
-    const idx = inp.dataset.idx;
-    const val = Number(inp.value) || 0;
-    const pct = (val > 0 && total > 0) ? Math.round((val / total) * 100) : 0;
+  const footMonitEl = host.querySelector(`.jecFootMonitVal[data-momento="${momentoKey}"]`);
+  if (footMonitEl) footMonitEl.textContent = String(monit);
 
-    const lbl = host.querySelector(`[data-rub-pct="${momentoKey}_${rub}_${idx}"]`);
-    if (lbl) lbl.textContent = val > 0 ? pct + '%' : '0%';
+  const rubricas = [
+    { id: 'R1', label: 'R1 Involucra' },
+    { id: 'R2', label: 'R2 Razonamiento' },
+    { id: 'R3', label: 'R3 Retroalimenta' },
+    { id: 'R4', label: 'R4 Respeto' },
+    { id: 'R5', label: 'R5 Comportamiento' }
+  ];
+
+  const discrepancies = [];
+
+  rubricas.forEach(r => {
+    const rubId = r.id;
+    let rubSum = 0;
+    const lvlInps = [];
+
+    [0, 1, 2, 3].forEach(idx => {
+      const inp = host.querySelector(`.jecDocRubInp[data-momento="${momentoKey}"][data-rub="${rubId}"][data-idx="${idx}"]`);
+      if (inp) {
+        lvlInps.push(inp);
+        rubSum += (Number(inp.value) || 0);
+      }
+    });
+
+    // El porcentaje de cada nivel se calcula sobre los docentes monitoreados para alcanzar el 100%
+    lvlInps.forEach((inp, idx) => {
+      const val = Number(inp.value) || 0;
+      const pct = (val > 0 && monit > 0) ? Math.round((val / monit) * 100) : 0;
+      const lbl = host.querySelector(`[data-rub-pct="${momentoKey}_${rubId}_${idx}"]`);
+      if (lbl) {
+        lbl.textContent = (val > 0 && monit > 0) ? `${pct}%` : '0%';
+      }
+    });
+
+    const isMatch = monit > 0 && rubSum === monit;
+    const isMismatch = monit > 0 && rubSum !== monit;
+    const pctTotal = monit > 0 ? Math.round((rubSum / monit) * 100) : 0;
+
+    if (isMismatch) {
+      discrepancies.push({
+        id: rubId,
+        label: r.label,
+        sum: rubSum,
+        expected: monit,
+        diff: monit - rubSum,
+        pct: pctTotal
+      });
+    }
+
+    // Estilos visuales a las celdas (idéntico a Ficha EBR Gestión Escolar)
+    lvlInps.forEach(inp => {
+      if (isMismatch) {
+        inp.style.backgroundColor = '#FEF3C7';
+        inp.style.borderColor = '#F59E0B';
+        inp.title = `${rubId}: La suma (${rubSum}) no coincide con los docentes monitoreados (${monit}). Debe sumar ${monit} para alcanzar el 100%.`;
+      } else if (isMatch) {
+        inp.style.backgroundColor = '';
+        inp.style.borderColor = '#10B981';
+        inp.title = `${rubId}: ✓ Suma correcta (${rubSum}/${monit} = 100%).`;
+      } else {
+        inp.style.backgroundColor = '';
+        inp.style.borderColor = '';
+        inp.title = '';
+      }
+    });
+
+    // Actualizar bloque de totales por rúbrica en el footer
+    const totCell = host.querySelector(`[data-rub-tot="${momentoKey}_${rubId}"]`);
+    if (totCell) {
+      const sumTxt = totCell.querySelector('.jecRubSumText');
+      if (sumTxt) sumTxt.textContent = String(rubSum);
+      const expTxt = totCell.querySelector('.jecRubExpectedText');
+      if (expTxt) expTxt.textContent = String(monit);
+      const pctTxt = totCell.querySelector('.jecRubPctText');
+      if (pctTxt) pctTxt.textContent = `${pctTotal}%`;
+
+      const iconSpan = totCell.querySelector('.jecRubSumIcon');
+      if (iconSpan) iconSpan.textContent = isMatch ? '✓ ' : (isMismatch ? '⚠️ ' : '');
+
+      const dispDiv = totCell.querySelector('.jecRubSumDisplay');
+      if (dispDiv) {
+        dispDiv.style.color = isMatch ? '#047857' : (isMismatch ? '#B45309' : 'var(--ink)');
+      }
+
+      const subDiv = totCell.querySelector('.jecRubSumSub');
+      if (subDiv) {
+        if (isMatch) {
+          subDiv.textContent = '100% de monitoreados';
+          subDiv.style.color = '#047857';
+        } else if (monit > 0) {
+          subDiv.textContent = rubSum < monit ? `Faltan ${monit - rubSum} para 100%` : `Excede en ${rubSum - monit}`;
+          subDiv.style.color = '#B45309';
+        } else {
+          subDiv.textContent = '—';
+          subDiv.style.color = 'var(--ink-soft)';
+        }
+      }
+    }
   });
+
+  // Actualizar cartel interactivo de conformidad de rúbricas
+  const noticeEl = host.querySelector(`[data-momento-notice="${momentoKey}"]`);
+  if (noticeEl) {
+    if (monit === 0) {
+      noticeEl.innerHTML = '';
+      noticeEl.style.display = 'none';
+    } else if (discrepancies.length === 0) {
+      noticeEl.style.display = 'block';
+      noticeEl.innerHTML = `
+        <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:6px;padding:8px 12px;font-size:12px;color:#065F46;display:flex;align-items:center;gap:8px">
+          <span style="font-size:15px">✓</span>
+          <span><strong>Conformidad del monitoreo:</strong> La suma de docentes en las 5 rúbricas (R1 a R5) es exactamente igual a los <strong>${monit} docentes monitoreados</strong> y alcanza el <strong>100%</strong>.</span>
+        </div>
+      `;
+    } else {
+      noticeEl.style.display = 'block';
+      noticeEl.innerHTML = `
+        <div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:6px;padding:8px 12px;font-size:12px;color:#92400E">
+          <div style="display:flex;align-items:center;gap:6px;font-weight:700">
+            <span>⚠️</span>
+            <span>Ajuste requerido en las rúbricas:</span>
+          </div>
+          <p style="margin:3px 0 6px;font-size:11.5px">
+            La suma de docentes por niveles en cada rúbrica debe ser igual a la cantidad de <strong>docentes monitoreados (${monit})</strong> para llegar al <strong>100%</strong>:
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            ${discrepancies.map(d => `
+              <span style="background:#FEF3C7;border:1px solid #F59E0B;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600">
+                ${d.id}: suma ${d.sum} de ${monit} (${d.pct}%) · ${d.diff > 0 ? 'Faltan ' + d.diff : 'Excede en ' + Math.abs(d.diff)}
+              </span>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+  }
 }
 
 /**
@@ -1261,8 +1426,10 @@ function updateDocenteRowCalculations(momentoKey, host) {
  */
 function updateLiveNivelJec(host) {
   const conteoSi = Object.values(jecFormState.respuestas).filter(v => v === 'si').length;
+  const conteoRespondidos = Object.values(jecFormState.respuestas).filter(v => v).length;
   const totalItems = JEC_ITEMS.length; // 31
   const pctAvance = Math.round((conteoSi / totalItems) * 100);
+  const pctRespondidos = Math.round((conteoRespondidos / totalItems) * 100);
   const nivel = getNivelLogroJec(conteoSi);
 
   // Barra sticky
@@ -1286,6 +1453,12 @@ function updateLiveNivelJec(host) {
   const liveHeader = host.querySelector('.jecLiveHeader');
   if (liveHeader) {
     liveHeader.style.borderLeftColor = nivel.color;
+  }
+
+  // Barra inferior sticky (estilo Gestión Escolar)
+  const progressBadge = host.querySelector('#regProgressBadge');
+  if (progressBadge) {
+    progressBadge.innerHTML = `Avance: <strong>${conteoRespondidos} de ${totalItems}</strong> ítems respondidos (${pctRespondidos}%)`;
   }
 
   // Tabla oficial (resaltar fila correspondiente)
@@ -1419,6 +1592,53 @@ export function collectJecFormData(host, ft, isEdit = false) {
     if (!ok) throw new Error('Complete los indicadores pendientes para registrar la ficha final.');
   }
 
+  // Validar coherencia en rúbricas si se consignaron docentes monitoreados (que sumen 100%)
+  const momentErrors = [];
+  ['momento1', 'momento2'].forEach(mKey => {
+    const mLabel = mKey === 'momento1' ? '1.er monitoreo' : '2.do monitoreo';
+    const rowData = jecFormState.docentes[mKey] || {};
+    const t = Number(rowData.total) || 0;
+    const m = Number(rowData.monitoreados) || 0;
+
+    if (m > t && t > 0) {
+      momentErrors.push(`• En el ${mLabel}: los docentes monitoreados (${m}) no pueden superar el total de docentes (${t}).`);
+    }
+
+    if (m > 0) {
+      const rubKeys = ['R1', 'R2', 'R3', 'R4', 'R5'];
+      const rubLabels = {
+        R1: 'R1 (Involucra)',
+        R2: 'R2 (Razonamiento)',
+        R3: 'R3 (Retroalimenta)',
+        R4: 'R4 (Respeto)',
+        R5: 'R5 (Comportamiento)'
+      };
+      const rubDiscrepancies = [];
+      rubKeys.forEach(rId => {
+        const arr = Array.isArray(rowData[rId]) ? rowData[rId] : [];
+        const sum = arr.reduce((acc, v) => acc + (Number(v) || 0), 0);
+        if (sum !== m) {
+          const pct = Math.round((sum / m) * 100);
+          rubDiscrepancies.push(`${rubLabels[rId]} suma ${sum} de ${m} (${pct}%)`);
+        }
+      });
+      if (rubDiscrepancies.length > 0) {
+        momentErrors.push(`• En el ${mLabel}: la suma de docentes por rúbrica debe ser igual a los ${m} docentes monitoreados (100%). Discrepancias:\n  - ${rubDiscrepancies.join('\n  - ')}`);
+      }
+    }
+  });
+
+  if (momentErrors.length > 0) {
+    if (esBorrador) {
+      const proceedDraft = confirm(`Se detectaron observaciones en la Data de Docentes Monitoreados:\n\n${momentErrors.join('\n\n')}\n\n¿Deseas guardar la ficha como BORRADOR de todos modos?`);
+      if (!proceedDraft) {
+        throw new Error('Corrija la suma de docentes monitoreados por rúbrica antes de registrar la ficha.');
+      }
+    } else {
+      throw new Error(`Corrija la Data de Docentes Monitoreados para que las rúbricas sumen el 100%:\n\n${momentErrors.join('\n\n')}`);
+    }
+  }
+
   const nivelCalculado = getNivelLogroJec(conteoSi);
   const pct = Math.round((conteoSi / totalItems) * 100);
 
@@ -1444,6 +1664,42 @@ export function collectJecFormData(host, ft, isEdit = false) {
     { label: 'Total respuestas Sí', value: conteoSi },
     { label: 'Nivel de Implementación', value: nivelCalculado.nivel }
   ];
+
+  const buildMomentoSummary = (mKey) => {
+    const row = jecFormState.docentes[mKey] || {};
+    const t = Number(row.total) || 0;
+    const m = Number(row.monitoreados) || 0;
+    const nm = Math.max(0, t - m);
+    const pctM = t > 0 ? Math.round((m / t) * 100) : 0;
+    const pctNm = t > 0 ? Math.round((nm / t) * 100) : 0;
+
+    const res = {
+      total_docentes: t,
+      docentes_monitoreados: m,
+      pct_monitoreados: pctM,
+      docentes_no_monitoreados: nm,
+      pct_no_monitoreados: pctNm
+    };
+
+    ['R1', 'R2', 'R3', 'R4', 'R5'].forEach(rId => {
+      const lower = rId.toLowerCase();
+      const arr = Array.isArray(row[rId]) ? row[rId] : ['', '', '', ''];
+      res[lower] = {};
+      [0, 1, 2, 3].forEach(idx => {
+        const val = Number(arr[idx]) || 0;
+        const pct = (val > 0 && m > 0) ? Math.round((val / m) * 100) : 0;
+        res[lower][`c${idx + 1}`] = val;
+        res[lower][`p${idx + 1}`] = pct;
+      });
+    });
+
+    return res;
+  };
+
+  const docentesMonitoreoCompat = {
+    m1: buildMomentoSummary('momento1'),
+    m2: buildMomentoSummary('momento2')
+  };
 
   return {
     fichaTypeId: ft.id || 'ft_msejec_2do',
@@ -1479,6 +1735,7 @@ export function collectJecFormData(host, ft, isEdit = false) {
     },
     docentes: { ...jecFormState.docentes },
     docentesMonitoreo: { ...jecFormState.docentes },
+    docentes_monitoreo: docentesMonitoreoCompat,
     respuestas,
     items: respuestas,
     observacionesItems: { ...jecFormState.hallazgos },

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Runner - Ficha JEC Rediseño de Botón y Rúbricas Docentes</title>
+  <link rel="stylesheet" href="./css/style.css?v=20261012_v5">
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 20px; background: #0f172a; color: #f8fafc; }
+    .card { background: #1e293b; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .pass { color: #4ade80; font-weight: bold; }
+    .fail { color: #f87171; font-weight: bold; }
+    h1 { font-size: 20px; margin-bottom: 16px; }
+    pre { background: #090d16; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+    #testHost { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Validación de Ficha JEC: Botón de Guardado y Cuadro de Docentes (Rúbricas 100%)</h1>
+  <div id="results"></div>
+  <div id="testHost"></div>
+
+  <script type="module">
+    import {
+      renderJecForm,
+      collectJecFormData,
+      jecFormState,
+      resetJecFormState,
+      JEC_ITEMS
+    } from './js/jec-monitoreo.js?v=20261012_v5';
+
+    const resultsEl = document.getElementById('results');
+    const host = document.getElementById('testHost');
+    const tests = [];
+
+    function assert(name, condition, details = '') {
+      tests.push({ name, pass: !!condition, details });
+    }
+
+    try {
+      resetJecFormState();
+      const mockFt = {
+        id: 'ft_msejec_2do',
+        nombre: 'Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC'
+      };
+      const mockState = { colegios: [], submissions: [] };
+      const mockCurrentUser = { nombre: 'Monitor JEC' };
+
+      // Renderizar formulario JEC
+      renderJecForm(host, mockFt, mockState, 'testDb', mockCurrentUser, () => {}, false);
+
+      // 1. Verificar presencia de la barra inferior sticky estilo Gestión Escolar
+      const bottomBar = host.querySelector('.formBottomBar');
+      assert('Barra inferior .formBottomBar existe en el DOM', !!bottomBar);
+
+      const saveBtn = host.querySelector('#saveFormBtn');
+      assert('Botón #saveFormBtn existe en la barra inferior (estilo Gestión Escolar)', !!saveBtn && saveBtn.textContent.includes('Guardar registro'));
+
+      const cancelBtn = host.querySelector('#cancelFormBtn');
+      assert('Botón #cancelFormBtn existe en la barra inferior', !!cancelBtn);
+
+      const progressBadge = host.querySelector('#regProgressBadge');
+      assert('Badge de avance #regProgressBadge existe en la barra inferior', !!progressBadge);
+
+      // 2. Verificar que no exista botón en la cabecera (único botón en barra inferior flotante)
+      const headerSaveBtn = host.querySelector('.jecHeaderSaveBtn');
+      assert('Cabecera superior sin botón redundante (solo barra inferior flotante)', !headerSaveBtn);
+
+      // 3. Verificar estructura de las tablas de docentes (Sección V)
+      const tables = host.querySelectorAll('.jecDocTable');
+      assert('Existen 2 tablas de docentes (1er y 2do monitoreo)', tables.length === 2);
+
+      const tableM1 = host.querySelector('.jecDocTable[data-momento="momento1"]');
+      assert('La tabla tiene la clase oficial ebrDocentesTable', tableM1 && tableM1.classList.contains('ebrDocentesTable'));
+
+      // Verificar cabeceras en 2 líneas y clases de columnas compactas
+      const thTotal = tableM1.querySelector('th.colTotalDoc');
+      const thMonit = tableM1.querySelector('th.colMonitDoc');
+      const thNoMonit = tableM1.querySelector('th.colNoMonitDoc');
+      assert('Cabecera TOTAL DE DOCENTES tiene 2 líneas .thLine', !!thTotal && thTotal.querySelectorAll('.thLine').length === 2);
+      assert('Cabecera DOCENTES MONITOREADOS tiene 2 líneas .thLine', !!thMonit && thMonit.querySelectorAll('.thLine').length === 2);
+      assert('Cabecera DOCENTES NO MONITOREADOS tiene 2 líneas .thLine', !!thNoMonit && thNoMonit.querySelectorAll('.thLine').length === 2);
+      assert('Cabecera DOCENTES NO contiene DOCENTES NO en línea 1 y MONITOREADOS en línea 2', thNoMonit?.querySelectorAll('.thLine')[0]?.textContent.trim() === 'DOCENTES NO' && thNoMonit?.querySelectorAll('.thLine')[1]?.textContent.trim() === 'MONITOREADOS');
+      assert('Las cabeceras compactas usan rowspan 3 para ocupar toda la altura del header', thTotal?.getAttribute('rowspan') === '3');
+
+      // 4. Probar cálculos con datos de docentes
+      const totInpM1 = host.querySelector('.jecDocTotalInp[data-momento="momento1"]');
+      const monInpM1 = host.querySelector('.jecDocMonitInp[data-momento="momento1"]');
+
+      totInpM1.value = '20';
+      monInpM1.value = '10';
+      totInpM1.dispatchEvent(new Event('input'));
+      monInpM1.dispatchEvent(new Event('input'));
+
+      const noMonitVal = host.querySelector('.jecNoMonitVal[data-momento="momento1"]');
+      assert('Docentes no monitoreados se calcula como total - monitoreados (20 - 10 = 10)', noMonitVal && noMonitVal.textContent.trim() === '10');
+
+      // 5. Asignar valores a R1 que sumen exactamente 10 (2 + 3 + 4 + 1 = 10)
+      const r1Inps = [0, 1, 2, 3].map(idx => host.querySelector(`.jecDocRubInp[data-momento="momento1"][data-rub="R1"][data-idx="${idx}"]`));
+      r1Inps[0].value = '2'; // 20%
+      r1Inps[1].value = '3'; // 30%
+      r1Inps[2].value = '4'; // 40%
+      r1Inps[3].value = '1'; // 10%
+      r1Inps.forEach(inp => inp.dispatchEvent(new Event('input')));
+
+      // Porcentajes de celdas calculados respecto a 10 docentes monitoreados:
+      const pctR1_0 = host.querySelector('[data-rub-pct="momento1_R1_0"]')?.textContent.trim();
+      const pctR1_1 = host.querySelector('[data-rub-pct="momento1_R1_1"]')?.textContent.trim();
+      const pctR1_2 = host.querySelector('[data-rub-pct="momento1_R1_2"]')?.textContent.trim();
+      const pctR1_3 = host.querySelector('[data-rub-pct="momento1_R1_3"]')?.textContent.trim();
+
+      assert('Porcentaje de R1 nivel I es 20% (2 de 10)', pctR1_0 === '20%', `Obtenido: ${pctR1_0}`);
+      assert('Porcentaje de R1 nivel II es 30% (3 de 10)', pctR1_1 === '30%', `Obtenido: ${pctR1_1}`);
+      assert('Porcentaje de R1 nivel III es 40% (4 de 10)', pctR1_2 === '40%', `Obtenido: ${pctR1_2}`);
+      assert('Porcentaje de R1 nivel IV es 10% (1 de 10)', pctR1_3 === '10%', `Obtenido: ${pctR1_3}`);
+
+      // Verificar total de la rúbrica R1 en el footer: suma = 10 y porcentaje = 100%
+      const r1TotCell = host.querySelector('[data-rub-tot="momento1_R1"]');
+      const r1SumText = r1TotCell?.querySelector('.jecRubSumText')?.textContent.trim();
+      const r1PctText = r1TotCell?.querySelector('.jecRubPctText')?.textContent.trim();
+      const r1SubText = r1TotCell?.querySelector('.jecRubSumSub')?.textContent.trim();
+
+      assert('La suma de R1 es exactamente 10', r1SumText === '10', `Obtenido: ${r1SumText}`);
+      assert('El porcentaje de R1 llega exactamente al 100% de los docentes monitoreados', r1PctText === '100%', `Obtenido: ${r1PctText}`);
+      assert('Subtítulo confirma 100% de monitoreados', r1SubText === '100% de monitoreados', `Obtenido: ${r1SubText}`);
+
+      // 6. Asignar valores a R2 con suma incompleta (ej: 7 de 10) y verificar advertencia
+      const r2Inps = [0, 1, 2, 3].map(idx => host.querySelector(`.jecDocRubInp[data-momento="momento1"][data-rub="R2"][data-idx="${idx}"]`));
+      r2Inps[0].value = '2';
+      r2Inps[1].value = '2';
+      r2Inps[2].value = '3';
+      r2Inps[3].value = '0'; // Suma = 7
+      r2Inps.forEach(inp => inp.dispatchEvent(new Event('input')));
+
+      const r2TotCell = host.querySelector('[data-rub-tot="momento1_R2"]');
+      const r2SumText = r2TotCell?.querySelector('.jecRubSumText')?.textContent.trim();
+      const r2PctText = r2TotCell?.querySelector('.jecRubPctText')?.textContent.trim();
+      const r2SubText = r2TotCell?.querySelector('.jecRubSumSub')?.textContent.trim();
+
+      assert('R2 detecta suma incompleta (7 de 10)', r2SumText === '7');
+      assert('R2 porcentaje es 70%', r2PctText === '70%');
+      assert('R2 indica cuántos faltan para 100%', r2SubText?.includes('Faltan 3'));
+
+      // Verificar que los inputs de R2 se resaltan en ámbar como en Gestión Escolar
+      assert('Inputs de R2 tienen estilo de alerta (fondo o borde de advertencia)', r2Inps[0].style.borderColor !== '' || r2Inps[0].style.backgroundColor !== '');
+
+      // 7. Completar R2 a 10 y verificar que se regulariza a 100%
+      r2Inps[3].value = '3'; // Suma ahora es 10
+      r2Inps[3].dispatchEvent(new Event('input'));
+
+      const r2PctTextUpdated = r2TotCell?.querySelector('.jecRubPctText')?.textContent.trim();
+      assert('R2 actualizado llega al 100%', r2PctTextUpdated === '100%');
+
+    } catch (err) {
+      assert('Error inesperado durante ejecución de pruebas', false, err.message + '\n' + err.stack);
+    }
+
+    // Renderizar resultados
+    resultsEl.innerHTML = tests.map(t => `
+      <div class="card">
+        <div class="${t.pass ? 'pass' : 'fail'}">
+          ${t.pass ? '✓' : '✗'} ${t.name}
+        </div>
+        ${t.details ? `<div style="font-size:12px;color:#94a3b8;margin-top:4px">${t.details}</div>` : ''}
+      </div>
+    `).join('');
+  </script>
+</body>
+</html>
