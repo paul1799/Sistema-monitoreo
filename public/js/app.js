@@ -25,13 +25,13 @@ import {
   computeStats,
   forceResetBodyScroll,
   setAppState,
-} from './ui.js?v=20261012_v5';
+} from './ui.js?v=20261013_v7';
 
-import { renderDirectorioTab } from './directorio.js?v=20260928_v12';
+import { renderDirectorioTab } from './directorio.js?v=20261013_v1';
 
 import { renderAlertasTab, getAlertCount } from './alertas.js?v=20260928_v12';
 
-import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20260929_v15';
+import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261013_v2';
 
 /* ============================= MANEJADORES GLOBALES DE ERROR ============================= */
 if (typeof window !== 'undefined') {

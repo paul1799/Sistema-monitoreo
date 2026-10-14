@@ -222,10 +222,19 @@ function todayDateStr() {
 /** Determina si un directivo tiene información incompleta (falta DNI, teléfono o correo) */
 export function isDirectivoIncompleto(d) {
   if (!d) return true;
-  const noDni = !d.dni || d.dni.trim().length !== 8;
-  const noTel = !d.telefono || d.telefono.trim().length !== 9;
-  const noCorreo = !d.correo || !d.correo.includes('@');
-  return noDni || noTel || noCorreo;
+  const dniStr = String(d.dni || '').trim();
+  const dniDigits = dniStr.replace(/\D/g, '');
+  const telDigits = String(d.telefono || '').replace(/\D/g, '');
+  const correo = String(d.correo || '').trim();
+
+  // DNI válido en Perú: 7 u 8 dígitos (7 cuando Excel descarta el 0 inicial) o documento de extranjería
+  const validDni = (dniDigits.length >= 7 && dniDigits.length <= 8) || (dniStr.length >= 7 && dniStr.length <= 12);
+  // Teléfono válido: fijo (6-7 dígitos) o celular (9 dígitos, con o sin prefijo)
+  const validTel = telDigits.length >= 6 && telDigits.length <= 11;
+  // Correo institucional o personal con @
+  const validCorreo = correo.length > 3 && correo.includes('@');
+
+  return !validDni || !validTel || !validCorreo;
 }
 
 /* =========================================================================
@@ -895,14 +904,33 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
   // Mapear directivos a cada IE
   const ieDataList = colegios.map(c => {
     const directivosIE = getDirectivosForColegio(state, c.id, c.codigoLocal, c.codigoModular);
-    const directorActivo = directivosIE.find(d => d.cargo === 'Director' && d.estado === 'activo') || null;
+    let directorActivo = directivosIE.find(d => d.cargo === 'Director' && d.estado === 'activo') || null;
     const subdirectoresActivos = directivosIE.filter(d => d.cargo === 'Subdirector' && d.estado === 'activo');
     const directivosHistoricos = directivosIE.filter(d => d.estado === 'anterior');
 
-    // Comprobar completitud
+    // Sincronización inteligente con el padrón si el director no está en state.directivos o tiene datos más completos
+    if (!directorActivo && c.director && c.director.nombre && !isPlaceholderDirectivo(c.director.nombre)) {
+      directorActivo = {
+        colegioId: c.id,
+        codigoLocal: c.codigoLocal,
+        cargo: 'Director',
+        apellidosNombres: c.director.nombre,
+        dni: c.director.dni,
+        telefono: c.director.telefono,
+        correo: c.director.correo,
+        condicion: 'D',
+        estado: 'activo',
+        fuente: { tipo: 'colegios', fichaNombre: 'Padrón Oficial de Colegios' }
+      };
+    } else if (directorActivo && c.director) {
+      if (!directorActivo.dni && c.director.dni) directorActivo.dni = c.director.dni;
+      if (!directorActivo.telefono && c.director.telefono) directorActivo.telefono = c.director.telefono;
+      if (!directorActivo.correo && c.director.correo) directorActivo.correo = c.director.correo;
+    }
+
+    // Comprobar completitud: la IE se considera con datos incompletos si no tiene director o faltan datos indispensables del director
     const dirIncompleto = directorActivo ? isDirectivoIncompleto(directorActivo) : true;
-    const subIncompleto = subdirectoresActivos.some(sd => isDirectivoIncompleto(sd));
-    const tieneIncompleto = dirIncompleto || subIncompleto;
+    const tieneIncompleto = dirIncompleto;
     const tieneAviso = subdirectoresActivos.some(sd => !!sd.avisoRevision);
 
     return {
@@ -946,7 +974,9 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
           ${dir.condicion ? ` · <span style="font-weight:700">(${esc(dir.condicion)})</span>` : ''}
         </div>
       `;
-      dirDni = dir.dni ? `<code style="font-size:11.5px">${esc(dir.dni)}</code>` : '<span style="color:var(--danger)">Sin DNI</span>';
+      const rawDni = dir.dni ? String(dir.dni).trim() : '';
+      const dniFormat = (rawDni && /^\d{7}$/.test(rawDni)) ? rawDni.padStart(8, '0') : rawDni;
+      dirDni = dniFormat ? `<code style="font-size:11.5px">${esc(dniFormat)}</code>` : '<span style="color:var(--danger)">Sin DNI</span>';
       dirTel = dir.telefono ? esc(dir.telefono) : '<span style="color:var(--ink-soft)">—</span>';
       dirCorreo = dir.correo ? `<a href="mailto:${esc(dir.correo)}" style="color:var(--primary);text-decoration:none">${esc(dir.correo)}</a>` : '<span style="color:var(--ink-soft)">—</span>';
     }
@@ -974,7 +1004,13 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
         `;
       }).join('');
 
-      subDnis = subs.map(s => s.dni ? `<div style="padding:3px 0;border-bottom:1px dashed var(--line);margin-bottom:3px"><code style="font-size:11.5px">${esc(s.dni)}</code></div>` : '<div style="padding:3px 0;color:var(--danger)">Sin DNI</div>').join('');
+      subDnis = subs.map(s => {
+        const rawSubDni = s.dni ? String(s.dni).trim() : '';
+        const sDniFmt = (rawSubDni && /^\d{7}$/.test(rawSubDni)) ? rawSubDni.padStart(8, '0') : rawSubDni;
+        return sDniFmt 
+          ? `<div style="padding:3px 0;border-bottom:1px dashed var(--line);margin-bottom:3px"><code style="font-size:11.5px">${esc(sDniFmt)}</code></div>` 
+          : '<div style="padding:3px 0;color:var(--ink-soft)">—</div>';
+      }).join('');
       subTels = subs.map(s => `<div style="padding:3px 0;border-bottom:1px dashed var(--line);margin-bottom:3px">${esc(s.telefono || '—')}</div>`).join('');
       subCorreos = subs.map(s => `<div style="padding:3px 0;border-bottom:1px dashed var(--line);margin-bottom:3px">${s.correo ? `<a href="mailto:${esc(s.correo)}" style="color:var(--primary);text-decoration:none">${esc(s.correo)}</a>` : '—'}</div>`).join('');
     }
@@ -982,11 +1018,11 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
     return `
       <tr class="clickable directRow" data-col-id="${esc(c.id)}">
         <!-- Sticky: REI -->
-        <td class="stickyCol stickyCol1" style="font-weight:700;text-align:center">${esc(c.rei || '—')}</td>
+        <td class="stickyCol stickyCol1" style="font-weight:700;text-align:center;width:70px;min-width:70px;max-width:70px">${esc(c.rei || '—')}</td>
         <!-- Sticky: Código local -->
-        <td class="stickyCol stickyCol2"><code style="font-size:11.5px">${esc(c.codigoLocal || '—')}</code></td>
+        <td class="stickyCol stickyCol2" style="width:100px;min-width:100px;max-width:100px"><code style="font-size:11.5px">${esc(c.codigoLocal || '—')}</code></td>
         <!-- Sticky: I.E. -->
-        <td class="stickyCol stickyCol3" style="font-weight:600;min-width:180px">${esc(c.ie || '—')}</td>
+        <td class="stickyCol stickyCol3" style="font-weight:600;width:220px;min-width:220px">${esc(c.ie || '—')}</td>
         <!-- Datos de la IE -->
         <td>${esc(c.modalidad || '—')}</td>
         <td>${esc(c.nivelServicio || '—')}</td>
@@ -1154,7 +1190,7 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
             <option value="con_director" ${dirFilters.estadoDirectivo === 'con_director' ? 'selected' : ''}>Con director</option>
             <option value="sin_director" ${dirFilters.estadoDirectivo === 'sin_director' ? 'selected' : ''}>Sin director</option>
             <option value="con_subdirector" ${dirFilters.estadoDirectivo === 'con_subdirector' ? 'selected' : ''}>Con subdirector(es)</option>
-            <option value="incompletos" ${dirFilters.estadoDirectivo === 'incompletos' ? 'selected' : ''}>Datos incompletos</option>
+            <option value="incompletos" ${dirFilters.estadoDirectivo === 'incompletos' ? 'selected' : ''}>Datos incompletos (${conIncompletos})</option>
             <option value="con_aviso" ${dirFilters.estadoDirectivo === 'con_aviso' ? 'selected' : ''}>Con aviso de revisión (${conAvisosRevision})</option>
           </select>
         </div>
@@ -1184,26 +1220,26 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
             <!-- NIVEL 2: Encabezados de columna exactos -->
             <tr class="directorioHeaderNivel2">
               <!-- Sticky Columns -->
-              <th class="stickyCol stickyCol1" style="background:#d4e5f7;width:80px;text-align:center">REI</th>
-              <th class="stickyCol stickyCol2" style="background:#d4e5f7;width:95px">Código local</th>
-              <th class="stickyCol stickyCol3" style="background:#d4e5f7;min-width:180px">I.E.</th>
+              <th class="stickyCol stickyCol1" style="background:#d4e5f7;color:#12294D;width:70px;min-width:70px;max-width:70px;text-align:center;font-weight:700;border:1px solid #b6d4f2">REI</th>
+              <th class="stickyCol stickyCol2" style="background:#d4e5f7;color:#12294D;width:100px;min-width:100px;max-width:100px;font-weight:700;border:1px solid #b6d4f2">Código local</th>
+              <th class="stickyCol stickyCol3" style="background:#d4e5f7;color:#12294D;width:220px;min-width:220px;font-weight:700;border:1px solid #b6d4f2">I.E.</th>
               <!-- Datos IE -->
-              <th style="background:#e3edf7;width:95px">Modalidad</th>
-              <th style="background:#e3edf7;width:120px">Nivel / servicio</th>
-              <th style="background:#e3edf7;width:95px">Turnos</th>
-              <th style="background:#e3edf7;width:130px">Tipo de Gestión</th>
-              <th style="background:#e3edf7;width:110px">Dependencia</th>
-              <th style="background:#e3edf7;width:110px">Distrito</th>
+              <th style="background:#e3edf7;color:#12294D;width:95px;font-weight:700;border:1px solid #c7ddf2">Modalidad</th>
+              <th style="background:#e3edf7;color:#12294D;width:120px;font-weight:700;border:1px solid #c7ddf2">Nivel / servicio</th>
+              <th style="background:#e3edf7;color:#12294D;width:95px;font-weight:700;border:1px solid #c7ddf2">Turnos</th>
+              <th style="background:#e3edf7;color:#12294D;width:130px;font-weight:700;border:1px solid #c7ddf2">Tipo de Gestión</th>
+              <th style="background:#e3edf7;color:#12294D;width:110px;font-weight:700;border:1px solid #c7ddf2">Dependencia</th>
+              <th style="background:#e3edf7;color:#12294D;width:110px;font-weight:700;border:1px solid #c7ddf2">Distrito</th>
               <!-- Director -->
-              <th style="background:#d9ecd0;min-width:200px">Apellidos y nombres</th>
-              <th style="background:#d9ecd0;width:95px">DNI</th>
-              <th style="background:#d9ecd0;width:110px">Teléfono</th>
-              <th style="background:#d9ecd0;width:180px">Correo</th>
+              <th style="background:#d9ecd0;color:#1e4620;min-width:200px;font-weight:700;border:1px solid #bedbb2">Apellidos y nombres</th>
+              <th style="background:#d9ecd0;color:#1e4620;width:95px;font-weight:700;border:1px solid #bedbb2">DNI</th>
+              <th style="background:#d9ecd0;color:#1e4620;width:110px;font-weight:700;border:1px solid #bedbb2">Teléfono</th>
+              <th style="background:#d9ecd0;color:#1e4620;width:180px;font-weight:700;border:1px solid #bedbb2">Correo</th>
               <!-- Subdirector -->
-              <th style="background:#fbeee4;min-width:200px">Apellidos y nombres</th>
-              <th style="background:#fbeee4;width:95px">DNI</th>
-              <th style="background:#fbeee4;width:110px">Teléfono</th>
-              <th style="background:#fbeee4;width:180px">Correo</th>
+              <th style="background:#fbeee4;color:#5a2e16;min-width:200px;font-weight:700;border:1px solid #f2d4c0">Apellidos y nombres</th>
+              <th style="background:#fbeee4;color:#5a2e16;width:95px;font-weight:700;border:1px solid #f2d4c0">DNI</th>
+              <th style="background:#fbeee4;color:#5a2e16;width:110px;font-weight:700;border:1px solid #f2d4c0">Teléfono</th>
+              <th style="background:#fbeee4;color:#5a2e16;width:180px;font-weight:700;border:1px solid #f2d4c0">Correo</th>
             </tr>
           </thead>
           <tbody id="directorioTableBody">

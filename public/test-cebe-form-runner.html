@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Runner - Ficha de Monitoreo y Asistencia Técnica CEBE (RM N° 501-2025-MINEDU)</title>
+  <link rel="stylesheet" href="./css/style.css?v=20261013_v2">
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 20px; background: #0f172a; color: #f8fafc; }
+    .card { background: #1e293b; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .pass { color: #4ade80; font-weight: bold; }
+    .fail { color: #f87171; font-weight: bold; }
+    h1 { font-size: 20px; margin-bottom: 16px; }
+    pre { background: #090d16; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+    #testHost { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Validación Oficial de Ficha CEBE (RM N° 501-2025-MINEDU)</h1>
+  <div id="results"></div>
+  <div id="testHost"></div>
+
+  <script type="module">
+    import { isFichaEbrGestionEscolar } from './js/calcEngine.js?v=20261013_v2';
+    import {
+      isFichaCebeGestion,
+      renderCebeGestionForm,
+      preloadCebeFormState,
+      resetCebeFormState,
+      CEBE_SECCIONES,
+      TOTAL_CEBE_ITEMS
+    } from './js/cebe-gestion.js?v=20261013_v2';
+
+    const resultsEl = document.getElementById('results');
+    const host = document.getElementById('testHost');
+    const tests = [];
+
+    function assert(name, condition, details = '') {
+      tests.push({ name, pass: !!condition, details });
+    }
+
+    try {
+      // 1. Discriminación estricta de ficha
+      const mockCebeFt = {
+        id: 'ft_gestion_cebe',
+        nombre: 'Monitoreo y Asistencia Técnica a la Gestión Escolar - CEBE',
+        tipoRespuesta: 'ips',
+        escala: 'IPL'
+      };
+      const mockEbrFt = {
+        id: 'ft_gestion_ugel03_ebr',
+        nombre: 'Monitoreo y Asistencia Técnica a la Gestión Escolar – UGEL 03 EBR',
+        tipoRespuesta: 'ips',
+        escala: 'IPL'
+      };
+
+      assert('isFichaCebeGestion reconoce correctamente ft_gestion_cebe', isFichaCebeGestion(mockCebeFt) === true);
+      assert('isFichaCebeGestion NO confunde EBR con CEBE', isFichaCebeGestion(mockEbrFt) === false);
+      assert('isFichaEbrGestionEscolar NO confunde CEBE con EBR', isFichaEbrGestionEscolar(mockCebeFt) === false);
+      assert('isFichaEbrGestionEscolar reconoce correctamente EBR', isFichaEbrGestionEscolar(mockEbrFt) === true);
+
+      // 2. Total de ítems oficiales: 34
+      assert('El instrumento CEBE tiene exactamente 34 ítems oficiales', TOTAL_CEBE_ITEMS === 34);
+      let countItems = 0;
+      CEBE_SECCIONES.forEach(sec => countItems += sec.items.length);
+      assert('Las 7 secciones suman exactamente 34 ítems', countItems === 34);
+
+      // 3. Renderizado del formulario CEBE
+      resetCebeFormState();
+      const mockState = {
+        colegios: [
+          { id: 'c1', ie: 'CEBE 08 PERÚ HOLANDA', codigoLocal: '306699', rei: '13', modalidad: 'EBE' }
+        ],
+        submissions: []
+      };
+      const mockUser = { uid: 'u1', nombre: 'Especialista EBE' };
+
+      renderCebeGestionForm(host, mockCebeFt, mockState, null, mockUser, () => {}, false);
+
+      // Pestañas de 3 visitas
+      const tabs = host.querySelectorAll('[data-cebe-visita]');
+      assert('Se renderizan las pestañas para 3 visitas (V1, V2, V3)', tabs.length === 3);
+
+      // Sección I: Tablas de personal, SAANEE y acceso
+      const tablaPersonal = host.querySelector('.cebeDataTable');
+      assert('Sección I: Cuadro de Personal presente', !!tablaPersonal);
+
+      const inpCodLocal = host.querySelector('#cebe_cod_local');
+      assert('Sección I: Campo Código de Local existe', !!inpCodLocal);
+
+      // Sección II: Directora
+      const inpDir = host.querySelector('#cebe_dir_nombres');
+      assert('Sección II: Campo Directora existe', !!inpDir);
+
+      // Sección III: 34 ítems
+      const itemRows = host.querySelectorAll('.cebeItemRow');
+      assert('Sección III: Se renderizan exactamente 34 filas de ítems', itemRows.length === 34);
+
+      // Sección IV: Matriz de Logros, Aspectos de Mejora y Recomendaciones con 3 visitas
+      const logrosV1 = host.querySelector('#cebe_logros_v1');
+      const logrosV2 = host.querySelector('#cebe_logros_v2');
+      const logrosV3 = host.querySelector('#cebe_logros_v3');
+      assert('Sección IV: Campo Logros para Visita 1 presente', !!logrosV1);
+      assert('Sección IV: Campo Logros para Visita 2 presente', !!logrosV2);
+      assert('Sección IV: Campo Logros para Visita 3 presente', !!logrosV3);
+
+      const mejorasV1 = host.querySelector('#cebe_mejoras_v1');
+      const recV1 = host.querySelector('#cebe_rec_v1');
+      assert('Sección IV: Aspectos de mejora y recomendaciones presentes', !!mejorasV1 && !!recV1);
+
+      // Sección V: Compromisos de Mejora Directivo y Especialista
+      const compDir = host.querySelector('#cebe_comp_director');
+      const compEsp = host.querySelector('#cebe_comp_especialista');
+      assert('Sección V: Compromiso del Directivo(a) del CEBE presente', !!compDir);
+      assert('Sección V: Compromiso del Especialista AGEBRE presente', !!compEsp);
+
+      // 4. Precarga de datos (Modo Edición)
+      const mockSubmission = {
+        id: 'sub_cebe_01',
+        fichaTypeId: 'ft_gestion_cebe',
+        institucion: 'CEBE 08 PERÚ HOLANDA',
+        codigoLocal: '306699',
+        rei: '13',
+        visita: 2,
+        director: {
+          nombre: 'Ulloa Lara Rocío Angélica',
+          dni: '08656531',
+          telefono: '997110191',
+          condicion: 'Designada',
+          correo: 'ebe-08PH@ugel03.edu.pe'
+        },
+        fechasVisitas: { v1: '2026-05-25', v2: '2026-09-17', v3: '' },
+        nivelesAtiende: { inicial: true, primaria: true },
+        respuestas: [
+          { id: 'gc_1', valor: 'logrado' },
+          { id: 'gc_2', valor: 'proceso' }
+        ],
+        sintesisPorVisita: {
+          v1: { logros: 'Primera visita con 82%', mejoras: 'Sistematizar monitoreo', recomendaciones: 'Culminar monitoreo' },
+          v2: { logros: 'Plan concluido', mejoras: 'Plan lector', recomendaciones: 'Priorizar 2do momento' },
+          v3: { logros: '', mejoras: '', recomendaciones: '' }
+        },
+        compromisosPorVisita: {
+          v1: { director: 'Compromiso V1', especialista: 'Acompañamiento V1' },
+          v2: { director: 'Compromiso V2', especialista: 'Acompañamiento V2' },
+          v3: { director: '', especialista: '' }
+        }
+      };
+
+      preloadCebeFormState(mockSubmission, mockCebeFt);
+      renderCebeGestionForm(host, mockCebeFt, mockState, null, mockUser, () => {}, true);
+
+      const activeTab = host.querySelector('.cebeVisitaTab.active');
+      assert('Modo Edición: Carga correctamente en Visita 2', activeTab && activeTab.dataset.cebeVisita === '2');
+
+      const preloadedInst = host.querySelector('#f_institucion')?.value;
+      assert('Modo Edición: Precarga nombre del CEBE', preloadedInst === 'CEBE 08 PERÚ HOLANDA');
+
+      const preloadedDir = host.querySelector('#cebe_dir_nombres')?.value;
+      assert('Modo Edición: Precarga nombre de la Directora', preloadedDir === 'Ulloa Lara Rocío Angélica');
+
+      const preloadedLogrosV1 = host.querySelector('#cebe_logros_v1')?.value;
+      assert('Modo Edición: Precarga Logros Visita 1 en Sección IV', preloadedLogrosV1.includes('Primera visita'));
+
+      const preloadedLogrosV2 = host.querySelector('#cebe_logros_v2')?.value;
+      assert('Modo Edición: Precarga Logros Visita 2 en Sección IV', preloadedLogrosV2.includes('Plan concluido'));
+
+      const preloadedCompDir = host.querySelector('#cebe_comp_director')?.value;
+      assert('Modo Edición: Precarga Compromiso Directivo Visita 2 en Sección V', preloadedCompDir === 'Compromiso V2');
+
+      // Asegurar que NO se renderizan elementos de la ficha EBR (19/23 items banner o tablas R1-R5)
+      const ebrBanner = host.querySelector('.ebrGestionBanner, [data-momento]');
+      assert('Asegurado: NO se renderizan elementos o banners de la ficha EBR en CEBE', !ebrBanner);
+
+    } catch (e) {
+      assert('Error durante las pruebas', false, e.message + '\n' + e.stack);
+    }
+
+    // Renderizar resultados
+    resultsEl.innerHTML = tests.map(t => `
+      <div class="card">
+        <span class="${t.pass ? 'pass' : 'fail'}">${t.pass ? '✓ PASS' : '✗ FAIL'}</span>:
+        <strong>${t.name}</strong>
+        ${t.details ? `<pre>${t.details}</pre>` : ''}
+      </div>
+    `).join('');
+  </script>
+</body>
+</html>

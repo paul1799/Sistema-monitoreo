@@ -19,8 +19,8 @@ import {
   getReglaNivelEbrGestion,
   getNivelEbrGestion,
   getMomentoVisitaEbr
-} from './calcEngine.js?v=20260929_v15';
-import * as RepDatos from './reportes-datos.js?v=20260929_v18';
+} from './calcEngine.js?v=20261013_v2';
+import * as RepDatos from './reportes-datos.js?v=20261013_v2';
 
 import { AI_SCAN_ENDPOINT } from './firebase-config.js?v=20260918_v8';
 import {
@@ -52,7 +52,7 @@ import {
   PALETA_ESTANDAR,
   formatCodigoModular,
   JEDPA_THEME
-} from './pdf-template.js?v=20260930_v21';
+} from './pdf-template.js?v=20261013_v1';
 
 import {
   renderEbrGestionForm,
@@ -61,7 +61,7 @@ import {
   resetEbrFormState,
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES
-} from './ebr-gestion.js?v=20261012_v5';
+} from './ebr-gestion.js?v=20261013_v2';
 
 import {
   isFichaJec,
@@ -77,11 +77,18 @@ import {
   syncDirectivosFromFicha,
   getDirectivosForColegio,
   getDirectivosActivosForColegio
-} from './directorio.js?v=20260928_v12';
+} from './directorio.js?v=20261013_v1';
 
 import { exportarMatrizSeguimiento } from './exportarMatriz.js?v=20260930_v4';
 import { exportarTableroEBRCompleto } from './exportarTableroEBR.js?v=20261001_v1';
-import { calcularResultadoEbr, calcularResultadoEbrDesdeRespuestas, COLORES_ESTADO_EBR, estadoEbr, INSTRUMENTO_EBR } from './instrumentoGestionEBR.js?v=20261001_v1';
+import {
+  isFichaCebeGestion,
+  renderCebeGestionForm,
+  preloadCebeFormState,
+  resetCebeFormState,
+  guardarFormularioCebe,
+  CEBE_SECCIONES
+} from './cebe-gestion.js?v=20261013_v7';
 
 
 /* ============================= CONSTANTES COMPARTIDAS ============================= */
@@ -272,58 +279,120 @@ export function getSubmissionResponsable(s, state = null, currentUser = null) {
     return ESPECIALISTA_JEC_OFICIAL.nombresApellidos;
   }
 
-  // 2. Para las demás fichas (EBR, EBE, directivos):
-  // Colegios distribuidos por REI pertenecen a sus respectivos especialistas
+  // 1.1 REGLA ESPECÍFICA OFICIAL CEBE:
+  // Ficha de Monitoreo y Asistencia Técnica a la Gestión Escolar - CEBE
+  // Las 2 especialistas designadas son María Angélica Zavala Querevalú y Ana Rosario Valderrama Barrientos
+  if (s && (s.fichaTypeId === 'ft_gestion_cebe' || (s.fichaTypeNombre && s.fichaTypeNombre.toLowerCase().includes('cebe')))) {
+    if (s.responsable && String(s.responsable).trim() && s.responsable.trim() !== '—' && !s.responsable.includes('@') && !/^\d+$/.test(String(s.responsable).trim())) {
+      return String(s.responsable).trim();
+    }
+    const sRei = s.rei || s.red || '';
+    const sReiNorm = normalizeText(sRei);
+    if (sReiNorm.includes('13')) return 'María Angélica Zavala Querevalú';
+    if (sReiNorm.includes('15')) return 'Ana Rosario Valderrama Barrientos';
+  }
+
+  // 2. Si s.responsable tiene un nombre humano real (NO vacío, NO sólo números, y NO un correo electrónico como agebre@ugel03.gob.pe):
   if (s.responsable && String(s.responsable).trim() && s.responsable.trim() !== '—') {
     const rVal = String(s.responsable).trim();
-    if (!/^\d+$/.test(rVal)) {
+    if (!/^\d+$/.test(rVal) && !rVal.includes('@')) {
       return rVal;
     }
   }
 
-  // 3. Extras
+  // 3. Extras (verificando que no sea email ni números)
   if (Array.isArray(s.extras)) {
     const ex = s.extras.find(e => {
       const l = (e.label || '').toLowerCase();
       return (l.includes('responsable') || l.includes('especialista') || l.includes('monitor')) &&
         !l.includes('dni') && e.value && String(e.value).trim() && e.value.trim() !== '—' &&
-        !/^\d+$/.test(String(e.value).trim());
+        !/^\d+$/.test(String(e.value).trim()) && !String(e.value).includes('@');
     });
     if (ex && ex.value.trim()) return ex.value.trim();
   }
 
-  // 4. Especialista asignado a la RED (para las demás fichas)
-  const red = s ? (s.red || (s.ie && s.ie.red)) : '';
+  // 4. Especialista asignado a la RED / REI (para las demás fichas)
+  const red = s ? (s.red || (s.ie && s.ie.red) || s.rei) : '';
   if (red && red !== 'No aplica' && appState && Array.isArray(appState.responsables)) {
     const redNorm = normalizeText(red);
+    const redNumMatch = String(red).match(/\d+/);
+    const redNum = redNumMatch ? redNumMatch[0] : null;
+
     const matchedResp = appState.responsables.find(r => {
       if (!r.red) return false;
+      if (redNum) {
+        const rNums = String(r.red).match(/\d+/g) || [];
+        if (rNums.includes(redNum)) return true;
+      }
       const rRedNorm = normalizeText(r.red);
-      return rRedNorm.includes(redNorm) || redNorm.includes(rRedNorm) ||
-        (red.match(/\d+/) && r.red.includes(red.match(/\d+/)[0]));
+      return rRedNorm.includes(redNorm) || redNorm.includes(rRedNorm);
     });
+
     if (matchedResp) {
       const cand = (matchedResp.nombresApellidos || matchedResp.especialista || '').trim();
-      if (cand && !/^\d+$/.test(cand)) {
+      if (cand && !/^\d+$/.test(cand) && !cand.includes('@')) {
         return cand;
       }
     }
   }
 
-  // 5. state.users por createdBy
-  if (s && s.createdBy && appState && Array.isArray(appState.users)) {
-    const userObj = appState.users.find(u => u.uid === s.createdBy || u.id === s.createdBy || u.email === s.createdBy);
-    if (userObj && (userObj.nombre || userObj.displayName)) {
-      return (userObj.nombre || userObj.displayName).trim();
+  // 5. Búsqueda por colegio en state.colegios (para obtener su RED/REI)
+  if (s && (s.colegioId || s.institucion || s.codigoLocal) && appState && Array.isArray(appState.colegios) && Array.isArray(appState.responsables)) {
+    const col = appState.colegios.find(c =>
+      (s.colegioId && c.id === s.colegioId) ||
+      (s.codigoLocal && (c.codigoLocal === s.codigoLocal || c.codLocal === s.codigoLocal)) ||
+      (s.institucion && normalizeText(c.ie || c.nombre || '') === normalizeText(s.institucion))
+    );
+    if (col && (col.red || col.rei)) {
+      const colRed = col.red || col.rei;
+      const colRedNorm = normalizeText(colRed);
+      const colNumMatch = String(colRed).match(/\d+/);
+      const colNum = colNumMatch ? colNumMatch[0] : null;
+      const matchedResp = appState.responsables.find(r => {
+        if (!r.red) return false;
+        if (colNum) {
+          const rNums = String(r.red).match(/\d+/g) || [];
+          if (rNums.includes(colNum)) return true;
+        }
+        const rRedNorm = normalizeText(r.red);
+        return rRedNorm.includes(colRedNorm) || colRedNorm.includes(rRedNorm);
+      });
+      if (matchedResp) {
+        const cand = (matchedResp.nombresApellidos || matchedResp.especialista || '').trim();
+        if (cand && !/^\d+$/.test(cand) && !cand.includes('@')) {
+          return cand;
+        }
+      }
     }
   }
 
-  // 6. currentUser
+  // 6. Si s.responsable o s.createdBy es un correo, verificar si coincide con el correo de un especialista en state.responsables
+  const possibleEmail = (s.responsable && s.responsable.includes('@')) ? s.responsable : (s.createdBy && s.createdBy.includes('@') ? s.createdBy : '');
+  if (possibleEmail && appState && Array.isArray(appState.responsables)) {
+    const emailNorm = normalizeText(possibleEmail);
+    const matchedByEmail = appState.responsables.find(r => r.correo && normalizeText(r.correo) === emailNorm);
+    if (matchedByEmail) {
+      const cand = (matchedByEmail.nombresApellidos || matchedByEmail.especialista || '').trim();
+      if (cand && !cand.includes('@')) return cand;
+    }
+  }
+
+  // 7. state.users por createdBy (SOLO si tiene nombre o displayName humano y NO es email)
+  if (s && s.createdBy && appState && Array.isArray(appState.users)) {
+    const userObj = appState.users.find(u => u.uid === s.createdBy || u.id === s.createdBy || u.email === s.createdBy);
+    if (userObj && (userObj.nombre || userObj.displayName)) {
+      const uName = (userObj.nombre || userObj.displayName).trim();
+      if (!uName.includes('@')) return uName;
+    }
+  }
+
+  // 8. currentUser (SOLO si tiene nombre o displayName humano y NO es email)
   const user = currentUser || _currentSessionUser || (appState && appState.currentUser) || null;
   if (user && s && s.createdBy && s.createdBy === user.uid && (user.nombre || user.displayName)) {
-    return (user.nombre || user.displayName).trim();
+    const uName = (user.nombre || user.displayName).trim();
+    if (!uName.includes('@')) return uName;
   }
-  return '';
+  return '—';
 }
 
 /* ============================= HELPERS DE RENDER ============================= */
@@ -433,6 +502,8 @@ export function computeStats(sub, ft) {
     ftForCalc = { ...ft, regla_nivel: ft?.regla_nivel || REGLA_NIVEL_COORD_TUTORIA_JEC };
   } else if (isFichaJec(ft || sub) && respuestasArray && respuestasArray.length > 0) {
     ftForCalc = { ...ft, secciones: JEC_SECCIONES, tipoRespuesta: 'si_no', regla_nivel: ft?.regla_nivel || REGLA_NIVEL_JEC };
+  } else if (isFichaCebeGestion(ft || sub) && respuestasArray && respuestasArray.length > 0) {
+    ftForCalc = { ...ft, secciones: CEBE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
   }
   const result = calcScore(respuestasArray, ftForCalc);
   let finalEstado = {
@@ -2210,6 +2281,25 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     regSelectedColegioId = null;
   }
 
+  // Interceptar Ficha "Monitoreo y Asistencia Técnica a la Gestión Escolar - CEBE"
+  if (isFichaCebeGestion(ft)) {
+    if (editingSubmissionData) {
+      preloadCebeFormState(editingSubmissionData, ft);
+    }
+    renderCebeGestionForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData);
+    if (editingSubmissionData && editingSubmissionData.id) {
+      const f = host.querySelector('#regForm');
+      if (f) f.dataset.editingId = editingSubmissionData.id;
+    }
+    host.onsubmit = async (e) => {
+      if (e.target && e.target.id === 'regForm') {
+        if (e.defaultPrevented) return;
+        await onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate);
+      }
+    };
+    return;
+  }
+
   // Interceptar Ficha "Monitoreo y Asistencia Técnica a la Gestión Escolar – UGEL 03 EBR"
   if (isFichaEbrGestionEscolar(ft)) {
     if (editingSubmissionData) {
@@ -3145,6 +3235,13 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       throw new Error('No se encontró la configuración del tipo de ficha seleccionado.');
     }
 
+    // Interceptar guardado de Ficha "Monitoreo y Asistencia Técnica a la Gestión Escolar - CEBE"
+    if (isFichaCebeGestion(ft)) {
+      const targetForm = (form && form.id === 'regForm') ? form : (document.getElementById('regForm') || document.getElementById('regFormHost')?.querySelector('#regForm'));
+      await guardarFormularioCebe(targetForm, ft, activeState, dbNs, currentUser, navigate, isEdit);
+      return;
+    }
+
     // Interceptar guardado de Ficha "Monitoreo y Asistencia Técnica a la Gestión Escolar – UGEL 03 EBR"
     if (isFichaEbrGestionEscolar(ft)) {
       const ebrData = collectEbrGestionFormData(form || document.getElementById('regFormHost'), ft, isEdit);
@@ -3874,15 +3971,8 @@ export function getEnrichedFichaType(ft) {
       if (autoOrden === null) autoOrden = 22;
       if (autoTieneVisitas === null) autoTieneVisitas = false;
     }
-    // 6. Gestión Escolar EBR
-    else if (isFichaEbrGestionEscolar(ft) || (nNorm.includes('gestion escolar') && (nNorm.includes('ebr') || nNorm.includes('ugel'))) || idNorm.includes('ebr')) {
-      autoGrupo = 'Gestión escolar y docentes (EBR)';
-      if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Gestión Escolar EBR';
-      if (autoOrden === null) autoOrden = 20;
-      if (autoTieneVisitas === null) autoTieneVisitas = true;
-    }
-    // 7. CEBE / PRITE
-    else if (nNorm.includes('cebe') || nNorm.includes('prite') || idNorm.includes('cebe') || idNorm.includes('prite')) {
+    // 6. CEBE / PRITE
+    else if (isFichaCebeGestion(ft) || nNorm.includes('cebe') || nNorm.includes('prite') || idNorm.includes('cebe') || idNorm.includes('prite')) {
       autoGrupo = 'CEBE / PRITE';
       if (nNorm.includes('material')) {
         if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Materiales educativos (CEBE/PRITE)';
@@ -3901,6 +3991,16 @@ export function getEnrichedFichaType(ft) {
         if (autoOrden === null) autoOrden = 30;
         if (autoTieneVisitas === null) autoTieneVisitas = true;
       }
+      if (isFichaCebeGestion(ft)) {
+        ft = { ...ft, secciones: CEBE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
+      }
+    }
+    // 7. Gestión Escolar EBR
+    else if (isFichaEbrGestionEscolar(ft) || (((nNorm.includes('gestion escolar') || nNorm.includes('gestion')) && (nNorm.includes('ebr') || nNorm.includes('ugel'))) && !nNorm.includes('cebe') && !nNorm.includes('prite')) || (idNorm.includes('ebr') && !idNorm.includes('cebe'))) {
+      autoGrupo = 'Gestión escolar y docentes (EBR)';
+      if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Gestión Escolar EBR';
+      if (autoOrden === null) autoOrden = 20;
+      if (autoTieneVisitas === null) autoTieneVisitas = true;
     }
   }
 
@@ -4018,6 +4118,48 @@ export function loadReportesFiltersFromUrl(state) {
   return f;
 }
 
+/**
+ * Deduplica envíos gemelos producidos por doble submit concurrente
+ * (mismo tipo, misma IE, misma visita, misma fecha y mismo puntaje o creado en el mismo momento).
+ */
+export function deduplicateTwinSubmissions(subsList) {
+  if (!subsList || !subsList.length) return [];
+  const seen = new Map();
+  const result = [];
+
+  for (const s of subsList) {
+    const instKey = (s.colegioId || normalizeText(s.institucion || '')).trim();
+    const typeKey = s.fichaTypeId || '';
+    const visKey = String(s.visita || 1);
+    const dateKey = s.fecha || '';
+    const key = `${typeKey}|${instKey}|${visKey}|${dateKey}`;
+
+    if (!seen.has(key)) {
+      seen.set(key, s);
+      result.push(s);
+    } else {
+      const prev = seen.get(key);
+      const timeDiff = Math.abs((Number(s.createdAt) || 0) - (Number(prev.createdAt) || 0));
+      const sameScore = (s.porcentaje === prev.porcentaje) || (s.puntaje === prev.puntaje);
+      if (timeDiff < 180000 || sameScore) {
+        // Si el clon tiene un responsable asignado y el previo no, preferir el clon
+        const prevResp = (prev.responsable && String(prev.responsable).trim() !== '—') ? String(prev.responsable).trim() : '';
+        const currResp = (s.responsable && String(s.responsable).trim() !== '—') ? String(s.responsable).trim() : '';
+        if (!prevResp && currResp) {
+          const idx = result.indexOf(prev);
+          if (idx !== -1) result[idx] = s;
+          seen.set(key, s);
+        }
+        // Descartar duplicado
+        continue;
+      } else {
+        result.push(s);
+      }
+    }
+  }
+  return result;
+}
+
 export function aplicarFiltrosReporte(submissions, filters, state, getFichaType, user = null) {
   const f = filters || {};
   const isAllMode = !f.tipo || f.tipo === '__ALL__';
@@ -4027,6 +4169,9 @@ export function aplicarFiltrosReporte(submissions, filters, state, getFichaType,
   let subs = isAllMode
     ? submissions.slice()
     : submissions.filter(s => s.fichaTypeId === (targetFt ? targetFt.id : f.tipo));
+
+  // Deduplicación defensiva en memoria contra envíos dobles idénticos
+  subs = deduplicateTwinSubmissions(subs);
 
   // 2. Institución (nombre o código modular / local)
   if (f.institucion && f.institucion.trim()) {
@@ -4318,6 +4463,7 @@ function renderSection2Html(statsList, instCount, state, getFichaType, user, isA
   const isAllMode = !filtrosReporte.tipo || filtrosReporte.tipo === '__ALL__';
   const ft = !isAllMode ? getEnrichedFichaType(getFichaType(filtrosReporte.tipo)) : null;
   const isEbr = ft && isFichaEbrGestionEscolar(ft);
+  const isCebe = ft && isFichaCebeGestion(ft);
   const selectedShortName = isAllMode ? 'Todas las fichas' : (ft ? ft.nombreCorto : '—');
 
   let visitaSelectHtml = '';
@@ -4327,6 +4473,15 @@ function renderSection2Html(statsList, instCount, state, getFichaType, user, isA
         <option value="">— Elige Visita (obligatorio) —</option>
         <option value="1"${String(filtrosReporte.visita) === '1' ? ' selected' : ''}>Visita 1 · Primer momento</option>
         <option value="2"${String(filtrosReporte.visita) === '2' ? ' selected' : ''}>Visita 2 · Segundo momento</option>
+      </select>
+    `;
+  } else if (!isAllMode && ft && isCebe) {
+    visitaSelectHtml = `
+      <select id="fil_visita" required>
+        <option value="">— Elige Visita (obligatorio) —</option>
+        <option value="1"${String(filtrosReporte.visita) === '1' ? ' selected' : ''}>Visita 1 · Primer momento</option>
+        <option value="2"${String(filtrosReporte.visita) === '2' ? ' selected' : ''}>Visita 2 · Segundo momento</option>
+        <option value="3"${String(filtrosReporte.visita) === '3' ? ' selected' : ''}>Visita 3 · Tercer momento</option>
       </select>
     `;
   } else if (!isAllMode && ft && ft.tieneVisitas) {
@@ -4360,30 +4515,12 @@ function renderSection2Html(statsList, instCount, state, getFichaType, user, isA
     ...state.colegios.map(c => c.red || c.rei).filter(Boolean)
   ])).sort();
 
-  const ugelOptions = Array.from(new Set([
-    'UGEL 03',
-    ...state.submissions.map(s => s.ugel).filter(Boolean),
-    ...state.colegios.map(c => c.ugel).filter(Boolean)
-  ])).sort();
-
-  let colegiosFiltradosRed = state.colegios || [];
-  if (filtrosReporte.red) {
-    const normRed = normalizeText(filtrosReporte.red);
-    colegiosFiltradosRed = colegiosFiltradosRed.filter(c => normalizeText(c.red || c.rei || '').includes(normRed));
-  }
-  const distritoOptions = Array.from(new Set(colegiosFiltradosRed.map(c => c.distrito).filter(Boolean))).sort();
-
-  const gestionOptions = Array.from(new Set(state.colegios.map(c => c.tipoGestion).filter(Boolean))).sort();
-
   const activeChips = [];
   if (filtrosReporte.visita) activeChips.push({ key: 'visita', label: `Visita ${filtrosReporte.visita}` });
   if (filtrosReporte.estado) activeChips.push({ key: 'estado', label: `Estado: ${filtrosReporte.estado}` });
   if (filtrosReporte.responsable) activeChips.push({ key: 'responsable', label: `Resp: ${filtrosReporte.responsable}` });
   if (filtrosReporte.institucion) activeChips.push({ key: 'institucion', label: `IE: ${filtrosReporte.institucion}` });
   if (filtrosReporte.red) activeChips.push({ key: 'red', label: `RED: ${filtrosReporte.red}` });
-  if (filtrosReporte.ugel) activeChips.push({ key: 'ugel', label: `UGEL: ${filtrosReporte.ugel}` });
-  if (filtrosReporte.distrito) activeChips.push({ key: 'distrito', label: `Distrito: ${filtrosReporte.distrito}` });
-  if (filtrosReporte.tipoGestion) activeChips.push({ key: 'tipoGestion', label: `Gestión: ${filtrosReporte.tipoGestion}` });
   if (filtrosReporte.desde) activeChips.push({ key: 'desde', label: `Desde: ${fmtDate(filtrosReporte.desde)}` });
   if (filtrosReporte.hasta) activeChips.push({ key: 'hasta', label: `Hasta: ${fmtDate(filtrosReporte.hasta)}` });
 
@@ -4396,15 +4533,20 @@ function renderSection2Html(statsList, instCount, state, getFichaType, user, isA
   `).join('');
 
   const isEbrSinVisita = isEbr && (filtrosReporte.visita !== '1' && filtrosReporte.visita !== '2');
-  const msgVisitaObligatoria = 'Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.';
+  const isCebeSinVisita = isCebe && (!['1', '2', '3'].includes(String(filtrosReporte.visita)));
+  const isGestionSinVisita = isEbrSinVisita || isCebeSinVisita;
+
+  const msgVisitaObligatoria = isCebe
+    ? 'Elige Visita 1, Visita 2 o Visita 3. Cada visita se analiza y descarga por separado.'
+    : 'Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.';
 
   const isZeroSubmissions = statsList.length === 0;
-  const downloadDisabled = isZeroSubmissions || isEbrSinVisita;
-  const downloadDisabledTitle = isEbrSinVisita
+  const downloadDisabled = isZeroSubmissions || isGestionSinVisita;
+  const downloadDisabledTitle = isGestionSinVisita
     ? msgVisitaObligatoria
     : (isZeroSubmissions ? 'No hay fichas con los filtros activos' : '');
 
-  const bannerEbrHtml = isEbrSinVisita ? `
+  const bannerEbrHtml = isGestionSinVisita ? `
     <div style="background:#FFF3CD;border:1px solid #FFEEBA;color:#856404;padding:10px 14px;border-radius:6px;font-size:12.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
       <span>⚠️</span> <span><strong>Atención:</strong> ${msgVisitaObligatoria}</span>
     </div>
@@ -4431,15 +4573,8 @@ function renderSection2Html(statsList, instCount, state, getFichaType, user, isA
       <div class="filterSubgroup">
         <div class="filterSubgroupTitle">Ficha y resultado</div>
         <div class="field" style="margin-bottom:0">
-          <label for="fil_visita">Visita ${isEbr ? '<span style="color:var(--danger,#dc2626)">*</span>' : ''}</label>
+          <label for="fil_visita">Visita ${(isEbr || isCebe) ? '<span style="color:var(--danger,#dc2626)">*</span>' : ''}</label>
           ${visitaSelectHtml}
-        </div>
-        <div class="field" style="margin-bottom:0">
-          <label for="fil_estado">Estado</label>
-          <select id="fil_estado">
-            <option value="">Todos</option>
-            ${['Logrado', 'En proceso', 'Inicio'].map(v => `<option value="${v}"${v === filtrosReporte.estado ? ' selected' : ''}>${v}</option>`).join('')}
-          </select>
         </div>
         <div class="field" style="margin-bottom:0">
           <label for="fil_responsable">Responsable</label>
@@ -4469,26 +4604,10 @@ function renderSection2Html(statsList, instCount, state, getFichaType, user, isA
             </select>
           </div>
           <div class="field" style="flex:1;margin-bottom:0">
-            <label for="fil_ugel">UGEL</label>
-            <select id="fil_ugel">
-              <option value="">Todas</option>
-              ${ugelOptions.map(u => `<option value="${esc(u)}"${u === filtrosReporte.ugel ? ' selected' : ''}>${esc(u)}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <div class="field" style="flex:1;margin-bottom:0">
-            <label for="fil_distrito">Distrito</label>
-            <select id="fil_distrito">
+            <label for="fil_estado">Estado</label>
+            <select id="fil_estado">
               <option value="">Todos</option>
-              ${distritoOptions.map(d => `<option value="${esc(d)}"${d === filtrosReporte.distrito ? ' selected' : ''}>${esc(d)}</option>`).join('')}
-            </select>
-          </div>
-          <div class="field" style="flex:1;margin-bottom:0">
-            <label for="fil_tipogestion">Gestión</label>
-            <select id="fil_tipogestion">
-              <option value="">Todos</option>
-              ${gestionOptions.map(g => `<option value="${esc(g)}"${g === filtrosReporte.tipoGestion ? ' selected' : ''}>${esc(g)}</option>`).join('')}
+              ${['Logrado', 'En proceso', 'Inicio'].map(v => `<option value="${v}"${v === filtrosReporte.estado ? ' selected' : ''}>${v}</option>`).join('')}
             </select>
           </div>
         </div>
@@ -4565,9 +4684,11 @@ function updateStickyReportesBar(statsList, getFichaType) {
   const ft = !isAllMode ? getEnrichedFichaType(getFichaType(filtrosReporte.tipo)) : null;
   const shortName = isAllMode ? 'Todas las fichas' : (ft ? ft.nombreCorto : '—');
   const isEbr = ft && isFichaEbrGestionEscolar(ft);
-  const isEbrSinVisita = isEbr && (filtrosReporte.visita !== '1' && filtrosReporte.visita !== '2');
+  const isCebe = ft && isFichaCebeGestion(ft);
+  const isGestionSinVisita = (isEbr && (filtrosReporte.visita !== '1' && filtrosReporte.visita !== '2')) ||
+                             (isCebe && (!['1', '2', '3'].includes(String(filtrosReporte.visita))));
   const isZero = statsList.length === 0;
-  const disabled = isZero || isEbrSinVisita;
+  const disabled = isZero || isGestionSinVisita;
 
   bar.innerHTML = `
     <div class="stickyReportesInfo">
@@ -4614,6 +4735,13 @@ export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdm
   // Cargar estado inicial desde URL o sessionStorage
   if (!reportesFiltersInitialized) {
     const loaded = loadReportesFiltersFromUrl(state);
+    const initFt = loaded.tipo && loaded.tipo !== '__ALL__' ? state.fichaTypes.find(t => t.id === loaded.tipo) : null;
+    if (initFt && (isFichaEbrGestionEscolar(initFt) || isFichaCebeGestion(initFt))) {
+      const valid = isFichaEbrGestionEscolar(initFt) ? ['1', '2'] : ['1', '2', '3'];
+      if (!loaded.visita || !valid.includes(String(loaded.visita))) {
+        loaded.visita = '1';
+      }
+    }
     syncFiltersState(loaded);
     reportesFiltersInitialized = true;
   }
@@ -4710,13 +4838,18 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
   const colProc = 'var(--warn, #d97706)';
   const colIni = 'var(--danger, #dc2626)';
 
+  const vFilter = filtrosReporte.visita ? String(filtrosReporte.visita).trim() : '';
+  const distTotal = dist.logrado + dist.proceso + dist.inicio + dist.none;
+  const centerSubLabel = vFilter ? `fichas V${vFilter}` : 'fichas';
+  const panelDistTitle = vFilter ? `Distribución de resultados · Visita ${vFilter}` : 'Distribución de resultados';
+
   const seg = '<div class="distWrap">' +
     donutChart([
       { value: dist.logrado, color: colLog, label: 'Logrado' },
       { value: dist.proceso, color: colProc, label: 'En proceso' },
       { value: dist.inicio, color: colIni, label: 'Inicio' },
       { value: dist.none, color: 'var(--line-strong, #94a3b8)', label: 'Sin datos' },
-    ], { centerLabel: (dist.logrado + dist.proceso + dist.inicio + dist.none), centerSub: 'fichas' }) +
+    ], { centerLabel: distTotal, centerSub: centerSubLabel }) +
     '<div class="seglegend" style="flex-direction:column;gap:8px;align-items:flex-start">' +
     '<span><span class="dot" style="background:' + colLog + '"></span>Logrado (' + dist.logrado + ')</span>' +
     '<span><span class="dot" style="background:' + colProc + '"></span>En proceso (' + dist.proceso + ')</span>' +
@@ -4732,6 +4865,8 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     if (isEbr) {
       const hasV2 = statsList.some(x => Number(x.s.visita) === 2);
       seccionesParaAgg = hasV2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
+    } else if (isFichaCebeGestion(ft)) {
+      seccionesParaAgg = CEBE_SECCIONES;
     }
     const secAgg = {};
     seccionesParaAgg.forEach(sec => secAgg[sec.nombre] = { sum: 0, cnt: 0 });
@@ -4853,9 +4988,9 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     const typeCol = isAllMode ? '<td><span class="badge st-none" style="font-size:10.5px">' + esc(typeName) + '</span></td>' : '';
     const ugelRedCol = '<td>' + esc(s.ugel || 'UGEL 03') + '<br><small style="color:var(--text-muted);font-weight:600;">' + esc(s.red || 'No aplica') + '</small></td>';
     const subResp = getSubmissionResponsable(s, state, user);
-    const displayResp = (subResp && !/^\d+$/.test(subResp))
+    const displayResp = (subResp && !/^\d+$/.test(subResp) && !subResp.includes('@') && subResp !== '—')
       ? subResp
-      : ((s.responsable && !/^\d+$/.test(String(s.responsable).trim())) ? String(s.responsable).trim() : '—');
+      : ((s.responsable && !/^\d+$/.test(String(s.responsable).trim()) && !String(s.responsable).includes('@')) ? String(s.responsable).trim() : (subResp || '—'));
     const isCoordTutoria = isFichaCoordTutoriaJec(sFt || ft);
     let pctDisplay = (st.pct === null ? '—' : st.pct + '%');
     if (isEbr && st.puntaje !== undefined && st.puntaje !== null) {
@@ -4945,7 +5080,8 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
 
     const visitBadges = Object.keys(visitaCounts).sort().map(vn => {
       const count = visitaCounts[vn];
-      return '<span class="badge st-none" style="font-size:10.5px;padding:2px 6px;margin-left:4px;font-weight:700" title="' + count + ' registros en V' + vn + '">V' + vn + ' (' + count + ')</span>';
+      const badgeText = count > 1 ? `V${vn} (${count})` : `V${vn}`;
+      return '<span class="badge st-none" style="font-size:10.5px;padding:2px 6px;margin-left:4px;font-weight:700" title="' + count + ' visita(s) en V' + vn + '">' + badgeText + '</span>';
     }).join('');
 
     const totalVisitas = g.visitas.length;
@@ -4993,15 +5129,138 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     </div>
   `;
 
-  host.innerHTML = `
-    <div id="reportCapture">
+  // Cálculo de tarjetas KPI para fichas con modalidad específica (EBR y CEBE)
+  const isEbrReport = !isAllMode && ft && isFichaEbrGestionEscolar(ft);
+  const isCebeReport = !isAllMode && ft && isFichaCebeGestion(ft);
+  const targetModality = isEbrReport ? 'EBR' : (isCebeReport ? 'EBE' : null);
+
+  let cardsHtml = '';
+  if (targetModality) {
+    const padron = state.colegios || [];
+    const isModalityMatch = (c, mod) => {
+      if (!c) return false;
+      const m = String(c.modalidad || '').toUpperCase().trim();
+      const ie = String(c.ie || c.nombre || '').toUpperCase();
+      if (mod === 'EBR') {
+        if (m === 'EBR' || m.includes('EBR') || m.includes('REGULAR')) return true;
+        if (!m) {
+          if (ie.includes('CEBE') || ie.includes('PRITE') || ie.includes('CEBA') || ie.includes('CETPRO')) return false;
+          return true;
+        }
+        return false;
+      }
+      if (mod === 'EBE') {
+        if (m === 'EBE' || m.includes('EBE') || m.includes('ESPECIAL') || m.includes('CEBE')) return true;
+        if (ie.includes('CEBE') || ie.includes('PRITE') || ie.includes('ESPECIAL')) return true;
+        return false;
+      }
+      return false;
+    };
+
+    // 1. Filtrar padrón según modalidad
+    let targetColegios = padron.filter(c => isModalityMatch(c, targetModality));
+
+    // 2. Aplicar filtros activos del reporte sobre el padrón de colegios
+    if (filtrosReporte.red && filtrosReporte.red.trim()) {
+      const qRed = normalizeText(filtrosReporte.red.trim());
+      targetColegios = targetColegios.filter(c => normalizeText(c.rei || c.red || '').includes(qRed));
+    }
+    if (filtrosReporte.distrito && filtrosReporte.distrito.trim()) {
+      const qDist = normalizeText(filtrosReporte.distrito.trim());
+      targetColegios = targetColegios.filter(c => normalizeText(c.distrito || '').includes(qDist));
+    }
+    if (filtrosReporte.tipoGestion && filtrosReporte.tipoGestion.trim()) {
+      targetColegios = targetColegios.filter(c => c.tipoGestion === filtrosReporte.tipoGestion);
+    }
+    if (filtrosReporte.institucion && filtrosReporte.institucion.trim()) {
+      const qInst = normalizeText(filtrosReporte.institucion.trim());
+      targetColegios = targetColegios.filter(c => {
+        return normalizeText(c.ie || c.nombre || '').includes(qInst) ||
+               normalizeText(c.codigoLocal || '').includes(qInst) ||
+               normalizeText(c.codigoModular || '').includes(qInst);
+      });
+    }
+
+    // 3. Identificar colegios que han sido ejecutados (tienen al menos una ficha registrada)
+    const executedColIds = new Set();
+    const executedExtraKeys = new Set();
+    const targetById = new Map();
+    const targetByCode = new Map();
+    const targetByIe = new Map();
+
+    targetColegios.forEach(c => {
+      if (c.id) targetById.set(c.id, c);
+      if (c.codigoLocal) targetByCode.set(normalizeText(c.codigoLocal), c);
+      if (c.codigoModular) targetByCode.set(normalizeText(c.codigoModular), c);
+      if (c.ie) targetByIe.set(normalizeInstName(c.ie), c);
+    });
+
+    statsList.forEach(x => {
+      const s = x.s;
+      let matchedCol = null;
+      if (s.colegioId && targetById.has(s.colegioId)) {
+        matchedCol = targetById.get(s.colegioId);
+      } else if (s.codigoLocal && targetByCode.has(normalizeText(s.codigoLocal))) {
+        matchedCol = targetByCode.get(normalizeText(s.codigoLocal));
+      } else if (s.codigoModular && targetByCode.has(normalizeText(s.codigoModular))) {
+        matchedCol = targetByCode.get(normalizeText(s.codigoModular));
+      } else if (s.institucion && targetByIe.has(normalizeInstName(s.institucion))) {
+        matchedCol = targetByIe.get(normalizeInstName(s.institucion));
+      }
+
+      if (matchedCol) {
+        executedColIds.add(matchedCol.id);
+      } else {
+        const rawKey = s.colegioId ? ('col_' + s.colegioId) : (normalizeInstName(s.institucion || '') + '|' + normalizeText(s.ugel || 'UGEL 03'));
+        executedExtraKeys.add(rawKey);
+      }
+    });
+
+    const numEjecutadas = executedColIds.size + executedExtraKeys.size;
+    const iesEjecutadas = Math.max(numEjecutadas, instCount);
+    const totalIesModalidad = targetColegios.length > 0 ? Math.max(targetColegios.length, iesEjecutadas) : iesEjecutadas;
+    const iesPendientes = Math.max(0, totalIesModalidad - iesEjecutadas);
+    const coberturaPct = totalIesModalidad > 0 ? Math.round((iesEjecutadas / totalIesModalidad) * 100) : 0;
+
+    cardsHtml = `
+      <div class="cards cards-5col">
+        <div class="card card-navy" title="Total de instituciones educativas ${targetModality} en el padrón según filtros activos">
+          <div class="num">${totalIesModalidad}</div>
+          <div class="lbl">Total IEs ${targetModality}</div>
+        </div>
+        <div class="card card-ok" title="Instituciones educativas que cuentan con al menos una ficha de monitoreo registrada">
+          <div class="num" style="color:var(--ok, #16a34a)">${iesEjecutadas}</div>
+          <div class="lbl">IEs Ejecutadas <span style="font-size:11px;color:var(--ok, #16a34a);font-weight:700">(${coberturaPct}%)</span></div>
+        </div>
+        <div class="card card-warn" title="Instituciones educativas de modalidad ${targetModality} pendientes de monitoreo">
+          <div class="num" style="color:var(--warn, #d97706)">${iesPendientes}</div>
+          <div class="lbl">IEs Pendientes</div>
+        </div>
+        <div class="card card-blue" title="Cantidad total de fichas de monitoreo registradas con los filtros seleccionados">
+          <div class="num">${statsList.length}</div>
+          <div class="lbl">Fichas registradas ${vFilter ? `(V${vFilter})` : ''}</div>
+        </div>
+        <div class="card card-gold" title="Promedio general de cumplimiento en las fichas">
+          <div class="num">${avgPct === null ? '—' : avgPct + '%'}</div>
+          <div class="lbl">Cumplimiento promedio</div>
+        </div>
+      </div>
+    `;
+  } else {
+    cardsHtml = `
       <div class="cards">
-        <div class="card"><div class="num">${statsList.length}</div><div class="lbl">Fichas registradas</div></div>
+        <div class="card"><div class="num">${statsList.length}</div><div class="lbl">Fichas registradas ${vFilter ? `(V${vFilter})` : ''}</div></div>
         <div class="card"><div class="num">${instCount}</div><div class="lbl">Instituciones</div></div>
         ${isAllMode ? `<div class="card"><div class="num">${state.fichaTypes.length}</div><div class="lbl">Tipos de ficha</div></div>` : ''}
         <div class="card"><div class="num">${avgPct === null ? '—' : avgPct + '%'}</div><div class="lbl">Cumplimiento promedio</div></div>
       </div>
-      <div class="panel"><h3>Distribución de resultados</h3>${seg}</div>
+    `;
+  }
+
+  host.innerHTML = `
+    <div id="reportCapture">
+      ${cardsHtml}
+      <div class="panel"><h3>${panelDistTitle}</h3>${seg}</div>
       ${allTypesSummaryHtml}
       ${!isAllMode ? `<div class="panel"><h3>Reporte por ítem <small>resultado de cada indicador</small></h3>${itemReportHtml}</div>` : ''}
       <div class="panel"><h3>Evolución por N° de visita</h3>${visRows}</div>
@@ -5155,11 +5414,17 @@ function attachSection1Listeners(secTipo, state, getFichaType, dbNs, isAdmin, na
     } else if (typeId === '__ALL__' && filtrosReporte.visita) {
       filtrosReporte.visita = '';
       consFilters.visita = '';
+    } else if (newFt && (isFichaEbrGestionEscolar(newFt) || isFichaCebeGestion(newFt))) {
+      const validVisitas = isFichaEbrGestionEscolar(newFt) ? ['1', '2'] : ['1', '2', '3'];
+      if (!filtrosReporte.visita || !validVisitas.includes(String(filtrosReporte.visita))) {
+        filtrosReporte.visita = '1';
+        consFilters.visita = '1';
+      }
     }
 
     // Regla de Estado: mantener si aplica, de lo contrario resetear
-    if (filtrosReporte.estado && newFt && isFichaEbrGestionEscolar(newFt)) {
-      // EBR admite Logrado, En proceso, Inicio
+    if (filtrosReporte.estado && newFt && (isFichaEbrGestionEscolar(newFt) || isFichaCebeGestion(newFt))) {
+      // EBR y CEBE admiten Logrado, En proceso, Inicio
     }
 
     filtrosReporte.tipo = typeId;
@@ -5289,35 +5554,6 @@ function attachSection2Listeners(secFiltros, state, getFichaType, dbNs, isAdmin,
     });
   }
 
-  // UGEL
-  const filUgel = secFiltros.querySelector('#fil_ugel');
-  if (filUgel) {
-    filUgel.addEventListener('change', (e) => {
-      filtrosReporte.ugel = e.target.value;
-      consFilters.ugel = e.target.value;
-      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
-    });
-  }
-
-  // Distrito
-  const filDistrito = secFiltros.querySelector('#fil_distrito');
-  if (filDistrito) {
-    filDistrito.addEventListener('change', (e) => {
-      filtrosReporte.distrito = e.target.value;
-      consFilters.distrito = e.target.value;
-      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
-    });
-  }
-
-  // Tipo de gestión
-  const filTipoGestion = secFiltros.querySelector('#fil_tipogestion');
-  if (filTipoGestion) {
-    filTipoGestion.addEventListener('change', (e) => {
-      filtrosReporte.tipoGestion = e.target.value;
-      consFilters.tipoGestion = e.target.value;
-      renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
-    });
-  }
 
   // Fechas Desde / Hasta
   const filDesde = secFiltros.querySelector('#fil_desde');
@@ -5395,10 +5631,17 @@ function attachSection2Listeners(secFiltros, state, getFichaType, dbNs, isAdmin,
       }
 
       const isEbrExport = ft && isFichaEbrGestionEscolar(ft);
+      const isCebeExport = ft && isFichaCebeGestion(ft);
       if (isEbrExport) {
         const vNum = Number(filtrosReporte.visita);
         if (vNum !== 1 && vNum !== 2) {
           showToast('Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.');
+          return;
+        }
+      } else if (isCebeExport) {
+        const vNum = Number(filtrosReporte.visita);
+        if (vNum !== 1 && vNum !== 2 && vNum !== 3) {
+          showToast('Elige Visita 1, Visita 2 o Visita 3. Cada visita se analiza y descarga por separado.');
           return;
         }
       }
@@ -5446,10 +5689,17 @@ function attachSection2Listeners(secFiltros, state, getFichaType, dbNs, isAdmin,
   if (btnExportPdf) {
     btnExportPdf.addEventListener('click', () => {
       const isEbrPdf = ft && isFichaEbrGestionEscolar(ft);
+      const isCebePdf = ft && isFichaCebeGestion(ft);
       if (isEbrPdf) {
         const vNum = Number(filtrosReporte.visita);
         if (vNum !== 1 && vNum !== 2) {
           showToast('Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.');
+          return;
+        }
+      } else if (isCebePdf) {
+        const vNum = Number(filtrosReporte.visita);
+        if (vNum !== 1 && vNum !== 2 && vNum !== 3) {
+          showToast('Elige Visita 1, Visita 2 o Visita 3. Cada visita se analiza y descarga por separado.');
           return;
         }
       }
@@ -5465,6 +5715,7 @@ function attachSection2Listeners(secFiltros, state, getFichaType, dbNs, isAdmin,
         onConfirm: async (cfg) => {
           cfg.getFichaType = getFichaType;
           cfg.fichaTypes = state.fichaTypes;
+          cfg.colegios = state.colegios;
           await exportConsolidadoReportPdf(statsList, ft, filtrosReporte, isAllMode, cfg);
         }
       });
@@ -5817,6 +6068,109 @@ function buildDetail(s) {
     `;
   }
 
+  let cebeBanner = '';
+  const isCebe = isFichaCebeGestion(s);
+  if (isCebe) {
+    const v = Number(s.visita) || 1;
+    const puntaje = (s.puntaje !== undefined && s.puntaje !== null) ? Number(s.puntaje) : 0;
+    const pct = (s.porcentaje !== undefined && s.porcentaje !== null) ? Number(s.porcentaje) : Math.round((puntaje / 34) * 100);
+    const estado = s.estado || (pct >= 85 ? 'Logrado' : (pct >= 70 ? 'En proceso' : 'Inicio'));
+    let estadoColor = '#16a34a';
+    let estadoCls = 'st-logrado';
+    if (estado === 'En proceso' || String(estado).toLowerCase().includes('proces')) { estadoColor = '#d97706'; estadoCls = 'st-proceso'; }
+    else if (estado === 'Inicio' || String(estado).toLowerCase().includes('inic')) { estadoColor = '#dc2626'; estadoCls = 'st-inicio'; }
+
+    let personalHtml = '';
+    const tp = s.tablasPersonal || {};
+    if (tp.personal || tp.personalSaanee || tp.accesoEstudiantes) {
+      personalHtml = `
+        <div style="margin-top:12px;margin-bottom:12px;padding:12px;background:var(--surface-sunken,#f8fafc);border-radius:6px;border:1px solid var(--border-soft,#e2e8f0)">
+          <div style="font-weight:700;font-size:12px;color:var(--text-900,#0f172a);margin-bottom:6px">I. Cuadros Estadísticos del CEBE</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--text-700,#334155)">
+            <div><strong>Estudiantes Inicial:</strong> Matr. ${tp.accesoEstudiantes?.ini_mat || '0'} · Asist. ${tp.accesoEstudiantes?.ini_asis || '0'}</div>
+            <div>·</div>
+            <div><strong>Estudiantes Primaria:</strong> Matr. ${tp.accesoEstudiantes?.pri_mat || '0'} · Asist. ${tp.accesoEstudiantes?.pri_asis || '0'}</div>
+            <div>·</div>
+            <div><strong>SAANEE Total:</strong> ${tp.personalSaanee?.saanee_nombrados_tot || '0'} nombrados</div>
+          </div>
+        </div>
+      `;
+    }
+
+    let sintesisTableHtml = '';
+    const spv = s.sintesisPorVisita;
+    if (spv && (spv.v1?.logros || spv.v2?.logros || spv.v3?.logros || spv.v1?.mejoras || spv.v2?.mejoras || spv.v3?.mejoras || spv.v1?.recomendaciones || spv.v2?.recomendaciones || spv.v3?.recomendaciones)) {
+      sintesisTableHtml = `
+        <div style="margin-top:14px;margin-bottom:12px">
+          <div style="font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--text-900,#0f172a)">IV. Logros, Aspectos de Mejora y Recomendaciones (Por Visita)</div>
+          <div style="overflow-x:auto">
+            <table class="dataTable" style="font-size:11.5px;width:100%;border-collapse:collapse;text-align:left">
+              <thead>
+                <tr style="background:var(--surface-sunken,#f1f5f9)">
+                  <th style="padding:6px;width:22%">Aspecto</th>
+                  <th style="padding:6px;width:26%">Visita 1</th>
+                  <th style="padding:6px;width:26%">Visita 2</th>
+                  <th style="padding:6px;width:26%">Visita 3</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-weight:700;padding:6px;background:var(--surface-sunken,#f8fafc)">Logros observados</td>
+                  <td style="padding:6px">${esc(spv.v1?.logros || '—')}</td>
+                  <td style="padding:6px">${esc(spv.v2?.logros || '—')}</td>
+                  <td style="padding:6px">${esc(spv.v3?.logros || '—')}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight:700;padding:6px;background:var(--surface-sunken,#f8fafc)">Aspectos de mejora</td>
+                  <td style="padding:6px">${esc(spv.v1?.mejoras || '—')}</td>
+                  <td style="padding:6px">${esc(spv.v2?.mejoras || '—')}</td>
+                  <td style="padding:6px">${esc(spv.v3?.mejoras || '—')}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight:700;padding:6px;background:var(--surface-sunken,#f8fafc)">Recomendaciones</td>
+                  <td style="padding:6px">${esc(spv.v1?.recomendaciones || '—')}</td>
+                  <td style="padding:6px">${esc(spv.v2?.recomendaciones || '—')}</td>
+                  <td style="padding:6px">${esc(spv.v3?.recomendaciones || '—')}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    let compromisosHtml = '';
+    const cpv = s.compromisosPorVisita;
+    const kAct = `v${v}`;
+    const compActivo = cpv?.[kAct] || {};
+    if (compActivo.director || compActivo.especialista) {
+      compromisosHtml = `
+        <div style="margin-top:12px;margin-bottom:12px;background:var(--surface-sunken,#f8fafc);padding:10px 14px;border-radius:6px;border-left:3px solid #1e40af">
+          <div style="font-weight:700;font-size:12px;margin-bottom:4px;color:#1e40af">V. Compromisos de Mejora · Visita ${v}</div>
+          ${compActivo.director ? `<div style="font-size:11.5px;margin-bottom:3px"><strong>Directivo(a):</strong> ${esc(compActivo.director)}</div>` : ''}
+          ${compActivo.especialista ? `<div style="font-size:11.5px"><strong>Especialista AGEBRE:</strong> ${esc(compActivo.especialista)}</div>` : ''}
+        </div>
+      `;
+    }
+
+    cebeBanner = `
+      <div style="margin-bottom:14px;padding:14px 18px;border-radius:8px;background:var(--surface-card,#ffffff);border:1px solid var(--border-soft,#e2e8f0);box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+          <div>
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted,#64748b);text-transform:uppercase;letter-spacing:0.5px">Gestión Escolar CEBE · RM N° 501-2025-MINEDU</span>
+            <div style="font-size:17px;font-weight:800;color:var(--text-main,#0f172a);margin-top:2px">Visita ${v} de 3 · ${esc(estado)} (${puntaje} / 34 pts · ${pct}%)</div>
+          </div>
+          <div>
+            <span class="badge ${esc(estadoCls)}" style="font-size:13px;padding:5px 14px;font-weight:700;background:${estadoColor};color:#ffffff">${esc(estado)}</span>
+          </div>
+        </div>
+        ${personalHtml}
+        ${sintesisTableHtml}
+        ${compromisosHtml}
+      </div>
+    `;
+  }
+
   const items = (s.respuestas || []).map(r => {
     const opt = (RESPONSE_OPTIONS[s.tipoRespuesta] || []).find(o => o.v === r.valor);
     const hallazgoHtml = r.hallazgo ? `<div style="margin-top:6px;font-size:11.5px;color:var(--text-800,#1e293b);background:var(--surface-sunken,#f8fafc);padding:5px 10px;border-radius:4px;border-left:3px solid var(--primary,#2563eb)"><strong>Hallazgo:</strong> ${esc(r.hallazgo)}</div>` : '';
@@ -5888,6 +6242,7 @@ function buildDetail(s) {
     ebrGestionBanner +
     coordTutoriaBanner +
     jecNivelBanner +
+    cebeBanner +
     (extras ? '<div class="sectionTitle" style="margin-top:0">Datos generales de la ficha</div>' + extras : '') +
     legacyHtml +
     docentesTableHtml +
@@ -5905,8 +6260,8 @@ async function exportCsv(ft, statsList) {
     const extras = (s.extras || []).map(e => e.label + ': ' + e.value).join(' | ');
     const comps = (Array.isArray(s.compromisos) ? s.compromisos : Array.isArray(s.compromisosList) ? s.compromisosList : []).map(c => c.texto).join(' | ');
     let subResp = getSubmissionResponsable(s, _appState, _currentSessionUser);
-    if (!subResp || /^\d+$/.test(subResp)) {
-      subResp = (s.responsable && !/^\d+$/.test(String(s.responsable).trim())) ? String(s.responsable).trim() : '';
+    if (!subResp || /^\d+$/.test(subResp) || subResp.includes('@') || subResp === '—') {
+      subResp = (s.responsable && !/^\d+$/.test(String(s.responsable).trim()) && !String(s.responsable).includes('@')) ? String(s.responsable).trim() : '';
     }
     const stLabel = (st && st.estado && st.estado.label) ? st.estado.label : statusFromPct(st.pct, ft, st?.conteo_si, st?.puntaje, s?.visita).label;
     if (isCoord) {
@@ -6176,13 +6531,116 @@ export async function parseInstitucionesExcel(file) {
   });
 }
 
-let colFilters = { rei: '', distrito: '', tipoGestion: '', q: '', pendientes: false };
+let colFilters = { rei: '', distrito: '', modalidad: '', q: '', pendientes: false };
 let colExpanded = null;
 let colShowImport = false;
 let colImportPreview = null; // {rows, errors}
 let colImportResults = null; // { total, success, failures, mainErrorCode }
 let colEditing = null; // null | 'new' | colegioId
 let cachedCurrentUser = null;
+
+function renderColegiosApartadoHtml(curFiltered, bySchool, totalColegios, filters) {
+  const totalInFilter = curFiltered.length;
+  const monitoreados = curFiltered.filter(c => (bySchool[c.id] || []).length > 0).length;
+  const pendientes = totalInFilter - monitoreados;
+  const cobertura = totalInFilter ? Math.round((monitoreados / totalInFilter) * 100) : null;
+
+  // Context badges activos
+  const badges = [];
+  if (filters.rei) {
+    badges.push('<span class="badge" style="background:rgba(37,99,235,0.12);color:var(--primary);font-weight:700">📍 REI ' + esc(filters.rei) + '</span>');
+  }
+  if (filters.modalidad) {
+    badges.push('<span class="badge" style="background:rgba(124,58,237,0.12);color:#7c3aed;font-weight:700">🏷️ Modalidad: ' + esc(filters.modalidad) + '</span>');
+  }
+  if (filters.distrito) {
+    badges.push('<span class="badge st-none">Distrito: ' + esc(filters.distrito) + '</span>');
+  }
+  if (filters.pendientes) {
+    badges.push('<span class="badge st-inicio">Solo pendientes</span>');
+  }
+  if (filters.q) {
+    badges.push('<span class="badge st-none">Búsqueda: "' + esc(filters.q) + '"</span>');
+  }
+  if (!badges.length) {
+    badges.push('<span style="font-size:12px;color:var(--ink-soft)">Padrón general (sin filtros activos)</span>');
+  }
+
+  // Desglose dinámico por modalidad o REI
+  let breakdownLabel = 'Total por modalidad en el padrón:';
+  let breakdownChips = '';
+
+  if (filters.rei && !filters.modalidad) {
+    breakdownLabel = 'Modalidades en REI ' + esc(filters.rei) + ':';
+    const modCounts = {};
+    curFiltered.forEach(c => {
+      const m = c.modalidad || 'Sin modalidad';
+      modCounts[m] = (modCounts[m] || 0) + 1;
+    });
+    breakdownChips = Object.entries(modCounts).map(([m, cnt]) =>
+      '<button type="button" class="badge st-none colQuickModBtn" data-mod="' + esc(m) + '" style="font-size:11px;padding:3px 8px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface)" title="Filtrar por ' + esc(m) + '">' + esc(m) + ': <strong style="color:var(--primary)">' + cnt + '</strong></button>'
+    ).join('') || '<span style="font-size:12px;color:var(--ink-soft)">Sin datos</span>';
+  } else if (filters.modalidad && !filters.rei) {
+    breakdownLabel = 'Modalidad ' + esc(filters.modalidad) + ':';
+    const reiCounts = {};
+    curFiltered.forEach(c => {
+      const r = c.rei || 'Sin REI';
+      reiCounts[r] = (reiCounts[r] || 0) + 1;
+    });
+    const numReis = Object.keys(reiCounts).length;
+    breakdownChips = '<span class="badge st-none" style="font-size:11px;padding:3px 8px;font-weight:600">Presente en <strong>' + numReis + '</strong> REI(s)</span>';
+  } else if (filters.rei && filters.modalidad) {
+    breakdownLabel = 'Selección activa:';
+    breakdownChips = '<span class="badge" style="background:rgba(37,99,235,0.12);color:var(--primary);font-size:11px;padding:3px 8px;font-weight:600">REI ' + esc(filters.rei) + ' · ' + esc(filters.modalidad) + ': <strong>' + totalInFilter + ' colegios</strong></span>';
+  } else {
+    breakdownLabel = 'Total por modalidad en el padrón:';
+    const modCounts = {};
+    curFiltered.forEach(c => {
+      const m = c.modalidad || 'Sin modalidad';
+      modCounts[m] = (modCounts[m] || 0) + 1;
+    });
+    breakdownChips = Object.entries(modCounts).map(([m, cnt]) =>
+      '<button type="button" class="badge st-none colQuickModBtn" data-mod="' + esc(m) + '" style="font-size:11px;padding:3px 8px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface)" title="Filtrar por ' + esc(m) + '">' + esc(m) + ': <strong style="color:var(--primary)">' + cnt + '</strong></button>'
+    ).join('') || '<span style="font-size:12px;color:var(--ink-soft)">—</span>';
+  }
+
+  return '' +
+    '<div id="col_filtro_apartado" style="margin-bottom:16px;padding:12px 18px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">' +
+    '  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
+    '    <div style="display:flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:9px;background:rgba(37,99,235,0.12);color:var(--primary);font-size:20px;flex-shrink:0">🏫</div>' +
+    '    <div>' +
+    '      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">' +
+    '        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-soft)">Total en el filtro:</span>' +
+    '        <span id="col_stat_total_num" style="font-size:22px;font-weight:800;color:var(--primary);line-height:1">' + totalInFilter + '</span>' +
+    '        <span style="font-size:13px;font-weight:600;color:var(--ink)">colegios</span>' +
+    '        <span id="col_stat_total_ref" style="font-size:12px;color:var(--ink-soft)">(de ' + totalColegios + ' en padrón)</span>' +
+    '      </div>' +
+    '      <div id="col_stat_badges" style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">' +
+    badges.join('') +
+    '      </div>' +
+    '    </div>' +
+    '  </div>' +
+    '  <div style="display:flex;flex-direction:column;gap:3px">' +
+    '    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--ink-soft)" id="col_stat_breakdown_label">' + breakdownLabel + '</div>' +
+    '    <div id="col_stat_breakdown_chips" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' + breakdownChips + '</div>' +
+    '  </div>' +
+    '  <div style="display:flex;align-items:center;gap:16px;padding-left:16px;border-left:1px solid var(--line);flex-wrap:wrap">' +
+    '    <div style="text-align:center">' +
+    '      <div id="col_stat_monitoreados" style="font-size:16px;font-weight:800;color:var(--ok);line-height:1">' + monitoreados + '</div>' +
+    '      <div style="font-size:10.5px;font-weight:600;color:var(--ink-soft);margin-top:2px;text-transform:uppercase">Con visita</div>' +
+    '    </div>' +
+    '    <div style="text-align:center">' +
+    '      <div id="col_stat_pendientes" style="font-size:16px;font-weight:800;color:var(--warn);line-height:1">' + pendientes + '</div>' +
+    '      <div style="font-size:10.5px;font-weight:600;color:var(--ink-soft);margin-top:2px;text-transform:uppercase">Pendientes</div>' +
+    '    </div>' +
+    '    <div style="text-align:center">' +
+    '      <div id="col_stat_cobertura" style="font-size:16px;font-weight:800;color:var(--primary);line-height:1">' + (cobertura !== null ? cobertura + '%' : '—') + '</div>' +
+    '      <div style="font-size:10.5px;font-weight:600;color:var(--ink-soft);margin-top:2px;text-transform:uppercase">Cobertura</div>' +
+    '    </div>' +
+    '  </div>' +
+    '</div>';
+}
+
 function buildColegioRowsHtml(filtered, bySchool, getFichaType, colExpandedId, isAdmin, state) {
   return filtered.map(c => {
     const subs = bySchool[c.id] || [];
@@ -6196,7 +6654,7 @@ function buildColegioRowsHtml(filtered, bySchool, getFichaType, colExpandedId, i
       '<td>' + esc(c.codigoLocal || '—') + '</td>' +
       '<td>' + esc(c.ie || '—') + '</td>' +
       '<td>' + esc(c.distrito || '—') + '</td>' +
-      '<td>' + esc(c.tipoGestion || '—') + '</td>' +
+      '<td><span class="badge st-none" style="font-weight:600">' + esc(c.modalidad || '—') + '</span></td>' +
       '<td>' + (subs.length ? subs.length : '<span class="badge st-inicio">0</span>') + '</td>' +
       '<td>' + chips + '</td>' +
       '<td>' + (lastVisit ? fmtDate(lastVisit) : '—') + '</td>' +
@@ -6211,7 +6669,7 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
   const bySchool = groupSubmissionsByColegio(state);
   const reiList = Array.from(new Set(state.colegios.map(c => c.rei).filter(Boolean))).sort();
   const distritoList = Array.from(new Set(state.colegios.map(c => c.distrito).filter(Boolean))).sort();
-  const gestionList = Array.from(new Set(state.colegios.map(c => c.tipoGestion).filter(Boolean))).sort();
+  const modalidadList = Array.from(new Set(state.colegios.map(c => c.modalidad).filter(Boolean))).sort();
 
   const totalColegios = state.colegios.length;
   const sinMonitoreo = state.colegios.filter(c => (bySchool[c.id] || []).length === 0).length;
@@ -6236,14 +6694,14 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
     let list = state.colegios.slice();
     if (colFilters.rei) list = list.filter(c => c.rei === colFilters.rei);
     if (colFilters.distrito) list = list.filter(c => normalizeText(c.distrito).includes(normalizeText(colFilters.distrito)));
-    if (colFilters.tipoGestion) list = list.filter(c => c.tipoGestion === colFilters.tipoGestion);
+    if (colFilters.modalidad) list = list.filter(c => (c.modalidad || '').trim() === colFilters.modalidad.trim());
     if (colFilters.q) list = list.filter(c => normalizeText(c.ie).includes(normalizeText(colFilters.q)) || normalizeText(c.codigoLocal).includes(normalizeText(colFilters.q)));
     if (colFilters.pendientes) list = list.filter(c => (bySchool[c.id] || []).length === 0);
     list.sort((a, b) => (a.ie || '').localeCompare(b.ie || ''));
     return list;
   };
 
-  const filtered = getFilteredColegios();
+  let filtered = getFilteredColegios();
   const rows = buildColegioRowsHtml(filtered, bySchool, getFichaType, colExpanded, isAdmin, state);
 
   // Capturar foco y posición de scroll para preservar al re-renderizar
@@ -6272,14 +6730,17 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
       '<div class="field"><label>REI</label><select id="col_fil_rei"><option value="">Todas</option>' + reiList.map(r => '<option value="' + esc(r) + '"' + (r === colFilters.rei ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></div>' +
       '<div class="field"><label>Distrito</label><input type="search" id="col_fil_distrito" list="dl_col_distrito" value="' + esc(colFilters.distrito) + '" placeholder="Buscar..."></div>' +
       '<datalist id="dl_col_distrito">' + distritoList.map(d => '<option value="' + esc(d) + '">').join('') + '</datalist>' +
-      '<div class="field"><label>Tipo de gestión</label><select id="col_fil_gestion"><option value="">Todas</option>' + gestionList.map(g => '<option value="' + esc(g) + '"' + (g === colFilters.tipoGestion ? ' selected' : '') + '>' + esc(g) + '</option>').join('') + '</select></div>' +
+      '<div class="field"><label>Modalidad</label><select id="col_fil_modalidad"><option value="">Todas</option>' + modalidadList.map(m => '<option value="' + esc(m) + '"' + (m === colFilters.modalidad ? ' selected' : '') + '>' + esc(m) + '</option>').join('') + '</select></div>' +
       '<div class="field"><label>Buscar</label><input type="search" id="col_fil_q" value="' + esc(colFilters.q) + '" placeholder="I.E. o código..."></div>' +
       '<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:0;white-space:nowrap"><input type="checkbox" id="col_fil_pend" ' + (colFilters.pendientes ? 'checked' : '') + '> Solo pendientes</label>' +
       '<button class="btn secondary small" id="col_fil_clear" type="button">Limpiar</button>' +
       '<button class="btn secondary small" id="col_export" type="button" style="margin-left:auto">Exportar CSV</button>' +
       '<button class="btn small" id="col_export_pdf" type="button">⬇ Descargar padrón oficial (PDF)</button>' +
       '</div>' +
-      '<div class="tblWrap"><table><thead><tr><th>REI</th><th>Código local</th><th>I.E.</th><th>Distrito</th><th>Tipo de gestión</th><th>N° monitoreos</th><th>Tipos de ficha aplicados</th><th>Última visita</th><th></th></tr></thead><tbody id="col_table_tbody">' + rows + '</tbody></table></div>' +
+      '<div id="col_apartado_host">' + renderColegiosApartadoHtml(filtered, bySchool, totalColegios, colFilters) + '</div>' +
+      '<div class="tblWrap"><table><thead><tr><th>REI</th><th>Código local</th><th>I.E.</th><th>Distrito</th><th>Modalidad</th><th>N° monitoreos</th><th>Tipos de ficha aplicados</th><th>Última visita</th><th></th></tr></thead><tbody id="col_table_tbody">' + rows + '</tbody></table>' +
+      '<div style="padding:10px 16px;background:var(--surface-2);border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink-soft)"><span id="col_table_footer_count">Mostrando <strong>' + filtered.length + '</strong> de ' + totalColegios + ' instituciones educativas</span><span>Haz clic en cualquier institución para ver fichas aplicadas y detalles</span></div>' +
+      '</div>' +
       '</div>'
     ) : '');
 
@@ -6295,15 +6756,44 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
     }
   }
 
-  // Actualización reactiva solo del tbody (sin tocar los inputs ni perder foco ni saltar el scroll)
+  const bindApartadoQuickBtns = () => {
+    const aptHost = container.querySelector('#col_apartado_host');
+    if (!aptHost) return;
+    aptHost.querySelectorAll('.colQuickModBtn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const m = btn.dataset.mod;
+        if (m) {
+          colFilters.modalidad = m;
+          const selMod = document.getElementById('col_fil_modalidad');
+          if (selMod) selMod.value = m;
+          updateTableOnly();
+        }
+      });
+    });
+  };
+
+  const updateApartadoContent = (curFiltered) => {
+    const aptHost = container.querySelector('#col_apartado_host');
+    if (aptHost) {
+      aptHost.innerHTML = renderColegiosApartadoHtml(curFiltered, bySchool, totalColegios, colFilters);
+      bindApartadoQuickBtns();
+    }
+    const elFooter = container.querySelector('#col_table_footer_count');
+    if (elFooter) {
+      elFooter.innerHTML = 'Mostrando <strong>' + curFiltered.length + '</strong> de ' + totalColegios + ' instituciones educativas';
+    }
+  };
+
+  // Actualización reactiva de la tabla y del apartado en tiempo real (sin tocar los inputs ni perder foco)
   const updateTableOnly = () => {
     const tbody = container.querySelector('#col_table_tbody');
     if (!tbody) {
       renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser);
       return;
     }
-    const curFiltered = getFilteredColegios();
-    tbody.innerHTML = buildColegioRowsHtml(curFiltered, bySchool, getFichaType, colExpanded, isAdmin, state);
+    filtered = getFilteredColegios();
+    tbody.innerHTML = buildColegioRowsHtml(filtered, bySchool, getFichaType, colExpanded, isAdmin, state);
+    updateApartadoContent(filtered);
     bindColegiosRowEvents();
   };
 
@@ -6362,6 +6852,7 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
   };
 
   bindColegiosRowEvents();
+  bindApartadoQuickBtns();
 
   const fRei = document.getElementById('col_fil_rei');
   if (fRei) fRei.addEventListener('change', e => { colFilters.rei = e.target.value; updateTableOnly(); });
@@ -6369,8 +6860,8 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
   const fDist = document.getElementById('col_fil_distrito');
   if (fDist) fDist.addEventListener('input', e => { colFilters.distrito = e.target.value; updateTableOnly(); });
 
-  const fGes = document.getElementById('col_fil_gestion');
-  if (fGes) fGes.addEventListener('change', e => { colFilters.tipoGestion = e.target.value; updateTableOnly(); });
+  const fMod = document.getElementById('col_fil_modalidad');
+  if (fMod) fMod.addEventListener('change', e => { colFilters.modalidad = e.target.value; updateTableOnly(); });
 
   const fQ = document.getElementById('col_fil_q');
   if (fQ) fQ.addEventListener('input', e => { colFilters.q = e.target.value; updateTableOnly(); });
@@ -6380,18 +6871,19 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
 
   const fClear = document.getElementById('col_fil_clear');
   if (fClear) fClear.addEventListener('click', () => {
-    colFilters = { rei: '', distrito: '', tipoGestion: '', q: '', pendientes: false };
+    colFilters = { rei: '', distrito: '', modalidad: '', q: '', pendientes: false };
     if (fRei) fRei.value = '';
     if (fDist) fDist.value = '';
-    if (fGes) fGes.value = '';
+    if (fMod) fMod.value = '';
     if (fQ) fQ.value = '';
     if (fPend) fPend.checked = false;
     updateTableOnly();
   });
   const fExport = document.getElementById('col_export');
   if (fExport) fExport.addEventListener('click', () => {
+    const curFiltered = getFilteredColegios();
     const header = ['REI', 'Código local', 'I.E.', 'Modalidad', 'Nivel de servicio', 'Turnos', 'Tipo de Gestión', 'Dependencia', 'Dirección', 'Distrito', 'Director', 'N° monitoreos', 'Última visita'];
-    const dataRows = filtered.map(c => {
+    const dataRows = curFiltered.map(c => {
       const subs = bySchool[c.id] || [];
       const last = subs.reduce((max, s) => (!max || s.fecha > max) ? s.fecha : max, null);
       return [c.rei, c.codigoLocal, c.ie, c.modalidad, c.nivelServicio, c.turnos, c.tipoGestion, c.dependencia, c.direccion, c.distrito, c.director ? c.director.nombre : '', subs.length, last || ''];
@@ -6402,11 +6894,16 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
   const fExportPdf = document.getElementById('col_export_pdf');
   if (fExportPdf) {
     fExportPdf.addEventListener('click', () => {
-      const enhancedColegios = filtered.map(c => {
+      const curFiltered = getFilteredColegios();
+      const enhancedColegios = curFiltered.map(c => {
         const subs = bySchool[c.id] || [];
         const last = subs.reduce((max, s) => (!max || s.fecha > max) ? s.fecha : max, null);
         return { ...c, _subsCount: subs.length, _lastVisit: last };
       });
+
+      const filterReis = Array.from(new Set(curFiltered.map(c => c.rei).filter(Boolean)));
+      const monitoreadosCount = enhancedColegios.filter(c => c._subsCount > 0).length;
+      const cobPct = enhancedColegios.length ? Math.round(monitoreadosCount / enhancedColegios.length * 100) : 0;
 
       openDownloadConfigModal({
         documentTitle: 'PADRÓN OFICIAL DE INSTITUCIONES EDUCATIVAS',
@@ -6418,9 +6915,9 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
         isAdmin,
         onConfirm: async (cfg) => {
           await exportColegiosReportPdf(enhancedColegios, {
-            totalReis: reiList.length,
-            monitoreados: totalColegios - sinMonitoreo,
-            cobertura: coberturaPct
+            totalReis: filterReis.length,
+            monitoreados: monitoreadosCount,
+            cobertura: cobPct
           }, cfg);
         }
       });

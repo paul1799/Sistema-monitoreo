@@ -16,7 +16,7 @@
    ========================================================================= */
 
 import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui.js?v=20261012_v5';
-import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20260928_v12';
+import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20261013_v1';
 import { RUBRICAS_OBSERVACION_AULA } from './ebr-gestion.js?v=20260928_v12';
 import { isFichaJec, REGLA_NIVEL_JEC, estadoPorRegla, ESPECIALISTA_JEC_OFICIAL, isFichaEspecialistaJec } from './calcEngine.js?v=20260928_v12';
 

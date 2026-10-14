@@ -37,6 +37,10 @@ import {
   computeItemAgg
 } from './reportes-datos.js?v=20260929_v18';
 
+import {
+  isFichaCebeGestion
+} from './cebe-gestion.js?v=20261013_v7';
+
 export const SISTEMA_NOMBRE_OFICIAL = 'Sistema de Fichas de Monitoreo';
 
 /**
@@ -2653,9 +2657,12 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
   });
 
   // 3. Especialista
+  const respClean = (sub.responsable && !sub.responsable.includes('@') && !/^\d+$/.test(String(sub.responsable).trim()))
+    ? sub.responsable
+    : 'Especialista UGEL 03';
   signaturesList.push({
     cargo: 'Especialista / Monitor de Gestión Escolar',
-    nombre: formatPersonName(sub.responsable || 'Especialista UGEL 03'),
+    nombre: formatPersonName(respClean),
     entidad: 'UGEL 03 · AGEBRE',
     leyenda: `DNI: ${sub.monitorDni || '—'}`
   });
@@ -2731,7 +2738,7 @@ export async function exportJecFichaPdf(sub, fichaType, colegio = null, download
 
   const customTables = [];
 
-  const jecRespName = (sub.responsable && !/^\d+$/.test(String(sub.responsable).trim()))
+  const jecRespName = (sub.responsable && !sub.responsable.includes('@') && !/^\d+$/.test(String(sub.responsable).trim()))
     ? sub.responsable
     : ESPECIALISTA_JEC_OFICIAL.nombresApellidos;
   const jecRespCargo = sub.responsableCargo || ESPECIALISTA_JEC_OFICIAL.cargo;
@@ -3129,7 +3136,7 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
   const isJecFicha = isFichaEspecialistaJec(fichaType) || isFichaEspecialistaJec(sub);
   const responsable = isJecFicha
     ? ESPECIALISTA_JEC_OFICIAL.nombresApellidos
-    : ((sub.responsable && !/^\d+$/.test(String(sub.responsable).trim())) ? sub.responsable : 'Especialista UGEL 03');
+    : ((sub.responsable && !/^\d+$/.test(String(sub.responsable).trim()) && !sub.responsable.includes('@')) ? sub.responsable : 'Especialista UGEL 03');
   const director = sub.director || (colegio && colegio.director ? colegio.director.nombre : '—');
   const ugel = sub.ugel || 'UGEL 03';
   const red = sub.red || (colegio ? colegio.rei : '—');
@@ -3998,41 +4005,114 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
     beforeDraw: (doc, curY, pageW, margin) => {
       const CONTENT_WIDTH = pageW - 2 * margin;
 
-      // 1. TRES TARJETAS KPI EN UNA FILA CON FRANJA INFERIOR DE COLOR
-      const cardGap = isLandscape ? 14 : 10;
-      const cardW = Math.floor((CONTENT_WIDTH - 2 * cardGap) / 3);
-      const cardH = 42;
+      // 1. TARJETAS KPI EN UNA FILA CON FRANJA INFERIOR DE COLOR
+      const padron = downloadConfig.colegios || (downloadConfig.state && downloadConfig.state.colegios) || [];
+      const isEbrSpecial = isFichaEbrGestionEscolar(fichaType);
+      const isCebeSpecial = isFichaCebeGestion(fichaType);
+      const targetMod = isEbrSpecial ? 'EBR' : (isCebeSpecial ? 'EBE' : null);
 
-      const cardsData = [
-        { val: String(totalFichas), lbl: 'FICHAS REGISTRADAS', color: [37, 99, 235] }, // Franja Azul (#2563EB)
-        { val: String(instCount), lbl: 'INSTITUCIONES', color: [22, 163, 74] },        // Franja Verde (#16A34A)
-        { val: avgPct === '—' || avgPct === null ? '—' : `${avgPct}%`, lbl: 'CUMPLIMIENTO PROMEDIO', color: [217, 119, 6] } // Franja Ámbar (#D97706)
-      ];
+      let cardsData = [];
+      if (targetMod && padron.length > 0) {
+        const isModMatch = (c, mod) => {
+          if (!c) return false;
+          const m = String(c.modalidad || '').toUpperCase().trim();
+          const ie = String(c.ie || c.nombre || '').toUpperCase();
+          if (mod === 'EBR') {
+            if (m === 'EBR' || m.includes('EBR') || m.includes('REGULAR')) return true;
+            if (!m) {
+              if (ie.includes('CEBE') || ie.includes('PRITE') || ie.includes('CEBA') || ie.includes('CETPRO')) return false;
+              return true;
+            }
+            return false;
+          }
+          if (mod === 'EBE') {
+            if (m === 'EBE' || m.includes('EBE') || m.includes('ESPECIAL') || m.includes('CEBE')) return true;
+            if (ie.includes('CEBE') || ie.includes('PRITE') || ie.includes('ESPECIAL')) return true;
+            return false;
+          }
+          return false;
+        };
+
+        let targetCols = padron.filter(c => isModMatch(c, targetMod));
+        if (filters.red) {
+          const qr = String(filters.red).toLowerCase();
+          targetCols = targetCols.filter(c => String(c.rei || c.red || '').toLowerCase().includes(qr));
+        }
+        if (filters.distrito) {
+          const qd = String(filters.distrito).toLowerCase();
+          targetCols = targetCols.filter(c => String(c.distrito || '').toLowerCase().includes(qd));
+        }
+
+        const executedColIds = new Set();
+        const executedExtra = new Set();
+        const tById = new Map();
+        const tByCode = new Map();
+        const tByIe = new Map();
+        targetCols.forEach(c => {
+          if (c.id) tById.set(c.id, c);
+          if (c.codigoLocal) tByCode.set(String(c.codigoLocal).trim().toLowerCase(), c);
+          if (c.codigoModular) tByCode.set(String(c.codigoModular).trim().toLowerCase(), c);
+          if (c.ie) tByIe.set(String(c.ie).trim().toLowerCase(), c);
+        });
+
+        statsList.forEach(x => {
+          const s = x.s;
+          let mCol = null;
+          if (s.colegioId && tById.has(s.colegioId)) mCol = tById.get(s.colegioId);
+          else if (s.codigoLocal && tByCode.has(String(s.codigoLocal).trim().toLowerCase())) mCol = tByCode.get(String(s.codigoLocal).trim().toLowerCase());
+          else if (s.codigoModular && tByCode.has(String(s.codigoModular).trim().toLowerCase())) mCol = tByCode.get(String(s.codigoModular).trim().toLowerCase());
+          else if (s.institucion && tByIe.has(String(s.institucion).trim().toLowerCase())) mCol = tByIe.get(String(s.institucion).trim().toLowerCase());
+
+          if (mCol) executedColIds.add(mCol.id);
+          else executedExtra.add(s.colegioId || (s.institucion ? s.institucion.trim().toLowerCase() : ''));
+        });
+
+        const numExec = executedColIds.size + executedExtra.size;
+        const iesExec = Math.max(numExec, instCount);
+        const totalIesMod = targetCols.length > 0 ? Math.max(targetCols.length, iesExec) : iesExec;
+        const iesPend = Math.max(0, totalIesMod - iesExec);
+        const cobPct = totalIesMod > 0 ? Math.round((iesExec / totalIesMod) * 100) : 0;
+
+        cardsData = [
+          { val: String(totalIesMod), lbl: `TOTAL IES ${targetMod}`, color: [30, 58, 138] },
+          { val: `${iesExec} (${cobPct}%)`, lbl: 'IES EJECUTADAS', color: [22, 163, 74] },
+          { val: String(iesPend), lbl: 'IES PENDIENTES', color: [217, 119, 6] },
+          { val: String(totalFichas), lbl: 'FICHAS REGISTRADAS', color: [37, 99, 235] },
+          { val: avgPct === '—' || avgPct === null ? '—' : `${avgPct}%`, lbl: 'CUMPLIMIENTO PROMEDIO', color: [234, 179, 8] }
+        ];
+      } else {
+        cardsData = [
+          { val: String(totalFichas), lbl: 'FICHAS REGISTRADAS', color: [37, 99, 235] },
+          { val: String(instCount), lbl: 'INSTITUCIONES', color: [22, 163, 74] },
+          { val: avgPct === '—' || avgPct === null ? '—' : `${avgPct}%`, lbl: 'CUMPLIMIENTO PROMEDIO', color: [217, 119, 6] }
+        ];
+      }
+
+      const numCards = cardsData.length;
+      const cardGap = isLandscape ? (numCards === 5 ? 8 : 14) : (numCards === 5 ? 6 : 10);
+      const cardW = Math.floor((CONTENT_WIDTH - (numCards - 1) * cardGap) / numCards);
+      const cardH = 42;
 
       cardsData.forEach((c, idx) => {
         const cX = margin + idx * (cardW + cardGap);
         const cY = curY;
-        // Fondo blanco con borde sutil
         doc.setFillColor(255, 255, 255);
         doc.setDrawColor(226, 232, 240);
         doc.setLineWidth(0.75);
         doc.roundedRect(cX, cY, cardW, cardH, 3.5, 3.5, 'FD');
 
-        // Franja inferior de color (3.5pt)
         doc.setFillColor(c.color[0], c.color[1], c.color[2]);
         doc.roundedRect(cX, cY + cardH - 3.5, cardW, 3.5, 1.5, 1.5, 'F');
 
-        // Número grande (una sola vez)
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(isLandscape ? 17 : 15);
-        doc.setTextColor(15, 23, 42); // Navy 900
-        doc.text(c.val, cX + 12, cY + 19);
+        doc.setFontSize(isLandscape ? (numCards === 5 ? 13 : 17) : (numCards === 5 ? 11 : 15));
+        doc.setTextColor(15, 23, 42);
+        doc.text(c.val, cX + (numCards === 5 ? 8 : 12), cY + 19);
 
-        // Etiqueta en mayúsculas
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(6.8);
-        doc.setTextColor(100, 116, 139); // Slate 500
-        doc.text(c.lbl, cX + 12, cY + 31);
+        doc.setFontSize(isLandscape ? (numCards === 5 ? 5.8 : 6.8) : (numCards === 5 ? 5.2 : 6.8));
+        doc.setTextColor(100, 116, 139);
+        doc.text(c.lbl, cX + (numCards === 5 ? 8 : 12), cY + 31);
       });
 
       curY += cardH + 12;

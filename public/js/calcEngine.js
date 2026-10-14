@@ -765,18 +765,21 @@ export const REGLA_NIVEL_EBR_GESTION_M2 = {
 export function isFichaEbrGestionEscolar(ft) {
   if (!ft) return false;
   const id = String(ft.id || ft.fichaTypeId || '').toLowerCase();
-  if (id === 'ft_gestion_ugel03_ebr') return true;
-  if (id === 'ft_ebr_gestion_1er') return false;
-  if (id.includes('gestion') && (id.includes('ebr') || id.includes('ugel'))) return true;
+  // EXCLUSIONES ESTRICTAS: CEBE, PRITE, CEBA, CETPRO NO son Ficha EBR Gestión Escolar
+  if (id.includes('cebe') || id.includes('prite') || id.includes('ceba') || id.includes('cetpro')) return false;
+
   const n = String(ft.nombre || ft.fichaTypeNombre || '')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  if (n.includes('cebe') || n.includes('prite') || n.includes('ceba') || n.includes('cetpro')) return false;
+
+  if (id === 'ft_gestion_ugel03_ebr') return true;
+  if (id === 'ft_ebr_gestion_1er') return false;
+  if (id.includes('gestion') && id.includes('ebr')) return true;
   if (n.includes('1er momento') || n.includes('1.er momento') || n.includes('diagnostico')) return false;
-  if (n.includes('gestion escolar')) return true;
-  if (n.includes('gestion') && (n.includes('ebr') || n.includes('escolar') || n.includes('ugel 03') || n.includes('asistencia') || n.includes('educativa'))) return true;
-  if (n.includes('monitoreo') && n.includes('gestion')) return true;
-  if (ft.regla_nivel && (ft.regla_nivel.escala === 'IPL' || ft.regla_nivel.momento || ft.regla_nivel.maxPuntaje === 69 || ft.regla_nivel.maxPuntaje === 57)) return true;
-  if (ft.escala === 'IPL' || ft.escala === 'IPL_NA' || ft.tipoRespuesta === 'ips') return true;
-  if (Array.isArray(ft.respuestas) && ft.respuestas.some(r => String(r?.id || '').startsWith('ge'))) return true;
+  if (n.includes('gestion escolar') && n.includes('ebr')) return true;
+  if (n.includes('gestion') && n.includes('ebr')) return true;
+  if (ft.regla_nivel && ft.regla_nivel.momento && (ft.regla_nivel.maxPuntaje === 69 || ft.regla_nivel.maxPuntaje === 57)) return true;
+  if (Array.isArray(ft.respuestas) && ft.respuestas.some(r => String(r?.id || '').startsWith('ge_doc_') || String(r?.id || '').startsWith('ge_1_') || String(r?.id || '').startsWith('ge_2_'))) return true;
   return false;
 }
 
