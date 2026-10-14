@@ -5,9 +5,9 @@
   "description": "Script único para sembrar los tipos de ficha iniciales en Firestore.",
   "main": "seed.js",
   "scripts": {
-    "seed": "node seed.js",
-    "seed-concursos": "node seed-concursos.js",
-    "import-concursos": "node import-concursos.js"
+    "seed": "node seeds/seed.js",
+    "seed-concursos": "node seeds/seed-concursos.js",
+    "import-concursos": "node tools/import-concursos.js"
   },
   "dependencies": {
     "firebase-admin": "^12.5.0"

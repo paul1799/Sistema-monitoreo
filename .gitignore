@@ -5,3 +5,4 @@ scripts/serviceAccountKey.json
 scripts/serviceAccountKey*
 .vscode/
 .antigravity/
+serviceAccountKey.json

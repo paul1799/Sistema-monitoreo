@@ -1,0 +1,63 @@
+/* =========================================================================
+   prite-gestion.css — Ficha de Gestión Escolar PRITE Multi-Visita (RM N° 501-2025)
+   -------------------------------------------------------------------------
+   Utilizado por:
+     - public/js/prite-gestion.js
+     - public/test-prite-form-runner.html
+   Contiene:
+     - Pastillas de subsección y filtrado rápido (.priteSubChip)
+     - Cuadro de Personal PRITE (docentes, tecnólogos, terapeutas)
+     - Cuadro de Estudiantes por tipo de discapacidad y edad
+     - Sección V Compromisos de Mejora (Director / Especialista) por cada visita
+     - Navegación de 3 Visitas independientes con cálculo acumulativo
+   ========================================================================= */
+
+.priteSubChip {
+  transition: all 0.15s ease;
+}
+.priteSubChip:hover {
+  background: #E2E8F0;
+  border-color: #94A3B8;
+}
+.priteSubChip.active {
+  background: #EFF6FF !important;
+  border-color: #3B82F6 !important;
+  color: #1E40AF !important;
+}
+
+/* Grillas y tablas PRITE adaptables */
+.pritePersonalTable,
+.priteEstudiantesTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pritePersonalTable th,
+.priteEstudiantesTable th {
+  background: #0B1B36;
+  color: #FFFFFF;
+  padding: 8px 10px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.pritePersonalTable td,
+.priteEstudiantesTable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.priteCompromisoRow {
+  display: grid;
+  grid-template-columns: 140px 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .priteCompromisoRow {
+    grid-template-columns: 1fr;
+  }
+}

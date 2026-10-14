@@ -1,0 +1,432 @@
+{
+    "grupo":  "GestiÃ³n escolar y docentes (EBR)",
+    "nombreCorto":  "GestiÃ³n Escolar EBR",
+    "orden":  20,
+    "tieneVisitas":  true,
+    "nombre":  "GestiÃ³n Escolar EBR â€” 1.er momento (DiagnÃ³stico)",
+    "descripcion":  "Monitorea el cumplimiento de la PolÃ­tica Regional 01 en IE de EducaciÃ³n BÃ¡sica Regular en el primer momento del aÃ±o (diagnÃ³stico inicial: planificaciÃ³n y condiciones).",
+    "icono":  "ðŸ«",
+    "tipoRespuesta":  "ips",
+    "escala":  "IPL_NA",
+    "regla_nivel":  {
+                        "tipo":  "porcentaje",
+                        "umbrales":  [
+                                         {
+                                             "nivel":  "Logrado",
+                                             "min":  85,
+                                             "estado_panel":  "Logrado"
+                                         },
+                                         {
+                                             "nivel":  "En proceso",
+                                             "min":  70,
+                                             "estado_panel":  "En proceso"
+                                         },
+                                         {
+                                             "nivel":  "Por mejorar",
+                                             "min":  0,
+                                             "estado_panel":  "Inicio"
+                                         }
+                                     ]
+                    },
+    "version":  {
+                    "anio":  2026,
+                    "momento":  "1er",
+                    "estado":  "publicada"
+                },
+    "extras":  [
+                   {
+                       "id":  "ex_especialista",
+                       "label":  "Especialista monitor(a)",
+                       "tipo":  "texto"
+                   },
+                   {
+                       "id":  "ex_fecha",
+                       "label":  "Fecha de visita",
+                       "tipo":  "fecha"
+                   },
+                   {
+                       "id":  "ex_visita",
+                       "label":  "N.Â° de visita",
+                       "tipo":  "numero"
+                   }
+               ],
+    "bloques":  [
+                    {
+                        "tipo":  "datos_ie",
+                        "titulo":  "Datos de la InstituciÃ³n Educativa",
+                        "campos":  [
+                                       {
+                                           "id":  "ex_ie",
+                                           "label":  "InstituciÃ³n Educativa",
+                                           "tipo":  "ie_autocomplete",
+                                           "required":  true
+                                       },
+                                       {
+                                           "id":  "ex_codigo_local",
+                                           "label":  "CÃ³digo Local",
+                                           "tipo":  "texto"
+                                       },
+                                       {
+                                           "id":  "ex_rei",
+                                           "label":  "REI / RED",
+                                           "tipo":  "texto"
+                                       },
+                                       {
+                                           "id":  "ex_ugel",
+                                           "label":  "UGEL",
+                                           "tipo":  "texto",
+                                           "valor_fijo":  "UGEL 03"
+                                       },
+                                       {
+                                           "id":  "ex_distrito",
+                                           "label":  "Distrito",
+                                           "tipo":  "texto"
+                                       },
+                                       {
+                                           "id":  "ex_nivel",
+                                           "label":  "Nivel",
+                                           "tipo":  "texto"
+                                       },
+                                       {
+                                           "id":  "ex_modalidad",
+                                           "label":  "Modalidad",
+                                           "tipo":  "texto"
+                                       }
+                                   ]
+                    },
+                    {
+                        "tipo":  "persona",
+                        "titulo":  "Directivo de la I.E.",
+                        "subtitulo":  "Quien atiende la visita",
+                        "campos":  [
+                                       {
+                                           "id":  "dir_nombre",
+                                           "label":  "Apellidos y nombres",
+                                           "tipo":  "texto",
+                                           "required":  true
+                                       },
+                                       {
+                                           "id":  "dir_cargo",
+                                           "label":  "Cargo",
+                                           "tipo":  "select",
+                                           "opciones":  [
+                                                            "Director(a)",
+                                                            "Subdirector(a)",
+                                                            "Director(a) encargado(a)"
+                                                        ]
+                                       },
+                                       {
+                                           "id":  "dir_dni",
+                                           "label":  "DNI",
+                                           "tipo":  "dni"
+                                       },
+                                       {
+                                           "id":  "dir_condicion",
+                                           "label":  "CondiciÃ³n",
+                                           "tipo":  "select",
+                                           "opciones":  [
+                                                            "Nombrado(a)",
+                                                            "Contratado(a)",
+                                                            "Designado(a)",
+                                                            "Encargado(a)"
+                                                        ]
+                                       }
+                                   ]
+                    },
+                    {
+                        "tipo":  "items_valorables",
+                        "titulo":  "I. Monitoreo y acompaÃ±amiento",
+                        "escala":  "IPL_NA",
+                        "con_hallazgos":  true,
+                        "secciones":  [
+                                          {
+                                              "nombre":  "Monitoreo y acompaÃ±amiento a la prÃ¡ctica pedagÃ³gica",
+                                              "numRomano":  "I",
+                                              "items":  [
+                                                            {
+                                                                "id":  "ge1_1",
+                                                                "texto":  "La IE cuenta con un plan anual de monitoreo y acompaÃ±amiento a la prÃ¡ctica pedagÃ³gica, aprobado y comunicado a los docentes.",
+                                                                "evidencia":  "Documento de plan visado/firmado."
+                                                            },
+                                                            {
+                                                                "id":  "ge1_2",
+                                                                "texto":  "El plan de monitoreo incluye cronograma de visitas a aula para cada docente con fechas y responsables definidos.",
+                                                                "evidencia":  "Cronograma con firmas."
+                                                            },
+                                                            {
+                                                                "id":  "ge1_3",
+                                                                "texto":  "Se han realizado al menos dos (2) visitas de monitoreo a aula en el primer trimestre del aÃ±o.",
+                                                                "evidencia":  "Fichas de visita firmadas."
+                                                            }
+                                                        ]
+                                          },
+                                          {
+                                              "nombre":  "Fortalecimiento de las competencias docentes",
+                                              "numRomano":  "II",
+                                              "items":  [
+                                                            {
+                                                                "id":  "ge1_4",
+                                                                "texto":  "La IE cuenta con diagnÃ³stico de necesidades formativas docentes elaborado en el primer trimestre.",
+                                                                "evidencia":  "DiagnÃ³stico documentado."
+                                                            },
+                                                            {
+                                                                "id":  "ge1_5",
+                                                                "texto":  "Se ha planificado al menos una (1) acciÃ³n de fortalecimiento docente que responde a las necesidades identificadas.",
+                                                                "evidencia":  "Plan de formaciÃ³n / taller planificado."
+                                                            }
+                                                        ]
+                                          },
+                                          {
+                                              "nombre":  "EvaluaciÃ³n de los aprendizajes y retroalimentaciÃ³n",
+                                              "numRomano":  "III",
+                                              "items":  [
+                                                            {
+                                                                "id":  "ge1_6",
+                                                                "texto":  "Los docentes tienen planificadas evaluaciones de proceso que permiten identificar el nivel de logro de los estudiantes.",
+                                                                "evidencia":  "Unidades de aprendizaje con criterios de evaluaciÃ³n."
+                                                            },
+                                                            {
+                                                                "id":  "ge1_7",
+                                                                "texto":  "La IE cuenta con acuerdos colegiados sobre estrategias de retroalimentaciÃ³n formativa.",
+                                                                "evidencia":  "Actas de reuniÃ³n colegiada."
+                                                            },
+                                                            {
+                                                                "id":  "ge1_8",
+                                                                "texto":  "Se utilizan instrumentos de evaluaciÃ³n que responden a los propÃ³sitos de aprendizaje establecidos en las unidades didÃ¡cticas.",
+                                                                "evidencia":  "Instrumentos de evaluaciÃ³n o rÃºbricas."
+                                                            },
+                                                            {
+                                                                "id":  "ge1_9",
+                                                                "texto":  "Se cuenta con registros actualizados de los aprendizajes de los estudiantes (registro auxiliar, carpeta de evidencias u otros).",
+                                                                "evidencia":  "Registros auxiliares revisados."
+                                                            }
+                                                        ]
+                                          },
+                                          {
+                                              "nombre":  "Materiales educativos",
+                                              "numRomano":  "IV",
+                                              "items":  [
+                                                            {
+                                                                "id":  "ge1_10",
+                                                                "texto":  "Los materiales educativos entregados por el MINEDU han sido distribuidos oportunamente a los docentes y estudiantes.",
+                                                                "evidencia":  "Lista de distribuciÃ³n firmada."
+                                                            },
+                                                            {
+                                                                "id":  "ge1_11",
+                                                                "texto":  "Los docentes conocen los materiales educativos disponibles y los incorporan en su planificaciÃ³n.",
+                                                                "evidencia":  "Unidades con materiales referenciados."
+                                                            },
+                                                            {
+                                                                "id":  "ge1_12",
+                                                                "texto":  "Se evidencia el uso pedagÃ³gico de los materiales durante las actividades de aprendizaje.",
+                                                                "evidencia":  "Portafolios docentes / observaciÃ³n."
+                                                            },
+                                                            {
+                                                                "id":  "ge1_13",
+                                                                "texto":  "Los materiales educativos estÃ¡n en condiciones adecuadas de conservaciÃ³n y acceso para los estudiantes.",
+                                                                "evidencia":  "Inventario y estado de materiales."
+                                                            },
+                                                            {
+                                                                "id":  "ge1_14",
+                                                                "texto":  "Los materiales cuentan con adaptaciones o complementos para atender la diversidad del aula.",
+                                                                "evidencia":  "Materiales adaptados en portafolios."
+                                                            },
+                                                            {
+                                                                "id":  "ge1_15",
+                                                                "texto":  "La IE cuenta con un registro del prÃ©stamo y devoluciÃ³n de materiales no fungibles.",
+                                                                "evidencia":  "Cuaderno de control de prÃ©stamo."
+                                                            },
+                                                            {
+                                                                "id":  "ge1_16",
+                                                                "texto":  "Se han atendido oportunamente las observaciones de la ContralorÃ­a o UGEL respecto a materiales.",
+                                                                "evidencia":  "Documentos de subsanaciÃ³n.",
+                                                                "puede_nc":  true
+                                                            }
+                                                        ]
+                                          },
+                                          {
+                                              "nombre":  "Otros aspectos",
+                                              "numRomano":  "V",
+                                              "items":  [
+                                                            {
+                                                                "id":  "ge1_17",
+                                                                "texto":  "La IE tiene conformado y en funcionamiento el ComitÃ© de GestiÃ³n de Condiciones Operativas (CGCO).",
+                                                                "evidencia":  "Acta de conformaciÃ³n."
+                                                            },
+                                                            {
+                                                                "id":  "ge1_18",
+                                                                "texto":  "La IE cuenta con el Plan Anual de Trabajo (PAT) aprobado y difundido a la comunidad educativa.",
+                                                                "evidencia":  "PAT firmado y comunicado."
+                                                            },
+                                                            {
+                                                                "id":  "ge1_19",
+                                                                "texto":  "El Consejo Educativo Institucional (CONEI) estÃ¡ funcionando y tiene actas del presente aÃ±o.",
+                                                                "evidencia":  "Actas de CONEI 2026."
+                                                            }
+                                                        ]
+                                          }
+                                      ]
+                    },
+                    {
+                        "tipo":  "matriz_rubricas",
+                        "titulo":  "Monitoreo a docentes â€” RÃºbricas de ObservaciÃ³n de Aula (MINEDU)",
+                        "subtitulo":  "Registre el nivel observado (Iâ€“IV) para cada docente y cada rÃºbrica.",
+                        "monitoreos":  [
+                                           {
+                                               "id":  "m1",
+                                               "label":  "1.er monitoreo (diagnÃ³stico)"
+                                           }
+                                       ],
+                        "num_docentes_default":  6,
+                        "rubricas":  [
+                                         {
+                                             "id":  "R1",
+                                             "corto":  "R1",
+                                             "nombre":  "Involucra activamente a los estudiantes en el proceso de aprendizaje"
+                                         },
+                                         {
+                                             "id":  "R2",
+                                             "corto":  "R2",
+                                             "nombre":  "Promueve el razonamiento, la creatividad y/o el pensamiento crÃ­tico"
+                                         },
+                                         {
+                                             "id":  "R3",
+                                             "corto":  "R3",
+                                             "nombre":  "EvalÃºa el progreso de los aprendizajes para retroalimentar a los estudiantes y adecuar la enseÃ±anza"
+                                         },
+                                         {
+                                             "id":  "R4",
+                                             "corto":  "R4",
+                                             "nombre":  "Propicia un ambiente de respeto y proximidad"
+                                         },
+                                         {
+                                             "id":  "R5",
+                                             "corto":  "R5",
+                                             "nombre":  "Regula positivamente el comportamiento de los estudiantes"
+                                         }
+                                     ]
+                    },
+                    {
+                        "tipo":  "compromisos",
+                        "titulo":  "Compromisos de mejora",
+                        "tipos":  [
+                                      {
+                                          "id":  "director",
+                                          "label":  "Compromisos del Director(a)"
+                                      },
+                                      {
+                                          "id":  "monitor",
+                                          "label":  "Compromisos del Monitor(a) / Especialista AGEBRE"
+                                      }
+                                  ]
+                    },
+                    {
+                        "tipo":  "texto_libre",
+                        "titulo":  "Observaciones generales",
+                        "placeholder":  "Escribir aquÃ­ observaciones adicionales de la visita..."
+                    }
+                ],
+    "secciones":  [
+                      {
+                          "nombre":  "Monitoreo y acompaÃ±amiento",
+                          "items":  [
+                                        {
+                                            "id":  "ge1_1",
+                                            "texto":  "La IE cuenta con un plan anual de monitoreo y acompaÃ±amiento a la prÃ¡ctica pedagÃ³gica, aprobado y comunicado a los docentes."
+                                        },
+                                        {
+                                            "id":  "ge1_2",
+                                            "texto":  "El plan de monitoreo incluye cronograma de visitas a aula para cada docente con fechas y responsables definidos."
+                                        },
+                                        {
+                                            "id":  "ge1_3",
+                                            "texto":  "Se han realizado al menos dos (2) visitas de monitoreo a aula en el primer trimestre del aÃ±o."
+                                        }
+                                    ]
+                      },
+                      {
+                          "nombre":  "Fortalecimiento docente",
+                          "items":  [
+                                        {
+                                            "id":  "ge1_4",
+                                            "texto":  "La IE cuenta con diagnÃ³stico de necesidades formativas docentes elaborado en el primer trimestre."
+                                        },
+                                        {
+                                            "id":  "ge1_5",
+                                            "texto":  "Se ha planificado al menos una (1) acciÃ³n de fortalecimiento docente que responde a las necesidades identificadas."
+                                        }
+                                    ]
+                      },
+                      {
+                          "nombre":  "EvaluaciÃ³n y retroalimentaciÃ³n",
+                          "items":  [
+                                        {
+                                            "id":  "ge1_6",
+                                            "texto":  "Los docentes tienen planificadas evaluaciones de proceso que permiten identificar el nivel de logro de los estudiantes."
+                                        },
+                                        {
+                                            "id":  "ge1_7",
+                                            "texto":  "La IE cuenta con acuerdos colegiados sobre estrategias de retroalimentaciÃ³n formativa."
+                                        },
+                                        {
+                                            "id":  "ge1_8",
+                                            "texto":  "Se utilizan instrumentos de evaluaciÃ³n que responden a los propÃ³sitos de aprendizaje."
+                                        },
+                                        {
+                                            "id":  "ge1_9",
+                                            "texto":  "Se cuenta con registros actualizados de los aprendizajes de los estudiantes."
+                                        }
+                                    ]
+                      },
+                      {
+                          "nombre":  "Materiales educativos",
+                          "items":  [
+                                        {
+                                            "id":  "ge1_10",
+                                            "texto":  "Los materiales educativos entregados por el MINEDU han sido distribuidos oportunamente."
+                                        },
+                                        {
+                                            "id":  "ge1_11",
+                                            "texto":  "Los docentes conocen los materiales disponibles y los incorporan en su planificaciÃ³n."
+                                        },
+                                        {
+                                            "id":  "ge1_12",
+                                            "texto":  "Se evidencia el uso pedagÃ³gico de los materiales durante las actividades de aprendizaje."
+                                        },
+                                        {
+                                            "id":  "ge1_13",
+                                            "texto":  "Los materiales estÃ¡n en condiciones adecuadas de conservaciÃ³n y acceso."
+                                        },
+                                        {
+                                            "id":  "ge1_14",
+                                            "texto":  "Los materiales cuentan con adaptaciones para atender la diversidad del aula."
+                                        },
+                                        {
+                                            "id":  "ge1_15",
+                                            "texto":  "La IE cuenta con un registro del prÃ©stamo y devoluciÃ³n de materiales no fungibles."
+                                        },
+                                        {
+                                            "id":  "ge1_16",
+                                            "texto":  "Se han atendido oportunamente las observaciones de la ContralorÃ­a o UGEL respecto a materiales."
+                                        }
+                                    ]
+                      },
+                      {
+                          "nombre":  "Otros aspectos",
+                          "items":  [
+                                        {
+                                            "id":  "ge1_17",
+                                            "texto":  "La IE tiene conformado y en funcionamiento el ComitÃ© de GestiÃ³n de Condiciones Operativas (CGCO)."
+                                        },
+                                        {
+                                            "id":  "ge1_18",
+                                            "texto":  "La IE cuenta con el Plan Anual de Trabajo (PAT) aprobado y difundido."
+                                        },
+                                        {
+                                            "id":  "ge1_19",
+                                            "texto":  "El Consejo Educativo Institucional (CONEI) estÃ¡ funcionando y tiene actas del presente aÃ±o."
+                                        }
+                                    ]
+                      }
+                  ]
+}

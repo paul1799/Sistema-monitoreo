@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "import-concursos": "node scripts/import-concursos.js",
-    "seed-concursos": "node scripts/seed-concursos.js",
-    "seed": "node scripts/seed.js",
+    "import-concursos": "node scripts/tools/import-concursos.js",
+    "seed-concursos": "node scripts/seeds/seed-concursos.js",
+    "seed": "node scripts/seeds/seed.js",
     "deploy": "firebase deploy"
   },
   "dependencies": {

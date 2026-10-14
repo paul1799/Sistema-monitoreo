@@ -1,0 +1,63 @@
+/* =========================================================================
+   jec-monitoreo.css — Ficha Monitoreo al Modelo de Servicio Educativo JEC
+   -------------------------------------------------------------------------
+   Utilizado por:
+     - public/js/jec-form.js
+     - public/test-jec-form-runner.html
+   Contiene:
+     - Botones de opción Sí/No/N.A. JEC (.jecFormContainer .btnJecOpt)
+     - Tarjetas de ítems JEC (.jecItemCard)
+     - Inputs para rúbricas docentes JEC (.jecDocRubInp)
+     - Cabecera flotante con indicador en vivo (.jecLiveHeader)
+   ========================================================================= */
+/* =========================================================================
+   ESTILOS ESPECÃFICOS: FICHA MONITOREO MSE JEC (UGEL 03)
+   ========================================================================= */
+.jecFormContainer .btnJecOpt {
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
+}
+
+.jecFormContainer .btnJecOpt:hover {
+  filter: brightness(0.96);
+  transform: translateY(-1px);
+}
+
+.jecFormContainer .btnJecOpt.active-si {
+  background-color: #16A34A !important;
+  color: #FFFFFF !important;
+  border-color: #16A34A !important;
+  box-shadow: 0 1px 3px rgba(22, 163, 74, 0.35);
+}
+
+.jecFormContainer .btnJecOpt.active-no {
+  background-color: #DC2626 !important;
+  color: #FFFFFF !important;
+  border-color: #DC2626 !important;
+  box-shadow: 0 1px 3px rgba(220, 38, 38, 0.35);
+}
+
+.jecFormContainer .jecItemCard {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.jecFormContainer .jecItemCard:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.jecFormContainer .jecDocRubInp {
+  font-family: inherit;
+  font-weight: 600;
+  text-align: center;
+}
+
+.jecFormContainer .jecDocRubInp:focus {
+  border-color: var(--primary);
+  background-color: #FFFFFF;
+}
+
+.jecLiveHeader {
+  backdrop-filter: blur(8px);
+  transition: border-color 0.3s ease;
+}

@@ -1,0 +1,216 @@
+{
+    "grupo":  "CEBE / PRITE",
+    "nombreCorto":  "GestiÃ³n Escolar CEBE",
+    "orden":  30,
+    "tieneVisitas":  true,
+    "descripcion":  "Monitorea el acompaÃ±amiento a la prÃ¡ctica docente, fortalecimiento docente, evaluaciÃ³n de aprendizajes, uso de materiales, Plan Lector, enfoque ambiental e innovaciÃ³n educativa en los CEBE.",
+    "extras":  [
+                   {
+                       "label":  "Niveles que atiende"
+                   },
+                   {
+                       "label":  "Total de estudiantes matriculados"
+                   }
+               ],
+    "icono":  "ðŸŽ¯",
+    "nombre":  "Monitoreo y Asistencia TÃ©cnica a la GestiÃ³n Escolar - CEBE",
+    "secciones":  [
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "gc_1",
+                                            "texto":  "La directora cuenta con un Plan de Monitoreo y AcompaÃ±amiento PedagÃ³gico"
+                                        },
+                                        {
+                                            "id":  "gc_2",
+                                            "texto":  "El Plan de Monitoreo incluye una matriz de identificaciÃ³n de necesidades formativas del personal docente y no docente"
+                                        },
+                                        {
+                                            "id":  "gc_3",
+                                            "texto":  "El Plan de Monitoreo cuenta con un cronograma socializado con el equipo docente y no docente"
+                                        },
+                                        {
+                                            "id":  "gc_4",
+                                            "texto":  "La directora realiza acciones de monitoreo a la prÃ¡ctica pedagÃ³gica"
+                                        },
+                                        {
+                                            "id":  "gc_5",
+                                            "texto":  "La directora retroalimenta las planificaciones curriculares de los docentes"
+                                        },
+                                        {
+                                            "id":  "gc_6",
+                                            "texto":  "La directora sistematiza los resultados del monitoreo realizado"
+                                        },
+                                        {
+                                            "id":  "gc_7",
+                                            "texto":  "La directora socializa los resultados del monitoreo en espacios de gestiÃ³n institucional"
+                                        }
+                                    ],
+                          "nombre":  "Monitoreo y acompaÃ±amiento a la prÃ¡ctica docente"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "gc_8",
+                                            "texto":  "La directora identifica necesidades formativas del personal a partir de los resultados del monitoreo pedagÃ³gico"
+                                        },
+                                        {
+                                            "id":  "gc_9",
+                                            "texto":  "La directora cuenta con un plan de acciones formativas"
+                                        },
+                                        {
+                                            "id":  "gc_10",
+                                            "texto":  "La directora implementa espacios de fortalecimiento pedagÃ³gico acordes a las necesidades identificadas"
+                                        },
+                                        {
+                                            "id":  "gc_11",
+                                            "texto":  "La directora realiza seguimiento a los compromisos de mejora asumidos por el personal docente y no docente"
+                                        }
+                                    ],
+                          "nombre":  "Fortalecimiento docente"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "gc_12",
+                                            "texto":  "La directora monitorea el proceso de evaluaciÃ³n psicopedagÃ³gica realizado por los docentes"
+                                        },
+                                        {
+                                            "id":  "gc_13",
+                                            "texto":  "Los Informes PsicopedagÃ³gicos (IPP) se encuentran elaborados de manera oportuna"
+                                        },
+                                        {
+                                            "id":  "gc_14",
+                                            "texto":  "Los Planes Educativos Personalizados (PEP) se encuentran elaborados a partir de los IPP"
+                                        },
+                                        {
+                                            "id":  "gc_15",
+                                            "texto":  "La instituciÃ³n cuenta con un sistema organizado de resguardo de IPP y PEP que garantiza la confidencialidad"
+                                        },
+                                        {
+                                            "id":  "gc_16",
+                                            "texto":  "La directora promueve el anÃ¡lisis y revisiÃ³n semestral del PEP con el equipo docente"
+                                        },
+                                        {
+                                            "id":  "gc_17",
+                                            "texto":  "Los docentes elaboran informes de progreso del estudiante en funciÃ³n a los propÃ³sitos de aprendizaje del PEP"
+                                        },
+                                        {
+                                            "id":  "gc_18",
+                                            "texto":  "La instituciÃ³n asegura la entrega oportuna de los informes de progreso a la familia"
+                                        },
+                                        {
+                                            "id":  "gc_19",
+                                            "texto":  "La directora garantiza que la familia reciba explicaciÃ³n clara y orientaciones sobre el IPP, PEP y avances del estudiante"
+                                        }
+                                    ],
+                          "nombre":  "EvaluaciÃ³n de los aprendizajes"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "gc_20",
+                                            "texto":  "La directora promueve espacios de fortalecimiento pedagÃ³gico orientados al uso de materiales educativos accesibles"
+                                        },
+                                        {
+                                            "id":  "gc_21",
+                                            "texto":  "La directora monitorea el uso de materiales educativos y apoyos en los espacios pedagÃ³gicos del CEBE"
+                                        },
+                                        {
+                                            "id":  "gc_22",
+                                            "texto":  "La directora promueve el uso de espacios educativos funcionales y materiales diversos adecuados a las caracterÃ­sticas de los estudiantes"
+                                        },
+                                        {
+                                            "id":  "gc_23",
+                                            "texto":  "La directora promueve el uso de recursos tecnolÃ³gicos y apoyos digitales accesibles como parte de los procesos pedagÃ³gicos"
+                                        }
+                                    ],
+                          "nombre":  "Uso de materiales y espacios educativos"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "gc_24",
+                                            "texto":  "La instituciÃ³n cuenta con un Plan Lector como estrategia institucional de acceso a la lectura y la comunicaciÃ³n"
+                                        },
+                                        {
+                                            "id":  "gc_25",
+                                            "texto":  "El Plan Lector planifica la frecuencia semanal de experiencias de lectura considerando la atenciÃ³n educativa del CEBE"
+                                        },
+                                        {
+                                            "id":  "gc_26",
+                                            "texto":  "El Plan Lector involucra a diversos mediadores de lectura en la instituciÃ³n y la comunidad"
+                                        },
+                                        {
+                                            "id":  "gc_27",
+                                            "texto":  "El Plan Lector promueve el uso de diversos espacios para el desarrollo de experiencias de lectura"
+                                        },
+                                        {
+                                            "id":  "gc_28",
+                                            "texto":  "El Plan Lector promueve el uso de diversos materiales de lectura elaborados, adquiridos o de uso cotidiano"
+                                        }
+                                    ],
+                          "nombre":  "Plan Lector"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "gc_29",
+                                            "texto":  "La IE cuenta con el Proyecto Educativo Ambiental Integrado (PEAI) contextualizado a la modalidad CEBE"
+                                        },
+                                        {
+                                            "id":  "gc_30",
+                                            "texto":  "La IE cuenta con ResoluciÃ³n Directoral de conformaciÃ³n de las Brigadas de EducaciÃ³n Ambiental y GestiÃ³n del Riesgo de Desastres"
+                                        },
+                                        {
+                                            "id":  "gc_31",
+                                            "texto":  "La directora monitorea el cumplimiento de las funciones de las brigadas y el desarrollo de las actividades previstas"
+                                        }
+                                    ],
+                          "nombre":  "ImplementaciÃ³n del enfoque ambiental"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "gc_32",
+                                            "texto":  "La directora identifica y sistematiza Buenas PrÃ¡cticas pedagÃ³gicas que responden a las necesidades educativas de los estudiantes"
+                                        },
+                                        {
+                                            "id":  "gc_33",
+                                            "texto":  "La directora promueve y acompaÃ±a Proyectos de InnovaciÃ³n Educativa orientados a la mejora de los aprendizajes y la calidad de vida de los estudiantes"
+                                        },
+                                        {
+                                            "id":  "gc_34",
+                                            "texto":  "La directora realiza seguimiento a la implementaciÃ³n y promueve la socializaciÃ³n de las Buenas PrÃ¡cticas y/o Proyectos de InnovaciÃ³n"
+                                        }
+                                    ],
+                          "nombre":  "InnovaciÃ³n educativa"
+                      }
+                  ],
+    "tipoRespuesta":  "ips",
+    "regla_nivel":  {
+                        "tipo":  "porcentaje",
+                        "umbrales":  [
+                                         {
+                                             "nivel":  "Logrado",
+                                             "min":  85,
+                                             "estado_panel":  "Logrado"
+                                         },
+                                         {
+                                             "nivel":  "En proceso",
+                                             "min":  70,
+                                             "estado_panel":  "En proceso"
+                                         },
+                                         {
+                                             "nivel":  "Por mejorar",
+                                             "min":  0,
+                                             "estado_panel":  "Inicio"
+                                         }
+                                     ]
+                    },
+    "version":  {
+                    "anio":  2026,
+                    "momento":  null,
+                    "estado":  "publicada"
+                }
+}

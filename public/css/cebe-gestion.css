@@ -1,0 +1,274 @@
+/* =========================================================================
+   cebe-gestion.css — Ficha de Gestión Escolar CEBE (RM N° 501-2025-MINEDU)
+   -------------------------------------------------------------------------
+   Utilizado por:
+     - public/js/cebe-gestion.js
+     - public/test-cebe-form-runner.html
+   Contiene:
+     - Grid de pestañas de visitas independientes (.cebeVisitaTabsGrid, .cebeVisitaTab)
+     - Cuadro de personal del equipo SAANEE y no escolarizados
+     - Escalas de valoración CEBE (.cebeScaleGroup, .cebeScaleBtn)
+     - Badges de progreso de sección (.cebeProgressBadge)
+   ========================================================================= */
+/* =========================================================================
+   ESTILOS DE LA FICHA DE GESTIÃ“N ESCOLAR CEBE (RM NÂ° 501-2025-MINEDU)
+   ========================================================================= */
+.cebeVisitaTabsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.cebeVisitaTab {
+  background: #FFFFFF;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.cebeVisitaTab:hover {
+  border-color: #3B82F6;
+  background: #F8FAFC;
+}
+.cebeVisitaTab.active {
+  border-color: #1E40AF;
+  background: #EFF6FF;
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.12);
+}
+.cebeVisitaTabHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.cebeVisitaBadge {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--navy-900);
+}
+.cebeVisitaTab.active .cebeVisitaBadge {
+  color: #1E40AF;
+}
+.cebeVisitaCheck {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #E2E8F0;
+  color: var(--text-600);
+}
+.cebeVisitaTab.active .cebeVisitaCheck {
+  background: #1E40AF;
+  color: #FFFFFF;
+}
+.cebeVisitaDesc {
+  font-size: 11.5px;
+  color: var(--text-600);
+  line-height: 1.35;
+  margin-bottom: 6px;
+}
+.cebeVisitaMeta {
+  font-size: 11px;
+  color: var(--navy-800);
+}
+.cebeDataTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: #FFFFFF;
+}
+.cebeDataTable thead th {
+  background: var(--navy-900, #0B192C) !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  font-size: 11.5px !important;
+  letter-spacing: 0.02em !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  padding: 8px 6px !important;
+  box-sizing: border-box;
+}
+.cebeDataTable thead tr:first-child th {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.28) !important;
+}
+.cebeDataTable tbody td {
+  border: 1px solid var(--border, #CBD5E1);
+  padding: 4px;
+  vertical-align: middle;
+  background: #FFFFFF;
+}
+.cebeDataTable tbody tr:hover td {
+  background: rgba(30, 64, 175, 0.02);
+}
+.cebeNumInp {
+  width: 100%;
+  padding: 5px 4px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13px;
+  border: 1px solid var(--border, #CBD5E1);
+  border-radius: 4px;
+  background: #FFFFFF;
+  color: var(--navy-900, #0f172a);
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.cebeNumInp:hover {
+  border-color: #94A3B8;
+}
+.cebeNumInp:focus {
+  border-color: var(--primary, #1E40AF);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.18);
+  background: #FFFFFF;
+}
+.cebeItemRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #F1F5F9;
+}
+.cebeItemRow:last-child {
+  border-bottom: none;
+}
+.cebeItemMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.cebeItemNum {
+  font-weight: 700;
+  font-size: 13px;
+  color: #1E40AF;
+  min-width: 24px;
+  line-height: 1.4;
+}
+.cebeItemTextWrap {
+  flex: 1;
+}
+.cebeItemText {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--navy-900);
+  margin-bottom: 6px;
+}
+.cebeItemEvidenciaWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cebeEvidLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-600);
+  white-space: nowrap;
+}
+.cebeEvidInp {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  border: 1px solid #CBD5E1;
+  border-radius: 4px;
+  background: #F8FAFC;
+  color: var(--text-900);
+}
+.cebeEvidInp:focus {
+  background: #FFFFFF;
+  border-color: #1E40AF;
+  outline: none;
+}
+.cebeScaleGroup {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.cebeScaleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.15s ease;
+  user-select: none;
+  box-sizing: border-box;
+}
+.cebeScaleBtn input[type="radio"] {
+  display: none;
+}
+.cebeScaleBtn.optInicio {
+  background: #FEF2F2;
+  color: #DC2626;
+  border-color: #FCA5A5;
+}
+.cebeScaleBtn.optInicio.active, .cebeScaleBtn.optInicio:hover {
+  background: #DC2626;
+  color: #FFFFFF;
+  border-color: #B91C1C;
+}
+.cebeScaleBtn.optProceso {
+  background: #FFFBEB;
+  color: #D97706;
+  border-color: #FCD34D;
+}
+.cebeScaleBtn.optProceso.active, .cebeScaleBtn.optProceso:hover {
+  background: #D97706;
+  color: #FFFFFF;
+  border-color: #B45309;
+}
+.cebeScaleBtn.optLogrado {
+  background: #ECFDF5;
+  color: #059669;
+  border-color: #6EE7B7;
+}
+.cebeScaleBtn.optLogrado.active, .cebeScaleBtn.optLogrado:hover {
+  background: #059669;
+  color: #FFFFFF;
+  border-color: #047857;
+}
+.cebeScaleBtn.optNa {
+  background: #F1F5F9;
+  color: #64748B;
+  border-color: #CBD5E1;
+}
+.cebeScaleBtn.optNa.active, .cebeScaleBtn.optNa:hover {
+  background: #64748B;
+  color: #FFFFFF;
+  border-color: #475569;
+}
+.cebeTextarea {
+  width: 100%;
+  min-height: 70px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-family: inherit;
+  resize: vertical;
+}
+.cebeTextarea:focus {
+  border-color: #1E40AF;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.15);
+}
+.cebeProgressBadge {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 14px;
+  background: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  color: var(--navy-900);
+}

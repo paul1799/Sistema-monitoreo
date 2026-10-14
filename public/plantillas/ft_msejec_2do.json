@@ -1,0 +1,216 @@
+{
+    "grupo":  "Modelo JEC",
+    "nombreCorto":  "ImplementaciÃ³n del Modelo JEC",
+    "orden":  10,
+    "tieneVisitas":  true,
+    "descripcion":  "Verifica la implementaciÃ³n de los componentes pedagÃ³gico, de gestiÃ³n y de soporte del Modelo de Servicio Educativo Jornada Escolar Completa.",
+    "extras":  [
+                   {
+                       "label":  "Â¿La IE implementa el modelo de Servicio Educativo Secundaria con FormaciÃ³n TÃ©cnica?",
+                       "tipo":  "si_no",
+                       "required":  true
+                   },
+                   {
+                       "label":  "NÂ° de secciones",
+                       "tipo":  "numero"
+                   },
+                   {
+                       "label":  "Cantidad de estudiantes",
+                       "tipo":  "numero"
+                   },
+                   {
+                       "label":  "Cantidad de docentes",
+                       "tipo":  "numero"
+                   },
+                   {
+                       "label":  "Directivo que brinda la informaciÃ³n",
+                       "tipo":  "texto"
+                   },
+                   {
+                       "label":  "DNI Directivo",
+                       "tipo":  "texto"
+                   },
+                   {
+                       "label":  "TelÃ©fono celular",
+                       "tipo":  "texto"
+                   },
+                   {
+                       "label":  "Correo electrÃ³nico",
+                       "tipo":  "texto"
+                   }
+               ],
+    "icono":  "ðŸ«",
+    "nombre":  "Monitoreo y Asistencia TÃ©cnica a la ImplementaciÃ³n del Modelo JEC",
+    "secciones":  [
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "jec_1",
+                                            "texto":  "El horario institucional evidencia la organizaciÃ³n de la jornada escolar en 9 horas pedagÃ³gicas diarias de 45 minutos, conforme al plan de estudios MSE JEC"
+                                        },
+                                        {
+                                            "id":  "jec_2",
+                                            "texto":  "La IE cuenta con un diagnÃ³stico de las necesidades de aprendizaje de los estudiantes que orienta la planificaciÃ³n pedagÃ³gica"
+                                        },
+                                        {
+                                            "id":  "jec_3",
+                                            "texto":  "La IE cuenta con Plan TOECE actualizado, aprobado y coherente con las necesidades socioemocionales identificadas"
+                                        },
+                                        {
+                                            "id":  "jec_4",
+                                            "texto":  "La IE cuenta con informes, actas, registros o acuerdos que evidencian el seguimiento a la implementaciÃ³n del Plan TOECE"
+                                        },
+                                        {
+                                            "id":  "jec_5",
+                                            "texto":  "La IE cuenta con sesiones de tutorÃ­a grupal que evidencian coherencia con el Plan TOECE y las necesidades socioemocionales identificadas"
+                                        },
+                                        {
+                                            "id":  "jec_6",
+                                            "texto":  "La IE cuenta con registros de atenciÃ³n tutorial individual que evidencian seguimiento a estudiantes con necesidades especÃ­ficas"
+                                        },
+                                        {
+                                            "id":  "jec_7",
+                                            "texto":  "La IE cuenta con el plan de trabajo del psicÃ³logo(a) actualizado, con actividades para estudiantes, orientaciÃ³n a familias y acciones formativas con docentes"
+                                        },
+                                        {
+                                            "id":  "jec_8",
+                                            "texto":  "La IE cuenta con informes, registros, actas u otros documentos que evidencian que el psicÃ³logo(a) desarrolla acciones dirigidas a estudiantes, docentes y familias"
+                                        },
+                                        {
+                                            "id":  "jec_9",
+                                            "texto":  "Las sesiones de aprendizaje revisadas evidencian que responden a las necesidades de aprendizaje identificadas en los estudiantes"
+                                        }
+                                    ],
+                          "nombre":  "Componente pedagÃ³gico (ImplementaciÃ³n TOECE)"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "jec_10",
+                                            "texto":  "La IE cuenta con un Plan Anual de Trabajo (PAT) que incorpora acciones del MSE JEC relacionadas con tutorÃ­a, acompaÃ±amiento, trabajo colegiado y CIST"
+                                        },
+                                        {
+                                            "id":  "jec_11",
+                                            "texto":  "La IE cuenta con actas, acuerdos u otros registros que evidencian la organizaciÃ³n de la comunidad educativa para asegurar el refrigerio escolar y recreos"
+                                        },
+                                        {
+                                            "id":  "jec_12",
+                                            "texto":  "La IE cuenta con actas, comunicados, informes o registros que evidencian acciones de informaciÃ³n y orientaciÃ³n a las familias"
+                                        },
+                                        {
+                                            "id":  "jec_13",
+                                            "texto":  "La IE cuenta con actas, informes o registros que evidencian la promociÃ³n de espacios de participaciÃ³n estudiantil"
+                                        },
+                                        {
+                                            "id":  "jec_14",
+                                            "texto":  "La IE cuenta con fichas, actas, registros u otros documentos que evidencian acciones de acompaÃ±amiento del director y subdirector a docentes y coordinadores"
+                                        },
+                                        {
+                                            "id":  "jec_15",
+                                            "texto":  "La IE organiza las evidencias de la implementaciÃ³n del PEAI de acuerdo a la matriz de logros ambientales"
+                                        },
+                                        {
+                                            "id":  "jec_16",
+                                            "texto":  "Los directivos monitorean la ejecuciÃ³n de las acciones del Plan Lector para la toma de decisiones y mejoras"
+                                        },
+                                        {
+                                            "id":  "jec_17",
+                                            "texto":  "Se identifican buenas prÃ¡cticas/proyectos de innovaciÃ³n y se promueven espacios de intercambio de experiencias"
+                                        },
+                                        {
+                                            "id":  "jec_18",
+                                            "texto":  "El equipo directivo realiza el monitoreo y seguimiento al uso pedagÃ³gico de textos escolares y material concreto"
+                                        },
+                                        {
+                                            "id":  "jec_19",
+                                            "texto":  "El directivo realiza el seguimiento a la participaciÃ³n de los docentes en las acciones formativas MINEDU (DIFODS-JEC)"
+                                        },
+                                        {
+                                            "id":  "jec_20",
+                                            "texto":  "Los directivos han socializado los oficios mÃºltiples correspondientes, asegurando su conocimiento e implementaciÃ³n"
+                                        }
+                                    ],
+                          "nombre":  "Componente de gestiÃ³n"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "jec_21",
+                                            "texto":  "La IE cuenta con actas, registros o materiales que evidencian la sensibilizaciÃ³n realizada por los coordinadores pedagÃ³gicos (CP) a sus docentes a cargo"
+                                        },
+                                        {
+                                            "id":  "jec_22",
+                                            "texto":  "El CP cuenta con evidencias de la realizaciÃ³n de la visita diagnÃ³stica y de ejecuciÃ³n de los docentes a su cargo"
+                                        },
+                                        {
+                                            "id":  "jec_23",
+                                            "texto":  "El CP cuenta con registros que evidencian, de manera objetiva, la prÃ¡ctica pedagÃ³gica observada del docente en las visitas de aula"
+                                        },
+                                        {
+                                            "id":  "jec_24",
+                                            "texto":  "El CP cuenta con matrices, planificador semanal, fichas u otros registros que evidencian el desarrollo del diÃ¡logo reflexivo con los docentes acompaÃ±ados"
+                                        },
+                                        {
+                                            "id":  "jec_25",
+                                            "texto":  "El CP cuenta con actas, guÃ­as u otros registros que evidencian que las reuniones de trabajo colegiado responden a las necesidades formativas identificadas"
+                                        },
+                                        {
+                                            "id":  "jec_26",
+                                            "texto":  "La IE cuenta con actas, registros o materiales que evidencian la sensibilizaciÃ³n realizada por los coordinadores de tutorÃ­a (CT) a sus docentes tutores"
+                                        },
+                                        {
+                                            "id":  "jec_27",
+                                            "texto":  "El CT cuenta con evidencias de la realizaciÃ³n de la visita diagnÃ³stica y de ejecuciÃ³n de los docentes tutores a su cargo"
+                                        },
+                                        {
+                                            "id":  "jec_28",
+                                            "texto":  "El CT cuenta con registros que evidencian, de manera objetiva, la prÃ¡ctica pedagÃ³gica observada del docente tutor posterior a la visita diagnÃ³stica"
+                                        },
+                                        {
+                                            "id":  "jec_29",
+                                            "texto":  "El CT cuenta con matrices, fichas u otros registros que evidencian el desarrollo del diÃ¡logo reflexivo con los docentes tutores acompaÃ±ados"
+                                        },
+                                        {
+                                            "id":  "jec_30",
+                                            "texto":  "El CT cuenta con actas, materiales u otros registros que evidencian las acciones formativas desarrolladas con docentes tutores en las reuniones colegiadas"
+                                        },
+                                        {
+                                            "id":  "jec_31",
+                                            "texto":  "El CIST cuenta con planificador semanal, informes u otros registros que evidencian acciones de fortalecimiento de competencias digitales y mantenimiento de equipos"
+                                        }
+                                    ],
+                          "nombre":  "Componente de soporte"
+                      }
+                  ],
+    "tipoRespuesta":  "si_no",
+    "regla_nivel":  {
+                        "tipo":  "conteo",
+                        "cuenta":  "si",
+                        "nota":  "Regla oficial MSE JEC: 24â€“31 SÃ­ = Lograda; 12â€“23 = Parcial; 0â€“11 = Incipiente",
+                        "rangos":  [
+                                       {
+                                           "nivel":  "ImplementaciÃ³n lograda",
+                                           "min":  24,
+                                           "max":  31,
+                                           "estado_panel":  "Logrado"
+                                       },
+                                       {
+                                           "nivel":  "ImplementaciÃ³n parcial",
+                                           "min":  12,
+                                           "max":  23,
+                                           "estado_panel":  "En proceso"
+                                       },
+                                       {
+                                           "nivel":  "ImplementaciÃ³n incipiente",
+                                           "min":  0,
+                                           "max":  11,
+                                           "estado_panel":  "Inicio"
+                                       }
+                                   ]
+                    },
+    "version":  {
+                    "anio":  2026,
+                    "momento":  "2do",
+                    "estado":  "publicada"
+                }
+}

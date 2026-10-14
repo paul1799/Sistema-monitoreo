@@ -1,0 +1,324 @@
+{
+    "grupo":  "CEBE / PRITE",
+    "nombreCorto":  "Experiencia lectora CEBE 2026",
+    "orden":  33,
+    "tieneVisitas":  true,
+    "nombre":  "Experiencia Lectora â€” CEBE (Plan Lector y Lectura Compartida)",
+    "descripcion":  "Monitorea la implementaciÃ³n de la Experiencia Lectora y el Plan Lector en los Centros de EducaciÃ³n BÃ¡sica Especial (CEBE). Cubre tres momentos de visita.",
+    "icono":  "ðŸ“–",
+    "tipoRespuesta":  "ips",
+    "escala":  "IPL_NA",
+    "regla_nivel":  {
+                        "tipo":  "porcentaje",
+                        "umbrales":  [
+                                         {
+                                             "nivel":  "Logrado",
+                                             "min":  85,
+                                             "estado_panel":  "Logrado"
+                                         },
+                                         {
+                                             "nivel":  "En proceso",
+                                             "min":  70,
+                                             "estado_panel":  "En proceso"
+                                         },
+                                         {
+                                             "nivel":  "Por mejorar",
+                                             "min":  0,
+                                             "estado_panel":  "Inicio"
+                                         }
+                                     ]
+                    },
+    "version":  {
+                    "anio":  2026,
+                    "momento":  null,
+                    "estado":  "publicada"
+                },
+    "visitas":  [
+                    1,
+                    2,
+                    3
+                ],
+    "extras":  [
+                   {
+                       "id":  "ex_especialista",
+                       "label":  "Especialista monitor(a)",
+                       "tipo":  "texto"
+                   },
+                   {
+                       "id":  "ex_fecha",
+                       "label":  "Fecha de visita",
+                       "tipo":  "fecha"
+                   },
+                   {
+                       "id":  "ex_visita",
+                       "label":  "N.Â° de visita",
+                       "tipo":  "numero"
+                   }
+               ],
+    "bloques":  [
+                    {
+                        "tipo":  "datos_ie",
+                        "titulo":  "Datos del CEBE",
+                        "campos":  [
+                                       {
+                                           "id":  "ex_ie",
+                                           "label":  "Nombre del CEBE",
+                                           "tipo":  "ie_autocomplete",
+                                           "required":  true
+                                       },
+                                       {
+                                           "id":  "ex_codigo_local",
+                                           "label":  "CÃ³digo Local",
+                                           "tipo":  "texto"
+                                       },
+                                       {
+                                           "id":  "ex_rei",
+                                           "label":  "REI / RED",
+                                           "tipo":  "texto"
+                                       },
+                                       {
+                                           "id":  "ex_ugel",
+                                           "label":  "UGEL",
+                                           "tipo":  "texto",
+                                           "valor_fijo":  "UGEL 03"
+                                       },
+                                       {
+                                           "id":  "ex_distrito",
+                                           "label":  "Distrito",
+                                           "tipo":  "texto"
+                                       }
+                                   ]
+                    },
+                    {
+                        "tipo":  "persona",
+                        "titulo":  "Director(a) del CEBE",
+                        "campos":  [
+                                       {
+                                           "id":  "dir_nombre",
+                                           "label":  "Apellidos y nombres",
+                                           "tipo":  "texto",
+                                           "required":  true
+                                       },
+                                       {
+                                           "id":  "dir_dni",
+                                           "label":  "DNI",
+                                           "tipo":  "dni"
+                                       },
+                                       {
+                                           "id":  "dir_condicion",
+                                           "label":  "CondiciÃ³n",
+                                           "tipo":  "select",
+                                           "opciones":  [
+                                                            "Nombrado(a)",
+                                                            "Contratado(a)",
+                                                            "Designado(a)"
+                                                        ]
+                                       }
+                                   ]
+                    },
+                    {
+                        "tipo":  "items_multi_visita",
+                        "titulo":  "Ãtems de monitoreo â€” Plan Lector y Experiencia Lectora",
+                        "escala":  "IPL_NA",
+                        "visitas":  [
+                                        1,
+                                        2,
+                                        3
+                                    ],
+                        "secciones":  [
+                                          {
+                                              "nombre":  "I. PlanificaciÃ³n e institucionalizaciÃ³n del Plan Lector",
+                                              "items":  [
+                                                            {
+                                                                "id":  "lect_1",
+                                                                "texto":  "El CEBE cuenta con un Plan Lector institucional 2026 aprobado por el directivo y difundido a los docentes."
+                                                            },
+                                                            {
+                                                                "id":  "lect_2",
+                                                                "texto":  "El Plan Lector incluye estrategias adaptadas a las necesidades de los estudiantes con discapacidad (braille, pictogramas, lectura fÃ¡cil, etc.)."
+                                                            },
+                                                            {
+                                                                "id":  "lect_3",
+                                                                "texto":  "Cada aula/ciclo tiene planificadas actividades de lectura compartida con una frecuencia mÃ­nima de dos (2) sesiones semanales."
+                                                            }
+                                                        ]
+                                          },
+                                          {
+                                              "nombre":  "II. ImplementaciÃ³n de la Experiencia Lectora",
+                                              "items":  [
+                                                            {
+                                                                "id":  "lect_4",
+                                                                "texto":  "Los docentes implementan la lectura compartida con estrategias pertinentes para el nivel y la discapacidad de sus estudiantes."
+                                                            },
+                                                            {
+                                                                "id":  "lect_5",
+                                                                "texto":  "Se utilizan textos variados (cuentos, poemas, noticias, informativos) adecuados al nivel y caracterÃ­sticas de los estudiantes."
+                                                            },
+                                                            {
+                                                                "id":  "lect_6",
+                                                                "texto":  "Los docentes promueven la comprensiÃ³n lectora mediante preguntas, discusiÃ³n, representaciÃ³n o expresiÃ³n alternativa."
+                                                            },
+                                                            {
+                                                                "id":  "lect_7",
+                                                                "texto":  "Se utilizan apoyos augmentativos y alternativos de comunicaciÃ³n (AAC) cuando los estudiantes lo requieren."
+                                                            }
+                                                        ]
+                                          },
+                                          {
+                                              "nombre":  "III. Espacios y materiales de lectura",
+                                              "items":  [
+                                                            {
+                                                                "id":  "lect_8",
+                                                                "texto":  "El CEBE cuenta con un espacio destinado a la biblioteca o rincÃ³n de lectura accesible para todos los estudiantes."
+                                                            },
+                                                            {
+                                                                "id":  "lect_9",
+                                                                "texto":  "Los materiales de lectura estÃ¡n adaptados y son accesibles (braille, libros con pictogramas, textos en lectura fÃ¡cil, audiolibros)."
+                                                            },
+                                                            {
+                                                                "id":  "lect_10",
+                                                                "texto":  "Se cuenta con materiales de lectura en nÃºmero suficiente para las actividades de lectura compartida."
+                                                            }
+                                                        ]
+                                          },
+                                          {
+                                              "nombre":  "IV. ParticipaciÃ³n de familias",
+                                              "items":  [
+                                                            {
+                                                                "id":  "lect_11",
+                                                                "texto":  "Se han realizado talleres o reuniones con familias para orientarlos sobre cÃ³mo apoyar la lectura en el hogar."
+                                                            },
+                                                            {
+                                                                "id":  "lect_12",
+                                                                "texto":  "Las familias acceden a materiales de lectura del CEBE para llevar a casa (prÃ©stamo de libros)."
+                                                            }
+                                                        ]
+                                          },
+                                          {
+                                              "nombre":  "V. Seguimiento y evaluaciÃ³n",
+                                              "items":  [
+                                                            {
+                                                                "id":  "lect_13",
+                                                                "texto":  "El directivo realiza seguimiento de la implementaciÃ³n del Plan Lector e identifica avances y dificultades."
+                                                            },
+                                                            {
+                                                                "id":  "lect_14",
+                                                                "texto":  "Se registra y sistematiza la informaciÃ³n sobre la prÃ¡ctica lectora (fichas de registro, portafolios de lectura u otros)."
+                                                            },
+                                                            {
+                                                                "id":  "lect_15",
+                                                                "texto":  "Se realizan ajustes al Plan Lector a partir del seguimiento y las necesidades identificadas.",
+                                                                "puede_nc":  true
+                                                            }
+                                                        ]
+                                          }
+                                      ]
+                    },
+                    {
+                        "tipo":  "compromisos",
+                        "titulo":  "Compromisos de mejora",
+                        "tipos":  [
+                                      {
+                                          "id":  "director",
+                                          "label":  "Compromisos del Director(a) del CEBE"
+                                      },
+                                      {
+                                          "id":  "monitor",
+                                          "label":  "Compromisos del Monitor(a) / Especialista AGEBRE"
+                                      }
+                                  ]
+                    },
+                    {
+                        "tipo":  "texto_libre",
+                        "titulo":  "Observaciones generales",
+                        "placeholder":  "Observaciones adicionales de la visita al CEBE..."
+                    }
+                ],
+    "secciones":  [
+                      {
+                          "nombre":  "PlanificaciÃ³n e institucionalizaciÃ³n del Plan Lector",
+                          "items":  [
+                                        {
+                                            "id":  "lect_1",
+                                            "texto":  "El CEBE cuenta con un Plan Lector institucional 2026 aprobado y difundido."
+                                        },
+                                        {
+                                            "id":  "lect_2",
+                                            "texto":  "El Plan Lector incluye estrategias adaptadas a las necesidades de los estudiantes con discapacidad."
+                                        },
+                                        {
+                                            "id":  "lect_3",
+                                            "texto":  "Cada aula/ciclo tiene planificadas actividades de lectura compartida (â‰¥ 2 sesiones semanales)."
+                                        }
+                                    ]
+                      },
+                      {
+                          "nombre":  "ImplementaciÃ³n de la Experiencia Lectora",
+                          "items":  [
+                                        {
+                                            "id":  "lect_4",
+                                            "texto":  "Los docentes implementan la lectura compartida con estrategias pertinentes para el nivel y la discapacidad."
+                                        },
+                                        {
+                                            "id":  "lect_5",
+                                            "texto":  "Se utilizan textos variados adecuados al nivel y caracterÃ­sticas de los estudiantes."
+                                        },
+                                        {
+                                            "id":  "lect_6",
+                                            "texto":  "Los docentes promueven la comprensiÃ³n lectora mediante preguntas, discusiÃ³n o expresiÃ³n alternativa."
+                                        },
+                                        {
+                                            "id":  "lect_7",
+                                            "texto":  "Se utilizan apoyos augmentativos y alternativos de comunicaciÃ³n (AAC) cuando se requiere."
+                                        }
+                                    ]
+                      },
+                      {
+                          "nombre":  "Espacios y materiales de lectura",
+                          "items":  [
+                                        {
+                                            "id":  "lect_8",
+                                            "texto":  "El CEBE cuenta con un espacio de biblioteca/rincÃ³n de lectura accesible."
+                                        },
+                                        {
+                                            "id":  "lect_9",
+                                            "texto":  "Los materiales de lectura estÃ¡n adaptados y son accesibles (braille, pictogramas, audiolibros)."
+                                        },
+                                        {
+                                            "id":  "lect_10",
+                                            "texto":  "Se cuenta con materiales de lectura en nÃºmero suficiente."
+                                        }
+                                    ]
+                      },
+                      {
+                          "nombre":  "ParticipaciÃ³n de familias",
+                          "items":  [
+                                        {
+                                            "id":  "lect_11",
+                                            "texto":  "Se han realizado talleres o reuniones con familias para orientarlos sobre cÃ³mo apoyar la lectura en el hogar."
+                                        },
+                                        {
+                                            "id":  "lect_12",
+                                            "texto":  "Las familias acceden a materiales de lectura del CEBE para llevar a casa."
+                                        }
+                                    ]
+                      },
+                      {
+                          "nombre":  "Seguimiento y evaluaciÃ³n",
+                          "items":  [
+                                        {
+                                            "id":  "lect_13",
+                                            "texto":  "El directivo realiza seguimiento de la implementaciÃ³n del Plan Lector."
+                                        },
+                                        {
+                                            "id":  "lect_14",
+                                            "texto":  "Se registra y sistematiza la informaciÃ³n sobre la prÃ¡ctica lectora."
+                                        },
+                                        {
+                                            "id":  "lect_15",
+                                            "texto":  "Se realizan ajustes al Plan Lector a partir del seguimiento y las necesidades identificadas."
+                                        }
+                                    ]
+                      }
+                  ]
+}

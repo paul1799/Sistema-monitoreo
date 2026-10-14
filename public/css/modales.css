@@ -1,0 +1,317 @@
+/* =========================================================================
+   modales.css — Ventanas Emergentes, Diálogos y Configuración de Descargas
+   -------------------------------------------------------------------------
+   Utilizado por:
+     - public/js/ui.js (modales de firmas, duplicados y configuración)
+     - public/js/pdf-template.js (diálogo de descarga PDF/Excel)
+   Contiene:
+     - Capa de bloqueo y desenfoque (.downloadModalOverlay, body.modal-open)
+     - Tarjeta modal centrada (.downloadModalCard, modalFadeIn)
+     - Encabezado modal con cierre y pestañas de configuración
+     - Opciones de orientación de página (.downloadOrientationRow)
+     - Selector de tipo de reporte (Parte A / Parte D / Fichas Individuales)
+     - Asignación de áreas de firma institucionales
+   ========================================================================= */
+/* =========================================================================
+   DIÃLOGO MODAL: CONFIGURAR DESCARGA (PARTE A / D) Y ÃREAS DE FIRMA
+   ========================================================================= */
+.downloadModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 27, 54, 0.65);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(4px);
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.downloadModalCard {
+  background: #FFFFFF;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 620px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.downloadModalHeader {
+  background: #0B1B36;
+  padding: 16px 22px;
+  color: #FFFFFF;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid #E0A526;
+}
+
+.downloadModalHeader h3 {
+  font-family: var(--serif);
+  font-size: 19px;
+  margin: 0;
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.downloadModalHeader .sub {
+  color: #E0A526;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-top: 3px;
+  text-transform: uppercase;
+}
+
+.downloadModalClose {
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.downloadModalClose:hover {
+  color: #FFFFFF;
+}
+
+.downloadModalBody {
+  padding: 20px 22px;
+  overflow-y: auto;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #FFFFFF;
+}
+
+.downloadModalSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.downloadModalSection label.secLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.75px;
+  color: var(--ink-soft);
+  margin-bottom: 2px;
+}
+
+.downloadFirmantesList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.downloadFirmanteItem {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  transition: all 0.15s;
+}
+
+.downloadFirmanteItem:hover {
+  border-color: #CBD5E1;
+  background: #F1F5F9;
+}
+
+.downloadFirmanteItem .reorderBtns {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.downloadFirmanteItem .reorderBtns button {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 9px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  line-height: 1.1;
+}
+
+.downloadFirmanteItem .reorderBtns button:hover:not(:disabled) {
+  background: var(--primary-tint);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.downloadFirmanteItem .reorderBtns button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.downloadFirmanteItem .fieldsWrap {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 6px;
+  flex: 1;
+}
+
+.downloadFirmanteItem input,
+.downloadFirmanteItem select {
+  padding: 5px 8px;
+  font-size: 12px;
+  border: 1px solid #CBD5E1;
+  border-radius: 5px;
+  background: #FFFFFF;
+}
+
+.downloadFirmanteItem .delFirmanteBtn {
+  background: transparent;
+  border: none;
+  color: #EF4444;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.downloadFirmanteItem .delFirmanteBtn:hover {
+  color: #B91C1C;
+}
+
+/* Vista previa en vivo de firmas */
+.downloadSigPreview {
+  background: #F8FAFC;
+  border: 1px dashed #CBD5E1;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-top: 4px;
+}
+
+.downloadSigPreview .previewDate {
+  font-size: 10.5px;
+  font-style: italic;
+  color: #64748B;
+  margin-bottom: 12px;
+}
+
+.downloadSigPreviewGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.downloadSigPreviewBox {
+  border-top: 1px solid #94A3B8;
+  padding-top: 6px;
+  text-align: center;
+  font-size: 10px;
+}
+
+.downloadSigPreviewBox .pNom {
+  font-weight: 700;
+  color: #0B1B36;
+}
+
+.downloadSigPreviewBox .pCargo {
+  font-weight: 600;
+  color: #1E293B;
+}
+
+.downloadSigPreviewBox .pEnt {
+  color: #64748B;
+  font-size: 9px;
+}
+
+.downloadSigPreviewBox .pLey {
+  color: #94A3B8;
+  font-style: italic;
+  font-size: 8.5px;
+}
+
+/* Franja de revisiÃ³n previa de datos (Parte D) */
+.downloadReviewAlert {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-left: 4px solid #F59E0B;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.downloadReviewAlert h5 {
+  margin: 0 0 6px 0;
+  color: #92400E;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.downloadReviewAlert ul {
+  margin: 0 0 10px 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #78350F;
+}
+
+.downloadReviewAlert ul li {
+  margin-bottom: 3px;
+}
+
+.downloadReviewActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.downloadModalFooter {
+  padding: 14px 22px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: #FAFBFD;
+}
+
+/* En pantallas mÃ³viles el diÃ¡logo modal se adapta fluidamente a la pantalla */
+@media (max-width: 640px) {
+  .downloadModalOverlay {
+    padding: 8px;
+  }
+
+  .downloadModalCard {
+    max-width: 100%;
+    width: 100%;
+    max-height: calc(100dvh - 16px);
+    border-radius: 12px;
+  }
+
+  .downloadFirmanteItem .fieldsWrap {
+    grid-template-columns: 1fr;
+  }
+
+  .downloadModalFooter {
+    position: sticky;
+    bottom: 0;
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
+  }
+}

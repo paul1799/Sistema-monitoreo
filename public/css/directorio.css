@@ -1,0 +1,106 @@
+/* =========================================================================
+   directorio.css — Directorio de Directivos por IE (UGEL 03)
+   -------------------------------------------------------------------------
+   Utilizado por:
+     - public/js/directorio.js
+   Contiene:
+     - Contenedor y tabla de directores (.directorioTableWrap, .directorioTable)
+     - Tarjetas de directivos por red y nivel (.directorioCard)
+     - Badges de condición de cargo (Designado, Encargado, Vacante)
+     - Modal de edición rápida y filtros institucionales
+   ========================================================================= */
+/* =========================================================================
+   ESTILOS DEL APARTADO DIRECTORIO DE DIRECTIVOS POR IE
+   ========================================================================= */
+.directorioTableWrap {
+  position: relative;
+  overflow-x: auto;
+}
+
+.directorioTable {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.directorioTable th,
+.directorioTable td {
+  padding: 8px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.directorioTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.directorioTable thead tr.directorioHeaderNivel1 th {
+  top: 0;
+  z-index: 22;
+}
+
+.directorioTable thead tr.directorioHeaderNivel2 th {
+  top: 38px;
+  z-index: 21;
+  color: #12294D !important; /* Texto oscuro de alto contraste sobre pasteles */
+  font-weight: 700 !important;
+}
+
+/* Columnas fijas (sticky) en scroll horizontal sin brechas entre sÃ­ */
+.directorioTable .stickyCol {
+  position: sticky;
+  z-index: 10;
+  background: #FFFFFF;
+  box-sizing: border-box;
+}
+
+.directorioTable thead .stickyCol {
+  z-index: 25 !important;
+}
+
+.directorioTable .stickyCol1 {
+  left: 0 !important;
+  width: 70px !important;
+  min-width: 70px !important;
+  max-width: 70px !important;
+}
+
+.directorioTable .stickyCol2 {
+  left: 70px !important;
+  width: 100px !important;
+  min-width: 100px !important;
+  max-width: 100px !important;
+}
+
+.directorioTable .stickyCol3 {
+  left: 170px !important;
+  width: 220px !important;
+  min-width: 220px !important;
+  box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.15) !important;
+}
+
+.directorioTable tbody tr:hover td {
+  background-color: var(--surface-2);
+}
+
+.directorioTable tbody tr:hover .stickyCol {
+  background-color: #EDF3F9;
+}
+
+.directorioSubdirItem:last-child {
+  border-bottom: none !important;
+  margin-bottom: 0 !important;
+}
+
+.dirEmptyBadge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-style: italic;
+}

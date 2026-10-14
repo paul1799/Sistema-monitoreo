@@ -89,6 +89,14 @@ import {
   guardarFormularioCebe,
   CEBE_SECCIONES
 } from './cebe-gestion.js?v=20261013_v7';
+import {
+  isFichaPriteGestion,
+  renderPriteGestionForm,
+  preloadPriteFormState,
+  resetPriteFormState,
+  guardarFormularioPrite,
+  PRITE_SECCIONES
+} from './prite-gestion.js?v=20261014_v1';
 
 
 /* ============================= CONSTANTES COMPARTIDAS ============================= */
@@ -279,10 +287,10 @@ export function getSubmissionResponsable(s, state = null, currentUser = null) {
     return ESPECIALISTA_JEC_OFICIAL.nombresApellidos;
   }
 
-  // 1.1 REGLA ESPECÍFICA OFICIAL CEBE:
-  // Ficha de Monitoreo y Asistencia Técnica a la Gestión Escolar - CEBE
+  // 1.1 REGLA ESPECÍFICA OFICIAL CEBE y PRITE:
+  // Ficha de Monitoreo y Asistencia Técnica a la Gestión Escolar - CEBE / PRITE
   // Las 2 especialistas designadas son María Angélica Zavala Querevalú y Ana Rosario Valderrama Barrientos
-  if (s && (s.fichaTypeId === 'ft_gestion_cebe' || (s.fichaTypeNombre && s.fichaTypeNombre.toLowerCase().includes('cebe')))) {
+  if (s && (s.fichaTypeId === 'ft_gestion_cebe' || s.fichaTypeId === 'ft_prite_gestion' || (s.fichaTypeNombre && (s.fichaTypeNombre.toLowerCase().includes('cebe') || s.fichaTypeNombre.toLowerCase().includes('prite'))))) {
     if (s.responsable && String(s.responsable).trim() && s.responsable.trim() !== '—' && !s.responsable.includes('@') && !/^\d+$/.test(String(s.responsable).trim())) {
       return String(s.responsable).trim();
     }
@@ -504,6 +512,8 @@ export function computeStats(sub, ft) {
     ftForCalc = { ...ft, secciones: JEC_SECCIONES, tipoRespuesta: 'si_no', regla_nivel: ft?.regla_nivel || REGLA_NIVEL_JEC };
   } else if (isFichaCebeGestion(ft || sub) && respuestasArray && respuestasArray.length > 0) {
     ftForCalc = { ...ft, secciones: CEBE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
+  } else if (isFichaPriteGestion(ft || sub) && respuestasArray && respuestasArray.length > 0) {
+    ftForCalc = { ...ft, secciones: PRITE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
   }
   const result = calcScore(respuestasArray, ftForCalc);
   let finalEstado = {
@@ -2300,6 +2310,25 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     return;
   }
 
+  // Interceptar Ficha "Monitoreo y Asistencia Técnica a la Gestión Escolar - PRITE"
+  if (isFichaPriteGestion(ft)) {
+    if (editingSubmissionData) {
+      preloadPriteFormState(editingSubmissionData, ft);
+    }
+    renderPriteGestionForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData);
+    if (editingSubmissionData && editingSubmissionData.id) {
+      const f = host.querySelector('#regForm');
+      if (f) f.dataset.editingId = editingSubmissionData.id;
+    }
+    host.onsubmit = async (e) => {
+      if (e.target && e.target.id === 'regForm') {
+        if (e.defaultPrevented) return;
+        await onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate);
+      }
+    };
+    return;
+  }
+
   // Interceptar Ficha "Monitoreo y Asistencia Técnica a la Gestión Escolar – UGEL 03 EBR"
   if (isFichaEbrGestionEscolar(ft)) {
     if (editingSubmissionData) {
@@ -3242,6 +3271,13 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       return;
     }
 
+    // Interceptar guardado de Ficha "Monitoreo y Asistencia Técnica a la Gestión Escolar - PRITE"
+    if (isFichaPriteGestion(ft)) {
+      const targetForm = (form && form.id === 'regForm') ? form : (document.getElementById('regForm') || document.getElementById('regFormHost')?.querySelector('#regForm'));
+      await guardarFormularioPrite(targetForm, ft, activeState, dbNs, currentUser, navigate, isEdit);
+      return;
+    }
+
     // Interceptar guardado de Ficha "Monitoreo y Asistencia Técnica a la Gestión Escolar – UGEL 03 EBR"
     if (isFichaEbrGestionEscolar(ft)) {
       const ebrData = collectEbrGestionFormData(form || document.getElementById('regFormHost'), ft, isEdit);
@@ -3993,6 +4029,8 @@ export function getEnrichedFichaType(ft) {
       }
       if (isFichaCebeGestion(ft)) {
         ft = { ...ft, secciones: CEBE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
+      } else if (isFichaPriteGestion(ft)) {
+        ft = { ...ft, secciones: PRITE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
       }
     }
     // 7. Gestión Escolar EBR
@@ -4464,6 +4502,7 @@ function renderSection2Html(statsList, instCount, state, getFichaType, user, isA
   const ft = !isAllMode ? getEnrichedFichaType(getFichaType(filtrosReporte.tipo)) : null;
   const isEbr = ft && isFichaEbrGestionEscolar(ft);
   const isCebe = ft && isFichaCebeGestion(ft);
+  const isPrite = ft && isFichaPriteGestion(ft);
   const selectedShortName = isAllMode ? 'Todas las fichas' : (ft ? ft.nombreCorto : '—');
 
   let visitaSelectHtml = '';
@@ -4475,7 +4514,7 @@ function renderSection2Html(statsList, instCount, state, getFichaType, user, isA
         <option value="2"${String(filtrosReporte.visita) === '2' ? ' selected' : ''}>Visita 2 · Segundo momento</option>
       </select>
     `;
-  } else if (!isAllMode && ft && isCebe) {
+  } else if (!isAllMode && ft && (isCebe || isPrite)) {
     visitaSelectHtml = `
       <select id="fil_visita" required>
         <option value="">— Elige Visita (obligatorio) —</option>
@@ -4685,8 +4724,9 @@ function updateStickyReportesBar(statsList, getFichaType) {
   const shortName = isAllMode ? 'Todas las fichas' : (ft ? ft.nombreCorto : '—');
   const isEbr = ft && isFichaEbrGestionEscolar(ft);
   const isCebe = ft && isFichaCebeGestion(ft);
+  const isPrite = ft && isFichaPriteGestion(ft);
   const isGestionSinVisita = (isEbr && (filtrosReporte.visita !== '1' && filtrosReporte.visita !== '2')) ||
-                             (isCebe && (!['1', '2', '3'].includes(String(filtrosReporte.visita))));
+                             ((isCebe || isPrite) && (!['1', '2', '3'].includes(String(filtrosReporte.visita))));
   const isZero = statsList.length === 0;
   const disabled = isZero || isGestionSinVisita;
 
@@ -4736,7 +4776,7 @@ export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdm
   if (!reportesFiltersInitialized) {
     const loaded = loadReportesFiltersFromUrl(state);
     const initFt = loaded.tipo && loaded.tipo !== '__ALL__' ? state.fichaTypes.find(t => t.id === loaded.tipo) : null;
-    if (initFt && (isFichaEbrGestionEscolar(initFt) || isFichaCebeGestion(initFt))) {
+    if (initFt && (isFichaEbrGestionEscolar(initFt) || isFichaCebeGestion(initFt) || isFichaPriteGestion(initFt))) {
       const valid = isFichaEbrGestionEscolar(initFt) ? ['1', '2'] : ['1', '2', '3'];
       if (!loaded.visita || !valid.includes(String(loaded.visita))) {
         loaded.visita = '1';
@@ -4867,6 +4907,8 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
       seccionesParaAgg = hasV2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
     } else if (isFichaCebeGestion(ft)) {
       seccionesParaAgg = CEBE_SECCIONES;
+    } else if (isFichaPriteGestion(ft)) {
+      seccionesParaAgg = PRITE_SECCIONES;
     }
     const secAgg = {};
     seccionesParaAgg.forEach(sec => secAgg[sec.nombre] = { sum: 0, cnt: 0 });
@@ -5132,7 +5174,8 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
   // Cálculo de tarjetas KPI para fichas con modalidad específica (EBR y CEBE)
   const isEbrReport = !isAllMode && ft && isFichaEbrGestionEscolar(ft);
   const isCebeReport = !isAllMode && ft && isFichaCebeGestion(ft);
-  const targetModality = isEbrReport ? 'EBR' : (isCebeReport ? 'EBE' : null);
+  const isPriteReport = !isAllMode && ft && isFichaPriteGestion(ft);
+  const targetModality = isEbrReport ? 'EBR' : ((isCebeReport || isPriteReport) ? 'EBE' : null);
 
   let cardsHtml = '';
   if (targetModality) {
@@ -5414,7 +5457,7 @@ function attachSection1Listeners(secTipo, state, getFichaType, dbNs, isAdmin, na
     } else if (typeId === '__ALL__' && filtrosReporte.visita) {
       filtrosReporte.visita = '';
       consFilters.visita = '';
-    } else if (newFt && (isFichaEbrGestionEscolar(newFt) || isFichaCebeGestion(newFt))) {
+    } else if (newFt && (isFichaEbrGestionEscolar(newFt) || isFichaCebeGestion(newFt) || isFichaPriteGestion(newFt))) {
       const validVisitas = isFichaEbrGestionEscolar(newFt) ? ['1', '2'] : ['1', '2', '3'];
       if (!filtrosReporte.visita || !validVisitas.includes(String(filtrosReporte.visita))) {
         filtrosReporte.visita = '1';
@@ -5423,8 +5466,8 @@ function attachSection1Listeners(secTipo, state, getFichaType, dbNs, isAdmin, na
     }
 
     // Regla de Estado: mantener si aplica, de lo contrario resetear
-    if (filtrosReporte.estado && newFt && (isFichaEbrGestionEscolar(newFt) || isFichaCebeGestion(newFt))) {
-      // EBR y CEBE admiten Logrado, En proceso, Inicio
+    if (filtrosReporte.estado && newFt && (isFichaEbrGestionEscolar(newFt) || isFichaCebeGestion(newFt) || isFichaPriteGestion(newFt))) {
+      // EBR, CEBE y PRITE admiten Logrado, En proceso, Inicio
     }
 
     filtrosReporte.tipo = typeId;
@@ -5632,13 +5675,14 @@ function attachSection2Listeners(secFiltros, state, getFichaType, dbNs, isAdmin,
 
       const isEbrExport = ft && isFichaEbrGestionEscolar(ft);
       const isCebeExport = ft && isFichaCebeGestion(ft);
+      const isPriteExport = ft && isFichaPriteGestion(ft);
       if (isEbrExport) {
         const vNum = Number(filtrosReporte.visita);
         if (vNum !== 1 && vNum !== 2) {
           showToast('Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.');
           return;
         }
-      } else if (isCebeExport) {
+      } else if (isCebeExport || isPriteExport) {
         const vNum = Number(filtrosReporte.visita);
         if (vNum !== 1 && vNum !== 2 && vNum !== 3) {
           showToast('Elige Visita 1, Visita 2 o Visita 3. Cada visita se analiza y descarga por separado.');
@@ -5690,13 +5734,14 @@ function attachSection2Listeners(secFiltros, state, getFichaType, dbNs, isAdmin,
     btnExportPdf.addEventListener('click', () => {
       const isEbrPdf = ft && isFichaEbrGestionEscolar(ft);
       const isCebePdf = ft && isFichaCebeGestion(ft);
+      const isPritePdf = ft && isFichaPriteGestion(ft);
       if (isEbrPdf) {
         const vNum = Number(filtrosReporte.visita);
         if (vNum !== 1 && vNum !== 2) {
           showToast('Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.');
           return;
         }
-      } else if (isCebePdf) {
+      } else if (isCebePdf || isPritePdf) {
         const vNum = Number(filtrosReporte.visita);
         if (vNum !== 1 && vNum !== 2 && vNum !== 3) {
           showToast('Elige Visita 1, Visita 2 o Visita 3. Cada visita se analiza y descarga por separado.');
@@ -6171,9 +6216,115 @@ function buildDetail(s) {
     `;
   }
 
+  let priteBanner = '';
+  const isPrite = isFichaPriteGestion(s);
+  if (isPrite) {
+    const v = Number(s.visita) || 1;
+    const puntaje = (s.puntaje !== undefined && s.puntaje !== null) ? Number(s.puntaje) : 0;
+    const pct = (s.porcentaje !== undefined && s.porcentaje !== null) ? Number(s.porcentaje) : Math.round((puntaje / 32) * 100);
+    const estado = s.estado || (pct >= 85 ? 'Logrado' : (pct >= 70 ? 'En proceso' : 'Inicio'));
+    let estadoColor = '#16a34a';
+    let estadoCls = 'st-logrado';
+    if (estado === 'En proceso' || String(estado).toLowerCase().includes('proces')) { estadoColor = '#d97706'; estadoCls = 'st-proceso'; }
+    else if (estado === 'Inicio' || String(estado).toLowerCase().includes('inic')) { estadoColor = '#dc2626'; estadoCls = 'st-inicio'; }
+
+    let personalHtml = '';
+    const tp = s.tablasPersonal || {};
+    if (tp.personal || tp.accesoEstudiantes) {
+      personalHtml = `
+        <div style="margin-top:12px;margin-bottom:12px;padding:12px;background:var(--surface-sunken,#f8fafc);border-radius:6px;border:1px solid var(--border-soft,#e2e8f0)">
+          <div style="font-weight:700;font-size:12px;color:var(--text-900,#0f172a);margin-bottom:6px">I. Cuadros Estadísticos del PRITE</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--text-700,#334155)">
+            <div><strong>Estudiantes Inicial:</strong> Matr. ${tp.accesoEstudiantes?.ini_mat || '0'} · Asist. ${tp.accesoEstudiantes?.ini_asis || '0'}</div>
+            <div>·</div>
+            <div><strong>Directora:</strong> ${tp.personal?.directora_tot || '0'} (Asist. ${tp.personal?.directora_asis || '0'})</div>
+            <div>·</div>
+            <div><strong>Tutores:</strong> ${Number(tp.personal?.tutores_nom_tot || 0) + Number(tp.personal?.tutores_cont_tot || 0)} (Nombrados: ${tp.personal?.tutores_nom_tot || '0'}, Contratados: ${tp.personal?.tutores_cont_tot || '0'})</div>
+            <div>·</div>
+            <div><strong>CAS:</strong> ${tp.personal?.prof_cas_tot || '0'} · <strong>Administrativo:</strong> ${tp.personal?.personal_adm_tot || '0'}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    let sintesisTableHtml = '';
+    const spv = s.sintesisPorVisita;
+    if (spv && (spv.v1?.logros || spv.v2?.logros || spv.v3?.logros || spv.v1?.mejoras || spv.v2?.mejoras || spv.v3?.mejoras || spv.v1?.recomendaciones || spv.v2?.recomendaciones || spv.v3?.recomendaciones)) {
+      sintesisTableHtml = `
+        <div style="margin-top:14px;margin-bottom:12px">
+          <div style="font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--text-900,#0f172a)">IV. Logros, Aspectos de Mejora y Recomendaciones (Por Visita)</div>
+          <div style="overflow-x:auto">
+            <table class="dataTable" style="font-size:11.5px;width:100%;border-collapse:collapse;text-align:left">
+              <thead>
+                <tr style="background:var(--surface-sunken,#f1f5f9)">
+                  <th style="padding:6px;width:22%">Aspecto</th>
+                  <th style="padding:6px;width:26%">Visita 1</th>
+                  <th style="padding:6px;width:26%">Visita 2</th>
+                  <th style="padding:6px;width:26%">Visita 3</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-weight:700;padding:6px;background:var(--surface-sunken,#f8fafc)">Logros observados</td>
+                  <td style="padding:6px">${esc(spv.v1?.logros || '—')}</td>
+                  <td style="padding:6px">${esc(spv.v2?.logros || '—')}</td>
+                  <td style="padding:6px">${esc(spv.v3?.logros || '—')}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight:700;padding:6px;background:var(--surface-sunken,#f8fafc)">Aspectos de mejora</td>
+                  <td style="padding:6px">${esc(spv.v1?.mejoras || '—')}</td>
+                  <td style="padding:6px">${esc(spv.v2?.mejoras || '—')}</td>
+                  <td style="padding:6px">${esc(spv.v3?.mejoras || '—')}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight:700;padding:6px;background:var(--surface-sunken,#f8fafc)">Recomendaciones</td>
+                  <td style="padding:6px">${esc(spv.v1?.recomendaciones || '—')}</td>
+                  <td style="padding:6px">${esc(spv.v2?.recomendaciones || '—')}</td>
+                  <td style="padding:6px">${esc(spv.v3?.recomendaciones || '—')}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    let compromisosHtml = '';
+    const cpv = s.compromisosPorVisita;
+    const kAct = `v${v}`;
+    const compActivo = cpv?.[kAct] || {};
+    if (compActivo.director || compActivo.especialista) {
+      compromisosHtml = `
+        <div style="margin-top:12px;margin-bottom:12px;background:var(--surface-sunken,#f8fafc);padding:10px 14px;border-radius:6px;border-left:3px solid #1e40af">
+          <div style="font-weight:700;font-size:12px;margin-bottom:4px;color:#1e40af">V. Compromisos de Mejora · Visita ${v}</div>
+          ${compActivo.director ? `<div style="font-size:11.5px;margin-bottom:3px"><strong>Directivo(a):</strong> ${esc(compActivo.director)}</div>` : ''}
+          ${compActivo.especialista ? `<div style="font-size:11.5px"><strong>Especialista AGEBRE:</strong> ${esc(compActivo.especialista)}</div>` : ''}
+        </div>
+      `;
+    }
+
+    priteBanner = `
+      <div style="margin-bottom:14px;padding:14px 18px;border-radius:8px;background:var(--surface-card,#ffffff);border:1px solid var(--border-soft,#e2e8f0);box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+          <div>
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted,#64748b);text-transform:uppercase;letter-spacing:0.5px">Gestión Escolar PRITE · RM N° 501-2025-MINEDU</span>
+            <div style="font-size:17px;font-weight:800;color:var(--text-main,#0f172a);margin-top:2px">Visita ${v} de 3 · ${esc(estado)} (${puntaje} / 32 pts · ${pct}%)</div>
+          </div>
+          <div>
+            <span class="badge ${esc(estadoCls)}" style="font-size:13px;padding:5px 14px;font-weight:700;background:${estadoColor};color:#ffffff">${esc(estado)}</span>
+          </div>
+        </div>
+        ${personalHtml}
+        ${sintesisTableHtml}
+        ${compromisosHtml}
+      </div>
+    `;
+  }
+
   const items = (s.respuestas || []).map(r => {
     const opt = (RESPONSE_OPTIONS[s.tipoRespuesta] || []).find(o => o.v === r.valor);
-    const hallazgoHtml = r.hallazgo ? `<div style="margin-top:6px;font-size:11.5px;color:var(--text-800,#1e293b);background:var(--surface-sunken,#f8fafc);padding:5px 10px;border-radius:4px;border-left:3px solid var(--primary,#2563eb)"><strong>Hallazgo:</strong> ${esc(r.hallazgo)}</div>` : '';
+    const evidText = r.evidencia || r.hallazgo;
+    const hallazgoHtml = evidText ? `<div style="margin-top:6px;font-size:11.5px;color:var(--text-800,#1e293b);background:var(--surface-sunken,#f8fafc);padding:5px 10px;border-radius:4px;border-left:3px solid var(--primary,#2563eb)"><strong>${r.evidencia ? '📎 Evidencia:' : 'Hallazgo:'}</strong> ${esc(evidText)}</div>` : '';
     return '<div class="itemRow"><div class="itxt"><strong style="font-weight:600;color:var(--ink-soft);font-size:11.5px">' + esc(r.seccion) + '</strong><br>' + esc(r.texto) + hallazgoHtml + '</div><div class="optGroup"><span class="badge st-none" style="color:var(--ink)">' + esc(opt ? opt.l : r.valor) + '</span></div></div>';
   }).join('') || '<p class="helpText">Sin respuestas registradas.</p>';
 
@@ -6243,6 +6394,7 @@ function buildDetail(s) {
     coordTutoriaBanner +
     jecNivelBanner +
     cebeBanner +
+    priteBanner +
     (extras ? '<div class="sectionTitle" style="margin-top:0">Datos generales de la ficha</div>' + extras : '') +
     legacyHtml +
     docentesTableHtml +

@@ -1,0 +1,205 @@
+{
+    "grupo":  "GestiÃ³n escolar y docentes (EBR)",
+    "nombreCorto":  "GestiÃ³n Escolar EBR",
+    "orden":  20,
+    "tieneVisitas":  true,
+    "descripcion":  "Monitorea el cumplimiento de la PolÃ­tica Regional 01 (Instituciones Educativas que Aseguran Aprendizajes) en IE de EducaciÃ³n BÃ¡sica Regular.",
+    "extras":  [
+                   {
+                       "label":  "RED"
+                   },
+                   {
+                       "label":  "Total docentes Inicial"
+                   },
+                   {
+                       "label":  "Total docentes Primaria"
+                   },
+                   {
+                       "label":  "Total docentes Secundaria"
+                   }
+               ],
+    "icono":  "ðŸ›ï¸",
+    "nombre":  "Monitoreo y Asistencia TÃ©cnica a la GestiÃ³n Escolar - UGEL 03 EBR",
+    "secciones":  [
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "ge_1",
+                                            "texto":  "El equipo directivo realiza el monitoreo y acompaÃ±amiento a los docentes segÃºn el cronograma establecido, promoviendo un diÃ¡logo reflexivo con cada docente visitado"
+                                        },
+                                        {
+                                            "id":  "ge_2",
+                                            "texto":  "El equipo directivo realiza la sistematizaciÃ³n del monitoreo a la prÃ¡ctica pedagÃ³gica en sus tres etapas (inicio, proceso y salida)"
+                                        },
+                                        {
+                                            "id":  "ge_3",
+                                            "texto":  "El equipo directivo, a partir del anÃ¡lisis del monitoreo, identifica logros y necesidades formativas, los cuales son socializados en las semanas de gestiÃ³n"
+                                        }
+                                    ],
+                          "nombre":  "Monitoreo y acompaÃ±amiento a la prÃ¡ctica docente"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "ge_4",
+                                            "texto":  "El equipo directivo promueve la participaciÃ³n de los docentes en las ofertas formativas brindadas por MINEDU, DRELM o UGEL y realiza seguimiento"
+                                        },
+                                        {
+                                            "id":  "ge_5",
+                                            "texto":  "El equipo directivo ejecuta acciones formativas en relaciÃ³n a las necesidades encontradas (GIA, microtalleres, pasantÃ­as, etc.) de acuerdo al cronograma establecido"
+                                        }
+                                    ],
+                          "nombre":  "Fortalecimiento docente"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "ge_6",
+                                            "texto":  "El equipo directivo sistematiza, analiza y reflexiona sobre los resultados de aprendizaje por competencias, con el propÃ³sito de proponer acciones de mejora"
+                                        },
+                                        {
+                                            "id":  "ge_7",
+                                            "texto":  "A partir de la evaluaciÃ³n diagnÃ³stica, la IE incorpora en su PAT metas de aprendizaje contextualizadas que responden a las caracterÃ­sticas y necesidades de los estudiantes"
+                                        },
+                                        {
+                                            "id":  "ge_8",
+                                            "texto":  "Se cuenta con evidencias para el reporte de las actividades de atenciÃ³n diferenciada realizada con los estudiantes en el horario de Refuerzo Escolar"
+                                        },
+                                        {
+                                            "id":  "ge_9",
+                                            "texto":  "Se cuenta con evidencias de fortalecimiento y/o acompaÃ±amiento pedagÃ³gico a los docentes sobre Refuerzo Escolar (primaria y secundaria)"
+                                        }
+                                    ],
+                          "nombre":  "EvaluaciÃ³n de los aprendizajes / Refuerzo escolar"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "ge_10",
+                                            "texto":  "El equipo directivo realiza acciones de fortalecimiento docente sobre el uso pedagÃ³gico de los materiales educativos"
+                                        },
+                                        {
+                                            "id":  "ge_11",
+                                            "texto":  "El equipo directivo monitorea el uso adecuado de los cuadernos de trabajo y textos escolares en las sesiones de aprendizaje"
+                                        },
+                                        {
+                                            "id":  "ge_12",
+                                            "texto":  "Se cuenta con espacios lÃºdicos matemÃ¡ticos implementados con materiales concretos proporcionados por el MINEDU u otros"
+                                        },
+                                        {
+                                            "id":  "ge_13",
+                                            "texto":  "El equipo directivo promueve el uso de espacios y materiales educativos diversos (laboratorios, talleres, bibliotecas, aulas flexibles, AIP, entre otros)"
+                                        },
+                                        {
+                                            "id":  "ge_14",
+                                            "texto":  "El Profesor de InnovaciÃ³n PedagÃ³gica (PIP) realiza acciones de fortalecimiento con la comunidad educativa, promoviendo la incorporaciÃ³n de las TIC en los procesos pedagÃ³gicos"
+                                        },
+                                        {
+                                            "id":  "ge_15",
+                                            "texto":  "El equipo directivo realiza el seguimiento al plan de trabajo del PIP, cumpliendo con presentar el reporte de las actividades realizadas"
+                                        },
+                                        {
+                                            "id":  "ge_16",
+                                            "texto":  "En la IE se realiza el monitoreo a la implementaciÃ³n de la estrategia Khan Academy"
+                                        }
+                                    ],
+                          "nombre":  "Uso de materiales y espacios educativos"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "ge_17",
+                                            "texto":  "El directivo ha identificado e implementado buenas prÃ¡cticas (pedagÃ³gica y/o de gestiÃ³n) y/o Proyecto(s) de InnovaciÃ³n en la IE, incluyÃ©ndolos en el PAT actualizado"
+                                        },
+                                        {
+                                            "id":  "ge_18",
+                                            "texto":  "Presenta evidencias de los avances o resultados de la implementaciÃ³n de Buenas PrÃ¡cticas o Proyectos Innovadores"
+                                        },
+                                        {
+                                            "id":  "ge_19",
+                                            "texto":  "Ha monitoreado la implementaciÃ³n de las actividades consideradas en el Plan Lector"
+                                        },
+                                        {
+                                            "id":  "ge_20",
+                                            "texto":  "Ha aplicado ficha de monitoreo en el momento/hora de la lectura"
+                                        },
+                                        {
+                                            "id":  "ge_21",
+                                            "texto":  "Monitorea la implementaciÃ³n de actividades segÃºn el PEAI propuestas en el plan de trabajo (enfoque ambiental)"
+                                        },
+                                        {
+                                            "id":  "ge_22",
+                                            "texto":  "Presenta el Plan de Trabajo de Vida Activa y Saludable"
+                                        },
+                                        {
+                                            "id":  "ge_23",
+                                            "texto":  "Registra en el SIMON el Plan de monitoreo correspondiente"
+                                        }
+                                    ],
+                          "nombre":  "Otros aspectos"
+                      }
+                  ],
+    "tipoRespuesta":  "ips",
+    "escala":  "IPL",
+    "regla_nivel":  {
+                        "tipo":  "puntaje",
+                        "escala":  "IPL",
+                        "nota":  "Regla oficial 2do Momento: Inicio (0â€“23), Proceso (24â€“46), Logrado (47â€“69). 1er Momento: Inicio (0â€“19), Proceso (20â€“38), Logrado (39â€“57)",
+                        "maxPuntaje":  69,
+                        "minPuntaje":  0,
+                        "rangos":  [
+                                       {
+                                           "nivel":  "Logrado",
+                                           "min":  47,
+                                           "max":  69,
+                                           "estado_panel":  "Logrado",
+                                           "descripcion":  "Nivel Logrado: La IE evidencia un nivel Ã³ptimo en las condiciones y compromisos de gestiÃ³n escolar (47 a 69 puntos en 2do momento / 39 a 57 puntos en 1er momento)."
+                                       },
+                                       {
+                                           "nivel":  "Proceso",
+                                           "min":  24,
+                                           "max":  46,
+                                           "estado_panel":  "En proceso",
+                                           "descripcion":  "Nivel Proceso: La IE se encuentra en proceso de implementaciÃ³n y requiere consolidar acciones de mejora (24 a 46 puntos en 2do momento / 20 a 38 puntos en 1er momento)."
+                                       },
+                                       {
+                                           "nivel":  "Inicio",
+                                           "min":  0,
+                                           "max":  23,
+                                           "estado_panel":  "Inicio",
+                                           "descripcion":  "Nivel Inicio: La IE requiere asistencia tÃ©cnica prioritaria para el cumplimiento de las condiciones de gestiÃ³n (0 a 23 puntos en 2do momento / 0 a 19 puntos en 1er momento)."
+                                       }
+                                   ],
+                        "momento1":  {
+                                         "maxPuntaje":  57,
+                                         "rangos":  [
+                                                        {
+                                                            "nivel":  "Logrado",
+                                                            "min":  39,
+                                                            "max":  57,
+                                                            "estado_panel":  "Logrado",
+                                                            "descripcion":  "Nivel Logrado: 39 a 57 puntos."
+                                                        },
+                                                        {
+                                                            "nivel":  "Proceso",
+                                                            "min":  20,
+                                                            "max":  38,
+                                                            "estado_panel":  "En proceso",
+                                                            "descripcion":  "Nivel Proceso: 20 a 38 puntos."
+                                                        },
+                                                        {
+                                                            "nivel":  "Inicio",
+                                                            "min":  0,
+                                                            "max":  19,
+                                                            "estado_panel":  "Inicio",
+                                                            "descripcion":  "Nivel Inicio: 0 a 19 puntos."
+                                                        }
+                                                    ]
+                                     }
+                    },
+    "version":  {
+                    "anio":  2026,
+                    "momento":  "2do",
+                    "estado":  "publicada"
+                }
+}

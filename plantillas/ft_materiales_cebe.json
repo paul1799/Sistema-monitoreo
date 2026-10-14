@@ -1,0 +1,123 @@
+{
+    "grupo":  "CEBE / PRITE",
+    "nombreCorto":  "Materiales educativos (CEBE/PRITE)",
+    "orden":  32,
+    "tieneVisitas":  false,
+    "descripcion":  "Verifica la recepciÃ³n, distribuciÃ³n, uso pedagÃ³gico, seguimiento y conservaciÃ³n de los materiales educativos en CEBE y PRITE.",
+    "extras":  [
+                   {
+                       "label":  "REI"
+                   }
+               ],
+    "icono":  "ðŸ“¦",
+    "nombre":  "Monitoreo de GestiÃ³n y Uso PedagÃ³gico de Materiales Educativos (CEBE/PRITE)",
+    "secciones":  [
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "mc_1",
+                                            "texto":  "La instituciÃ³n educativa recibiÃ³ materiales educativos fungibles"
+                                        },
+                                        {
+                                            "id":  "mc_2",
+                                            "texto":  "La instituciÃ³n educativa recibiÃ³ materiales educativos no fungibles"
+                                        },
+                                        {
+                                            "id":  "mc_3",
+                                            "texto":  "Los materiales no fungibles recibidos estÃ¡n registrados en el inventario institucional"
+                                        }
+                                    ],
+                          "nombre":  "RecepciÃ³n"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "mc_4",
+                                            "texto":  "Se realizÃ³ la distribuciÃ³n de materiales fungibles a los docentes"
+                                        },
+                                        {
+                                            "id":  "mc_5",
+                                            "texto":  "Se realizÃ³ la distribuciÃ³n de materiales no fungibles a los docentes"
+                                        }
+                                    ],
+                          "nombre":  "DistribuciÃ³n"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "mc_6",
+                                            "texto":  "Los docentes incorporan los materiales educativos en su planificaciÃ³n curricular"
+                                        },
+                                        {
+                                            "id":  "mc_7",
+                                            "texto":  "Se evidencia el uso de los materiales durante las actividades de aprendizaje"
+                                        },
+                                        {
+                                            "id":  "mc_8",
+                                            "texto":  "Los materiales utilizados guardan relaciÃ³n con los propÃ³sitos de aprendizaje planteados"
+                                        },
+                                        {
+                                            "id":  "mc_9",
+                                            "texto":  "Los materiales cuentan con adaptaciones acordes a las caracterÃ­sticas y necesidades de los estudiantes"
+                                        }
+                                    ],
+                          "nombre":  "Uso pedagÃ³gico"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "mc_10",
+                                            "texto":  "La direcciÃ³n realiza monitoreo del uso de los materiales distribuidos a docentes/tutores"
+                                        },
+                                        {
+                                            "id":  "mc_11",
+                                            "texto":  "La direcciÃ³n brinda orientaciones a los docentes sobre el uso pertinente de los materiales durante el monitoreo pedagÃ³gico"
+                                        }
+                                    ],
+                          "nombre":  "Seguimiento"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "mc_12",
+                                            "texto":  "Los materiales fungibles se encuentran en espacios con condiciones adecuadas de conservaciÃ³n y seguridad"
+                                        },
+                                        {
+                                            "id":  "mc_13",
+                                            "texto":  "Los materiales no fungibles entregados mantienen condiciones adecuadas para su uso"
+                                        },
+                                        {
+                                            "id":  "mc_14",
+                                            "texto":  "La instituciÃ³n cuenta con un mecanismo de control de ingreso, salida y prÃ©stamo de materiales no fungibles"
+                                        }
+                                    ],
+                          "nombre":  "ConservaciÃ³n y control"
+                      }
+                  ],
+    "tipoRespuesta":  "si_no",
+    "regla_nivel":  {
+                        "tipo":  "porcentaje",
+                        "umbrales":  [
+                                         {
+                                             "nivel":  "Logrado",
+                                             "min":  85,
+                                             "estado_panel":  "Logrado"
+                                         },
+                                         {
+                                             "nivel":  "En proceso",
+                                             "min":  70,
+                                             "estado_panel":  "En proceso"
+                                         },
+                                         {
+                                             "nivel":  "Por mejorar",
+                                             "min":  0,
+                                             "estado_panel":  "Inicio"
+                                         }
+                                     ]
+                    },
+    "version":  {
+                    "anio":  2026,
+                    "momento":  null,
+                    "estado":  "publicada"
+                }
+}

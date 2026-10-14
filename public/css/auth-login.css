@@ -1,0 +1,153 @@
+/* =========================================================================
+   auth-login.css — Pantalla de Inicio de Sesión y Autenticación
+   -------------------------------------------------------------------------
+   Utilizado por:
+     - public/js/auth.js
+     - public/index.html (pantalla #loginScreen)
+   Contiene:
+     - Contenedor de pantalla completa (#loginScreen, .loginWrap)
+     - Panel de marca institucional con gradiente marino (.loginBrand)
+     - Lista de beneficios y viñetas (.loginFeatures)
+     - Tarjeta de credenciales de acceso (.loginPane, .loginCard)
+     - Contenedor de contraseña con toggle (.pwWrap, .pwToggle)
+     - Estados de validación y estilos de submit
+   ========================================================================= */
+/* ---------- Login Screen ---------- */
+#loginScreen {
+  width: 100%;
+}
+
+.loginWrap {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.loginBrand {
+  flex: 1 1 46%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  padding: 60px 56px;
+  color: #FFFFFF;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(155deg, #0B1B36, #12294D 70%);
+}
+
+.loginBrand .ico {
+  font-size: 44px;
+}
+
+.loginBrand h1 {
+  font-family: var(--serif);
+  font-size: 30px;
+  color: #FFFFFF;
+  line-height: 1.25;
+  max-width: 420px;
+}
+
+.loginBrand p {
+  margin: 0;
+  font-size: 14.5px;
+  color: #CBD5E1;
+  max-width: 420px;
+  line-height: 1.6;
+}
+
+.loginFeatures {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.loginFeatures li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  color: #E2E8F0;
+}
+
+.loginFeatures li .dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--gold-500);
+  flex: none;
+}
+
+.loginPane {
+  flex: 1 1 54%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  background: var(--bg-app);
+}
+
+.loginCard {
+  width: 100%;
+  max-width: 400px;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 38px 34px;
+  box-shadow: var(--shadow-lg);
+}
+
+.loginCard h2 {
+  font-family: var(--serif);
+  font-size: 24px;
+  color: var(--navy-900);
+  margin-bottom: 6px;
+}
+
+.loginCard .sub {
+  color: var(--text-600);
+  font-size: 13.5px;
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.loginCard .btn {
+  width: 100%;
+  justify-content: center;
+  padding: 11px 16px;
+  margin-top: 10px;
+}
+
+.pwWrap {
+  position: relative;
+}
+
+.pwWrap input {
+  padding-right: 80px;
+}
+
+.pwToggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  background: #F1F5F9;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-600);
+  font-weight: 700;
+  font-size: 11.5px;
+  padding: 5px 9px;
+  white-space: nowrap;
+}
+
+.pwToggle:hover {
+  background: #E2E8F0;
+  color: var(--text-900);
+}

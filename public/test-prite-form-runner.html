@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Runner - Ficha de Gestión Escolar PRITE (RM N° 501-2025-MINEDU)</title>
+  <link rel="stylesheet" href="./css/style.css?v=20261014_v1">
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 20px; background: #0f172a; color: #f8fafc; }
+    .card { background: #1e293b; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .pass { color: #4ade80; font-weight: bold; }
+    .fail { color: #f87171; font-weight: bold; }
+    h1 { font-size: 20px; margin-bottom: 16px; }
+    pre { background: #090d16; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+    #testHost { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Validación Oficial de Ficha PRITE Multi-Visita (RM N° 501-2025-MINEDU)</h1>
+  <div id="results"></div>
+  <div id="testHost"></div>
+
+  <script type="module">
+    import { isFichaEbrGestionEscolar } from './js/calcEngine.js?v=20261013_v2';
+    import { isFichaCebeGestion, CEBE_SECCIONES } from './js/cebe-gestion.js?v=20261013_v7';
+    import {
+      isFichaPriteGestion,
+      renderPriteGestionForm,
+      preloadPriteFormState,
+      resetPriteFormState,
+      PRITE_SECCIONES,
+      TOTAL_PRITE_ITEMS
+    } from './js/prite-gestion.js?v=20261014_v1';
+
+    const resultsEl = document.getElementById('results');
+    const host = document.getElementById('testHost');
+    const tests = [];
+
+    function assert(name, condition, details = '') {
+      tests.push({ name, pass: !!condition, details });
+    }
+
+    try {
+      // 1. Discriminación estricta de ficha
+      const mockPriteFt = {
+        id: 'ft_prite_gestion',
+        nombre: 'Ficha de Monitoreo y Asistencia Técnica a la Gestión Escolar UGEL-03 para Programa de Intervención Temprana (PRITE)',
+        tipoRespuesta: 'ips',
+        escala: 'IPL'
+      };
+      const mockCebeFt = {
+        id: 'ft_gestion_cebe',
+        nombre: 'Monitoreo y Asistencia Técnica a la Gestión Escolar - CEBE',
+        tipoRespuesta: 'ips',
+        escala: 'IPL'
+      };
+      const mockEbrFt = {
+        id: 'ft_gestion_ugel03_ebr',
+        nombre: 'Monitoreo y Asistencia Técnica a la Gestión Escolar – UGEL 03 EBR',
+        tipoRespuesta: 'ips',
+        escala: 'IPL'
+      };
+
+      assert('isFichaPriteGestion reconoce correctamente ft_prite_gestion', isFichaPriteGestion(mockPriteFt) === true);
+      assert('isFichaPriteGestion NO confunde CEBE con PRITE', isFichaPriteGestion(mockCebeFt) === false);
+      assert('isFichaPriteGestion NO confunde EBR con PRITE', isFichaPriteGestion(mockEbrFt) === false);
+      assert('isFichaCebeGestion NO confunde PRITE con CEBE', isFichaCebeGestion(mockPriteFt) === false);
+      assert('isFichaEbrGestionEscolar NO confunde PRITE con EBR', isFichaEbrGestionEscolar(mockPriteFt) === false);
+
+      // 2. Total de ítems oficiales: 32 distribuidos en 7 secciones
+      assert('El instrumento PRITE tiene exactamente 32 ítems oficiales', TOTAL_PRITE_ITEMS === 32);
+      let countItems = 0;
+      PRITE_SECCIONES.forEach(sec => countItems += sec.items.length);
+      assert('Las 7 secciones oficiales suman exactamente 32 ítems', countItems === 32);
+      assert('El instrumento PRITE cuenta con 7 secciones', PRITE_SECCIONES.length === 7);
+
+      // Verificar ítems con sub-opciones (Plan Lector: 28, 29, 30)
+      const it28 = PRITE_SECCIONES[5].items.find(x => x.id === 'gp_28');
+      const it29 = PRITE_SECCIONES[5].items.find(x => x.id === 'gp_29');
+      const it30 = PRITE_SECCIONES[5].items.find(x => x.id === 'gp_30');
+      assert('Ítem 28 tiene sub-opciones de mediadores (4 opciones)', it28 && it28.subOpciones && it28.subOpciones.length === 4);
+      assert('Ítem 29 tiene sub-opciones de espacios (3 opciones)', it29 && it29.subOpciones && it29.subOpciones.length === 3);
+      assert('Ítem 30 tiene sub-opciones de materiales (5 opciones)', it30 && it30.subOpciones && it30.subOpciones.length === 5);
+
+      // 3. Renderizado del formulario PRITE
+      resetPriteFormState();
+      const mockState = {
+        colegios: [
+          { id: 'c_prite_1', ie: 'PRITE MARÍA MONTESSORI', codigoLocal: '0915968', rei: '01', modalidad: 'EBE' }
+        ],
+        submissions: []
+      };
+      const mockUser = { uid: 'u1', nombre: 'Especialista EBE / PRITE' };
+
+      renderPriteGestionForm(host, mockPriteFt, mockState, null, mockUser, () => {}, false);
+
+      // Pestañas de 3 visitas
+      const tabs = host.querySelectorAll('[data-prite-visita]');
+      assert('Se renderizan las pestañas para 3 visitas (V1, V2, V3)', tabs.length === 3);
+
+      // Sección I: Tablas de personal PRITE y acceso
+      const tablaPersonal = host.querySelectorAll('.cebeDataTable');
+      assert('Sección I: Cuadro 1 de Personal y Cuadro 2 de Estudiantes presentes', tablaPersonal.length >= 2);
+
+      const inpCodLocal = host.querySelector('#prite_cod_local');
+      assert('Sección I: Campo Código de Local existe (#prite_cod_local)', !!inpCodLocal);
+
+      // Filas de personal PRITE
+      const inpDirTot = host.querySelector('#pp_directora_tot');
+      const inpTutNomTot = host.querySelector('#pp_tutores_nom_tot');
+      const inpTutContTot = host.querySelector('#pp_tutores_cont_tot');
+      const inpCasTot = host.querySelector('#pp_prof_cas_tot');
+      const inpAdmTot = host.querySelector('#pp_personal_adm_tot');
+      assert('Sección I: Filas oficiales de personal PRITE existen (Directora, Tutores nombrados/contratados, CAS, Adm)',
+        !!inpDirTot && !!inpTutNomTot && !!inpTutContTot && !!inpCasTot && !!inpAdmTot);
+
+      // Sección II: Directora
+      const inpDir = host.querySelector('#prite_dir_nombres');
+      const inpDni = host.querySelector('#prite_dir_dni');
+      const selCond = host.querySelector('#prite_dir_cond');
+      assert('Sección II: Campos de Directora existen (Nombres, DNI, Condición)', !!inpDir && !!inpDni && !!selCond);
+
+      // Sección III: 32 ítems
+      const itemRows = host.querySelectorAll('.priteItemRow');
+      assert('Sección III: Se renderizan exactamente 32 filas de ítems', itemRows.length === 32);
+
+      // Sub-chips de items 28, 29, 30
+      const subChips = host.querySelectorAll('.priteSubChip');
+      assert('Sección III: Se renderizan sub-opciones interactivas de lectura (12 chips)', subChips.length === (4 + 3 + 5));
+
+      // Escala I, P, L, N.A. en ítems
+      const radioGroups = host.querySelectorAll('.cebeScaleGroup');
+      assert('Sección III: Cada ítem tiene grupo de escala I, P, L, N.A.', radioGroups.length === 32);
+
+      // Sección IV: Matriz de Logros, Aspectos de Mejora y Recomendaciones con 3 visitas
+      const logrosV1 = host.querySelector('#prite_logros_v1');
+      const logrosV2 = host.querySelector('#prite_logros_v2');
+      const logrosV3 = host.querySelector('#prite_logros_v3');
+      assert('Sección IV: Campo Logros para Visita 1 presente', !!logrosV1);
+      assert('Sección IV: Campo Logros para Visita 2 presente', !!logrosV2);
+      assert('Sección IV: Campo Logros para Visita 3 presente', !!logrosV3);
+
+      const mejorasV1 = host.querySelector('#prite_mejoras_v1');
+      const recV1 = host.querySelector('#prite_rec_v1');
+      assert('Sección IV: Aspectos de mejora y recomendaciones presentes', !!mejorasV1 && !!recV1);
+
+      // Sección V: Compromisos de Mejora Directivo y Especialista para la visita activa
+      const compDir = host.querySelector('#prite_comp_director');
+      const compEsp = host.querySelector('#prite_comp_especialista');
+      assert('Sección V: Compromiso del Directivo(a) del PRITE presente', !!compDir);
+      assert('Sección V: Compromiso del Especialista AGEBRE presente', !!compEsp);
+
+      // 4. Precarga de datos (Modo Edición)
+      const mockSubmission = {
+        id: 'sub_prite_01',
+        fichaTypeId: 'ft_prite_gestion',
+        institucion: 'PRITE MARÍA MONTESSORI',
+        codigoLocal: '0915968',
+        rei: '01',
+        visita: 2,
+        director: {
+          nombre: 'Marta Laura Fernández Ruiz',
+          dni: '15354427',
+          telefono: '965900990',
+          condicion: 'Encargada',
+          correo: 'ebe.pmm@ugel03.edu.pe'
+        },
+        fechasVisitas: { v1: '2026-04-28', v2: '2026-09-07', v3: '' },
+        nivelesAtiende: { inicial: true, primaria: false },
+        tablasPersonal: {
+          personal: {
+            directora_tot: '1', directora_asis: '1',
+            tutores_nom_tot: '4', tutores_nom_asis: '4',
+            tutores_cont_tot: '8', tutores_cont_asis: '8',
+            prof_cas_tot: '1', prof_cas_asis: '1',
+            personal_adm_tot: '5', personal_adm_asis: '5'
+          },
+          accesoEstudiantes: {
+            ini_mat: '131', ini_asis: '131', ini_noasis: '',
+            notas: 'Antes 131, 5 retirados con documentos / 104 - 2da visita'
+          }
+        },
+        respuestas: [
+          { id: 'gp_1', valor: 'logrado', evidencia: 'RD 006-2026' },
+          { id: 'gp_2', valor: 'logrado', evidencia: 'Tiene plan monitoreo' },
+          { id: 'gp_3', valor: 'inicio', evidencia: 'Cronograma, actas' },
+          { id: 'gp_21', valor: 'na', evidencia: 'N.A.' }
+        ],
+        sintesisPorVisita: {
+          v1: { logros: 'Cuenta con DUG y cronograma', mejoras: 'Poca articulación', recomendaciones: 'Acompañamiento' },
+          v2: { logros: 'Se ha realizado la 2da visita', mejoras: 'Solo 23% tutores presentaron sesiones', recomendaciones: 'Retroalimentación' },
+          v3: { logros: '', mejoras: '', recomendaciones: '' }
+        },
+        compromisosPorVisita: {
+          v1: { director: 'Compromiso Directora V1', especialista: 'Asistencia V1' },
+          v2: { director: 'Compromiso Directora V2', especialista: 'Asistencia V2' },
+          v3: { director: '', especialista: '' }
+        }
+      };
+
+      preloadPriteFormState(mockSubmission, mockPriteFt);
+      renderPriteGestionForm(host, mockPriteFt, mockState, null, mockUser, () => {}, true);
+
+      // Verificar precarga en visita 2 (activa en mock)
+      const tabV2 = host.querySelector('[data-prite-visita="2"]');
+      assert('La visita activa al precargar es Visita 2', tabV2 && tabV2.classList.contains('active'));
+
+      const dirNomInp = host.querySelector('#prite_dir_nombres');
+      assert('Directora precargada correctamente: Marta Laura Fernández Ruiz', dirNomInp && dirNomInp.value === 'Marta Laura Fernández Ruiz');
+
+      const codLocalInp = host.querySelector('#prite_cod_local');
+      assert('Código Local precargado correctamente: 0915968', codLocalInp && codLocalInp.value === '0915968');
+
+      const matEstInp = host.querySelector('#prite_est_ini_mat');
+      assert('Estudiantes inicial precargado correctamente: 131', matEstInp && matEstInp.value === '131');
+
+      const radioGp1 = host.querySelector('input[name="item_gp_1"][value="logrado"]');
+      assert('Respuesta ítem 1 precargada como Logrado', radioGp1 && radioGp1.checked);
+
+      const compDirV2 = host.querySelector('#prite_comp_director');
+      assert('Compromiso Directora Visita 2 precargado correctamente', compDirV2 && compDirV2.value === 'Compromiso Directora V2');
+
+      const logrosV1Inp = host.querySelector('#prite_logros_v1');
+      assert('Logros Visita 1 presentes en la matriz comparativa', logrosV1Inp && logrosV1Inp.value.includes('DUG'));
+
+      const mejorasV2Inp = host.querySelector('#prite_mejoras_v2');
+      assert('Aspectos de mejora Visita 2 presentes en la matriz', mejorasV2Inp && mejorasV2Inp.value.includes('23%'));
+
+      // Renderizar resumen de resultados
+      let passed = 0, failed = 0;
+      tests.forEach(t => {
+        if (t.pass) passed++; else failed++;
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `<span class="${t.pass ? 'pass' : 'fail'}">${t.pass ? '✓ PASS' : '✗ FAIL'}</span>: ${t.name} ${t.details ? `<br><small>${t.details}</small>` : ''}`;
+        resultsEl.appendChild(card);
+      });
+
+      const summaryCard = document.createElement('div');
+      summaryCard.className = 'card';
+      summaryCard.style.border = passed === tests.length ? '2px solid #4ade80' : '2px solid #f87171';
+      summaryCard.innerHTML = `<h3>Total: ${tests.length} pruebas | <span class="pass">${passed} Pasadas</span> | <span class="fail">${failed} Fallidas</span></h3>`;
+      resultsEl.prepend(summaryCard);
+
+    } catch (e) {
+      console.error(e);
+      const errCard = document.createElement('div');
+      errCard.className = 'card fail';
+      errCard.innerHTML = `<h3>Error fatal en ejecución de pruebas</h3><pre>${e.stack || e.message}</pre>`;
+      resultsEl.prepend(errCard);
+    }
+  </script>
+</body>
+</html>

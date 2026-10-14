@@ -40,6 +40,9 @@ import {
 import {
   isFichaCebeGestion
 } from './cebe-gestion.js?v=20261013_v7';
+import {
+  isFichaPriteGestion
+} from './prite-gestion.js?v=20261014_v1';
 
 export const SISTEMA_NOMBRE_OFICIAL = 'Sistema de Fichas de Monitoreo';
 
@@ -4009,7 +4012,8 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
       const padron = downloadConfig.colegios || (downloadConfig.state && downloadConfig.state.colegios) || [];
       const isEbrSpecial = isFichaEbrGestionEscolar(fichaType);
       const isCebeSpecial = isFichaCebeGestion(fichaType);
-      const targetMod = isEbrSpecial ? 'EBR' : (isCebeSpecial ? 'EBE' : null);
+      const isPriteSpecial = isFichaPriteGestion(fichaType);
+      const targetMod = isEbrSpecial ? 'EBR' : ((isCebeSpecial || isPriteSpecial) ? 'EBE' : null);
 
       let cardsData = [];
       if (targetMod && padron.length > 0) {

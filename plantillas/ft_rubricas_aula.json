@@ -1,0 +1,82 @@
+{
+    "grupo":  "GestiÃ³n escolar y docentes (EBR)",
+    "nombreCorto":  "RÃºbricas de observaciÃ³n de aula",
+    "orden":  22,
+    "tieneVisitas":  false,
+    "descripcion":  "Registra el nivel de logro del desempeÃ±o docente observado en el aula, segÃºn las rÃºbricas de observaciÃ³n de aula de MINEDU.",
+    "extras":  [
+                   {
+                       "label":  "Docente observado"
+                   },
+                   {
+                       "label":  "Nivel educativo"
+                   },
+                   {
+                       "label":  "Grado y secciÃ³n"
+                   },
+                   {
+                       "label":  "Ãrea curricular observada"
+                   }
+               ],
+    "icono":  "ðŸ‘©â€ðŸ«",
+    "nombre":  "Monitoreo PedagÃ³gico a Docentes - RÃºbricas de ObservaciÃ³n de Aula",
+    "secciones":  [
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "ra_1",
+                                            "texto":  "Involucra activamente a los estudiantes en el proceso de aprendizaje"
+                                        },
+                                        {
+                                            "id":  "ra_2",
+                                            "texto":  "Promueve el desarrollo de habilidades cognitivas bÃ¡sicas en los estudiantes"
+                                        },
+                                        {
+                                            "id":  "ra_3",
+                                            "texto":  "EvalÃºa el progreso de los aprendizajes y brinda apoyo pedagÃ³gico"
+                                        },
+                                        {
+                                            "id":  "ra_4",
+                                            "texto":  "Propicia un ambiente favorable para el aprendizaje"
+                                        },
+                                        {
+                                            "id":  "ra_5",
+                                            "texto":  "Promueve el desarrollo de la autonomÃ­a de los estudiantes"
+                                        }
+                                    ],
+                          "nombre":  "RÃºbricas de observaciÃ³n de aula (MINEDU)"
+                      }
+                  ],
+    "tipoRespuesta":  "nivel_1_4",
+    "regla_nivel":  {
+                        "tipo":  "porcentaje",
+                        "nota":  "RÃºbricas MINEDU: I=25%, II=50%, III=75%, IV=100%",
+                        "umbrales":  [
+                                         {
+                                             "nivel":  "Nivel IV (Cumplimiento integral)",
+                                             "min":  90,
+                                             "estado_panel":  "Logrado"
+                                         },
+                                         {
+                                             "nivel":  "Nivel III (Cumplimiento de la mayorÃ­a)",
+                                             "min":  70,
+                                             "estado_panel":  "En proceso"
+                                         },
+                                         {
+                                             "nivel":  "Nivel II (Cumplimiento parcial)",
+                                             "min":  45,
+                                             "estado_panel":  "En proceso"
+                                         },
+                                         {
+                                             "nivel":  "Nivel I (No evidencia cumplimiento)",
+                                             "min":  0,
+                                             "estado_panel":  "Inicio"
+                                         }
+                                     ]
+                    },
+    "version":  {
+                    "anio":  2026,
+                    "momento":  null,
+                    "estado":  "publicada"
+                }
+}

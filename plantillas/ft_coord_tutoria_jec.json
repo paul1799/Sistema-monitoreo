@@ -1,0 +1,163 @@
+{
+    "grupo":  "Modelo JEC",
+    "nombreCorto":  "Coord. de TutorÃ­a (JEC)",
+    "orden":  11,
+    "tieneVisitas":  true,
+    "descripcion":  "EvalÃºa el cumplimiento de las funciones del coordinador de tutorÃ­a: planificaciÃ³n, visitas de aula, reuniones colegiadas, tutorÃ­a individual y trabajo con familias.",
+    "extras":  [
+                   {
+                       "label":  "Coordinador(a) de tutorÃ­a"
+                   },
+                   {
+                       "label":  "NÂ° de docentes tutores a cargo"
+                   }
+               ],
+    "icono":  "ðŸ§­",
+    "nombre":  "Monitoreo a las Funciones del Coordinador(a) de TutorÃ­a (JEC)",
+    "secciones":  [
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "ct_1",
+                                            "texto":  "Orienta a los docentes tutores en la planificaciÃ³n colegiada de la tutorÃ­a grupal"
+                                        },
+                                        {
+                                            "id":  "ct_2",
+                                            "texto":  "Analiza las planificaciones de las sesiones de tutorÃ­a grupal con el fin de orientar su mejora"
+                                        },
+                                        {
+                                            "id":  "ct_3",
+                                            "texto":  "Brinda retroalimentaciÃ³n reflexiva, logrando compromisos de mejora con el docente tutor"
+                                        }
+                                    ],
+                          "nombre":  "PlanificaciÃ³n de la tutorÃ­a grupal"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "ct_4",
+                                            "texto":  "Elabora un cronograma y comunica oportunamente a los docentes tutores a su cargo"
+                                        },
+                                        {
+                                            "id":  "ct_5",
+                                            "texto":  "Realiza visitas de acompaÃ±amiento al docente tutor de forma planificada, conforme a cronograma"
+                                        },
+                                        {
+                                            "id":  "ct_6",
+                                            "texto":  "Registra informaciÃ³n utilizando el cuaderno de campo u otro instrumento de observaciÃ³n"
+                                        },
+                                        {
+                                            "id":  "ct_7",
+                                            "texto":  "Prepara preguntas reflexivas para brindar la retroalimentaciÃ³n al docente tutor"
+                                        },
+                                        {
+                                            "id":  "ct_8",
+                                            "texto":  "Brinda retroalimentaciÃ³n mediante un diÃ¡logo reflexivo con el docente tutor visitado"
+                                        },
+                                        {
+                                            "id":  "ct_9",
+                                            "texto":  "Planifica reuniones colegiadas orientadas al acompaÃ±amiento tutorial de los docentes"
+                                        },
+                                        {
+                                            "id":  "ct_10",
+                                            "texto":  "Conduce reuniones semanales de trabajo colegiado segÃºn lo planificado"
+                                        },
+                                        {
+                                            "id":  "ct_11",
+                                            "texto":  "Registra los acuerdos asumidos en las actas de las reuniones colegiadas"
+                                        }
+                                    ],
+                          "nombre":  "Visita al aula"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "ct_12",
+                                            "texto":  "Asegura que los docentes realicen tutorÃ­as individuales segÃºn las necesidades de los estudiantes, incluyendo casos priorizados"
+                                        },
+                                        {
+                                            "id":  "ct_13",
+                                            "texto":  "Coordina acciones con el psicÃ³logo para identificar, atender y derivar casos priorizados"
+                                        },
+                                        {
+                                            "id":  "ct_14",
+                                            "texto":  "Coordina con el psicÃ³logo espacios de orientaciÃ³n y encuentro con las familias"
+                                        },
+                                        {
+                                            "id":  "ct_15",
+                                            "texto":  "Gestiona junto al psicÃ³logo las redes de apoyo de instituciones y redes comunitarias para familias vulnerables"
+                                        }
+                                    ],
+                          "nombre":  "TutorÃ­a individual y trabajo con las familias"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "ct_16",
+                                            "texto":  "Realiza el seguimiento a los espacios de participaciÃ³n estudiantil"
+                                        },
+                                        {
+                                            "id":  "ct_17",
+                                            "texto":  "Planifica actividades especÃ­ficas que promuevan la participaciÃ³n activa e inclusiva de los estudiantes"
+                                        },
+                                        {
+                                            "id":  "ct_18",
+                                            "texto":  "Gestiona y articula con docentes tutores y no tutores la implementaciÃ³n de la orientaciÃ³n educativa"
+                                        }
+                                    ],
+                          "nombre":  "ParticipaciÃ³n estudiantil y orientaciÃ³n educativa permanente"
+                      },
+                      {
+                          "items":  [
+                                        {
+                                            "id":  "ct_19",
+                                            "texto":  "Participa activamente en las reuniones de trabajo colegiado con los directivos de la IE"
+                                        },
+                                        {
+                                            "id":  "ct_20",
+                                            "texto":  "Presenta a la direcciÃ³n un informe sobre los hallazgos del proceso de acompaÃ±amiento a los docentes tutores"
+                                        },
+                                        {
+                                            "id":  "ct_21",
+                                            "texto":  "Socializa los resultados del acompaÃ±amiento a la acciÃ³n tutorial, proponiendo alternativas de mejora"
+                                        }
+                                    ],
+                          "nombre":  "Reuniones de trabajo con el equipo directivo"
+                      }
+                  ],
+    "tipoRespuesta":  "escala_1_3",
+    "regla_nivel":  {
+                        "tipo":  "puntaje",
+                        "maxPuntaje":  63,
+                        "minPuntaje":  21,
+                        "nota":  "Regla oficial Ficha de Monitoreo a las Funciones del Coordinador(a) de TutorÃ­a (JEC): Cumple (53 a 63), Cumple parcialmente (42 a 52), No cumple (21 a 41)",
+                        "rangos":  [
+                                       {
+                                           "nivel":  "Cumple",
+                                           "min":  53,
+                                           "max":  63,
+                                           "estado_panel":  "Logrado",
+                                           "descripcion":  "El/la coordinador(a) de tutorÃ­a cumple con la funciÃ³n de manera oportuna, pertinente y sostenida."
+                                       },
+                                       {
+                                           "nivel":  "Cumple parcialmente",
+                                           "min":  42,
+                                           "max":  52,
+                                           "estado_panel":  "En proceso",
+                                           "descripcion":  "El/la coordinador(a) de tutorÃ­a cumple parcialmente con la funciÃ³n o se encuentra en proceso de consolidaciÃ³n."
+                                       },
+                                       {
+                                           "nivel":  "No cumple",
+                                           "min":  21,
+                                           "max":  41,
+                                           "estado_panel":  "Inicio",
+                                           "descripcion":  "El/la coordinador(a) de tutorÃ­a no cumple o cumple de forma mÃ­nima, sin responder al propÃ³sito pedagÃ³gico esperado."
+                                       }
+                                   ]
+                    },
+    "version":  {
+                    "anio":  2026,
+                    "momento":  null,
+                    "estado":  "publicada"
+                }
+}

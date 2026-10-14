@@ -1,0 +1,238 @@
+{
+    "grupo":  "CEBE / PRITE",
+    "nombreCorto":  "GestiÃ³n Escolar PRITE",
+    "orden":  31,
+    "tieneVisitas":  true,
+    "nombre":  "Ficha de Monitoreo y Asistencia TÃ©cnica a la GestiÃ³n Escolar UGEL-03 para Programa de IntervenciÃ³n Temprana (PRITE)",
+    "descripcion":  "Instrumento oficial para Programas de IntervenciÃ³n Temprana (PRITE) UGEL 03 (RM NÂ° 501-2025-MINEDU). Monitorea 32 indicadores distribuidos en 7 aspectos clave a lo largo de 3 visitas independientes.",
+    "icono":  "ðŸ‘¶",
+    "tipoRespuesta":  "ips",
+    "escala":  "IPL_NA",
+    "regla_nivel":  {
+                        "tipo":  "porcentaje",
+                        "umbrales":  [
+                                         {
+                                             "nivel":  "Logrado",
+                                             "min":  85,
+                                             "estado_panel":  "Logrado"
+                                         },
+                                         {
+                                             "nivel":  "En proceso",
+                                             "min":  70,
+                                             "estado_panel":  "En proceso"
+                                         },
+                                         {
+                                             "nivel":  "Por mejorar",
+                                             "min":  0,
+                                             "estado_panel":  "Inicio"
+                                         }
+                                     ]
+                    },
+    "version":  {
+                    "anio":  2026,
+                    "momento":  null,
+                    "estado":  "publicada"
+                },
+    "visitas":  [
+                    1,
+                    2,
+                    3
+                ],
+    "secciones":  [
+                      {
+                          "nombre":  "GestiÃ³n de la PlanificaciÃ³n Institucional",
+                          "items":  [
+                                        {
+                                            "id":  "gp_1",
+                                            "texto":  "El PRITE cuenta con Documento Ãšnico de GestiÃ³n (DUG) vigente y aprobado.",
+                                            "evidencia":  "RD de aprobaciÃ³n"
+                                        },
+                                        {
+                                            "id":  "gp_2",
+                                            "texto":  "El DUG incluye cronograma de monitoreo y acompaÃ±amiento a tutores.",
+                                            "evidencia":  "Cronograma"
+                                        },
+                                        {
+                                            "id":  "gp_3",
+                                            "texto":  "El DUG contempla acciones de fortalecimiento de la prÃ¡ctica pedagÃ³gica de los tutores, en articulaciÃ³n con el enfoque de intervenciÃ³n temprana y el trabajo con familias.",
+                                            "evidencia":  "Cronograma, actas"
+                                        }
+                                    ]
+                      },
+                      {
+                          "nombre":  "PlanificaciÃ³n Curricular",
+                          "items":  [
+                                        {
+                                            "id":  "gp_4",
+                                            "texto":  "La directora asesora la planificaciÃ³n de sesiones individuales.",
+                                            "evidencia":  "Cuaderno de campo"
+                                        },
+                                        {
+                                            "id":  "gp_5",
+                                            "texto":  "La directora asesora la planificaciÃ³n de sesiones grupales.",
+                                            "evidencia":  "Cuaderno de campo"
+                                        },
+                                        {
+                                            "id":  "gp_6",
+                                            "texto":  "Los tutores cuentan con sesiones individuales planificadas.",
+                                            "evidencia":  "Sesiones"
+                                        },
+                                        {
+                                            "id":  "gp_7",
+                                            "texto":  "Los tutores cuentan con sesiones grupales planificadas.",
+                                            "evidencia":  "Sesiones"
+                                        },
+                                        {
+                                            "id":  "gp_8",
+                                            "texto":  "Se generan espacios de planificaciÃ³n curricular colegiada.",
+                                            "evidencia":  "Horarios, actas"
+                                        }
+                                    ]
+                      },
+                      {
+                          "nombre":  "Monitoreo a la PrÃ¡ctica PedagÃ³gica del Tutor",
+                          "items":  [
+                                        {
+                                            "id":  "gp_9",
+                                            "texto":  "La directora cuenta con un Plan de Monitoreo y AcompaÃ±amiento PedagÃ³gico",
+                                            "evidencia":  "Plan de monitoreo aprobado."
+                                        },
+                                        {
+                                            "id":  "gp_10",
+                                            "texto":  "El Plan de Monitoreo incluye una matriz de identificaciÃ³n de necesidades formativas de los tutores, considerando el enfoque de intervenciÃ³n temprana y el trabajo con familias.",
+                                            "evidencia":  "Matriz diagnÃ³stica de necesidades formativas."
+                                        },
+                                        {
+                                            "id":  "gp_11",
+                                            "texto":  "El Plan de Monitoreo cuenta con un cronograma socializado con el equipo de tutores.",
+                                            "evidencia":  "Cronograma y acta de socializaciÃ³n."
+                                        },
+                                        {
+                                            "id":  "gp_12",
+                                            "texto":  "La directora realiza acciones de monitoreo a la prÃ¡ctica pedagÃ³gica de los tutores.",
+                                            "evidencia":  "Fichas de monitoreo aplicadas"
+                                        },
+                                        {
+                                            "id":  "gp_13",
+                                            "texto":  "La directora sistematiza los resultados del monitoreo realizado.",
+                                            "evidencia":  "Cuadros de sistematizaciÃ³n, resÃºmenes o matrices de resultados."
+                                        },
+                                        {
+                                            "id":  "gp_14",
+                                            "texto":  "La directora socializa los resultados del monitoreo en espacios de gestiÃ³n institucional.",
+                                            "evidencia":  "Actas de reuniones, presentaciones o informes internos."
+                                        }
+                                    ]
+                      },
+                      {
+                          "nombre":  "Fortalecimiento a los Tutores",
+                          "items":  [
+                                        {
+                                            "id":  "gp_15",
+                                            "texto":  "La directora identifica necesidades formativas de los tutores a partir de los resultados del monitoreo pedagÃ³gico, en articulaciÃ³n con el enfoque de intervenciÃ³n temprana y el trabajo con familias.",
+                                            "evidencia":  "AnÃ¡lisis de resultados del monitoreo."
+                                        },
+                                        {
+                                            "id":  "gp_16",
+                                            "texto":  "La directora cuenta con un plan de acciones formativas",
+                                            "evidencia":  "Plan de acciones formativas y cronograma."
+                                        },
+                                        {
+                                            "id":  "gp_17",
+                                            "texto":  "La directora implementa espacios de fortalecimiento pedagÃ³gico acordes a las necesidades identificadas.",
+                                            "evidencia":  "Plan de fortalecimiento, registros de asistencia, actas y/o lista de asistencia de acciÃ³n formativa desarrollada"
+                                        }
+                                    ]
+                      },
+                      {
+                          "nombre":  "EvaluaciÃ³n de los Aprendizajes",
+                          "items":  [
+                                        {
+                                            "id":  "gp_18",
+                                            "texto":  "La directora monitorea el proceso de evaluaciÃ³n psicopedagÃ³gica realizado por los tutores.",
+                                            "evidencia":  "Fichas de monitoreo, registros de acompaÃ±amiento, actas de retroalimentaciÃ³n."
+                                        },
+                                        {
+                                            "id":  "gp_19",
+                                            "texto":  "Los Informes PsicopedagÃ³gicos (IPP) se encuentran elaborados de manera oportuna.",
+                                            "evidencia":  "IPP revisados al azar con fecha de elaboraciÃ³n."
+                                        },
+                                        {
+                                            "id":  "gp_20",
+                                            "texto":  "Los Planes Educativos Personalizados (PEP) se encuentran elaborados a partir de los IPP.",
+                                            "evidencia":  "PEP revisados al azar y correspondencia con IPP."
+                                        },
+                                        {
+                                            "id":  "gp_21",
+                                            "texto":  "La tutora o el tutor elaboran informes de progreso al tÃ©rmino de cada PEP",
+                                            "evidencia":  "Informes de progreso, formatos institucionales, rÃºbricas de seguimiento."
+                                        },
+                                        {
+                                            "id":  "gp_22",
+                                            "texto":  "La familia recibe explicaciÃ³n clara y orientaciones sobre el IPP, PEP y avances del niÃ±o/a, en coherencia con el enfoque de intervenciÃ³n temprana.",
+                                            "evidencia":  "Actas de entrevistas, registros de orientaciÃ³n familiar, compromisos"
+                                        },
+                                        {
+                                            "id":  "gp_23",
+                                            "texto":  "El programa asegura la entrega oportuna de los informes de progreso a la familia.",
+                                            "evidencia":  "Cronograma de entrega, cargos firmados, registros de atenciÃ³n a familias."
+                                        },
+                                        {
+                                            "id":  "gp_24",
+                                            "texto":  "La tutora o el tutor registran los avances de las niÃ±as y los niÃ±os a su cargo.",
+                                            "evidencia":  "Ficha de seguimiento individual. Cuaderno de campo. Notas reflexivas del tutor."
+                                        },
+                                        {
+                                            "id":  "gp_25",
+                                            "texto":  "La tutora o el tutor recopilan evidencias de aprendizaje (producciones y actuaciones) y las organiza en las carpetas individuales de las niÃ±as y los niÃ±os.",
+                                            "evidencia":  "Carpeta individual del niÃ±o. Registro de actuaciones del niÃ±o/a. FotografÃ­as"
+                                        }
+                                    ]
+                      },
+                      {
+                          "nombre":  "Plan Lector",
+                          "items":  [
+                                        {
+                                            "id":  "gp_26",
+                                            "texto":  "Cuenta con el Plan Lector como estrategia institucional orientada al acceso temprano a la lectura y a la comunicaciÃ³n, fortaleciendo la interacciÃ³n, el vÃ­nculo afectivo y la mediaciÃ³n adulta, reconociendo a la familia como mediadora principal, en coherencia con las caracterÃ­sticas y necesidades de las niÃ±as y los niÃ±os del PRITE.",
+                                            "evidencia":  "Documento del Plan Lector"
+                                        },
+                                        {
+                                            "id":  "gp_27",
+                                            "texto":  "El Plan Lector planifica la frecuencia de experiencias de lectura, considerando la atenciÃ³n educativa del PRITE y la participaciÃ³n activa de las familias en los diversos contextos donde se desenvuelven las niÃ±as y los niÃ±os.",
+                                            "evidencia":  "PlanificaciÃ³n semanal, horarios, sesiones, registros de aula."
+                                        },
+                                        {
+                                            "id":  "gp_28",
+                                            "texto":  "El Plan Lector involucra a diversos mediadores de lectura en el programa.",
+                                            "evidencia":  "Listado de mediadores, actas, registros fotogrÃ¡ficos, cronograma de participaciÃ³n."
+                                        },
+                                        {
+                                            "id":  "gp_29",
+                                            "texto":  "El Plan Lector promueve el uso de diversos espacios para el desarrollo de experiencias de lectura.",
+                                            "evidencia":  "Planificaciones, registros fotogrÃ¡ficos, cronogramas, fichas de experiencia."
+                                        },
+                                        {
+                                            "id":  "gp_30",
+                                            "texto":  "El Plan Lector promueve el uso de diversos materiales de lectura, elaborados (por docentes, familias, no docentes), adquiridos, de uso cotidiano del hogar y la comunidad.",
+                                            "evidencia":  "Inventario de materiales, muestras de recursos, registros de uso en aula."
+                                        }
+                                    ]
+                      },
+                      {
+                          "nombre":  "InnovaciÃ³n Educativa",
+                          "items":  [
+                                        {
+                                            "id":  "gp_31",
+                                            "texto":  "La directora identifica y sistematiza Buenas PrÃ¡cticas pedagÃ³gicas que responden a las necesidades de las niÃ±as y los niÃ±os del PRITE y fortalecen la intervenciÃ³n temprana y el trabajo con familias.",
+                                            "evidencia":  "Fichas de Buenas PrÃ¡cticas, informes de sistematizaciÃ³n, registros fotogrÃ¡ficos o audiovisuales."
+                                        },
+                                        {
+                                            "id":  "gp_32",
+                                            "texto":  "La directora realiza seguimiento a la implementaciÃ³n de las Buenas PrÃ¡cticas y promueve su socializaciÃ³n a nivel institucional, comunitario o interinstitucional, como parte de la mejora continua del servicio.",
+                                            "evidencia":  "Ficha de seguimiento o acompaÃ±amiento. Acta de socializaciÃ³n institucional. ParticipaciÃ³n en REI."
+                                        }
+                                    ]
+                      }
+                  ]
+}

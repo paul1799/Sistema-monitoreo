@@ -12,6 +12,10 @@ import {
   isFichaCebeGestion,
   CEBE_SECCIONES
 } from './cebe-gestion.js?v=20261013_v7';
+import {
+  isFichaPriteGestion,
+  PRITE_SECCIONES
+} from './prite-gestion.js?v=20261014_v1';
 
 function _normStr(str) {
   return String(str || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -359,6 +363,8 @@ export function computeItemAgg(subs, ft) {
     activeFt = { ...ft, secciones: (ft && ft.secciones && ft.secciones.length === JEC_SECCIONES.length) ? ft.secciones : JEC_SECCIONES, tipoRespuesta: 'si_no' };
   } else if (isFichaCebeGestion(ft)) {
     activeFt = { ...ft, secciones: (ft && ft.secciones && ft.secciones.length === CEBE_SECCIONES.length) ? ft.secciones : CEBE_SECCIONES, tipoRespuesta: 'ips' };
+  } else if (isFichaPriteGestion(ft)) {
+    activeFt = { ...ft, secciones: (ft && ft.secciones && ft.secciones.length === PRITE_SECCIONES.length) ? ft.secciones : PRITE_SECCIONES, tipoRespuesta: 'ips' };
   }
   const tipoResp = activeFt?.tipoRespuesta || 'ips';
   const escala = activeFt?.escala || (tipoResp === 'ips' ? 'IPL' : (tipoResp === 'si_no' ? 'SI_NO_NA' : (tipoResp === 'nivel_1_4' ? 'NIVEL_1_4' : 'IPL')));
