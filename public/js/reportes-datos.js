@@ -53,11 +53,15 @@ export function buildStatsList(subs, isAllMode, selectedFt, getFichaType) {
 export function getDonaEstadosDataset(statsList) {
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
   statsList.forEach(x => { 
-    const isEbr = (x.s?.fichaTypeId === 'ft_gestion_ugel03_ebr')
-      || String(x.s?.fichaTypeNombre || '').toLowerCase().includes('gestion')
-      || (x.s?.tipoRespuesta === 'ips')
-      || (x.s?.escala === 'IPL');
-    if (x.st && x.st.pct !== null && (isEbr || x.st.pct !== null)) {
+    const isJec = isFichaJec(x.s) || String(x.s?.fichaTypeId || '').includes('jec') || String(x.s?.fichaTypeNombre || '').toLowerCase().includes('jec');
+    if (isJec) {
+      const l = x.st?.estado ? (x.st.estado.estado_panel || x.st.estado.nivel || x.st.estado.label) : 'Sin datos'; 
+      const lLower = String(l || '').toLowerCase();
+      if (lLower.includes('lograd') || lLower.includes('cumple')) dist.logrado++; 
+      else if (lLower.includes('proces') || lLower.includes('parcial')) dist.proceso++; 
+      else if (lLower.includes('inici') || lLower.includes('mejorar')) dist.inicio++; 
+      else dist.none++; 
+    } else if (x.st && x.st.pct !== null) {
       if (x.st.pct >= 67) dist.logrado++;
       else if (x.st.pct >= 34) dist.proceso++;
       else dist.inicio++;

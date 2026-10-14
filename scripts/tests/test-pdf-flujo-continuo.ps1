@@ -15,10 +15,13 @@ function Test-Assert {
 }
 
 $script:hasFailed = $false
-$pdfTemplatePath = Join-Path $PSScriptRoot "..\public\js\pdf-template.js"
-$uiPath = Join-Path $PSScriptRoot "..\public\js\ui.js"
+$root = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+$pdfTemplatePath = Join-Path $root "public\js\pdf-template.js"
+$pdfConcursosPath = Join-Path $root "public\js\pdf-concursos.js"
+$pdfPath = if (Test-Path $pdfConcursosPath) { $pdfConcursosPath } else { $pdfTemplatePath }
+$uiPath = Join-Path $root "public\js\ui.js"
 
-$pdfContent = Get-Content $pdfTemplatePath -Raw -Encoding UTF8
+$pdfContent = Get-Content $pdfPath -Raw -Encoding UTF8
 $uiContent = Get-Content $uiPath -Raw -Encoding UTF8
 
 Write-Host "`n=== VALIDACION: FLUJO CONTINUO Y TITULO/NOMBRE UNIVERSAL DE CONSOLIDADOS ===" -ForegroundColor Cyan

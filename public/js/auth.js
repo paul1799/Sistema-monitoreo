@@ -119,3 +119,36 @@ export function setupAuthListeners(auth, firestoreDb, { onLogin, onLogout }) {
     }
   });
 }
+
+/**
+ * Verifica la contraseña del administrador actual mediante Firebase Auth
+ * @param {string} password 
+ * @param {string} [email]
+ * @returns {Promise<boolean>}
+ */
+export async function verifyAdminPassword(password, email) {
+  if (!password || !password.trim()) {
+    throw new Error('Debes ingresar la contraseña de administrador.');
+  }
+  const auth = getAuth();
+  const targetEmail = email || auth?.currentUser?.email;
+  if (!targetEmail) {
+    throw new Error('No hay una sesión activa de administrador.');
+  }
+
+  try {
+    await signInWithEmailAndPassword(auth, targetEmail, password.trim());
+    return true;
+  } catch (err) {
+    console.warn('Error al verificar contraseña de administrador:', err);
+    if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+      throw new Error('Contraseña incorrecta. Por favor verifica tu clave.');
+    } else if (err.code === 'auth/too-many-requests') {
+      throw new Error('Demasiados intentos fallidos. Por seguridad, espera un momento antes de volver a intentar.');
+    } else if (err.code === 'auth/network-request-failed') {
+      throw new Error('No se pudo conectar con el servidor de autenticación. Verifica tu conexión.');
+    }
+    throw new Error(err.message || 'Error al verificar la contraseña.');
+  }
+}
+

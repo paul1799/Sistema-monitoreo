@@ -90,7 +90,7 @@ async function main() {
         if (!existing.bloques && data.bloques) {
           updates.bloques = data.bloques;
         }
-        if (!existing.regla_nivel && data.regla_nivel) {
+        if (data.regla_nivel) {
           updates.regla_nivel = data.regla_nivel;
         }
         if (!existing.version && data.version) {

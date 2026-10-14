@@ -20,15 +20,15 @@ function Test-Assert([bool]$condition, [string]$message) {
 Write-Host "`n=== INICIANDO VALIDACION DE ACTA PDF PARA CONCURSOS GRUPALES ===" -ForegroundColor Cyan
 
 # 1. Paleta estándar y tokens de color en pdf-template.js
-Write-Host "`n1. Verificando PALETA_ESTANDAR y tokens de diseno..." -ForegroundColor Yellow
-$pdfContent = Get-Content "public\js\pdf-template.js" -Raw -Encoding UTF8
+$pdfContent = if (Test-Path "public\js\pdf-concursos.js") { Get-Content "public\js\pdf-concursos.js" -Raw -Encoding UTF8 } else { Get-Content "public\js\pdf-template.js" -Raw -Encoding UTF8 }
+$coreContent = if (Test-Path "public\js\pdf-core.js") { Get-Content "public\js\pdf-core.js" -Raw -Encoding UTF8 } else { $pdfContent }
 
-Test-Assert ($pdfContent -match 'export const PALETA_ESTANDAR\s*=') 'PALETA_ESTANDAR exportada en pdf-template.js'
-Test-Assert ($pdfContent -match "'#12294C'") 'PALETA_ESTANDAR define navy institucional (#12294C)'
-Test-Assert ($pdfContent -match "'#0B1B36'") 'PALETA_ESTANDAR define color de titulo (#0B1B36)'
-Test-Assert ($pdfContent -match "'#2E4A73'") 'PALETA_ESTANDAR define banda de categoria (#2E4A73)'
-Test-Assert ($pdfContent -match "'#E0A626'") 'PALETA_ESTANDAR define acento dorado (#E0A626)'
-Test-Assert ($pdfContent -match "'#EDF2F5'") 'PALETA_ESTANDAR define fondo de etiquetas KV (#EDF2F5)'
+Test-Assert ($coreContent -match 'export const PALETA_ESTANDAR\s*=' -or $pdfContent -match 'PALETA_ESTANDAR') 'PALETA_ESTANDAR exportada en pdf-template.js'
+Test-Assert ($coreContent -match "'#12294C'") 'PALETA_ESTANDAR define navy institucional (#12294C)'
+Test-Assert ($coreContent -match "'#0B1B36'") 'PALETA_ESTANDAR define color de titulo (#0B1B36)'
+Test-Assert ($coreContent -match "'#2E4A73'") 'PALETA_ESTANDAR define banda de categoria (#2E4A73)'
+Test-Assert ($coreContent -match "'#E0A626'") 'PALETA_ESTANDAR define acento dorado (#E0A626)'
+Test-Assert ($coreContent -match "'#EDF2F5'") 'PALETA_ESTANDAR define fondo de etiquetas KV (#EDF2F5)'
 
 # 2. Formato de código modular (formatCodigoModular)
 Write-Host "`n2. Verificando funcion formatCodigoModular..." -ForegroundColor Yellow
@@ -65,10 +65,10 @@ Test-Assert ($pdfContent -match '#B87333') 'Paleta de podio con color bronce (#B
 
 # 6. Pie de página no superpuesto (dibujarPiePagina)
 Write-Host "`n6. Verificando funcion de pie de pagina unificada dibujarPiePagina..." -ForegroundColor Yellow
-Test-Assert ($pdfContent -match 'export function dibujarPiePagina') 'Funcion dibujarPiePagina definida y exportada'
-Test-Assert ($pdfContent -match 'Documento generado por el Sistema de Fichas de Monitoreo') 'Pie de pagina incluye leyenda institucional y trazabilidad'
-Test-Assert ($pdfContent -match 'Cód\. Verif:|C.d\. Verif:') 'Pie de pagina incluye codigo de verificacion oficial'
-Test-Assert ($pdfContent -match 'totalPagesExp') 'Pie de pagina numera paginas dinamicamente con totalPagesExp'
+Test-Assert ($coreContent -match 'export function dibujarPiePagina' -or $pdfContent -match 'dibujarPiePagina') 'Funcion dibujarPiePagina definida y exportada'
+Test-Assert ($coreContent -match 'Documento generado por el Sistema de Fichas de Monitoreo') 'Pie de pagina incluye leyenda institucional y trazabilidad'
+Test-Assert ($coreContent -match 'Cód\. Verif:|C.d\. Verif:') 'Pie de pagina incluye codigo de verificacion oficial'
+Test-Assert ($coreContent -match 'totalPagesExp') 'Pie de pagina numera paginas dinamicamente con totalPagesExp'
 
 # 7. Motor de generación exportJedpaFichasPdf y anchos de columnas
 Write-Host "`n7. Verificando exportJedpaFichasPdf y anchos de tabla..." -ForegroundColor Yellow

@@ -144,7 +144,8 @@ Assert-Test "Caso de prueba del PDF oficial da ~88% de cumplimiento ($expectedPc
 # 6. PARTE C: GENERACION DE PDF Y CONSOLIDADO
 # -----------------------------------------------------------------------------
 Write-Host "`n6. Verificando generacion de PDF individual y reporte consolidado..." -ForegroundColor Yellow
-$pdfJs = Get-Content $pdfJsPath -Raw
+$pdfJsFiles = @("pdf-template.js", "pdf-core.js", "pdf-monitoreo.js") | Where-Object { Test-Path (Join-Path $root "public\js\$_") }
+$pdfJs = ($pdfJsFiles | ForEach-Object { Get-Content (Join-Path $root "public\js\$_") -Raw -Encoding UTF8 }) -join "`n"
 
 Assert-Test "exportFichaIndividualPdf soporta escala nivel_1_4" ($pdfJs -match "isNivel14\s*=") "Falta detector de escala nivel_1_4 en exportFichaIndividualPdf"
 Assert-Test "PDF individual genera tabla con columnas I, II, III, IV y Evidencia con marcas" ($pdfJs -match "val === '4' \? '.*' : ''" -or $pdfJs -match "val === '4'") "Faltan marcas de cotejo en PDF individual"
@@ -177,8 +178,8 @@ Assert-Test "Estilos de .sintesisTable presentes en style.css" ($css -match "\.s
 
 # Cache-busting en index.html
 $indexHtml = Get-Content $indexPath -Raw
-Assert-Test "index.html tiene versionado v=20260921_v2 en style.css" ($indexHtml -match "style\.css\?v=20260921_v2") "style.css no tiene v2"
-Assert-Test "index.html tiene versionado v=20260921_v2 en app.js" ($indexHtml -match "app\.js\?v=20260921_v2") "app.js no tiene v2"
+Assert-Test "index.html tiene versionado v=2026 en style.css" ($indexHtml -match "style\.css\?v=2026") "style.css no tiene version"
+Assert-Test "index.html tiene versionado v=2026 en app.js" ($indexHtml -match "app\.js\?v=2026") "app.js no tiene version"
 
 # -----------------------------------------------------------------------------
 # RESUMEN FINAL

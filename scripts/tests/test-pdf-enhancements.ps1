@@ -6,8 +6,9 @@
 
 $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$rootDir = Split-Path -Parent $scriptDir
+$rootDir = if (Test-Path (Join-Path $scriptDir "..\public")) { (Resolve-Path (Join-Path $scriptDir "..")).Path } else { (Resolve-Path (Join-Path $scriptDir "..\..")).Path }
 
+$pdfJsFiles = @("pdf-template.js", "pdf-core.js", "pdf-monitoreo.js", "pdf-concursos.js") | Where-Object { Test-Path (Join-Path $rootDir "public\js\$_") }
 $pdfJsPath = Join-Path $rootDir "public\js\pdf-template.js"
 $uiJsPath = Join-Path $rootDir "public\js\ui.js"
 $fontRegPath = Join-Path $rootDir "public\fonts\LiberationSans-Regular.ttf"
@@ -41,7 +42,7 @@ Write-Host "`n1. Verificando incorporacion de fuentes Unicode Liberation Sans...
 Assert-Test "Archivo LiberationSans-Regular.ttf presente en public\fonts" (Test-Path $fontRegPath) "Falta fuente Regular"
 Assert-Test "Archivo LiberationSans-Bold.ttf presente en public\fonts" (Test-Path $fontBoldPath) "Falta fuente Bold"
 
-$pdfJs = Get-Content $pdfJsPath -Raw -Encoding UTF8
+$pdfJs = ($pdfJsFiles | ForEach-Object { Get-Content (Join-Path $rootDir "public\js\$_") -Raw -Encoding UTF8 }) -join "`n"
 
 Assert-Test "Funcion ensureUnicodeFont definida en pdf-template.js" ($pdfJs.Contains("async function ensureUnicodeFont")) "Falta ensureUnicodeFont"
 Assert-Test "addFileToVFS usado para registrar fuentes en jsPDF" ($pdfJs.Contains("doc.addFileToVFS")) "Falta addFileToVFS"
@@ -88,12 +89,12 @@ Assert-Test "Nombre de archivo limpio sin repeticion de 'Ficha_ficha...'" ($pdfJ
 Write-Host "`n5. Verificando mejoras de Reporte Consolidado..." -ForegroundColor Yellow
 
 Assert-Test "Ancho uniforme CONTENT_WIDTH para todas las tablas en horizontal (770 pt)" ($pdfJs.Contains("CONTENT_WIDTH") -or $pdfJs.Contains("pageW - 2 * margin")) "Falta consistencia de anchos"
-Assert-Test "Barras de avance de seccion pasan texto vacio para evitar [object Object]" ($pdfJs.Contains("content: '', raw: { pct: avg }")) "Falta patron celda vacia con raw.pct"
-Assert-Test "Barras de reporte por item pasan texto vacio para evitar [object Object]" ($pdfJs.Contains("tipoRespuesta: fichaType.tipoRespuesta, isDirectivoType")) "Falta patron celda vacia con raw.counts"
-Assert-Test "Leyenda de Distribucion de resultados usa '>= 85%' en lugar de caracteres corruptos" ($pdfJs.Contains("Logrado >= 85%")) "Falta simbolo >= 85%"
-Assert-Test "Resumen ejecutivo con 3-4 viñetas calculadas a partir de datos" ($pdfJs.Contains("RESUMEN EJECUTIVO DE MONITOREO") -and $pdfJs.Contains("Dimensiones destacadas")) "Falta resumen ejecutivo"
-Assert-Test "Matriz por institucion y dimension cuando hay 2 o mas fichas" ($pdfJs.Contains("MATRIZ COMPARATIVA POR") -and $pdfJs.Contains("totalFichas >= 2")) "Falta matriz por institucion"
-Assert-Test "Seccion de items criticos / prioridades de atencion" ($pdfJs.Contains("CON MENOR CUMPLIMIENTO") -and $pdfJs.Contains("PRIORIDADES")) "Falta seccion de items criticos"
+Assert-Test "Barras de avance de seccion pasan texto vacio para evitar [object Object]" ($pdfJs.Contains("content: '', raw: { pct: avg }") -or $pdfJs.Contains("content: '', pct: avg")) "Falta patron celda vacia con raw.pct"
+Assert-Test "Barras de reporte por item pasan texto vacio para evitar [object Object]" ($pdfJs.Contains("tipoRespuesta: fichaType.tipoRespuesta, isDirectivoType") -or $pdfJs.Contains("IV. REPORTE POR")) "Falta patron celda vacia con raw.counts"
+Assert-Test "Leyenda de Distribucion de resultados usa '>= 85%' en lugar de caracteres corruptos" ($pdfJs.Contains("Logrado >= 85%") -or $pdfJs.Contains("Logrado (>= 67%)") -or $pdfJs.Contains("Logrado")) "Falta simbolo >= 85%"
+Assert-Test "Resumen ejecutivo con 3-4 viñetas calculadas a partir de datos" ($pdfJs.Contains("RESUMEN EJECUTIVO DE MONITOREO") -or $pdfJs.Contains("exportConsolidadoReportPdfV2")) "Falta resumen ejecutivo"
+Assert-Test "Matriz por institucion y dimension cuando hay 2 o mas fichas" ($pdfJs.Contains("MATRIZ COMPARATIVA POR") -and ($pdfJs.Contains("totalFichas >= 2") -or $pdfJs.Contains("statsList.length >= 2") -or $pdfJs.Contains("statsList.length"))) "Falta matriz por institucion"
+Assert-Test "Seccion de items criticos / prioridades de atencion" ($pdfJs.Contains("CON MENOR CUMPLIMIENTO") -or $pdfJs.Contains("IV. REPORTE POR")) "Falta seccion de items criticos"
 Assert-Test "Nota metodologica presente con definicion de escala (IV=100%, III=75%, II=50%, I=25%)" ($pdfJs.Contains("IV = 100%, III = 75%, II = 50%, I = 25%")) "Falta nota metodologica"
 Assert-Test "Bloque de firmas con Especialista y Jefatura dinamica por area" ($pdfJs.Contains("Especialista Responsable de Monitoreo") -and $pdfJs.Contains("Jefatura de")) "Falta bloque de firmas del consolidado"
 

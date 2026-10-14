@@ -1062,8 +1062,8 @@ function bindCebeFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdit
 
     let estado = 'Inicio';
     let estadoColor = '#DC2626';
-    if (scorePct >= 85) { estado = 'Logrado'; estadoColor = '#16A34A'; }
-    else if (scorePct >= 70) { estado = 'En proceso'; estadoColor = '#D97706'; }
+    if (scorePct >= 67) { estado = 'Logrado'; estadoColor = '#16A34A'; }
+    else if (scorePct >= 34) { estado = 'En proceso'; estadoColor = '#D97706'; }
 
     const counter = form.querySelector('#cebeProgressCounter');
     if (counter) {
@@ -1293,8 +1293,8 @@ export async function guardarFormularioCebe(form, ft, state, dbNs, currentUser, 
     const scorePct = applicableItems > 0 ? Math.round((scorePuntos / applicableItems) * 100) : 0;
 
     let estadoTexto = 'Inicio';
-    if (scorePct >= 85) estadoTexto = 'Logrado';
-    else if (scorePct >= 70) estadoTexto = 'En proceso';
+    if (scorePct >= 67) estadoTexto = 'Logrado';
+    else if (scorePct >= 34) estadoTexto = 'En proceso';
 
     // Compromisos estructurados
     const compActivos = cebeFormState.compromisosPorVisita[kActiva] || { director: '', especialista: '', adicionales: [] };

@@ -19,8 +19,7 @@ function Test-Assert([bool]$condition, [string]$message) {
 Write-Host "`n=== INICIANDO VALIDACION DE REQUISITOS JEDPA Y ACTA PDF ===" -ForegroundColor Cyan
 
 # 1. Configuración por concurso en pdf-template.js
-Write-Host "`n1. Verificando CONCURSOS_CONFIG y helpers en pdf-template.js..." -ForegroundColor Yellow
-$pdfContent = Get-Content "public\js\pdf-template.js" -Raw -Encoding UTF8
+$pdfContent = if (Test-Path "public\js\pdf-concursos.js") { Get-Content "public\js\pdf-concursos.js" -Raw -Encoding UTF8 } else { Get-Content "public\js\pdf-template.js" -Raw -Encoding UTF8 }
 
 Test-Assert ($pdfContent -match 'CONCURSOS_CONFIG') 'Diccionario CONCURSOS_CONFIG definido en pdf-template.js'
 Test-Assert ($pdfContent -match "columna_asesor_singular:\s*'Delegado / Entrenador'") 'JEDPA define columna_asesor_singular: Delegado / Entrenador'
@@ -131,4 +130,5 @@ if ($passCount -eq $testCount) {
     Write-Host "EXISTEN PRUEBAS FALLIDAS ($($testCount - $passCount)).`n" -ForegroundColor Red
     exit 1
 }
+
 

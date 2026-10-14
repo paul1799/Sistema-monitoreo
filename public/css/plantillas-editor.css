@@ -416,7 +416,9 @@
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
   gap: 24px;
-  align-items: flex-start;
+  align-items: stretch;
+  position: relative;
+  padding-bottom: 95px;
 }
 
 .builderEditorPane {
@@ -425,19 +427,29 @@
 
 .builderPreviewPane {
   min-width: 0;
+  height: 100%;
 }
 
 .builderPreviewSticky {
   position: sticky;
-  top: 115px;
-  max-height: calc(100vh - 135px);
-  overflow-y: auto;
+  top: 72px;
+  height: calc(100vh - 160px);
+  max-height: calc(100vh - 160px);
   background: #FFFFFF;
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.builderPreviewBodyScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
 }
 
 .builderPreviewHeader {
@@ -810,3 +822,407 @@
     justify-content: center;
   }
 }
+
+/* =========================================================================
+   ESTILOS PARA AMPLIACIÓN DEL EDITOR VISUAL DE FICHAS (UGEL 03)
+   ========================================================================= */
+
+/* Conmutador de modo de edición (Visual vs Código JSON) */
+.builderModeNav {
+  display: flex;
+  gap: 8px;
+  background: var(--surface-2, #F1F5F9);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #CBD5E1);
+  margin-bottom: 16px;
+  width: fit-content;
+}
+
+.builderModeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-600, #475569);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.builderModeBtn:hover {
+  color: var(--navy-900, #0B192C);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.builderModeBtn.active {
+  background: #FFFFFF;
+  color: var(--navy-900, #0B192C);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Editor de Código JSON */
+.builderJsonPane {
+  background: #FFFFFF;
+  border: 1px solid var(--border, #CBD5E1);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 95px;
+}
+
+.builderJsonTextarea {
+  width: 100%;
+  height: 520px;
+  font-family: 'Consolas', 'Fira Code', 'Courier New', monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  background: #0B192C;
+  color: #F8FAFC;
+  border: 1px solid #1E293B;
+  border-radius: 6px;
+  padding: 14px;
+  box-sizing: border-box;
+  resize: vertical;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.builderJsonTextarea:focus {
+  outline: none;
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.builderJsonStatus {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.builderJsonStatus.valid {
+  background: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  color: #065F46;
+}
+
+.builderJsonStatus.invalid {
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  color: #991B1B;
+}
+
+/* Configuración de Visitas y Condiciones */
+.visitasConfigBox {
+  background: var(--surface-2, #F8FAFC);
+  border: 1px solid var(--border, #E2E8F0);
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 10px;
+}
+
+.visitaItemRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  background: #FFFFFF;
+  border: 1px solid var(--border, #E2E8F0);
+  border-radius: 6px;
+}
+
+/* Configuración de Tablas Especializadas */
+.builderTableCard {
+  background: #FFFFFF;
+  border: 1px solid var(--border, #CBD5E1);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.builderTableCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #F1F5F9;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.builderTableColRowBox {
+  background: var(--surface-2, #F8FAFC);
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.builderColRowList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.builderColChip,
+.builderRowChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.builderColChip .rmChip,
+.builderRowChip .rmChip {
+  cursor: pointer;
+  color: #94A3B8;
+  font-weight: 700;
+}
+
+.builderColChip .rmChip:hover,
+.builderRowChip .rmChip:hover {
+  color: #DC2626;
+}
+
+/* Configuración de Compromisos */
+.compromisosConfigBox {
+  background: var(--surface-2, #F8FAFC);
+  border: 1px solid var(--border, #E2E8F0);
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 10px;
+}
+
+/* Vista previa de Tablas y Visitas en Live Preview */
+.previewVisitasTabsBar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--navy-900, #0B192C);
+  padding-bottom: 4px;
+}
+
+.previewVisitaTabBtn {
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 6px 6px 0 0;
+  border: 1px solid #CBD5E1;
+  border-bottom: none;
+  background: #F1F5F9;
+  color: var(--text-600, #475569);
+  cursor: pointer;
+}
+
+.previewVisitaTabBtn.active {
+  background: var(--navy-900, #0B192C);
+  color: #FFFFFF;
+  border-color: var(--navy-900, #0B192C);
+}
+
+.previewCustomTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 12px;
+  background: #FFFFFF;
+}
+
+.previewCustomTable th {
+  background: #0B192C;
+  color: #FFFFFF;
+  padding: 6px 8px;
+  font-weight: 600;
+  text-align: left;
+  border: 1px solid #1E293B;
+}
+
+.previewCustomTable td {
+  padding: 5px 8px;
+  border: 1px solid #CBD5E1;
+  font-size: 11.5px;
+}
+
+.previewCompromisosWrap {
+  background: #F8FAFC;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+/* =========================================================================
+   Barra Fija Inferior de Guardado (Siempre Visible)
+   ========================================================================= */
+.builderBottomStickyBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 95;
+  background: #FFFFFF;
+  border-top: 2px solid var(--navy-900, #0B192C);
+  box-shadow: 0 -4px 20px rgba(11, 25, 44, 0.12);
+  padding: 10px 24px;
+  animation: slideUpBottomBar 0.2s ease-out;
+}
+
+@keyframes slideUpBottomBar {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.builderBottomStickyContent {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.builderBottomStickyInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.builderBottomFichaName {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--navy-900, #0B192C);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 420px;
+}
+
+.builderBottomMetaPill {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--surface-2, #F1F5F9);
+  border: 1px solid var(--border, #CBD5E1);
+  color: var(--text-600, #475569);
+  border-radius: 12px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.builderBottomDirtyBadge {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #B45309;
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: 12px;
+  padding: 2px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.builderBottomStickyActs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Modal de Verificación de Contraseña Administrador */
+.adminAuthCard {
+  background: #FFFFFF;
+  border-radius: var(--radius);
+  max-width: 450px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.adminAuthHeader {
+  background: var(--navy-900, #0B192C);
+  color: #FFFFFF;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.adminAuthBody {
+  padding: 20px;
+}
+
+.adminAuthError {
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #991B1B;
+  font-weight: 600;
+  margin-top: 8px;
+  display: none;
+}
+
+.adminAuthModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 27, 54, 0.65);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(4px);
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@media (max-width: 900px) {
+  .builderBottomStickyBar {
+    padding: 8px 14px;
+  }
+  .builderBottomStickyContent {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .builderBottomStickyInfo {
+    justify-content: space-between;
+  }
+  .builderBottomFichaName {
+    max-width: 260px;
+  }
+  .builderBottomStickyActs {
+    justify-content: stretch;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .builderBottomStickyActs .btn,
+  .builderBottomStickyActs label.btn {
+    flex: 1 1 auto;
+    font-size: 11.5px;
+    padding: 6px 10px;
+    text-align: center;
+    white-space: nowrap;
+  }
+}
+
+
+

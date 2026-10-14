@@ -133,15 +133,15 @@ export function estadoPorRegla(resultado, regla_nivel) {
       const maxPts = regla_nivel.maxPuntaje || 63;
       const rangos = regla_nivel.rangos || [];
 
-      // Regla oficial unificada para EBR Gestión Escolar (IPL / Momento 1 y 2):
-      // 0 - 23: Inicio (0% - 33%)
-      // 24 - 46: Proceso (34% - 66%)
-      // 47 - 69: Logrado (67% - 100%)
+      // Regla oficial unificada para EBR, EBE y PRITE (IPL / Criterio común / Momento 1 y 2):
+      // Inicio (0% - 33%)
+      // Proceso (34% - 66%)
+      // Logrado (67% - 100%)
       // Aplica tanto individualmente (ítems / secciones / fichas individuales) como grupalmente (en conjunto)
-      if (regla_nivel.escala === 'IPL' || regla_nivel.momento || regla_nivel.maxPuntaje === 69 || regla_nivel.maxPuntaje === 57 || rangos.some(r => r.max === 69 || r.max === 57)) {
-        const rLog = rangos.find(r => r.nivel === 'Logrado') || rangos[0];
-        const rProc = rangos.find(r => r.nivel === 'Proceso') || rangos[1] || rangos[0];
-        const rIni = rangos.find(r => r.nivel === 'Inicio') || rangos[rangos.length - 1];
+      if (regla_nivel.escala === 'IPL' || regla_nivel.escala === 'IPL_NA' || regla_nivel.esComunEbrEbePrite || regla_nivel.momento || regla_nivel.maxPuntaje === 69 || regla_nivel.maxPuntaje === 57 || rangos.some(r => r.max === 69 || r.max === 57 || r.nivel === 'Proceso' || r.nivel === 'En proceso')) {
+        const rLog = rangos.find(r => r.nivel === 'Logrado') || rangos[0] || { nivel: 'Logrado', estado_panel: 'Logrado' };
+        const rProc = rangos.find(r => r.nivel === 'Proceso' || r.nivel === 'En proceso') || rangos[1] || rangos[0] || { nivel: 'Proceso', estado_panel: 'En proceso' };
+        const rIni = rangos.find(r => r.nivel === 'Inicio') || rangos[rangos.length - 1] || { nivel: 'Inicio', estado_panel: 'Inicio' };
 
         // 1. Evaluación por porcentaje (promedio grupal, sección o porcentaje general):
         if (resultado.pct !== null && resultado.pct !== undefined) {
@@ -352,11 +352,15 @@ export function calcScore(respuestas, fichaType) {
     || LEGADO_A_ESCALA[fichaType.tipoRespuesta]
     || 'SI_NO_NA';
 
+  const isJec = isFichaJec(fichaType) || isFichaCoordTutoriaJec(fichaType) || isFichaCoordPedagogico(fichaType) || isFichaEspecialistaJec(fichaType);
   const isEbr = isFichaEbrGestionEscolar(fichaType);
   let regla_nivel = fichaType.regla_nivel || null;
   if (isEbr) {
     const v = getMomentoVisitaEbr(fichaType);
     regla_nivel = getReglaNivelEbrGestion(v);
+  } else if (!isJec && (isFichaEbrEbePrite(fichaType) || fichaType?.escala === 'IPL' || fichaType?.tipoRespuesta === 'ips' || fichaType?.tipoRespuesta === 'escala1_3')) {
+    const totalItems = (fichaType.secciones || []).reduce((acc, s) => acc + (s.items || []).length, 0) || 25;
+    regla_nivel = getReglaNivelComunEbrEbePrite(totalItems);
   } else if (!regla_nivel && isFichaJec(fichaType)) {
     regla_nivel = REGLA_NIVEL_JEC;
   } else if (!regla_nivel && isFichaCoordTutoriaJec(fichaType)) {
@@ -622,6 +626,97 @@ export function isFichaCoordPedagogico(ft, state = null) {
  */
 export function isFichaEspecialistaJec(ft, state = null) {
   return isFichaJec(ft, state) || isFichaCoordTutoriaJec(ft, state) || isFichaCoordPedagogico(ft, state);
+}
+
+/**
+ * Determina si una ficha o plantilla pertenece a EBR, EBE o PRITE (excluye JEC)
+ * @param {Object} ft - Plantilla o submission
+ * @returns {boolean}
+ */
+export function isFichaEbrEbePrite(ft) {
+  if (!ft) return false;
+  // Regla de oro: NO modificar la lógica de las fichas de JEC
+  if (isFichaJec(ft) || isFichaCoordTutoriaJec(ft) || isFichaCoordPedagogico(ft) || isFichaEspecialistaJec(ft)) {
+    return false;
+  }
+  const id = String(ft.id || ft.fichaTypeId || '').toLowerCase();
+  const n = String(ft.nombre || ft.fichaTypeNombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const m = String(ft.modalidad || '').toUpperCase();
+
+  if (id.includes('jec') || n.includes('jec')) return false;
+
+  // PRITE
+  if (id.includes('prite') || n.includes('prite') || m.includes('PRITE')) return true;
+
+  // CEBE / EBE
+  if (id.includes('cebe') || n.includes('cebe') || m.includes('EBE') || m.includes('CEBE') || n.includes('especial')) return true;
+
+  // EBR
+  if (isFichaEbrGestionEscolar(ft) || id.includes('ebr') || n.includes('ebr') || m.includes('EBR') || m.includes('INICIAL') || m.includes('PRIMARIA') || m.includes('SECUNDARIA') || m.includes('REGULAR')) return true;
+
+  // Escala IPL / ips (excepto JEC)
+  if (ft.tipoRespuesta === 'ips' || ft.tipoRespuesta === 'escala1_3' || ft.escala === 'IPL' || ft.escala === 'IPL_NA') return true;
+
+  return true;
+}
+
+/**
+ * Genera la regla oficial de nivel con criterio común para EBR, EBE y PRITE
+ * según la cantidad de ítems evaluados (N).
+ * Escala por ítem: Inicio = 1 pt, Proceso = 2 pts, Logrado = 3 pts
+ * - Inicio:  0 a N pts      (0% a 33%)
+ * - Proceso: N+1 a 2N pts   (34% a 66%)
+ * - Logrado: 2N+1 a 3N pts  (67% a 100%)
+ *
+ * @param {number} totalItems - Cantidad de ítems (ej. 25 -> 0-25, 26-50, 51-75)
+ * @returns {Object} Regla oficial común
+ */
+export function getReglaNivelComunEbrEbePrite(totalItems = 25) {
+  const n = Math.max(1, Number(totalItems) || 25);
+  const maxPts = n * 3;
+  return {
+    tipo: 'puntaje',
+    escala: 'IPL',
+    maxPuntaje: maxPts,
+    minPuntaje: 0,
+    totalItems: n,
+    esComunEbrEbePrite: true,
+    rangos: [
+      {
+        nivel: 'Logrado',
+        min: 2 * n + 1,
+        max: maxPts,
+        minPct: 67,
+        maxPct: 100,
+        estado_panel: 'Logrado',
+        cls: 'st-logrado',
+        color: '#16A34A',
+        descripcion: `Nivel Logrado: Cumplimiento óptimo (${2 * n + 1} a ${maxPts} puntos / 67% a 100%).`
+      },
+      {
+        nivel: 'Proceso',
+        min: n + 1,
+        max: 2 * n,
+        minPct: 34,
+        maxPct: 66,
+        estado_panel: 'En proceso',
+        cls: 'st-proceso',
+        color: '#D97706',
+        descripcion: `Nivel Proceso: En proceso de consolidación (${n + 1} a ${2 * n} puntos / 34% a 66%).`
+      },
+      {
+        nivel: 'Inicio',
+        min: 0,
+        max: n,
+        minPct: 0,
+        maxPct: 33,
+        estado_panel: 'Inicio',
+        cls: 'st-inicio',
+        color: '#DC2626',
+        descripcion: `Nivel Inicio: Requiere asistencia técnica prioritaria (0 a ${n} puntos / 0% a 33%).`
+      }
+    ]
+  };
 }
 
 /**

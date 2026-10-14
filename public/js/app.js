@@ -25,12 +25,14 @@ import {
   computeStats,
   forceResetBodyScroll,
   setAppState,
-} from './ui.js?v=20261013_v7';
+  openLogoutConfirmModal,
+  getConcursoSubTab,
+  setConcursoSubTab,
+} from './ui.js?v=20261014_v1';
 
+import { renderPortalView } from './portal.js?v=20261014_v1';
 import { renderDirectorioTab } from './directorio.js?v=20261013_v1';
-
 import { renderAlertasTab, getAlertCount } from './alertas.js?v=20260928_v12';
-
 import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261013_v2';
 
 /* ============================= MANEJADORES GLOBALES DE ERROR ============================= */
@@ -58,6 +60,7 @@ let currentRole = null; // 'admin' | 'general'
 let connectionTimer = null;
 
 const state = {
+  modulo: sessionStorage.getItem('agebre_active_modulo') || 'portal', // 'portal' | 'monitoreo' | 'concursos'
   activeTab: 'dashboard',
   fichaTypes: [],  // {id, nombre, descripcion, icono, tipoRespuesta, secciones, extras}
   submissions: [],  // {id, fichaTypeId, ...}
@@ -85,12 +88,153 @@ function getFichaType(id) {
   return state.fichaTypes.find(f => f.id === id) || null;
 }
 
+/* ============================= SELECCIÓN DE MÓDULOS ============================= */
+function seleccionarModulo(mod) {
+  state.modulo = mod;
+  if (mod === 'portal') {
+    sessionStorage.removeItem('agebre_active_modulo');
+    state.activeTab = 'portal';
+  } else if (mod === 'monitoreo') {
+    sessionStorage.setItem('agebre_active_modulo', 'monitoreo');
+    if (state.activeTab === 'portal' || state.activeTab === 'concursos') {
+      state.activeTab = 'dashboard';
+    }
+  } else if (mod === 'concursos') {
+    sessionStorage.setItem('agebre_active_modulo', 'concursos');
+    state.activeTab = 'concursos';
+  }
+  forceResetBodyScroll();
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  render();
+}
+
+/* ============================= RENDER SUBNAVBAR ============================= */
+function renderSubNavBar() {
+  const subNav = document.getElementById('subNavBar');
+  const welcomeBanner = document.getElementById('welcomeBanner');
+  const topModBtn = document.getElementById('topModulosBtn');
+  if (!subNav) return;
+
+  if (topModBtn) {
+    if (state.modulo === 'portal') {
+      topModBtn.classList.add('active');
+    } else {
+      topModBtn.classList.remove('active');
+    }
+  }
+
+  if (state.modulo === 'portal') {
+    subNav.style.display = 'none';
+    if (welcomeBanner) welcomeBanner.style.display = 'none';
+    return;
+  }
+
+  subNav.style.display = 'flex';
+  if (welcomeBanner) welcomeBanner.style.display = 'flex';
+
+  if (state.modulo === 'monitoreo') {
+    const titleEl = welcomeBanner?.querySelector('.welcomeTitle');
+    const subEl = welcomeBanner?.querySelector('.welcomeSub');
+    if (titleEl) titleEl.textContent = 'Panel de Monitoreo y Acompañamiento 2026';
+    if (subEl) subEl.innerHTML = 'UGEL 03 · DRE Lima Metropolitana · <em>"Sistematización y reportes de avance"</em>';
+
+    subNav.innerHTML = `
+      <button type="button" class="navbtn ${state.activeTab === 'dashboard' ? 'active' : ''}" data-tab="dashboard">
+        <span class="ic">📊</span> Resumen
+      </button>
+      <button type="button" class="navbtn ${state.activeTab === 'registrar' ? 'active' : ''}" data-tab="registrar">
+        <span class="ic">＋</span> Registrar ficha
+      </button>
+      <button type="button" class="navbtn ${state.activeTab === 'consolidado' ? 'active' : ''}" data-tab="consolidado">
+        <span class="ic">▤</span> Reportes
+      </button>
+      <button type="button" class="navbtn ${state.activeTab === 'colegios' ? 'active' : ''}" data-tab="colegios">
+        <span class="ic">🏫</span> Colegios
+      </button>
+      <button type="button" class="navbtn ${state.activeTab === 'directorio' ? 'active' : ''}" data-tab="directorio">
+        <span class="ic">📋</span> Directorio
+      </button>
+      <button type="button" class="navbtn ${state.activeTab === 'responsables' ? 'active' : ''}" data-tab="responsables">
+        <span class="ic">👥</span> Responsables
+      </button>
+      ${isAdmin() ? `
+        <button type="button" class="navbtn ${state.activeTab === 'usuarios' ? 'active' : ''}" data-tab="usuarios" data-admin-only="1">
+          <span class="ic">◈</span> Usuarios
+        </button>
+      ` : ''}
+    `;
+
+    subNav.querySelectorAll('.navbtn[data-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        navigate(btn.dataset.tab);
+      });
+    });
+
+  } else if (state.modulo === 'concursos') {
+    const titleEl = welcomeBanner?.querySelector('.welcomeTitle');
+    const subEl = welcomeBanner?.querySelector('.welcomeSub');
+    if (titleEl) titleEl.textContent = 'Gestión Integral de Concursos Escolares 2026';
+    if (subEl) subEl.innerHTML = 'UGEL 03 · AGEBRE · <em>"JMA, ONEM, Eureka, JFEN, JEDPA y Juegos Florales"</em>';
+
+    const currentSub = typeof getConcursoSubTab === 'function' ? getConcursoSubTab() : 'consolidado';
+
+    subNav.innerHTML = `
+      <button type="button" class="navbtn ${currentSub === 'consolidado' ? 'active' : ''}" data-csubtab="consolidado">
+        <span class="ic">📊</span> Ver consolidado
+      </button>
+      <button type="button" class="navbtn ${currentSub === 'registrar' ? 'active' : ''}" data-csubtab="registrar">
+        <span class="ic">➕</span> Registrar participante
+      </button>
+      <button type="button" class="navbtn ${currentSub === 'asignar_podios' ? 'active' : ''}" data-csubtab="asignar_podios">
+        <span class="ic">🏆</span> Asignar puestos
+      </button>
+      <button type="button" class="navbtn ${currentSub === 'asistente' ? 'active' : ''}" data-csubtab="asistente">
+        <span class="ic">🔤</span> Revisar nombres
+      </button>
+      ${isAdmin() ? `
+        <button type="button" class="navbtn ${currentSub === 'tipos' ? 'active' : ''}" data-csubtab="tipos" data-admin-only="1">
+          <span class="ic">⚙</span> Tipos de concurso
+        </button>
+      ` : ''}
+    `;
+
+    subNav.querySelectorAll('.navbtn[data-csubtab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const cTab = btn.dataset.csubtab;
+        if (typeof setConcursoSubTab === 'function') {
+          setConcursoSubTab(cTab);
+        }
+        state.activeTab = 'concursos';
+        forceResetBodyScroll();
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        subNav.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
+        btn.classList.add('active');
+        render();
+      });
+    });
+  }
+}
+
 /* ============================= NAVIGATE HELPER ============================= */
 /** Cambia de pestaña programáticamente (usado desde botones "Editar" en Consolidado) */
 function navigate(tab) {
+  if (tab === 'portal') {
+    seleccionarModulo('portal');
+    return;
+  }
+  if (tab === 'alertas') {
+    tab = 'dashboard';
+  }
   if (tab === 'tipos') {
     tab = 'registrar';
     if (isAdmin()) setRegistrarSubTab('plantillas');
+  }
+  if (tab === 'concursos') {
+    state.modulo = 'concursos';
+    sessionStorage.setItem('agebre_active_modulo', 'concursos');
+  } else {
+    state.modulo = 'monitoreo';
+    sessionStorage.setItem('agebre_active_modulo', 'monitoreo');
   }
   state.activeTab = tab;
   forceResetBodyScroll();
@@ -122,6 +266,21 @@ function render() {
   setAppState(state);
   const c = document.getElementById('tabContent');
 
+  // Actualizar la barra de subnavegación según el módulo actual
+  renderSubNavBar();
+
+  // Si estamos en la pantalla de bienvenida/portal de aplicaciones
+  if (state.modulo === 'portal') {
+    if (!c.querySelector('.portalContainer')) {
+      renderPortalView(c, {
+        onSelectModule: (selectedMod) => {
+          seleccionarModulo(selectedMod);
+        }
+      });
+    }
+    return;
+  }
+
   // Actualizar contador de alertas en la campana
   const bellBadge = document.getElementById('topBellBadge');
   if (bellBadge && state.submissions) {
@@ -137,7 +296,7 @@ function render() {
   switch (state.activeTab) {
     case 'dashboard':
       if (state.fichaTypes.length === 0) {
-        c.innerHTML = '<div class="pageHead"><h2>Resumen general</h2><p>Vista consolidada de monitoreo, niveles de avance institucional y alertas prioritarias.</p></div>' +
+        c.innerHTML = '<div class="pageHead"><h2>Resumen general</h2><p>Vista consolidada de monitoreo y niveles de avance institucional.</p></div>' +
           '<div class="cards" style="margin-bottom:24px">' +
           '<div class="card skeletonCard"><div class="skeletonPulse" style="height:34px;width:70px;margin-bottom:8px"></div><div class="skeletonPulse" style="height:14px;width:130px"></div></div>' +
           '<div class="card skeletonCard"><div class="skeletonPulse" style="height:34px;width:70px;margin-bottom:8px"></div><div class="skeletonPulse" style="height:14px;width:130px"></div></div>' +
@@ -168,7 +327,8 @@ function render() {
       renderDirectorioTab(c, state, dbNs, isAdmin(), currentUser, navigate);
       break;
     case 'alertas':
-      renderAlertasTab(c, state, getFichaType, dbNs, currentUser, isAdmin());
+      state.activeTab = 'dashboard';
+      c.innerHTML = viewDashboard(state, getFichaType, render);
       break;
     case 'tipos':
       state.activeTab = 'registrar';
@@ -394,6 +554,9 @@ function onLogin(user, role) {
   currentUser = user;
   currentRole = role;
 
+  // Iniciar en portal si no hay módulo activo guardado
+  state.modulo = sessionStorage.getItem('agebre_active_modulo') || 'portal';
+
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
 
@@ -432,16 +595,39 @@ function onLogin(user, role) {
       ' · Todos los especialistas con acceso ven la misma información consolidada.';
   }
 
-  // 3. Listener del botón Cerrar Sesión en la barra superior
+  // 3. Listener del botón Cerrar Sesión en la barra superior con confirmación
   const logoutBtn = document.getElementById('topLogoutBtn');
   if (logoutBtn) {
-    logoutBtn.onclick = async () => {
-      stopListeners();
-      try {
-        await signOut(auth);
-      } catch (err) {
-        console.warn('Aviso al cerrar sesión:', err);
-      }
+    logoutBtn.onclick = () => {
+      openLogoutConfirmModal({
+        currentUser,
+        isAdmin: isAdmin(),
+        onConfirmLogout: async () => {
+          stopListeners();
+          try {
+            await signOut(auth);
+            showToast('✓ Sesión cerrada correctamente.');
+          } catch (err) {
+            console.warn('Aviso al cerrar sesión:', err);
+          }
+        },
+        onSwitchUser: async () => {
+          stopListeners();
+          try {
+            await signOut(auth);
+            const emailInp = document.getElementById('loginEmail');
+            const passInp = document.getElementById('loginPassword');
+            if (emailInp) {
+              emailInp.value = '';
+              setTimeout(() => emailInp.focus(), 150);
+            }
+            if (passInp) passInp.value = '';
+            showToast('Sesión finalizada. Ingrese con sus nuevas credenciales.');
+          } catch (err) {
+            console.warn('Aviso al cambiar de usuario:', err);
+          }
+        }
+      });
     };
   }
 
@@ -458,6 +644,11 @@ function onLogout() {
 
   currentUser = null;
   currentRole = null;
+  state.modulo = 'portal';
+  try {
+    sessionStorage.removeItem('agebre_active_modulo');
+  } catch (_) { }
+
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
 }
@@ -478,6 +669,24 @@ async function initApp() {
     retryBtn.onclick = () => {
       retryBtn.textContent = 'Reconectando...';
       location.reload();
+    };
+  }
+
+  // Click en el logo institucional para regresar al selector de módulos
+  const brand = document.querySelector('.topBrand');
+  if (brand) {
+    brand.style.cursor = 'pointer';
+    brand.title = 'Ir a Selección de Aplicaciones (Portal)';
+    brand.onclick = () => {
+      seleccionarModulo('portal');
+    };
+  }
+
+  // Click en el botón Módulos de la barra superior (al lado de En línea)
+  const topModBtn = document.getElementById('topModulosBtn');
+  if (topModBtn) {
+    topModBtn.onclick = () => {
+      seleccionarModulo('portal');
     };
   }
 

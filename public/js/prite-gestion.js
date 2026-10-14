@@ -1239,8 +1239,8 @@ function bindPriteFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
 
     let estado = 'Inicio';
     let estadoColor = '#DC2626';
-    if (scorePct >= 85) { estado = 'Logrado'; estadoColor = '#16A34A'; }
-    else if (scorePct >= 70) { estado = 'En proceso'; estadoColor = '#D97706'; }
+    if (scorePct >= 67) { estado = 'Logrado'; estadoColor = '#16A34A'; }
+    else if (scorePct >= 34) { estado = 'En proceso'; estadoColor = '#D97706'; }
 
     const counter = form.querySelector('#priteProgressCounter');
     if (counter) {
@@ -1471,8 +1471,8 @@ export async function guardarFormularioPrite(form, ft, state, dbNs, currentUser,
     const scorePct = applicableItems > 0 ? Math.round((scorePuntos / applicableItems) * 100) : 0;
 
     let estadoTexto = 'Inicio';
-    if (scorePct >= 85) estadoTexto = 'Logrado';
-    else if (scorePct >= 70) estadoTexto = 'En proceso';
+    if (scorePct >= 67) estadoTexto = 'Logrado';
+    else if (scorePct >= 34) estadoTexto = 'En proceso';
 
     // Compromisos estructurados
     const compActivos = priteFormState.compromisosPorVisita[kActiva] || { director: '', especialista: '', adicionales: [] };

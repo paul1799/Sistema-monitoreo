@@ -16,11 +16,14 @@ import {
   ESPECIALISTA_JEC_OFICIAL,
   getNivelCoordTutoriaJec,
   isFichaEbrGestionEscolar,
+  isFichaEbrEbePrite,
+  getReglaNivelComunEbrEbePrite,
   getReglaNivelEbrGestion,
   getNivelEbrGestion,
   getMomentoVisitaEbr
 } from './calcEngine.js?v=20261013_v2';
 import * as RepDatos from './reportes-datos.js?v=20261013_v2';
+import { verifyAdminPassword } from './auth.js?v=20260918_v11';
 
 import { AI_SCAN_ENDPOINT } from './firebase-config.js?v=20260918_v8';
 import {
@@ -223,9 +226,13 @@ export function scoreValue(tipo, v) {
  */
 export function statusFromPct(pct, fichaType, conteo_si, puntaje, visita) {
   let regla = (fichaType && fichaType.regla_nivel) ? fichaType.regla_nivel : null;
+  const isJec = isFichaJec(fichaType) || isFichaCoordTutoriaJec(fichaType) || isFichaCoordPedagogico(fichaType) || isFichaEspecialistaJec(fichaType);
   if (isFichaEbrGestionEscolar(fichaType)) {
     const v = visita || getMomentoVisitaEbr(fichaType);
     regla = getReglaNivelEbrGestion(v);
+  } else if (!isJec && (isFichaEbrEbePrite(fichaType) || isFichaCebeGestion(fichaType) || isFichaPriteGestion(fichaType) || fichaType?.escala === 'IPL' || fichaType?.tipoRespuesta === 'ips')) {
+    const totalItems = (fichaType?.secciones || []).reduce((acc, s) => acc + (s.items || []).length, 0) || 25;
+    regla = getReglaNivelComunEbrEbePrite(totalItems);
   } else if (!regla && isFichaCoordTutoriaJec(fichaType)) {
     regla = REGLA_NIVEL_COORD_TUTORIA_JEC;
   } else if (!regla && isFichaJec(fichaType)) {
@@ -242,7 +249,8 @@ export function statusFromPct(pct, fichaType, conteo_si, puntaje, visita) {
 }
 export function colorForPct(pct, fichaType = null) {
   if (pct === null || pct === undefined) return 'var(--neutral)';
-  if (isFichaEbrGestionEscolar(fichaType)) {
+  const isJec = isFichaJec(fichaType) || isFichaCoordTutoriaJec(fichaType) || isFichaCoordPedagogico(fichaType) || isFichaEspecialistaJec(fichaType);
+  if (!isJec && (isFichaEbrGestionEscolar(fichaType) || isFichaEbrEbePrite(fichaType) || isFichaCebeGestion(fichaType) || isFichaPriteGestion(fichaType) || !fichaType)) {
     if (pct >= 67) return 'var(--ok)';
     if (pct >= 34) return 'var(--warn)';
     return 'var(--danger)';
@@ -415,7 +423,8 @@ export function bar(pct, customClsOrStatus, fichaType = null) {
     else if (s.includes('danger') || s.includes('inici') || s.includes('mejorar') || s.includes('no cumple')) cls = 'danger';
     else cls = customClsOrStatus;
   } else if (pct !== null && pct !== undefined) {
-    if (isFichaEbrGestionEscolar(targetFt)) {
+    const isJec = isFichaJec(targetFt) || isFichaCoordTutoriaJec(targetFt) || isFichaCoordPedagogico(targetFt) || isFichaEspecialistaJec(targetFt);
+    if (!isJec && (isFichaEbrGestionEscolar(targetFt) || isFichaEbrEbePrite(targetFt) || isFichaCebeGestion(targetFt) || isFichaPriteGestion(targetFt) || !targetFt)) {
       cls = pct >= 67 ? 'ok' : (pct >= 34 ? 'warn' : 'danger');
     } else {
       cls = pct >= 85 ? 'ok' : (pct >= 70 ? 'warn' : 'danger');
@@ -534,7 +543,7 @@ export function computeStats(sub, ft) {
     finalEstado.cls = nivelEbr.cls;
     finalEstado.descripcion = nivelEbr.descripcion || '';
     result.pct = nivelEbr.pct; // Alinear el porcentaje general al puntaje
-  } else if ((ftForCalc.escala === 'IPL' || ftForCalc.tipoRespuesta === 'ips') && result.pct !== null) {
+  } else if ((ftForCalc.escala === 'IPL' || ftForCalc.tipoRespuesta === 'ips' || isFichaEbrEbePrite(ftForCalc)) && result.pct !== null) {
     if (result.pct >= 67) {
       finalEstado.label = 'Logrado';
       finalEstado.estado_panel = 'Logrado';
@@ -565,7 +574,8 @@ export function computeItemAgg(subs, ft) {
 }
 
 export function renderItemReportHtml(itemAgg, tipoRespuesta, ft = null) {
-  const isEbr = isFichaEbrGestionEscolar(ft);
+  const isJec = isFichaJec(ft) || isFichaCoordTutoriaJec(ft) || isFichaCoordPedagogico(ft) || isFichaEspecialistaJec(ft);
+  const isEbr = !isJec && (isFichaEbrGestionEscolar(ft) || isFichaEbrEbePrite(ft) || isFichaCebeGestion(ft) || isFichaPriteGestion(ft));
   const logCut = isEbr ? 67 : 85;
   const procCut = isEbr ? 34 : 70;
 
@@ -582,7 +592,7 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta, ft = null) {
     'na': 'N/A = No aplica',
     'si': 'Sí = Cumple',
     'no': 'No = No cumple',
-    'inicio': 'Inicio = Por mejorar',
+    'inicio': isEbr ? 'Inicio = Nivel inicio' : 'Inicio = Por mejorar',
     'proceso': 'Proceso = En proceso',
     'logrado': 'Logrado = Cumplido'
   };
@@ -750,6 +760,128 @@ export function unlockBodyScroll() {
 export function forceResetBodyScroll() {
   _activeModalCount = 0;
   document.body.classList.remove('modal-open');
+}
+
+/**
+ * Diálogo modal accesible de confirmación antes de cerrar sesión o cambiar de usuario.
+ * @param {{ currentUser: Object, isAdmin: boolean, onConfirmLogout: Function, onSwitchUser: Function }} options
+ */
+export function openLogoutConfirmModal({
+  currentUser = null,
+  isAdmin = false,
+  onConfirmLogout = null,
+  onSwitchUser = null
+} = {}) {
+  const oldModal = document.getElementById('logoutConfirmModal');
+  if (oldModal) {
+    oldModal.remove();
+    unlockBodyScroll();
+  }
+
+  const modalWrap = document.createElement('div');
+  modalWrap.id = 'logoutConfirmModal';
+  modalWrap.className = 'downloadModalOverlay';
+  modalWrap.setAttribute('role', 'dialog');
+  modalWrap.setAttribute('aria-modal', 'true');
+  modalWrap.setAttribute('aria-labelledby', 'm_logout_title');
+
+  const emailStr = (currentUser && currentUser.email) ? currentUser.email : 'Usuario';
+  const roleLabel = isAdmin ? 'Administrador' : 'Especialista General';
+  const roleBadgeCls = isAdmin ? 'st-logrado' : 'st-none';
+  const initial = emailStr.charAt(0).toUpperCase();
+
+  modalWrap.innerHTML = `
+    <div class="downloadModalCard" style="max-width:480px;box-shadow:0 24px 38px 3px rgba(11,27,54,0.22),0 9px 46px 8px rgba(11,27,54,0.12)">
+      <div class="downloadModalHeader" style="background:#0B1B36;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:22px;line-height:1">🚪</span>
+          <h3 id="m_logout_title" style="color:#FFFFFF;margin:0;font-size:16px;font-weight:700">¿Cerrar sesión?</h3>
+        </div>
+        <button type="button" class="downloadModalClose" id="m_logout_close" title="Cerrar ventana" style="color:#CBD5E1;font-size:18px;background:none;border:none;cursor:pointer">✕</button>
+      </div>
+
+      <div class="downloadModalBody" style="padding:22px 24px">
+        <!-- Tarjeta de usuario activo -->
+        <div style="display:flex;align-items:center;gap:12px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:12px 14px;margin-bottom:16px">
+          <div style="width:42px;height:42px;border-radius:50%;background:#12294C;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;flex-shrink:0">
+            ${initial}
+          </div>
+          <div style="min-width:0;flex:1">
+            <div style="font-weight:600;font-size:13.5px;color:#0F172A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(emailStr)}">
+              ${esc(emailStr)}
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+              <span class="badge ${roleBadgeCls}" style="font-size:11px;padding:2px 7px">${roleLabel}</span>
+              <span style="font-size:11.5px;color:#64748B">Sesión activa</span>
+            </div>
+          </div>
+        </div>
+
+        <p style="font-size:13.5px;color:#334155;line-height:1.55;margin:0 0 12px 0">
+          ¿Deseas salir del sistema o cambiar a otra cuenta de usuario?
+        </p>
+
+        <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400E;display:flex;gap:8px;align-items:flex-start">
+          <span style="font-size:14px;line-height:1">ℹ️</span>
+          <span>Asegúrate de haber guardado tus cambios o fichas en edición antes de salir.</span>
+        </div>
+      </div>
+
+      <div class="downloadModalFooter" style="background:#F1F5F9;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn secondary" id="m_logout_cancel" style="padding:8px 14px;font-size:13px">
+          Cancelar
+        </button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button type="button" class="btn" id="m_logout_switch" style="background:#2E4A73;color:#FFFFFF;border:none;padding:8px 14px;font-size:13px;font-weight:600;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px">
+            <span>👤</span> Cambiar de usuario
+          </button>
+          <button type="button" class="btn danger" id="m_logout_confirm" style="padding:8px 14px;font-size:13px;font-weight:600;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px">
+            <span>🚪</span> Cerrar sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  lockBodyScroll();
+  document.body.appendChild(modalWrap);
+
+  const close = () => {
+    modalWrap.remove();
+    unlockBodyScroll();
+    document.removeEventListener('keydown', onKeyDown);
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === 'Escape') close();
+  };
+  document.addEventListener('keydown', onKeyDown);
+
+  modalWrap.addEventListener('click', (e) => {
+    if (e.target === modalWrap) close();
+  });
+
+  const closeBtn = modalWrap.querySelector('#m_logout_close');
+  const cancelBtn = modalWrap.querySelector('#m_logout_cancel');
+  const switchBtn = modalWrap.querySelector('#m_logout_switch');
+  const confirmBtn = modalWrap.querySelector('#m_logout_confirm');
+
+  if (closeBtn) closeBtn.onclick = close;
+  if (cancelBtn) cancelBtn.onclick = close;
+
+  if (switchBtn) {
+    switchBtn.onclick = () => {
+      close();
+      if (onSwitchUser) onSwitchUser();
+    };
+  }
+
+  if (confirmBtn) {
+    confirmBtn.onclick = () => {
+      close();
+      if (onConfirmLogout) onConfirmLogout();
+    };
+  }
 }
 
 /**
@@ -1672,16 +1804,16 @@ export function setupNavigation(state, renderFn) {
     });
   }
 
-  // Campana de alertas en la cabecera
+  // Campana de alertas en la cabecera (oculta)
   const topBellBtn = document.getElementById('topBellBtn');
   if (topBellBtn) {
     topBellBtn.addEventListener('click', () => {
       forceResetBodyScroll();
       window.scrollTo({ top: 0, behavior: 'instant' });
-      state.activeTab = 'alertas';
-      cleanConcursoParams('alertas');
+      state.activeTab = 'dashboard';
+      cleanConcursoParams('dashboard');
       document.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
-      const btn = document.querySelector('.navbtn[data-tab="alertas"]');
+      const btn = document.querySelector('.navbtn[data-tab="dashboard"]');
       if (btn) btn.classList.add('active');
       renderFn();
     });
@@ -1800,24 +1932,6 @@ export function viewDashboard(state, getFichaType, renderFn) {
     (dist.none ? '<span><span class="dot" style="background:var(--neutral)"></span><strong>Sin datos:</strong> ' + dist.none + ' (' + pctNone + '%)</span>' : '') +
     '</div></div>';
 
-  // Alertas Recientes
-  const alertsList = computeAlerts(state, getFichaType).slice(0, 5);
-  const alertsHtml = alertsList.length > 0 ? alertsList.map(a => {
-    const isDanger = a.status === 'Por mejorar' || a.trend === 'retroceso';
-    const cls = isDanger ? 'danger' : 'warn';
-    const icon = isDanger ? '🚨' : '⚠️';
-    return '<div class="alertCard ' + cls + '">' +
-      '<div class="alertIcon">' + icon + '</div>' +
-      '<div class="alertBody">' +
-      '<div class="alertTitle">' + esc(a.institucion) + ' · <span style="font-weight:500;color:var(--text-600)">' + esc(a.fichaTypeNombre) + '</span></div>' +
-      '<div class="alertDetail"><strong>' + esc(a.seccion) + ':</strong> ' + esc(a.item) + ' — Nivel: <strong>' + a.pct + '% (' + a.status + ')</strong>' +
-      (a.trend === 'retroceso' ? ' · <span style="color:var(--danger);font-weight:700">⚠ Retroceso respecto a visita anterior</span>' : '') +
-      '</div>' +
-      '</div>' +
-      '<button class="actBtn" data-gotoalert="' + esc(a.institucion) + '" type="button">Ver alerta</button>' +
-      '</div>';
-  }).join('') : '<p class="helpText" style="margin:0;color:var(--ok);font-weight:600">✓ No se registran alertas críticas ni retrocesos en las visitas recientes.</p>';
-
   // Actividad Reciente
   const recent = [...state.submissions].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 8).map(s => {
     const ft = getFichaType(s.fichaTypeId);
@@ -1835,21 +1949,12 @@ export function viewDashboard(state, getFichaType, renderFn) {
         renderFn();
       });
     }
-    document.querySelectorAll('[data-gotoalert]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        state.activeTab = 'alertas';
-        document.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
-        const navBtn = document.querySelector('.navbtn[data-tab="alertas"]');
-        if (navBtn) navBtn.classList.add('active');
-        if (renderFn) renderFn();
-      });
-    });
   }, 0);
 
   return '' +
     '<div class="pageHead">' +
     '<h2>Resumen general</h2>' +
-    '<p>Vista consolidada de monitoreo, niveles de avance institucional y alertas prioritarias.</p>' +
+    '<p>Vista consolidada de monitoreo y niveles de avance institucional.</p>' +
     '</div>' +
     '<div class="cards">' +
     '<div class="card"><div class="num">' + totalTipos + '</div><div class="lbl">Tipos de ficha</div></div>' +
@@ -1867,7 +1972,6 @@ export function viewDashboard(state, getFichaType, renderFn) {
     '<div class="tblWrap"><table class="tipoAvanceTable"><thead><tr><th>Tipo de ficha</th><th style="width:80px;text-align:center">Fichas</th><th style="min-width:180px">Avance</th><th style="width:70px;text-align:right">%</th><th style="width:110px;text-align:center">Estado</th></tr></thead><tbody>' + tipoTableRows + '</tbody></table></div>' +
     '</div>' +
     '<div class="panel"><h3>Distribución general de resultados</h3>' + seg + '</div>' +
-    '<div class="panel"><h3>Alertas de seguimiento recientes</h3>' + alertsHtml + '</div>' +
     '<div class="panel"><h3>Actividad reciente</h3><div class="tblWrap"><table><thead><tr><th>Fecha</th><th>Institución</th><th>Tipo de ficha</th><th>Visita</th><th>%</th><th>Estado</th></tr></thead><tbody>' + recent + '</tbody></table></div></div>';
 }
 
@@ -4284,7 +4388,11 @@ export function aplicarFiltrosReporte(submissions, filters, state, getFichaType,
     const est = f.estado.trim();
     statsList = statsList.filter(x => {
       const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : targetFt;
-      const isEbr = isFichaEbrGestionEscolar(sFt || targetFt || x.s);
+      const isJec = isFichaJec(sFt || targetFt || x.s) || isFichaCoordTutoriaJec(sFt || targetFt || x.s) || isFichaCoordPedagogico(sFt || targetFt || x.s) || isFichaEspecialistaJec(sFt || targetFt || x.s);
+      const isEbr = !isJec && (isFichaEbrGestionEscolar(sFt || targetFt || x.s)
+        || isFichaEbrEbePrite(sFt || targetFt || x.s)
+        || isFichaCebeGestion(sFt || targetFt || x.s)
+        || isFichaPriteGestion(sFt || targetFt || x.s));
       let lbl = '';
       let pnl = '';
       if (isEbr && x.st && x.st.pct !== null) {
@@ -4296,7 +4404,7 @@ export function aplicarFiltrosReporte(submissions, filters, state, getFichaType,
         lbl = x.st?.estado?.label || statusFromPct(x.st?.pct, sFt, x.st?.conteo_si, x.st?.puntaje, v).label;
         pnl = x.st?.estado?.estado_panel || '';
       }
-      return lbl === est || pnl === est;
+      return lbl === est || pnl === est || (est === 'En proceso' && (lbl === 'Proceso' || pnl === 'En proceso')) || (est === 'Proceso' && (lbl === 'Proceso' || pnl === 'En proceso'));
     });
     subs = statsList.map(x => x.s);
   }
@@ -4312,13 +4420,17 @@ export function aplicarFiltrosReporte(submissions, filters, state, getFichaType,
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
   statsList.forEach(x => {
     const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : targetFt;
-    const isEbr = isFichaEbrGestionEscolar(sFt || targetFt || x.s)
+    const isJec = isFichaJec(sFt || targetFt || x.s) || isFichaCoordTutoriaJec(sFt || targetFt || x.s) || isFichaCoordPedagogico(sFt || targetFt || x.s) || isFichaEspecialistaJec(sFt || targetFt || x.s);
+    const isEbr = !isJec && (isFichaEbrGestionEscolar(sFt || targetFt || x.s)
+      || isFichaEbrEbePrite(sFt || targetFt || x.s)
+      || isFichaCebeGestion(sFt || targetFt || x.s)
+      || isFichaPriteGestion(sFt || targetFt || x.s)
       || (sFt?.tipoRespuesta === 'ips')
       || (sFt?.escala === 'IPL')
       || (targetFt?.tipoRespuesta === 'ips')
-      || (targetFt?.escala === 'IPL');
+      || (targetFt?.escala === 'IPL'));
     let l = '';
-    if ((isEbr || sFt?.escala === 'IPL' || targetFt?.escala === 'IPL') && x.st && x.st.pct !== null) {
+    if (isEbr && x.st && x.st.pct !== null) {
       l = x.st.pct >= 67 ? 'logrado' : (x.st.pct >= 34 ? 'proceso' : 'inicio');
     } else if (x.st && x.st.estado && (x.st.estado.estado_panel || x.st.estado.label)) {
       l = String(x.st.estado.estado_panel || x.st.estado.label).toLowerCase();
@@ -4726,7 +4838,7 @@ function updateStickyReportesBar(statsList, getFichaType) {
   const isCebe = ft && isFichaCebeGestion(ft);
   const isPrite = ft && isFichaPriteGestion(ft);
   const isGestionSinVisita = (isEbr && (filtrosReporte.visita !== '1' && filtrosReporte.visita !== '2')) ||
-                             ((isCebe || isPrite) && (!['1', '2', '3'].includes(String(filtrosReporte.visita))));
+    ((isCebe || isPrite) && (!['1', '2', '3'].includes(String(filtrosReporte.visita))));
   const isZero = statsList.length === 0;
   const disabled = isZero || isGestionSinVisita;
 
@@ -5004,7 +5116,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
 
     return '<div class="barRow">' +
       '<div class="name">Visita ' + vNum + ' <span class="badge ' + vSt.cls + '" style="margin-left:8px;font-size:11px;vertical-align:middle;">' + vSt.label + '</span></div>' +
-      bar(avg, vSt.cls) +
+      bar(avg, vSt.cls, sFt) +
       '<div class="val"' + scoreTitle + '>' + (avg === null ? '—' : avg + '%') + '</div>' +
       '</div>';
   }).join('') || '<p class="helpText">Sin datos suficientes.</p>';
@@ -5171,11 +5283,11 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     </div>
   `;
 
-  // Cálculo de tarjetas KPI para fichas con modalidad específica (EBR y CEBE)
+  // Cálculo de tarjetas KPI para fichas con modalidad específica (EBR, CEBE y PRITE)
   const isEbrReport = !isAllMode && ft && isFichaEbrGestionEscolar(ft);
   const isCebeReport = !isAllMode && ft && isFichaCebeGestion(ft);
   const isPriteReport = !isAllMode && ft && isFichaPriteGestion(ft);
-  const targetModality = isEbrReport ? 'EBR' : ((isCebeReport || isPriteReport) ? 'EBE' : null);
+  const targetModality = isEbrReport ? 'EBR' : (isPriteReport ? 'PRITE' : (isCebeReport ? 'CEBE' : null));
 
   let cardsHtml = '';
   if (targetModality) {
@@ -5192,8 +5304,18 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
         }
         return false;
       }
+      if (mod === 'PRITE') {
+        if (m === 'PRITE' || m.includes('PRITE') || ie.includes('PRITE')) return true;
+        return false;
+      }
+      if (mod === 'CEBE') {
+        if (ie.includes('PRITE') || m.includes('PRITE')) return false;
+        if (m === 'CEBE' || m.includes('CEBE') || m === 'EBE' || m.includes('EBE') || m.includes('ESPECIAL')) return true;
+        if (ie.includes('CEBE') || ie.includes('ESPECIAL')) return true;
+        return false;
+      }
       if (mod === 'EBE') {
-        if (m === 'EBE' || m.includes('EBE') || m.includes('ESPECIAL') || m.includes('CEBE')) return true;
+        if (m === 'EBE' || m.includes('EBE') || m.includes('ESPECIAL') || m.includes('CEBE') || m.includes('PRITE')) return true;
         if (ie.includes('CEBE') || ie.includes('PRITE') || ie.includes('ESPECIAL')) return true;
         return false;
       }
@@ -5219,8 +5341,8 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
       const qInst = normalizeText(filtrosReporte.institucion.trim());
       targetColegios = targetColegios.filter(c => {
         return normalizeText(c.ie || c.nombre || '').includes(qInst) ||
-               normalizeText(c.codigoLocal || '').includes(qInst) ||
-               normalizeText(c.codigoModular || '').includes(qInst);
+          normalizeText(c.codigoLocal || '').includes(qInst) ||
+          normalizeText(c.codigoModular || '').includes(qInst);
       });
     }
 
@@ -6119,7 +6241,7 @@ function buildDetail(s) {
     const v = Number(s.visita) || 1;
     const puntaje = (s.puntaje !== undefined && s.puntaje !== null) ? Number(s.puntaje) : 0;
     const pct = (s.porcentaje !== undefined && s.porcentaje !== null) ? Number(s.porcentaje) : Math.round((puntaje / 34) * 100);
-    const estado = s.estado || (pct >= 85 ? 'Logrado' : (pct >= 70 ? 'En proceso' : 'Inicio'));
+    const estado = s.estado || (pct >= 67 ? 'Logrado' : (pct >= 34 ? 'En proceso' : 'Inicio'));
     let estadoColor = '#16a34a';
     let estadoCls = 'st-logrado';
     if (estado === 'En proceso' || String(estado).toLowerCase().includes('proces')) { estadoColor = '#d97706'; estadoCls = 'st-proceso'; }
@@ -6222,7 +6344,7 @@ function buildDetail(s) {
     const v = Number(s.visita) || 1;
     const puntaje = (s.puntaje !== undefined && s.puntaje !== null) ? Number(s.puntaje) : 0;
     const pct = (s.porcentaje !== undefined && s.porcentaje !== null) ? Number(s.porcentaje) : Math.round((puntaje / 32) * 100);
-    const estado = s.estado || (pct >= 85 ? 'Logrado' : (pct >= 70 ? 'En proceso' : 'Inicio'));
+    const estado = s.estado || (pct >= 67 ? 'Logrado' : (pct >= 34 ? 'En proceso' : 'Inicio'));
     let estadoColor = '#16a34a';
     let estadoCls = 'st-logrado';
     if (estado === 'En proceso' || String(estado).toLowerCase().includes('proces')) { estadoColor = '#d97706'; estadoCls = 'st-proceso'; }
@@ -7605,58 +7727,154 @@ export function normalizeExtras(extras) {
   return extras.map((ex, idx) => {
     if (!ex) return null;
     if (typeof ex === 'string') {
-      return { id: 'hdr_' + idx, label: ex, tipo: 'texto', required: false };
+      return { id: 'hdr_' + idx, label: ex, tipo: 'texto', required: false, opciones: '' };
     }
     const safeLabel = (ex.label || '').trim();
     const safeId = ex.id || ('hdr_' + (safeLabel ? safeLabel.replace(/[^a-z0-9]+/gi, '_').toLowerCase() : idx) + '_' + idx);
     let safeTipo = (ex.tipo || 'texto').toLowerCase();
-    if (!['texto', 'numero', 'fecha', 'si_no'].includes(safeTipo)) safeTipo = 'texto';
+    if (!['texto', 'numero', 'fecha', 'si_no', 'select', 'textarea'].includes(safeTipo)) safeTipo = 'texto';
+    const safeOpts = Array.isArray(ex.opciones) ? ex.opciones.join(', ') : (typeof ex.opciones === 'string' ? ex.opciones : '');
     return {
       id: safeId,
       label: safeLabel,
       tipo: safeTipo,
       required: !!ex.required,
+      opciones: safeOpts,
     };
   }).filter(Boolean);
 }
 
 let plantillasSearchQuery = '';
+let builderMode = 'visual'; // 'visual' | 'json'
+let builderJsonUnlocked = false; // Requiere autenticación con contraseña de admin
 let builderPreviewMode = 'formulario'; // 'formulario' | 'documento'
+let builderActiveVisitPreview = 0; // índice de la visita simulada en vista previa
 let builderMobileTab = 'editor'; // 'editor' | 'preview'
 let builderIsDirty = false;
 let builderTestAnswers = {};
 
+export function cleanBuilderStateForExport(bs) {
+  if (!bs) return {};
+  return {
+    id: builderEditingId || undefined,
+    nombre: bs.nombre || '',
+    nombreCorto: bs.nombreCorto || bs.nombre || '',
+    descripcion: bs.descripcion || '',
+    icono: bs.icono || '📋',
+    color: bs.color || (FICHA_PALETTE[0] || {}).hex || '#1E40AF',
+    modalidad: bs.modalidad || 'General',
+    tipoRespuesta: bs.tipoRespuesta || 'si_no',
+    regla_nivel: bs.regla_nivel || 'porcentaje',
+    version: bs.version || '2026.1',
+    tieneVisitas: !!bs.tieneVisitas,
+    visitas: bs.tieneVisitas ? (Array.isArray(bs.visitas) && bs.visitas.length > 0 ? bs.visitas : ['Visita 1', 'Visita 2', 'Visita 3']) : [],
+    extras: (bs.extras || []).map(e => ({
+      id: e.id,
+      label: e.label || '',
+      tipo: e.tipo || 'texto',
+      required: !!e.required,
+      opciones: e.opciones || undefined
+    })),
+    tablas: Array.isArray(bs.tablas) ? bs.tablas : [],
+    compromisos: bs.compromisos || { habilitado: true, director: true, especialista: true, filasPorVisita: 3 },
+    secciones: (bs.secciones || []).map(s => ({
+      nombre: s.nombre || '',
+      items: (s.items || []).map(i => ({
+        id: i.id,
+        texto: i.texto || '',
+        evidencia: i.evidencia || ''
+      }))
+    }))
+  };
+}
+
 function blankBuilder() {
   return {
     nombre: '',
+    nombreCorto: '',
     descripcion: '',
     icono: '📋',
     color: FICHA_PALETTE[0].hex,
     modalidad: 'General',
     tipoRespuesta: 'si_no',
-    secciones: [{ nombre: 'Sección 1: Planificación y Gestión', items: [{ id: genId(), texto: '' }] }],
+    regla_nivel: 'porcentaje',
+    version: '2026.1',
+    tieneVisitas: false,
+    visitas: ['Visita 1', 'Visita 2', 'Visita 3'],
+    secciones: [{
+      nombre: 'Sección 1: Planificación y Gestión',
+      items: [{ id: genId(), texto: '', evidencia: '' }]
+    }],
     extras: [
-      { id: genId(), label: 'UGEL', tipo: 'texto', required: false },
-      { id: genId(), label: 'RED / REI', tipo: 'texto', required: false },
-      { id: genId(), label: 'Código modular / local', tipo: 'texto', required: false },
-      { id: genId(), label: 'Director(a) en funciones', tipo: 'texto', required: false },
-      { id: genId(), label: 'Responsable / especialista', tipo: 'texto', required: false },
+      { id: genId(), label: 'UGEL', tipo: 'texto', required: false, opciones: '' },
+      { id: genId(), label: 'RED / REI', tipo: 'texto', required: false, opciones: '' },
+      { id: genId(), label: 'Código modular / local', tipo: 'texto', required: false, opciones: '' },
+      { id: genId(), label: 'Director(a) en funciones', tipo: 'texto', required: false, opciones: '' },
+      { id: genId(), label: 'Responsable / especialista', tipo: 'texto', required: false, opciones: '' },
     ],
+    tablas: [],
+    compromisos: {
+      habilitado: true,
+      director: true,
+      especialista: true,
+      filasPorVisita: 3
+    }
   };
 }
 
 function syncBuilderFromDom(container, bs) {
   if (!bs) return;
+  if (builderMode === 'json') {
+    const jsonTextarea = document.getElementById('builderJsonTextarea');
+    if (jsonTextarea) {
+      try {
+        const parsed = JSON.parse(jsonTextarea.value);
+        Object.assign(bs, parsed);
+        bs.extras = normalizeExtras(bs.extras);
+      } catch (e) {
+        console.warn('JSON no parseable al sincronizar:', e);
+      }
+    }
+    return;
+  }
   const icoEl = document.getElementById('b_icono');
   if (icoEl) bs.icono = icoEl.value;
   const nomEl = document.getElementById('b_nombre');
   if (nomEl) bs.nombre = nomEl.value;
+  const nomCortoEl = document.getElementById('b_nombre_corto');
+  if (nomCortoEl) bs.nombreCorto = nomCortoEl.value;
   const descEl = document.getElementById('b_desc');
   if (descEl) bs.descripcion = descEl.value;
   const tipoEl = document.getElementById('b_tipo');
   if (tipoEl) bs.tipoRespuesta = tipoEl.value;
   const modEl = document.getElementById('b_modalidad');
   if (modEl) bs.modalidad = modEl.value;
+  const reglaEl = document.getElementById('b_regla_nivel');
+  if (reglaEl) bs.regla_nivel = reglaEl.value;
+  const verEl = document.getElementById('b_version');
+  if (verEl) bs.version = verEl.value;
+
+  const tvEl = document.getElementById('b_tiene_visitas');
+  if (tvEl) bs.tieneVisitas = tvEl.checked;
+
+  // Sincronizar visitas
+  container.querySelectorAll('[data-visitainp]').forEach(inp => {
+    const vIdx = +inp.dataset.visitainp;
+    if (Array.isArray(bs.visitas) && bs.visitas[vIdx] !== undefined) {
+      bs.visitas[vIdx] = inp.value;
+    }
+  });
+
+  // Sincronizar compromisos
+  const cHab = document.getElementById('b_comp_hab');
+  const cDir = document.getElementById('b_comp_dir');
+  const cEsp = document.getElementById('b_comp_esp');
+  const cFilas = document.getElementById('b_comp_filas');
+  if (!bs.compromisos) bs.compromisos = {};
+  if (cHab) bs.compromisos.habilitado = cHab.checked;
+  if (cDir) bs.compromisos.director = cDir.checked;
+  if (cEsp) bs.compromisos.especialista = cEsp.checked;
+  if (cFilas) bs.compromisos.filasPorVisita = Math.max(1, parseInt(cFilas.value, 10) || 3);
 
   const activeColorEl = container.querySelector('.colorSwatch.active');
   if (activeColorEl && activeColorEl.dataset.color) {
@@ -7666,28 +7884,56 @@ function syncBuilderFromDom(container, bs) {
   // Sincronizar secciones e ítems
   container.querySelectorAll('[data-secname]').forEach(inp => {
     const sIdx = +inp.dataset.secname;
-    if (bs.secciones[sIdx]) bs.secciones[sIdx].nombre = inp.value;
+    if (bs.secciones && bs.secciones[sIdx]) bs.secciones[sIdx].nombre = inp.value;
   });
   container.querySelectorAll('[data-sec][data-item]').forEach(inp => {
     const sIdx = +inp.dataset.sec;
     const iIdx = +inp.dataset.item;
-    if (bs.secciones[sIdx] && bs.secciones[sIdx].items[iIdx]) {
+    if (bs.secciones && bs.secciones[sIdx] && bs.secciones[sIdx].items && bs.secciones[sIdx].items[iIdx]) {
       bs.secciones[sIdx].items[iIdx].texto = inp.value;
+    }
+  });
+  container.querySelectorAll('[data-sec][data-item-evidencia]').forEach(inp => {
+    const sIdx = +inp.dataset.sec;
+    const iIdx = +inp.dataset.itemEvidencia;
+    if (bs.secciones && bs.secciones[sIdx] && bs.secciones[sIdx].items && bs.secciones[sIdx].items[iIdx]) {
+      bs.secciones[sIdx].items[iIdx].evidencia = inp.value;
+    }
+  });
+  container.querySelectorAll('[data-sec][data-item-code]').forEach(inp => {
+    const sIdx = +inp.dataset.sec;
+    const iIdx = +inp.dataset.itemCode;
+    if (bs.secciones && bs.secciones[sIdx] && bs.secciones[sIdx].items && bs.secciones[sIdx].items[iIdx]) {
+      bs.secciones[sIdx].items[iIdx].id = inp.value.trim() || bs.secciones[sIdx].items[iIdx].id;
     }
   });
 
   // Sincronizar campos de cabecera
   container.querySelectorAll('[data-extralabel]').forEach(inp => {
     const eIdx = +inp.dataset.extralabel;
-    if (bs.extras[eIdx]) bs.extras[eIdx].label = inp.value;
+    if (bs.extras && bs.extras[eIdx]) bs.extras[eIdx].label = inp.value;
   });
   container.querySelectorAll('[data-extratipo]').forEach(sel => {
     const eIdx = +sel.dataset.extratipo;
-    if (bs.extras[eIdx]) bs.extras[eIdx].tipo = sel.value;
+    if (bs.extras && bs.extras[eIdx]) bs.extras[eIdx].tipo = sel.value;
   });
   container.querySelectorAll('[data-extrareq]').forEach(chk => {
     const eIdx = +chk.dataset.extrareq;
-    if (bs.extras[eIdx]) bs.extras[eIdx].required = chk.checked;
+    if (bs.extras && bs.extras[eIdx]) bs.extras[eIdx].required = chk.checked;
+  });
+  container.querySelectorAll('[data-extraopts]').forEach(inp => {
+    const eIdx = +inp.dataset.extraopts;
+    if (bs.extras && bs.extras[eIdx]) bs.extras[eIdx].opciones = inp.value;
+  });
+
+  // Sincronizar tablas especializadas
+  container.querySelectorAll('[data-tbl-titulo]').forEach(inp => {
+    const tIdx = +inp.dataset.tblTitulo;
+    if (bs.tablas && bs.tablas[tIdx]) bs.tablas[tIdx].titulo = inp.value;
+  });
+  container.querySelectorAll('[data-tbl-desc]').forEach(inp => {
+    const tIdx = +inp.dataset.tblDesc;
+    if (bs.tablas && bs.tablas[tIdx]) bs.tablas[tIdx].descripcion = inp.value;
   });
 
   builderIsDirty = true;
@@ -7905,6 +8151,9 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
     newBtn.onclick = () => {
       builderState = blankBuilder();
       builderEditingId = null;
+      builderMode = 'visual';
+      builderJsonUnlocked = false;
+      builderActiveVisitPreview = 0;
       builderIsDirty = false;
       tiposView = 'builder';
       renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
@@ -7927,7 +8176,116 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
       if (!ft) return;
       builderState = JSON.parse(JSON.stringify(ft));
       builderState.extras = normalizeExtras(builderState.extras);
+      builderState.nombreCorto = builderState.nombreCorto || builderState.nombre || '';
+      builderState.version = typeof builderState.version === 'object' && builderState.version !== null ? (builderState.version.anio || '2026.1') : (builderState.version || '2026.1');
+      builderState.regla_nivel = typeof builderState.regla_nivel === 'object' && builderState.regla_nivel !== null ? (builderState.regla_nivel.tipo || 'porcentaje') : (builderState.regla_nivel || 'porcentaje');
+      builderState.tieneVisitas = !!builderState.tieneVisitas || (Array.isArray(builderState.visitas) && builderState.visitas.length > 0);
+      if (Array.isArray(builderState.visitas) && builderState.visitas.length > 0) {
+        builderState.visitas = builderState.visitas.map((v, idx) => typeof v === 'string' ? v : ('Visita ' + v));
+      } else {
+        builderState.visitas = ['Visita 1', 'Visita 2', 'Visita 3'];
+      }
+      builderState.tablas = Array.isArray(builderState.tablas) ? builderState.tablas : [];
+
+      // Auto-popular tablas institucionales si están vacías y es CEBE o PRITE
+      if (builderState.tablas.length === 0) {
+        const idLower = String(ft.id || '').toLowerCase();
+        if (idLower.includes('prite')) {
+          builderState.tablas = [
+            {
+              id: 'tbl_personal_prite',
+              titulo: 'Cuadro de Personal del PRITE',
+              descripcion: 'Registro de plazas y personal en funciones',
+              columnas: [
+                { id: 'c_cargo', nombre: 'Cargo / Función', tipo: 'texto' },
+                { id: 'c_plazas', nombre: 'N° Plazas', tipo: 'numero' },
+                { id: 'c_cubiertas', nombre: 'Cubiertas', tipo: 'numero' }
+              ],
+              filas: [
+                { id: 'f_dir', etiqueta: 'Director(a)' },
+                { id: 'f_tut', etiqueta: 'Docentes Tutores' },
+                { id: 'f_ter', etiqueta: 'Terapistas / Psicólogos' },
+                { id: 'f_aux', etiqueta: 'Auxiliares de Educación' }
+              ]
+            },
+            {
+              id: 'tbl_estudiantes_prite',
+              titulo: 'Cuadro de Matrícula y Atención Temprana',
+              descripcion: 'Distribución de niños y niñas por rango etario',
+              columnas: [
+                { id: 'c_grupo', nombre: 'Rango de Edad', tipo: 'texto' },
+                { id: 'c_meta', nombre: 'Meta Programada', tipo: 'numero' },
+                { id: 'c_mat', nombre: 'Matriculados', tipo: 'numero' }
+              ],
+              filas: [
+                { id: 'f_01', etiqueta: '0 a 12 meses' },
+                { id: 'f_12', etiqueta: '13 a 24 meses' },
+                { id: 'f_23', etiqueta: '25 a 36 meses' },
+                { id: 'f_tot', etiqueta: 'Total Atendidos' }
+              ]
+            }
+          ];
+        } else if (idLower.includes('cebe')) {
+          builderState.tablas = [
+            {
+              id: 'tbl_personal_cebe',
+              titulo: 'Cuadro de Personal del CEBE',
+              descripcion: 'Distribución del equipo directivo, docente y de apoyo',
+              columnas: [
+                { id: 'c_cargo', nombre: 'Cargo / Especialidad', tipo: 'texto' },
+                { id: 'c_nom', nombre: 'Nombrados', tipo: 'numero' },
+                { id: 'c_con', nombre: 'Contratados', tipo: 'numero' }
+              ],
+              filas: [
+                { id: 'f_dir', etiqueta: 'Personal Directivo' },
+                { id: 'f_doc', etiqueta: 'Personal Docente de Aula' },
+                { id: 'f_aux', etiqueta: 'Auxiliares de Educación' },
+                { id: 'f_adm', etiqueta: 'Personal Administrativo' }
+              ]
+            },
+            {
+              id: 'tbl_saanee_cebe',
+              titulo: 'Equipo SAANEE (Servicio de Apoyo y Asesoramiento)',
+              descripcion: 'Profesionales del equipo interdisciplinario',
+              columnas: [
+                { id: 'c_prof', nombre: 'Profesional', tipo: 'texto' },
+                { id: 'c_cant', nombre: 'Cantidad', tipo: 'numero' }
+              ],
+              filas: [
+                { id: 'f_s1', etiqueta: 'Coordinador(a) SAANEE' },
+                { id: 'f_s2', etiqueta: 'Psicólogo(a)' },
+                { id: 'f_s3', etiqueta: 'Tecnólogo Médico / Terapista' },
+                { id: 'f_s4', etiqueta: 'Intérprete de Lengua de Señas' }
+              ]
+            }
+          ];
+        }
+      }
+
+      if (!builderState.compromisos) {
+        builderState.compromisos = {
+          habilitado: true,
+          director: true,
+          especialista: true,
+          filasPorVisita: 3
+        };
+      }
+
+      // Asegurar campo evidencia en secciones
+      if (Array.isArray(builderState.secciones)) {
+        builderState.secciones.forEach(sec => {
+          if (Array.isArray(sec.items)) {
+            sec.items.forEach(it => {
+              if (it.evidencia === undefined) it.evidencia = '';
+            });
+          }
+        });
+      }
+
       builderEditingId = ft.id;
+      builderMode = 'visual';
+      builderJsonUnlocked = false;
+      builderActiveVisitPreview = 0;
       builderIsDirty = false;
       tiposView = 'builder';
       renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
@@ -8491,6 +8849,120 @@ function openFirmantesEditorModal(area, tipoReporte, dbNs, state, container, isA
   modalWrap.querySelector('#m_f_close').onclick = close;
 }
 
+/**
+ * Solicita la contraseña del administrador para desbloquear el editor JSON
+ * @param {object} currentUser 
+ * @param {Function} onSuccess 
+ */
+function promptAdminPasswordModal(currentUser, onSuccess) {
+  const adminEmail = (currentUser && currentUser.email) ? currentUser.email : 'agebre@ugel03.gob.pe';
+  const modalWrap = document.createElement('div');
+  modalWrap.className = 'adminAuthModalOverlay';
+  modalWrap.id = 'adminAuthModalOverlay';
+
+  modalWrap.innerHTML = `
+    <div class="adminAuthCard">
+      <div class="adminAuthHeader">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:22px">🔐</span>
+          <div>
+            <h3 style="margin:0;font-size:14px;color:#FFFFFF;font-weight:700">Autenticación de Administrador</h3>
+            <div style="font-size:11px;color:#94A3B8">Editor de Código JSON (Modo Avanzado)</div>
+          </div>
+        </div>
+        <button type="button" class="downloadModalClose" id="m_auth_close" style="background:transparent;border:none;color:#94A3B8;font-size:20px;cursor:pointer;line-height:1">✕</button>
+      </div>
+      <form id="adminAuthForm" style="margin:0">
+        <div class="adminAuthBody">
+          <p style="font-size:12.5px;color:var(--text-600);margin:0 0 14px;line-height:1.5">
+            El <strong>Editor de Código JSON</strong> permite alterar directamente la estructura, tablas e indicadores oficiales. Para habilitarlo, ingresa tu contraseña institucional:
+          </p>
+          <div style="margin-bottom:12px;background:#F1F5F9;border:1px solid #CBD5E1;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px">
+            <span style="font-size:16px">👤</span>
+            <div style="font-size:12px;color:#1E293B;font-weight:600;overflow:hidden;text-overflow:ellipsis">
+              ${esc(adminEmail)}
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:6px">
+            <label for="adminAuthPassword" style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Contraseña de Administrador *</label>
+            <div style="position:relative;display:flex;align-items:center">
+              <input type="password" id="adminAuthPassword" placeholder="Ingresa tu contraseña" required autocomplete="current-password" style="width:100%;padding:9px 40px 9px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">
+              <button type="button" id="adminAuthTogglePw" style="position:absolute;right:8px;background:none;border:none;color:var(--text-400);cursor:pointer;font-size:14px;padding:4px" title="Mostrar/ocultar contraseña">👁️</button>
+            </div>
+          </div>
+          <div id="adminAuthError" class="adminAuthError"></div>
+        </div>
+        <div class="downloadModalFooter" style="background:#F8FAFC;padding:12px 20px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--line)">
+          <button type="button" class="btn secondary" id="m_auth_cancel">Cancelar</button>
+          <button type="submit" class="btn" id="m_auth_submit" style="font-weight:700">🔓 Desbloquear JSON</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  lockBodyScroll();
+  document.body.appendChild(modalWrap);
+
+  const pwInput = modalWrap.querySelector('#adminAuthPassword');
+  const errBox = modalWrap.querySelector('#adminAuthError');
+  const submitBtn = modalWrap.querySelector('#m_auth_submit');
+  const toggleBtn = modalWrap.querySelector('#adminAuthTogglePw');
+
+  setTimeout(() => { if (pwInput) pwInput.focus(); }, 100);
+
+  const onKey = (e) => {
+    if (e.key === 'Escape') close();
+  };
+  window.addEventListener('keydown', onKey);
+
+  const close = () => {
+    window.removeEventListener('keydown', onKey);
+    modalWrap.remove();
+    unlockBodyScroll();
+  };
+
+  modalWrap.querySelector('#m_auth_close').onclick = close;
+  modalWrap.querySelector('#m_auth_cancel').onclick = close;
+
+  if (toggleBtn && pwInput) {
+    toggleBtn.onclick = () => {
+      const isPw = pwInput.type === 'password';
+      pwInput.type = isPw ? 'text' : 'password';
+      toggleBtn.textContent = isPw ? '🙈' : '👁️';
+    };
+  }
+
+  modalWrap.querySelector('#adminAuthForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const pw = (pwInput.value || '').trim();
+    if (!pw) {
+      errBox.textContent = 'Ingresa tu contraseña de administrador.';
+      errBox.style.display = 'block';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Verificando...';
+    errBox.style.display = 'none';
+
+    try {
+      await verifyAdminPassword(pw, adminEmail);
+      builderJsonUnlocked = true;
+      close();
+      showToast('✓ Identidad confirmada. Modo JSON desbloqueado.');
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      console.warn('Fallo verificación de administrador:', err);
+      errBox.textContent = err.message || 'Contraseña incorrecta.';
+      errBox.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.textContent = '🔓 Desbloquear JSON';
+      pwInput.focus();
+      pwInput.select();
+    }
+  };
+}
+
 export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin = true, currentUser = null, navigate = null, subNavHtml = '') {
   const bs = builderState;
   bs.extras = normalizeExtras(bs.extras);
@@ -8500,75 +8972,201 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
   if (!bs.modalidad) {
     bs.modalidad = 'General';
   }
+  if (!bs.nombreCorto) {
+    bs.nombreCorto = bs.nombre || '';
+  }
+  if (!bs.regla_nivel) {
+    bs.regla_nivel = 'porcentaje';
+  }
+  if (!bs.version) {
+    bs.version = '2026.1';
+  }
+  if (bs.tieneVisitas === undefined) {
+    bs.tieneVisitas = false;
+  }
+  if (!Array.isArray(bs.visitas) || bs.visitas.length === 0) {
+    bs.visitas = ['Visita 1', 'Visita 2', 'Visita 3'];
+  }
+  if (!Array.isArray(bs.tablas)) {
+    bs.tablas = [];
+  }
+  if (!bs.compromisos) {
+    bs.compromisos = { habilitado: true, director: true, especialista: true, filasPorVisita: 3 };
+  }
 
   const existingCount = builderEditingId
     ? (state.submissions || []).filter(s => s.fichaTypeId === builderEditingId).length
     : 0;
 
-  const MODALIDADES = ['General', 'JEC', 'CEBE', 'PRITE', 'EBR', 'Directivos', 'Docentes', 'Tutoría'];
+  const MODALIDADES = ['General', 'EBR Inicial', 'EBR Primaria', 'EBR Secundaria', 'JEC', 'CEBE', 'PRITE', 'EBE', 'Directivos', 'Docentes', 'Tutoría', 'Convivencia'];
 
-  // Generar HTML de Secciones para el editor
+  const REGLAS_NIVEL_MAP = {
+    porcentaje: 'Porcentaje de logro (%) — Umbrales Logrado / En proceso / Inicio',
+    sumatoria: 'Sumatoria directa de puntajes acumulados',
+    promedio: 'Promedio simple de valoración (1 a 4 / 1 a 5)',
+    ponderado: 'Puntaje ponderado por pesos específicos'
+  };
+
+  // Helper para generar el HTML de Secciones e Indicadores
   const seccionesHtml = (bs.secciones || []).map((sec, si) => {
-    const itemsHtml = (sec.items || []).map((it, ii) =>
-      '<div class="listRow itemDefRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
-      '<span style="font-size:11px;font-weight:600;color:var(--ink-soft);min-width:26px">#' + (si + 1) + '.' + (ii + 1) + '</span>' +
-      '<input type="text" placeholder="Texto del ítem / indicador de monitoreo *" value="' + esc(it.texto) + '" data-sec="' + si + '" data-item="' + ii + '" style="flex:1">' +
-      '<button type="button" class="iconBtn" data-rmitem="' + si + '|' + ii + '" title="Quitar ítem">✕</button>' +
-      '</div>'
-    ).join('');
+    const itemsHtml = (sec.items || []).map((it, ii) => {
+      const itCode = it.id || ((si + 1) + '.' + (ii + 1));
+      return `
+        <div class="listRow itemDefRow" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;padding:8px 10px;background:var(--surface-2);border-radius:6px;border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;font-weight:700;color:var(--ink-soft);min-width:32px">#${si + 1}.${ii + 1}</span>
+            <input type="text" placeholder="Cód" title="Identificador o código del ítem" value="${esc(itCode)}" data-sec="${si}" data-item-code="${ii}" style="width:75px;font-weight:700;font-size:12px;text-align:center">
+            <input type="text" placeholder="Texto del indicador o criterio de monitoreo *" value="${esc(it.texto)}" data-sec="${si}" data-item="${ii}" style="flex:1;font-weight:500">
+            <button type="button" class="iconBtn small" data-rmitem="${si}|${ii}" title="Quitar ítem">✕</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding-left:40px">
+            <span style="font-size:12px" title="Evidencias sugeridas">📂</span>
+            <input type="text" placeholder="Evidencias sugeridas / Medios de verificación (ej: RD, PEI, Acta de reunión, Sesiones)..." value="${esc(it.evidencia || '')}" data-sec="${si}" data-item-evidencia="${ii}" style="flex:1;font-size:12px;color:var(--text-600)">
+          </div>
+        </div>
+      `;
+    }).join('');
 
     const isFirst = si === 0;
     const isLast = si === (bs.secciones || []).length - 1;
 
-    return '<fieldset class="secCard" draggable="true" data-sec-idx="' + si + '" style="margin-bottom:14px;border:1px solid var(--line);border-radius:var(--radius);padding:14px">' +
-      '<legend style="padding:0 8px;font-weight:700;display:flex;align-items:center;gap:6px">' +
-      '<span class="secCardHandle" title="Arrastra para mover la sección" style="cursor:grab">⠿</span> ' +
-      '<span class="secOrderBadge" style="background:var(--primary);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px">#' + (si + 1) + '</span> ' +
-      '<input type="text" placeholder="Nombre de la sección / dimensión *" value="' + esc(sec.nombre) + '" data-secname="' + si + '" style="font-family:inherit;font-weight:600;border:none;border-bottom:1.5px solid var(--line-strong);padding:3px 6px;width:320px;background:transparent">' +
-      '</legend>' +
-      '<div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px dashed var(--line)">' +
-      '<span style="font-size:12px;color:var(--ink-soft);margin-right:auto">Mover posición:</span>' +
-      '<button type="button" class="btn secondary small" data-movesec="' + si + '|up"' + (isFirst ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección arriba">▲ Subir</button>' +
-      '<button type="button" class="btn secondary small" data-movesec="' + si + '|down"' + (isLast ? ' disabled style="opacity:0.35;cursor:not-allowed"' : '') + ' title="Mover sección abajo">▼ Bajar</button>' +
-      '</div>' +
-      itemsHtml +
-      '<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">' +
-      '<button type="button" class="btn secondary small" data-additem="' + si + '">＋ Agregar ítem</button>' +
-      '<button type="button" class="btn danger small" data-rmsec="' + si + '">🗑️ Quitar sección</button>' +
-      '</div>' +
-      '</fieldset>';
-  }).join('') || '<p class="helpText" style="padding:10px;border:1px dashed var(--line);border-radius:6px">Sin secciones. Agrega la primera sección para esta ficha.</p>';
+    return `
+      <fieldset class="secCard" draggable="true" data-sec-idx="${si}" style="margin-bottom:16px;border:1px solid var(--line-strong);border-radius:var(--radius);padding:14px;background:#FFFFFF">
+        <legend style="padding:0 8px;font-weight:700;display:flex;align-items:center;gap:6px">
+          <span class="secCardHandle" title="Arrastra para mover la sección" style="cursor:grab">⠿</span>
+          <span class="secOrderBadge" style="background:var(--primary);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px">#${si + 1}</span>
+          <input type="text" placeholder="Nombre de la sección / dimensión *" value="${esc(sec.nombre)}" data-secname="${si}" style="font-family:inherit;font-weight:700;border:none;border-bottom:1.5px solid var(--line-strong);padding:4px 8px;width:340px;background:transparent;font-size:14px">
+        </legend>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px dashed var(--line)">
+          <span style="font-size:12px;color:var(--ink-soft);margin-right:auto">Posición:</span>
+          <button type="button" class="btn secondary small" data-movesec="${si}|up" ${isFirst ? 'disabled style="opacity:0.35;cursor:not-allowed"' : ''} title="Mover sección arriba">▲ Subir</button>
+          <button type="button" class="btn secondary small" data-movesec="${si}|down" ${isLast ? 'disabled style="opacity:0.35;cursor:not-allowed"' : ''} title="Mover sección abajo">▼ Bajar</button>
+        </div>
+        ${itemsHtml || '<p class="helpText" style="margin:4px 0 10px">Sin indicadores en esta sección.</p>'}
+        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <button type="button" class="btn secondary small" data-additem="${si}">＋ Agregar ítem</button>
+          <button type="button" class="btn danger small" data-rmsec="${si}">🗑️ Quitar sección</button>
+        </div>
+      </fieldset>
+    `;
+  }).join('') || '<p class="helpText" style="padding:14px;border:1px dashed var(--line);border-radius:6px;text-align:center">Sin secciones. Agrega la primera sección para esta ficha.</p>';
 
-  // Generar HTML de Extras de cabecera
+  // Helper para generar el HTML de Campos de Cabecera (Extras)
   const extrasHtml = (bs.extras || []).map((ex, i) => {
     const isFirst = i === 0;
     const isLast = i === (bs.extras || []).length - 1;
-    return '<div class="extraDefRow" data-extra-idx="' + i + '" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px;background:var(--surface-2);border-radius:6px">' +
-      '<span class="secOrderBadge" style="font-size:11px;font-weight:700">#' + (i + 1) + '</span>' +
-      '<input type="text" class="extraLabelInp" placeholder="Etiqueta del campo (ej: Director(a), Teléfono)" value="' + esc(ex.label) + '" data-extralabel="' + i + '" style="flex:1">' +
-      '<select class="extraTipoSel" data-extratipo="' + i + '" style="max-width:130px">' +
-      '<option value="texto"' + (ex.tipo === 'texto' ? ' selected' : '') + '>Texto corto</option>' +
-      '<option value="numero"' + (ex.tipo === 'numero' ? ' selected' : '') + '>Número</option>' +
-      '<option value="fecha"' + (ex.tipo === 'fecha' ? ' selected' : '') + '>Fecha</option>' +
-      '<option value="si_no"' + (ex.tipo === 'si_no' ? ' selected' : '') + '>Sí / No</option>' +
-      '</select>' +
-      '<label class="extraReqLabel" style="font-size:11.5px;display:flex;align-items:center;gap:4px;cursor:pointer">' +
-      '<input type="checkbox" data-extrareq="' + i + '"' + (ex.required ? ' checked' : '') + '> Req.' +
-      '</label>' +
-      '<div class="extraActs" style="display:flex;gap:4px">' +
-      '<button type="button" class="iconBtn small" data-moveextra="' + i + '|up"' + (isFirst ? ' disabled' : '') + ' title="Subir">▲</button>' +
-      '<button type="button" class="iconBtn small" data-moveextra="' + i + '|down"' + (isLast ? ' disabled' : '') + ' title="Bajar">▼</button>' +
-      '<button type="button" class="iconBtn small" data-rmextra="' + i + '" title="Quitar">✕</button>' +
-      '</div>' +
-      '</div>';
-  }).join('') || '<p class="helpText">Sin campos personalizados de cabecera.</p>';
+    const isSelect = ex.tipo === 'select';
+    return `
+      <div class="extraDefRow" data-extra-idx="${i}" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;padding:8px 10px;background:var(--surface-2);border-radius:6px;border:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="secOrderBadge" style="font-size:11px;font-weight:700">#${i + 1}</span>
+          <input type="text" class="extraLabelInp" placeholder="Etiqueta del campo (ej: Director(a), Turno, Nivel)" value="${esc(ex.label)}" data-extralabel="${i}" style="flex:1">
+          <select class="extraTipoSel" data-extratipo="${i}" style="max-width:145px">
+            <option value="texto" ${ex.tipo === 'texto' ? 'selected' : ''}>Texto corto</option>
+            <option value="numero" ${ex.tipo === 'numero' ? 'selected' : ''}>Número</option>
+            <option value="fecha" ${ex.tipo === 'fecha' ? 'selected' : ''}>Fecha</option>
+            <option value="si_no" ${ex.tipo === 'si_no' ? 'selected' : ''}>Sí / No</option>
+            <option value="select" ${ex.tipo === 'select' ? 'selected' : ''}>Selector desplegable</option>
+            <option value="textarea" ${ex.tipo === 'textarea' ? 'selected' : ''}>Texto largo / Área</option>
+          </select>
+          <label class="extraReqLabel" style="font-size:11.5px;display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="checkbox" data-extrareq="${i}" ${ex.required ? 'checked' : ''}> Req.
+          </label>
+          <div class="extraActs" style="display:flex;gap:4px">
+            <button type="button" class="iconBtn small" data-moveextra="${i}|up" ${isFirst ? 'disabled' : ''} title="Subir">▲</button>
+            <button type="button" class="iconBtn small" data-moveextra="${i}|down" ${isLast ? 'disabled' : ''} title="Bajar">▼</button>
+            <button type="button" class="iconBtn small" data-rmextra="${i}" title="Quitar">✕</button>
+          </div>
+        </div>
+        ${isSelect ? `
+          <div style="display:flex;align-items:center;gap:6px;padding-left:26px">
+            <span style="font-size:11.5px;color:var(--text-600);font-weight:600">Opciones:</span>
+            <input type="text" placeholder="Separadas por comas (ej: Mañana, Tarde, Noche)" value="${esc(ex.opciones || '')}" data-extraopts="${i}" style="flex:1;font-size:11.5px">
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('') || '<p class="helpText" style="padding:8px;font-style:italic">Sin campos personalizados de cabecera.</p>';
 
-  // Render Layout Completo: Editor + Vista Previa Sticky
+  // Helper para generar el HTML de Tablas Cuantitativas Especializadas
+  const tablasHtml = (bs.tablas || []).map((tbl, ti) => {
+    const colsHtml = (tbl.columnas || []).map((col, ci) => `
+      <span class="builderColChip">
+        <strong>${esc(col.nombre)}</strong>
+        <span style="font-size:10px;color:var(--text-500)">[${col.tipo}]</span>
+        <span class="rmChip" data-rmtblcol="${ti}|${ci}" title="Quitar columna">✕</span>
+      </span>
+    `).join('');
+
+    const rowsHtml = (tbl.filas || []).map((row, ri) => `
+      <span class="builderRowChip">
+        <span>${esc(row.etiqueta)}</span>
+        <span class="rmChip" data-rmtblrow="${ti}|${ri}" title="Quitar fila">✕</span>
+      </span>
+    `).join('');
+
+    return `
+      <div class="builderTableCard">
+        <div class="builderTableCardHeader">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="background:var(--navy-900);color:#FFFFFF;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700">Tabla #${ti + 1}</span>
+            <strong style="font-size:14px;color:var(--navy-900)">${esc(tbl.titulo || 'Tabla sin título')}</strong>
+          </div>
+          <button type="button" class="btn danger small" data-rmtable="${ti}" title="Eliminar tabla">🗑️ Eliminar tabla</button>
+        </div>
+
+        <div class="fieldGrid" style="margin-bottom:10px">
+          <div class="field">
+            <label>Título de la tabla *</label>
+            <input type="text" placeholder="Ej: Cuadro de Personal, Cuadro de Matrícula..." value="${esc(tbl.titulo || '')}" data-tbl-titulo="${ti}">
+          </div>
+          <div class="field">
+            <label>Descripción / Indicación breve</label>
+            <input type="text" placeholder="Ej: Registrar información consolidada..." value="${esc(tbl.descripcion || '')}" data-tbl-desc="${ti}">
+          </div>
+        </div>
+
+        <!-- Columnas -->
+        <div class="builderTableColRowBox">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <span style="font-size:12px;font-weight:700;color:var(--navy-900)">Columnas de la tabla (${(tbl.columnas || []).length}):</span>
+            <div style="display:flex;gap:4px;align-items:center">
+              <input type="text" placeholder="Nueva columna..." id="newColNom_${ti}" style="width:140px;font-size:11.5px;padding:3px 6px">
+              <select id="newColTipo_${ti}" style="font-size:11.5px;padding:3px 4px">
+                <option value="numero">Número</option>
+                <option value="texto">Texto</option>
+              </select>
+              <button type="button" class="btn secondary small" data-addtblcol="${ti}" style="padding:2px 8px;font-size:11px">＋ Col</button>
+            </div>
+          </div>
+          <div class="builderColRowList">
+            ${colsHtml || '<span style="font-size:11.5px;color:var(--text-400);font-style:italic">Sin columnas definidas.</span>'}
+          </div>
+        </div>
+
+        <!-- Filas Predeterminadas -->
+        <div class="builderTableColRowBox" style="margin-top:8px;margin-bottom:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <span style="font-size:12px;font-weight:700;color:var(--navy-900)">Filas base predeterminadas (${(tbl.filas || []).length}):</span>
+            <div style="display:flex;gap:4px;align-items:center">
+              <input type="text" placeholder="Nueva fila (ej: Directivo, Docente)..." id="newRowEtiq_${ti}" style="width:190px;font-size:11.5px;padding:3px 6px">
+              <button type="button" class="btn secondary small" data-addtblrow="${ti}" style="padding:2px 8px;font-size:11px">＋ Fila</button>
+            </div>
+          </div>
+          <div class="builderColRowList">
+            ${rowsHtml || '<span style="font-size:11.5px;color:var(--text-400);font-style:italic">Sin filas predeterminadas (se llenarán libremente).</span>'}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('') || '<p class="helpText" style="padding:10px;border:1px dashed var(--line);border-radius:6px;text-align:center">Sin tablas cuantitativas especializadas agregadas. Puedes agregar cuadros de personal, metas o matrícula si esta ficha lo requiere.</p>';
+
+  // Render Layout Completo
   container.innerHTML = `
     <div class="pageHead" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
       <div>
         <h2>${builderEditingId ? 'Editar tipo de ficha' : 'Nuevo tipo de ficha'}</h2>
-        <p>Configura la estructura, indicadores y escala de valoración con vista previa en tiempo real.</p>
+        <p>Configura cabeceras, condiciones de visitas, tablas especializadas, compromisos e indicadores oficiales.</p>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <span id="dirtyIndicator" style="display:${builderIsDirty ? 'inline-flex' : 'none'};align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--amber-700);background:var(--amber-50);border:1px solid var(--amber-200);border-radius:12px;padding:3px 10px">
@@ -8583,47 +9181,94 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
 
     ${subNavHtml || ''}
 
-    <div class="builderSplitGrid">
+    <!-- Selector de Modo: Editor Visual vs Editor JSON -->
+    <div class="builderModeNav">
+      <button type="button" class="builderModeBtn ${builderMode === 'visual' ? 'active' : ''}" id="btnBuilderModeVisual">
+        🎨 Editor Visual (Formularios y Tablas)
+      </button>
+      <button type="button" class="builderModeBtn ${builderMode === 'json' ? 'active' : ''}" id="btnBuilderModeJson">
+        💻 Editor de Código JSON (Avanzado)
+      </button>
+    </div>
+
+    <!-- MODO JSON CODE -->
+    <div class="builderJsonPane" id="builderJsonPaneWrap" style="display:${builderMode === 'json' ? 'block' : 'none'}">
+      <div class="builderJsonStatus valid" id="builderJsonStatus">
+        ✓ Estructura JSON válida y sincronizada con el editor visual. Puedes editar o pegar la ficha completa en JSON.
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn secondary small" id="btnSyncJsonToVisual">🔄 Aplicar cambios al editor visual</button>
+          <button type="button" class="btn secondary small" id="btnCopyJson">📋 Copiar JSON</button>
+          <button type="button" class="btn secondary small" id="downloadJsonBtnCode">📥 Descargar JSON</button>
+          <label class="btn secondary small" style="cursor:pointer;margin:0" title="Cargar archivo JSON desde tu equipo">
+            📤 Importar JSON <input type="file" id="importJsonFileInputCode" accept=".json,application/json" style="display:none">
+          </label>
+        </div>
+        <span style="font-size:12px;color:var(--ink-soft)">Soporta todas las propiedades: tablas, visitas, extras, compromisos y secciones.</span>
+      </div>
+      <textarea id="builderJsonTextarea" class="builderJsonTextarea" rows="26" spellcheck="false">${esc(JSON.stringify(cleanBuilderStateForExport(bs), null, 2))}</textarea>
+    </div>
+
+    <!-- MODO SPLIT-GRID: EDITOR VISUAL + VISTA PREVIA -->
+    <div class="builderSplitGrid" id="builderVisualSplitGrid" style="display:${builderMode === 'visual' ? 'grid' : 'none'}">
       <!-- PANEL IZQUIERDO: FORMULARIO DEL EDITOR -->
       <div class="builderEditorPane ${builderMobileTab === 'preview' ? 'mobileHidden' : ''}" id="builderEditorPane">
         
-        <!-- Panel 1: Datos Generales -->
+        <!-- Panel 1: Datos Generales y Calificación -->
         <div class="panel">
-          <h3 style="margin-top:0">Datos Generales de la Ficha</h3>
+          <h3 style="margin-top:0">1. Datos Generales de la Ficha</h3>
           <div class="fieldGrid">
-            <div class="field" style="max-width:110px">
+            <div class="field" style="max-width:90px">
               <label for="b_icono">Ícono</label>
               <input type="text" id="b_icono" value="${esc(bs.icono || '📋')}" maxlength="4" style="text-align:center;font-size:18px">
             </div>
-            <div class="field" style="grid-column:span 2">
+            <div class="field" style="flex:1">
               <label for="b_nombre">Nombre completo de la ficha *</label>
-              <input type="text" id="b_nombre" value="${esc(bs.nombre)}" placeholder="Ej: Ficha de Monitoreo a la Gestión Escolar">
+              <input type="text" id="b_nombre" value="${esc(bs.nombre)}" placeholder="Ej: Ficha de Monitoreo a la Gestión Escolar EBR">
+            </div>
+            <div class="field" style="max-width:180px">
+              <label for="b_nombre_corto">Sigla / Nombre corto</label>
+              <input type="text" id="b_nombre_corto" value="${esc(bs.nombreCorto || '')}" placeholder="Ej: GESTIÓN EBR">
             </div>
           </div>
 
           <div class="field" style="margin-top:10px">
-            <label for="b_desc">Descripción institucional</label>
-            <textarea id="b_desc" rows="2" placeholder="Breve descripción del propósito de la ficha">${esc(bs.descripcion || '')}</textarea>
+            <label for="b_desc">Descripción institucional y marco normativo</label>
+            <textarea id="b_desc" rows="2" placeholder="Breve descripción del propósito, alcance o base legal (ej: RM N° 501-2025-MINEDU)">${esc(bs.descripcion || '')}</textarea>
           </div>
 
           <div class="fieldGrid" style="margin-top:10px">
             <div class="field">
               <label for="b_modalidad">Nivel / Modalidad educativa</label>
               <select id="b_modalidad">
-                ${MODALIDADES.map(m => `<option value="${m}"${(bs.modalidad === m) ? ' selected' : ''}>${m}</option>`).join('')}
+                ${MODALIDADES.map(m => `<option value="${m}" ${(bs.modalidad === m) ? 'selected' : ''}>${m}</option>`).join('')}
               </select>
             </div>
             <div class="field">
               <label for="b_tipo">Escala de respuesta</label>
               <select id="b_tipo">
-                ${Object.keys(RESPONSE_LABELS).map(k => `<option value="${k}"${(k === bs.tipoRespuesta) ? ' selected' : ''}>${RESPONSE_LABELS[k]}</option>`).join('')}
+                ${Object.keys(RESPONSE_LABELS).map(k => `<option value="${k}" ${(k === bs.tipoRespuesta) ? 'selected' : ''}>${RESPONSE_LABELS[k]}</option>`).join('')}
               </select>
+            </div>
+          </div>
+
+          <div class="fieldGrid" style="margin-top:10px">
+            <div class="field">
+              <label for="b_regla_nivel">Regla de calificación y logro global</label>
+              <select id="b_regla_nivel">
+                ${Object.keys(REGLAS_NIVEL_MAP).map(r => `<option value="${r}" ${(bs.regla_nivel === r) ? 'selected' : ''}>${REGLAS_NIVEL_MAP[r]}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field" style="max-width:160px">
+              <label for="b_version">Versión / Año</label>
+              <input type="text" id="b_version" value="${esc(bs.version || '2026.1')}" placeholder="2026.1">
             </div>
           </div>
 
           <!-- Paleta de Color Institucional -->
           <div class="field" style="margin-top:12px">
-            <label style="margin-bottom:6px;display:block">Color distintivo de la ficha:</label>
+            <label style="margin-bottom:6px;display:block">Color distintivo institucional:</label>
             <div class="colorSwatches" id="colorSwatchesList">
               ${FICHA_PALETTE.map(c => `
                 <button type="button" class="colorSwatch ${(bs.color && bs.color.toLowerCase() === c.hex.toLowerCase()) ? 'active' : ''}" data-color="${c.hex}" style="background:${c.hex}" title="${c.name}"></button>
@@ -8632,40 +9277,116 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
           </div>
         </div>
 
-        <!-- Panel 2: Campos de Cabecera Configurables -->
+        <!-- Panel 2: Monitoreo Multi-Visita y Condiciones -->
+        <div class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h3 style="margin:0">2. Condiciones de Monitoreo y Visitas</h3>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--navy-900);cursor:pointer">
+              <input type="checkbox" id="b_tiene_visitas" ${bs.tieneVisitas ? 'checked' : ''}>
+              Habilitar multi-visita independiente
+            </label>
+          </div>
+          <p style="font-size:12px;color:var(--text-600);margin:4px 0 10px">
+            Permite aplicar la misma ficha en momentos sucesivos (ej: V1 Diagnóstica, V2 Seguimiento, V3 Cierre) conservando el histórico.
+          </p>
+          
+          <div class="visitasConfigBox" id="visitasConfigBox" style="display:${bs.tieneVisitas ? 'block' : 'none'}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <strong style="font-size:12.5px;color:var(--navy-900)">Momentos / Visitas configuradas:</strong>
+              <button type="button" class="btn secondary small" id="addVisitaBtn">＋ Agregar visita</button>
+            </div>
+            <div id="visitasListWrap">
+              ${(bs.visitas || []).map((v, vi) => `
+                <div class="visitaItemRow">
+                  <span style="font-size:12px;font-weight:700;color:var(--navy-900);min-width:60px">Visita ${vi + 1}:</span>
+                  <input type="text" data-visitainp="${vi}" value="${esc(v)}" placeholder="Nombre de la visita (ej: Visita ${vi + 1} - Diagnóstico)" style="flex:1">
+                  <button type="button" class="iconBtn small" data-rmvisita="${vi}" ${(bs.visitas || []).length <= 1 ? 'disabled style="opacity:0.35"' : ''} title="Eliminar visita">✕</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 3: Campos de Cabecera Configurables -->
         <div class="panel">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <h3 style="margin:0">Campos de Cabecera <small style="font-weight:normal;color:var(--ink-soft)">(adicionales a I.E., Fecha y N° Visita)</small></h3>
+            <div>
+              <h3 style="margin:0">3. Campos de Cabecera Personalizados</h3>
+              <span style="font-size:11.5px;color:var(--ink-soft)">Adicionales a Institución Educativa, Fecha y N° Visita</span>
+            </div>
             <button type="button" class="btn secondary small" id="addExtraBtn">＋ Agregar campo</button>
           </div>
           <div id="extrasList">${extrasHtml}</div>
         </div>
 
-        <!-- Panel 3: Secciones e Ítems -->
+        <!-- Panel 4: Tablas Cuantitativas Especializadas -->
+        <div class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+            <div>
+              <h3 style="margin:0">4. Tablas Cuantitativas Especializadas</h3>
+              <span style="font-size:11.5px;color:var(--ink-soft)">Cuadros de personal, estudiantes, metas de matrícula o recursos</span>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button type="button" class="btn secondary small" id="addPresetPersonalBtn">📋 + Cuadro Personal</button>
+              <button type="button" class="btn secondary small" id="addPresetEstudiantesBtn">🎓 + Cuadro Matrícula</button>
+              <button type="button" class="btn secondary small" id="addCustomTableBtn">＋ Tabla vacía</button>
+            </div>
+          </div>
+          <div id="tablasList">${tablasHtml}</div>
+        </div>
+
+        <!-- Panel 5: Compromisos de Mejora (Sección V) -->
+        <div class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h3 style="margin:0">5. Compromisos de Mejora y Acuerdos (Sección V)</h3>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--navy-900);cursor:pointer">
+              <input type="checkbox" id="b_comp_hab" ${(bs.compromisos && bs.compromisos.habilitado) ? 'checked' : ''}>
+              Habilitar Sección de Compromisos
+            </label>
+          </div>
+          <p style="font-size:12px;color:var(--text-600);margin:4px 0 10px">
+            Permite suscribir compromisos firmados entre el Director y el Especialista al concluir la visita.
+          </p>
+
+          <div class="compromisosConfigBox" id="compromisosConfigBox" style="display:${(bs.compromisos && bs.compromisos.habilitado) ? 'block' : 'none'}">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer">
+                <input type="checkbox" id="b_comp_dir" ${(bs.compromisos && bs.compromisos.director !== false) ? 'checked' : ''}>
+                Compromisos del Director(a) / Equipo Directivo de la I.E.
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer">
+                <input type="checkbox" id="b_comp_esp" ${(bs.compromisos && bs.compromisos.especialista !== false) ? 'checked' : ''}>
+                Compromisos del Especialista / Monitor UGEL 03
+              </label>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+                <span style="font-size:12px;color:var(--text-700);font-weight:600">Filas de compromiso por visita:</span>
+                <input type="number" id="b_comp_filas" min="1" max="10" value="${(bs.compromisos && bs.compromisos.filasPorVisita) || 3}" style="width:70px;text-align:center">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 6: Secciones e Indicadores -->
         <div class="panel">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <h3 style="margin:0">Secciones e Indicadores de Monitoreo</h3>
+            <div>
+              <h3 style="margin:0">6. Secciones e Indicadores de Monitoreo</h3>
+              <span style="font-size:11.5px;color:var(--ink-soft)">Dimensiones, criterios, códigos y evidencias sugeridas</span>
+            </div>
             <button type="button" class="btn secondary small" id="addSecBtn">＋ Agregar sección</button>
           </div>
           <div id="seccionesList">${seccionesHtml}</div>
-        </div>
-
-        <!-- Panel 4: Acciones Guardar / Cancelar -->
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:20px 0 40px">
-          <button type="button" class="btn" id="saveTipoBtn">💾 Guardar ficha</button>
-          <button type="button" class="btn secondary" id="saveDraftBtn">📝 Guardar borrador</button>
-          <button type="button" class="btn secondary" id="cancelTipoBtn">Cancelar</button>
         </div>
 
       </div>
 
       <!-- PANEL DERECHO: VISTA PREVIA EN VIVO STICKY -->
       <div class="builderPreviewPane ${builderMobileTab === 'editor' ? 'mobileHidden' : ''}" id="builderPreviewPane">
-        <div class="builderPreviewSticky">
-          <div class="builderPreviewHeader" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:12px">
+        <div class="builderPreviewSticky" id="builderPreviewSticky">
+          <div class="builderPreviewHeader" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 16px;background:var(--navy-900);color:#FFFFFF;flex-shrink:0">
             <div>
-              <h4 style="margin:0;font-size:14px;font-weight:700">Vista previa en tiempo real</h4>
-              <span style="font-size:11.5px;color:var(--ink-soft)">Se actualiza automáticamente al escribir</span>
+              <h4 style="margin:0;font-size:13.5px;font-weight:700;color:#FFFFFF">Vista previa en tiempo real</h4>
+              <span style="font-size:11px;color:#94A3B8">Sincronizada automáticamente con tu edición</span>
             </div>
             <div class="builderPreviewTabs">
               <button type="button" class="builderPreviewTab ${builderPreviewMode === 'formulario' ? 'active' : ''}" data-preview-mode="formulario">📋 Formulario</button>
@@ -8673,8 +9394,38 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
             </div>
           </div>
 
-          <!-- Contenedor dinámico de la vista previa -->
-          <div id="builderPreviewContent"></div>
+          <!-- Cuerpo desplazable con scrollbar independiente y sincronizado -->
+          <div class="builderPreviewBodyScroll" id="builderPreviewBodyScroll">
+            <div id="builderPreviewContent"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BARRA FIJA INFERIOR DE GUARDADO (SIEMPRE VISIBLE) -->
+    <div class="builderBottomStickyBar" id="builderBottomStickyBar">
+      <div class="builderBottomStickyContent">
+        <div class="builderBottomStickyInfo">
+          <div style="font-size:22px" id="bottomBarFichaIcon">${esc(bs.icono || '📋')}</div>
+          <div>
+            <div class="builderBottomFichaName" id="bottomBarFichaName">${esc(bs.nombre || 'Nueva Ficha de Monitoreo')}</div>
+            <div style="display:flex;gap:6px;align-items:center;margin-top:2px">
+              <span class="builderBottomMetaPill" id="bottomBarMetaModalidad">${esc(bs.modalidad || 'General')}</span>
+              <span class="builderBottomMetaPill" id="bottomBarMetaVersion">v${esc(bs.version || '2026.1')}</span>
+              <span id="bottomDirtyBadge" class="builderBottomDirtyBadge" style="display:${builderIsDirty ? 'inline-flex' : 'none'}">
+                ● Cambios sin guardar
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="builderBottomStickyActs">
+          <button type="button" class="btn secondary" id="cancelTipoBtn">Cancelar</button>
+          <button type="button" class="btn secondary" id="downloadJsonBtn" title="Descargar plantilla como archivo .json">📥 Descargar JSON</button>
+          <label class="btn secondary" style="cursor:pointer;margin:0" title="Cargar archivo JSON">
+            📤 Importar JSON <input type="file" id="importJsonFileInput" accept=".json,application/json" style="display:none">
+          </label>
+          <button type="button" class="btn secondary" id="saveDraftBtn">📝 Guardar borrador</button>
+          <button type="button" class="btn" id="saveTipoBtn" style="font-weight:700">💾 Guardar ficha completa</button>
         </div>
       </div>
     </div>
@@ -8685,7 +9436,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
     const totalSecs = (bs.secciones || []).length;
     const totalItems = (bs.secciones || []).reduce((acc, s) => acc + (s.items || []).length, 0);
 
-    // Detección de campos incompletos para avisos de corrección
+    // Validación de campos
     const errors = [];
     if (!bs.nombre || !bs.nombre.trim()) {
       errors.push({ msg: 'Falta ingresar el nombre de la ficha', target: '#b_nombre' });
@@ -8698,7 +9449,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
           errors.push({ msg: `La sección #${si + 1} no tiene título`, target: `[data-secname="${si}"]` });
         }
         if (!sec.items || sec.items.length === 0) {
-          errors.push({ msg: `La sección #${si + 1} ("${sec.nombre || 'Sin nombre'}") no tiene ítems`, target: `[data-additem="${si}"]` });
+          errors.push({ msg: `La sección #${si + 1} ("${sec.nombre || 'Sin nombre'}") no tiene indicadores`, target: `[data-additem="${si}"]` });
         } else {
           sec.items.forEach((it, ii) => {
             if (!it.texto || !it.texto.trim()) {
@@ -8709,8 +9460,8 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       });
     }
 
-    // Mini tarjeta de lista
-    const curColor = bs.color || FICHA_PALETTE[0].hex;
+    // Mini tarjeta resumen
+    const curColor = bs.color || (FICHA_PALETTE[0] || {}).hex || '#1E40AF';
     const curPal = FICHA_PALETTE.find(p => p.hex.toLowerCase() === curColor.toLowerCase()) || { hex: curColor, bg: curColor + '18' };
 
     const miniCardHtml = `
@@ -8729,6 +9480,8 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
               <span class="fichaBadge fichaBadgeItems">📑 ${totalSecs} ${totalSecs === 1 ? 'sección' : 'secciones'}</span>
               <span class="fichaBadge fichaBadgeItems">🔢 ${totalItems} ítems</span>
               <span class="fichaBadge fichaBadgeEscala">⚖️ ${esc(RESPONSE_LABELS[bs.tipoRespuesta] || bs.tipoRespuesta)}</span>
+              ${bs.tieneVisitas ? `<span class="fichaBadge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE">🔁 ${(bs.visitas || []).length} visitas</span>` : ''}
+              ${(bs.tablas && bs.tablas.length > 0) ? `<span class="fichaBadge" style="background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0">📊 ${bs.tablas.length} tablas</span>` : ''}
             </div>
           </div>
         </div>
@@ -8751,25 +9504,36 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       </div>
     ` : `
       <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:#065F46;display:flex;align-items:center;gap:6px">
-        <span>✓</span> <strong>Estructura completa y consistente.</strong> Lista para registrar visitas.
+        <span>✓</span> <strong>Estructura completa y consistente.</strong> Lista para registrar visitas oficiales.
       </div>
     `;
 
     const statsBarHtml = `
-      <div style="display:flex;gap:12px;font-size:12px;color:var(--text-600);margin-bottom:14px;padding:6px 10px;background:var(--surface-2);border-radius:6px;border:1px solid var(--line)">
-        <span>📑 <strong>${totalSecs}</strong> ${totalSecs === 1 ? 'sección' : 'secciones'}</span>
-        <span>🔢 <strong>${totalItems}</strong> ítems</span>
+      <div style="display:flex;gap:10px;font-size:11.5px;color:var(--text-600);margin-bottom:12px;padding:6px 10px;background:var(--surface-2);border-radius:6px;border:1px solid var(--line);flex-wrap:wrap">
+        <span>📑 <strong>${totalSecs}</strong> secciones</span>
+        <span>🔢 <strong>${totalItems}</strong> indicadores</span>
         <span>⚖️ <strong>${esc(RESPONSE_LABELS[bs.tipoRespuesta] || bs.tipoRespuesta)}</strong></span>
+        <span>📏 Regla: <strong>${esc(bs.regla_nivel || 'porcentaje')}</strong></span>
       </div>
     `;
 
     const impactAlertHtml = (existingCount > 0) ? `
       <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:#1E40AF;line-height:1.4">
-        ℹ️ <strong>Atención:</strong> Esta plantilla tiene <strong>${existingCount}</strong> visita(s) registradas históricamente. Modificar ítems se aplicará a nuevas visitas.
+        ℹ️ <strong>Historial:</strong> Esta plantilla tiene <strong>${existingCount}</strong> visita(s) registradas. Las modificaciones se aplicarán a nuevos registros.
       </div>
     ` : '';
 
-    // Renderizar modo específico (Formulario o Documento)
+    // Barra de Pestañas de Visitas en Preview
+    const visitasTabsHtml = bs.tieneVisitas && (bs.visitas || []).length > 0 ? `
+      <div class="previewVisitasTabsBar">
+        ${(bs.visitas || []).map((vNom, vi) => `
+          <button type="button" class="previewVisitaTabBtn ${builderActiveVisitPreview === vi ? 'active' : ''}" data-prev-visit-idx="${vi}">
+            ${esc(vNom)}
+          </button>
+        `).join('')}
+      </div>
+    ` : '';
+
     let modeContentHtml = '';
 
     if (builderPreviewMode === 'formulario') {
@@ -8780,7 +9544,8 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
 
       (bs.secciones || []).forEach(sec => {
         (sec.items || []).forEach(it => {
-          const ans = builderTestAnswers[it.id];
+          const ansKey = `${builderActiveVisitPreview}_${it.id}`;
+          const ans = builderTestAnswers[ansKey] || builderTestAnswers[it.id];
           if (ans !== undefined && ans !== null && ans !== '') {
             answeredCount++;
             if (bs.tipoRespuesta === 'si_no') {
@@ -8789,7 +9554,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
             } else if (bs.tipoRespuesta === 'escala1_3') {
               maxScore += 3;
               currentScore += Number(ans) || 0;
-            } else if (bs.tipoRespuesta === 'escala1_4' || bs.tipoRespuesta === 'rubrica1_4') {
+            } else if (bs.tipoRespuesta === 'escala1_4' || bs.tipoRespuesta === 'rubrica1_4' || bs.tipoRespuesta === 'ips') {
               maxScore += 4;
               currentScore += Number(ans) || 0;
             } else if (bs.tipoRespuesta === 'escala1_5') {
@@ -8813,29 +9578,87 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         </div>
       ` : '';
 
+      // Tablas especializadas en preview
+      const previewTablasHtml = (bs.tablas || []).map(tbl => `
+        <div style="margin-bottom:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--navy-900);margin-bottom:4px">${esc(tbl.titulo)}</div>
+          ${tbl.descripcion ? `<div style="font-size:11px;color:var(--text-500);margin-bottom:6px">${esc(tbl.descripcion)}</div>` : ''}
+          <div style="overflow-x:auto">
+            <table class="previewCustomTable">
+              <thead>
+                <tr>
+                  <th style="min-width:140px">Fila / Categoría</th>
+                  ${(tbl.columnas || []).map(col => `<th style="text-align:center">${esc(col.nombre)}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${(tbl.filas && tbl.filas.length > 0 ? tbl.filas : [{ etiqueta: 'Fila 1' }, { etiqueta: 'Fila 2' }]).map(r => `
+                  <tr>
+                    <td style="font-weight:600;color:var(--text-700)">${esc(r.etiqueta)}</td>
+                    ${(tbl.columnas || []).map(() => `<td style="text-align:center;color:var(--text-400)">[ 0 ]</td>`).join('')}
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `).join('');
+
+      // Compromisos en preview
+      const previewCompromisosHtml = (bs.compromisos && bs.compromisos.habilitado) ? `
+        <div class="previewCompromisosWrap">
+          <div style="font-size:12.5px;font-weight:700;color:var(--navy-900);margin-bottom:6px">Sección V: Compromisos de Mejora y Acuerdos</div>
+          ${bs.compromisos.director !== false ? `
+            <div style="margin-bottom:8px">
+              <span style="font-size:11.5px;font-weight:600;color:var(--text-700)">Compromisos del Director(a) / Equipo Directivo:</span>
+              <div style="font-size:11px;color:var(--text-400);font-style:italic;margin-top:2px">
+                ${Array.from({ length: bs.compromisos.filasPorVisita || 3 }).map((_, idx) => `<div>${idx + 1}. [Espacio para compromiso acordado...]</div>`).join('')}
+              </div>
+            </div>
+          ` : ''}
+          ${bs.compromisos.especialista !== false ? `
+            <div>
+              <span style="font-size:11.5px;font-weight:600;color:var(--text-700)">Compromisos del Especialista / Monitor UGEL:</span>
+              <div style="font-size:11px;color:var(--text-400);font-style:italic;margin-top:2px">
+                ${Array.from({ length: bs.compromisos.filasPorVisita || 3 }).map((_, idx) => `<div>${idx + 1}. [Espacio para compromiso y asistencia técnica...]</div>`).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      ` : '';
+
       modeContentHtml = `
         <div class="previewFormSheet" style="background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px">
+          ${visitasTabsHtml}
+
           <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface-2);border:1px dashed var(--line);border-radius:6px;padding:8px 12px;margin-bottom:14px">
-            <div style="font-size:12px;color:var(--text-600)">🧪 <strong>Modo prueba:</strong> Marca respuestas para probar el formulario sin guardar datos.</div>
+            <div style="font-size:12px;color:var(--text-600)">🧪 <strong>Modo prueba:</strong> Marca respuestas para simular el cálculo de puntaje en vivo.</div>
             <button type="button" class="btn secondary small" id="btnResetTest" style="padding:2px 8px;font-size:11px">Limpiar prueba</button>
           </div>
 
           ${testScoreBar}
 
-          <!-- Simulación de cabecera de visita -->
+          <!-- Simulación de cabecera -->
           <div style="background:var(--surface-2);border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:12px">
-            <div style="font-weight:700;color:var(--text-700);margin-bottom:6px">Datos de la visita (Simulación):</div>
+            <div style="font-weight:700;color:var(--text-700);margin-bottom:6px">Datos de la Visita (Simulación):</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
               <div><strong>I.E.:</strong> <span style="color:var(--text-500)">I.E. 1153 Alfonso Ugarte</span></div>
-              <div><strong>Fecha:</strong> <span style="color:var(--text-500)">2026-09-24</span></div>
-              <div><strong>N° Visita:</strong> <span style="color:var(--text-500)">Visita 1</span></div>
-              ${(bs.extras || []).map(ex => `
-                <div><strong>${esc(ex.label)}:</strong> <span style="color:var(--text-400)">[${esc(ex.tipo)}]</span></div>
-              `).join('')}
+              <div><strong>Fecha:</strong> <span style="color:var(--text-500)">2026-10-14</span></div>
+              <div><strong>Momento / Visita:</strong> <span style="color:var(--primary);font-weight:700">${esc(bs.tieneVisitas && bs.visitas && bs.visitas[builderActiveVisitPreview] ? bs.visitas[builderActiveVisitPreview] : 'Visita 1')}</span></div>
+              ${(bs.extras || []).map(ex => {
+        if (ex.tipo === 'select') {
+          const opts = (ex.opciones || 'Opción 1, Opción 2').split(',').map(o => o.trim()).filter(Boolean);
+          return `<div><strong>${esc(ex.label)}:</strong> <span style="color:var(--text-600)">[${esc(opts[0] || 'Selector')}]</span></div>`;
+        }
+        return `<div><strong>${esc(ex.label)}:</strong> <span style="color:var(--text-400)">[${esc(ex.tipo)}]</span></div>`;
+      }).join('')}
             </div>
           </div>
 
-          <!-- Secciones e ítems interactivos -->
+          <!-- Tablas Cuantitativas -->
+          ${previewTablasHtml}
+
+          <!-- Secciones e Indicadores -->
           ${(bs.secciones || []).map((sec, si) => `
             <div style="margin-bottom:16px;border:1px solid var(--line);border-radius:6px;overflow:hidden">
               <div style="background:var(--surface-3);padding:8px 12px;display:flex;align-items:center;justify-content:space-between">
@@ -8848,26 +9671,36 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
               </div>
               <div style="padding:8px 12px">
                 ${(sec.items || []).map((it, ii) => {
-        const ans = builderTestAnswers[it.id] || '';
+        const itCode = it.id || ((si + 1) + '.' + (ii + 1));
+        const ansKey = `${builderActiveVisitPreview}_${it.id}`;
+        const ans = builderTestAnswers[ansKey] || builderTestAnswers[it.id] || '';
         return `
                     <div style="padding:8px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px">
                       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
                         <span style="font-size:12px;color:var(--ink);font-weight:500">
-                          <strong style="color:var(--primary)">${si + 1}.${ii + 1}</strong> ${esc(it.texto || 'Ítem sin texto')}
+                          <strong style="color:var(--primary)">${esc(itCode)}</strong> ${esc(it.texto || 'Indicador sin texto')}
                         </span>
                         <a href="javascript:void(0)" class="previewValItem" data-target="[data-sec='${si}'][data-item='${ii}']" style="font-size:11px;color:var(--ink-soft)" title="Ir a editar este ítem">
                           ✏️
                         </a>
                       </div>
+                      ${it.evidencia ? `
+                        <div style="font-size:11px;color:var(--text-500);display:flex;align-items:center;gap:4px">
+                          <span>📂</span> <em>Evidencia: ${esc(it.evidencia)}</em>
+                        </div>
+                      ` : ''}
                       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11.5px">
                         ${renderItemResponseInputs(it, bs.tipoRespuesta, ans)}
                       </div>
                     </div>
                   `;
-      }).join('') || '<p style="font-size:11.5px;color:var(--text-400);margin:4px 0">Sin ítems en esta sección.</p>'}
+      }).join('') || '<p style="font-size:11.5px;color:var(--text-400);margin:4px 0">Sin indicadores en esta sección.</p>'}
               </div>
             </div>
           `).join('') || '<p style="font-size:12px;color:var(--text-400)">Sin secciones agregadas.</p>'}
+
+          <!-- Compromisos de Mejora -->
+          ${previewCompromisosHtml}
         </div>
       `;
     } else {
@@ -8877,9 +9710,11 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
           <div style="text-align:center;border-bottom:2px solid #1E3A8A;padding-bottom:10px;margin-bottom:14px">
             <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#4B5563;text-transform:uppercase">Ministerio de Educación · DRE Lima Metropolitana</div>
             <div style="font-size:13px;font-weight:800;letter-spacing:0.5px;color:#1E3A8A;margin:2px 0">UNIDAD DE GESTIÓN EDUCATIVA LOCAL N° 03</div>
-            <div style="font-size:10.5px;color:#6B7280">Panel de Monitoreo y Acompañamiento Pedagógico 2026</div>
+            <div style="font-size:10.5px;color:#6B7280">Panel de Monitoreo y Asistencia Técnica 2026</div>
             <h3 style="font-size:15px;font-weight:800;margin:10px 0 4px;color:#1E40AF;text-transform:uppercase">${esc(bs.nombre || 'NOMBRE DE LA FICHA')}</h3>
-            <div style="font-size:11px;font-weight:600;color:#4B5563">Modalidad: ${esc(bs.modalidad || 'General')} · Escala: ${esc(RESPONSE_LABELS[bs.tipoRespuesta] || bs.tipoRespuesta)}</div>
+            <div style="font-size:11px;font-weight:600;color:#4B5563">
+              Modalidad: ${esc(bs.modalidad || 'General')} · Versión: ${esc(bs.version || '2026.1')} · Escala: ${esc(RESPONSE_LABELS[bs.tipoRespuesta] || bs.tipoRespuesta)}
+            </div>
           </div>
 
           <!-- Metadatos de Cabecera Oficial -->
@@ -8894,7 +9729,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
               <td style="border:1px solid #D1D5DB;padding:4px 8px;background:#F3F4F6;font-weight:700">Red Educativa:</td>
               <td style="border:1px solid #D1D5DB;padding:4px 8px">[REI 01]</td>
               <td style="border:1px solid #D1D5DB;padding:4px 8px;background:#F3F4F6;font-weight:700">Fecha / N° Visita:</td>
-              <td style="border:1px solid #D1D5DB;padding:4px 8px">[DD/MM/AAAA · Visita 1]</td>
+              <td style="border:1px solid #D1D5DB;padding:4px 8px">[DD/MM/AAAA · ${esc(bs.tieneVisitas && bs.visitas && bs.visitas[builderActiveVisitPreview] ? bs.visitas[builderActiveVisitPreview] : 'Visita 1')}]</td>
             </tr>
             ${(bs.extras || []).map(ex => `
               <tr>
@@ -8904,31 +9739,71 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
             `).join('')}
           </table>
 
+          <!-- Tablas Especializadas en Documento -->
+          ${(bs.tablas || []).map(tbl => `
+            <div style="margin-bottom:14px">
+              <div style="font-size:11px;font-weight:700;color:#1E3A8A;margin-bottom:4px">${esc(tbl.titulo)}</div>
+              <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:6px">
+                <thead>
+                  <tr style="background:#F3F4F6">
+                    <th style="border:1px solid #D1D5DB;padding:4px 6px;text-align:left">Fila / Categoría</th>
+                    ${(tbl.columnas || []).map(col => `<th style="border:1px solid #D1D5DB;padding:4px 6px;text-align:center">${esc(col.nombre)}</th>`).join('')}
+                  </tr>
+                </thead>
+                <tbody>
+                  ${(tbl.filas && tbl.filas.length > 0 ? tbl.filas : [{ etiqueta: 'Fila 1' }, { etiqueta: 'Fila 2' }]).map(r => `
+                    <tr>
+                      <td style="border:1px solid #D1D5DB;padding:3px 6px">${esc(r.etiqueta)}</td>
+                      ${(tbl.columnas || []).map(() => `<td style="border:1px solid #D1D5DB;padding:3px 6px;text-align:center">____</td>`).join('')}
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `).join('')}
+
           <!-- Tabla de Dimensiones e Indicadores -->
           <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:10.5px">
             <thead>
               <tr style="background:#1E3A8A;color:#FFFFFF">
-                <th style="border:1px solid #1E3A8A;padding:5px;width:32px;text-align:center">N°</th>
+                <th style="border:1px solid #1E3A8A;padding:5px;width:36px;text-align:center">N°</th>
                 <th style="border:1px solid #1E3A8A;padding:5px;text-align:left">Dimensión / Criterio / Indicador</th>
-                <th style="border:1px solid #1E3A8A;padding:5px;width:100px;text-align:center">Valoración</th>
+                <th style="border:1px solid #1E3A8A;padding:5px;width:140px;text-align:left">Evidencia sugerida</th>
+                <th style="border:1px solid #1E3A8A;padding:5px;width:80px;text-align:center">Valoración</th>
               </tr>
             </thead>
             <tbody>
               ${(bs.secciones || []).map((sec, si) => `
                 <tr style="background:#F9FAFB;font-weight:700">
                   <td style="border:1px solid #E5E7EB;padding:4px;text-align:center;color:#1E3A8A">#${si + 1}</td>
-                  <td colspan="2" style="border:1px solid #E5E7EB;padding:4px;text-transform:uppercase;color:#111827">${esc(sec.nombre || 'Sección sin título')}</td>
+                  <td colspan="3" style="border:1px solid #E5E7EB;padding:4px;text-transform:uppercase;color:#111827">${esc(sec.nombre || 'Sección sin título')}</td>
                 </tr>
-                ${(sec.items || []).map((it, ii) => `
-                  <tr>
-                    <td style="border:1px solid #E5E7EB;padding:4px;text-align:center;color:#6B7280">${si + 1}.${ii + 1}</td>
-                    <td style="border:1px solid #E5E7EB;padding:4px">${esc(it.texto || 'Ítem sin texto')}</td>
-                    <td style="border:1px solid #E5E7EB;padding:4px;text-align:center;color:#9CA3AF">[____]</td>
-                  </tr>
-                `).join('')}
+                ${(sec.items || []).map((it, ii) => {
+        const itCode = it.id || ((si + 1) + '.' + (ii + 1));
+        return `
+                    <tr>
+                      <td style="border:1px solid #E5E7EB;padding:4px;text-align:center;color:#6B7280">${esc(itCode)}</td>
+                      <td style="border:1px solid #E5E7EB;padding:4px">${esc(it.texto || 'Indicador sin texto')}</td>
+                      <td style="border:1px solid #E5E7EB;padding:4px;font-size:9.5px;color:#4B5563">${esc(it.evidencia || '—')}</td>
+                      <td style="border:1px solid #E5E7EB;padding:4px;text-align:center;color:#9CA3AF">[____]</td>
+                    </tr>
+                  `;
+      }).join('')}
               `).join('')}
             </tbody>
           </table>
+
+          <!-- Compromisos en Documento -->
+          ${(bs.compromisos && bs.compromisos.habilitado) ? `
+            <div style="margin-bottom:20px;border:1px solid #D1D5DB;padding:10px;border-radius:4px">
+              <div style="font-weight:700;font-size:11px;color:#1E3A8A;margin-bottom:6px">SECCIÓN V: COMPROMISOS Y ACUERDOS INSTITUCIONALES</div>
+              <div style="font-size:10px;color:#4B5563">
+                ${Array.from({ length: bs.compromisos.filasPorVisita || 3 }).map((_, idx) => `
+                  <div style="border-bottom:1px dotted #9CA3AF;padding:4px 0">${idx + 1}. ____________________________________________________________________________________</div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
 
           <!-- Bloque de Firmas Institucionales -->
           <div style="display:flex;justify-content:space-around;gap:20px;margin-top:24px;padding-top:16px">
@@ -8952,36 +9827,37 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
 
   // Helper para generar opciones de respuesta interactivas en modo prueba
   function renderItemResponseInputs(it, tipoRespuesta, curVal) {
+    const itKey = `${builderActiveVisitPreview}_${it.id}`;
     if (tipoRespuesta === 'si_no') {
       return `
-        <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="test_${it.id}" value="si" ${curVal === 'si' ? 'checked' : ''} data-test-item="${it.id}"> Sí</label>
-        <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="test_${it.id}" value="no" ${curVal === 'no' ? 'checked' : ''} data-test-item="${it.id}"> No</label>
-        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${it.id}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${it.id}"> N/A</label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="test_${itKey}" value="si" ${curVal === 'si' ? 'checked' : ''} data-test-item="${itKey}"> Sí</label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="test_${itKey}" value="no" ${curVal === 'no' ? 'checked' : ''} data-test-item="${itKey}"> No</label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${itKey}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${itKey}"> N/A</label>
       `;
     }
     if (tipoRespuesta === 'escala1_3') {
       return [1, 2, 3].map(v => `
-        <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="test_${it.id}" value="${v}" ${String(curVal) === String(v) ? 'checked' : ''} data-test-item="${it.id}"> ${v}</label>
-      `).join('') + `<label style="display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${it.id}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${it.id}"> N/A</label>`;
+        <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="test_${itKey}" value="${v}" ${String(curVal) === String(v) ? 'checked' : ''} data-test-item="${itKey}"> ${v}</label>
+      `).join('') + `<label style="display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${itKey}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${itKey}"> N/A</label>`;
     }
-    if (tipoRespuesta === 'rubrica1_4') {
+    if (tipoRespuesta === 'rubrica1_4' || tipoRespuesta === 'ips') {
       const lvls = ['I', 'II', 'III', 'IV'];
       return lvls.map((lvl, idx) => `
-        <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="test_${it.id}" value="${idx + 1}" ${String(curVal) === String(idx + 1) ? 'checked' : ''} data-test-item="${it.id}"> Nivel ${lvl}</label>
-      `).join('') + `<label style="display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${it.id}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${it.id}"> N/A</label>`;
+        <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="test_${itKey}" value="${idx + 1}" ${String(curVal) === String(idx + 1) ? 'checked' : ''} data-test-item="${itKey}"> Nivel ${lvl}</label>
+      `).join('') + `<label style="display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${itKey}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${itKey}"> N/A</label>`;
     }
     if (tipoRespuesta === 'escala1_5') {
       return [1, 2, 3, 4, 5].map(v => `
-        <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="test_${it.id}" value="${v}" ${String(curVal) === String(v) ? 'checked' : ''} data-test-item="${it.id}"> ${v}</label>
-      `).join('') + `<label style="display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${it.id}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${it.id}"> N/A</label>`;
+        <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="test_${itKey}" value="${v}" ${String(curVal) === String(v) ? 'checked' : ''} data-test-item="${itKey}"> ${v}</label>
+      `).join('') + `<label style="display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${itKey}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${itKey}"> N/A</label>`;
     }
     // Default escala 1-4
     return [1, 2, 3, 4].map(v => `
-      <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="test_${it.id}" value="${v}" ${String(curVal) === String(v) ? 'checked' : ''} data-test-item="${it.id}"> ${v}</label>
-    `).join('') + `<label style="display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${it.id}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${it.id}"> N/A</label>`;
+      <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="test_${itKey}" value="${v}" ${String(curVal) === String(v) ? 'checked' : ''} data-test-item="${itKey}"> ${v}</label>
+    `).join('') + `<label style="display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${itKey}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${itKey}"> N/A</label>`;
   }
 
-  // Actualiza únicamente la vista previa sin tocar los inputs del editor (evita perder el foco al escribir)
+  // Actualiza la vista previa en vivo sin tocar inputs del editor
   function updatePreviewOnly() {
     const previewBox = document.getElementById('builderPreviewContent');
     if (!previewBox) return;
@@ -8997,6 +9873,14 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
     const previewBox = document.getElementById('builderPreviewContent');
     if (!previewBox) return;
 
+    // Cambiar de visita simulada en tabs de vista previa
+    previewBox.querySelectorAll('[data-prev-visit-idx]').forEach(btn => {
+      btn.onclick = () => {
+        builderActiveVisitPreview = parseInt(btn.dataset.prevVisitIdx, 10) || 0;
+        updatePreviewOnly();
+      };
+    });
+
     // Clic en avisos o enlaces de edición para saltar al campo del editor
     previewBox.querySelectorAll('.previewValItem').forEach(link => {
       link.onclick = (e) => {
@@ -9004,7 +9888,6 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         const targetSel = link.dataset.target;
         if (!targetSel) return;
 
-        // Si estamos en móvil y mostrando vista previa, alternar a editor
         if (builderMobileTab === 'preview') {
           builderMobileTab = 'editor';
           const ep = document.getElementById('builderEditorPane');
@@ -9034,8 +9917,8 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
     // Modo prueba: radios interactivos
     previewBox.querySelectorAll('[data-test-item]').forEach(radio => {
       radio.onchange = (e) => {
-        const itemId = e.target.dataset.testItem;
-        builderTestAnswers[itemId] = e.target.value;
+        const itemKey = e.target.dataset.testItem;
+        builderTestAnswers[itemKey] = e.target.value;
         updatePreviewOnly();
       };
     });
@@ -9082,7 +9965,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
     };
   }
 
-  // Paleta de colores
+  // Paleta de colores institucional
   container.querySelectorAll('.colorSwatch').forEach(swatch => {
     swatch.onclick = () => {
       bs.color = swatch.dataset.color;
@@ -9092,7 +9975,196 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
     };
   });
 
-  // Eventos de entrada en vivo con debounce ligero para no bloquear
+  // Alternar entre Editor Visual y Editor JSON
+  const btnModeVis = document.getElementById('btnBuilderModeVisual');
+  const btnModeJson = document.getElementById('btnBuilderModeJson');
+  const jsonPaneWrap = document.getElementById('builderJsonPaneWrap');
+  const visualSplitGrid = document.getElementById('builderVisualSplitGrid');
+  const jsonTextarea = document.getElementById('builderJsonTextarea');
+  const jsonStatus = document.getElementById('builderJsonStatus');
+
+  if (btnModeVis && btnModeJson) {
+    btnModeVis.onclick = () => {
+      if (builderMode === 'json') {
+        // Intentar sincronizar desde JSON al visual
+        try {
+          const parsed = JSON.parse(jsonTextarea.value);
+          Object.assign(builderState, parsed);
+          builderState.extras = normalizeExtras(builderState.extras);
+          builderIsDirty = true;
+        } catch (err) {
+          if (!confirm(`Hay un error de sintaxis en el JSON:\n\n${err.message}\n\n¿Deseas descartar los cambios del JSON y volver al editor visual?`)) {
+            return;
+          }
+        }
+      }
+      builderMode = 'visual';
+      renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    };
+
+    const switchToJsonMode = () => {
+      syncBuilderFromDom(container, bs);
+      builderMode = 'json';
+      if (jsonTextarea) {
+        jsonTextarea.value = JSON.stringify(cleanBuilderStateForExport(bs), null, 2);
+      }
+      if (jsonPaneWrap && visualSplitGrid) {
+        jsonPaneWrap.style.display = 'block';
+        visualSplitGrid.style.display = 'none';
+        btnModeVis.classList.remove('active');
+        btnModeJson.classList.add('active');
+      }
+    };
+
+    btnModeJson.onclick = () => {
+      if (!builderJsonUnlocked) {
+        promptAdminPasswordModal(currentUser, switchToJsonMode);
+      } else {
+        switchToJsonMode();
+      }
+    };
+  }
+
+  // Sincronización de scroll proporcional entre el Editor y la Vista Previa
+  const previewScrollEl = document.getElementById('builderPreviewBodyScroll');
+  const editorPaneEl = document.getElementById('builderEditorPane');
+  let isPreviewHovered = false;
+
+  if (previewScrollEl && editorPaneEl) {
+    previewScrollEl.addEventListener('mouseenter', () => { isPreviewHovered = true; });
+    previewScrollEl.addEventListener('mouseleave', () => { isPreviewHovered = false; });
+    previewScrollEl.addEventListener('touchstart', () => { isPreviewHovered = true; }, { passive: true });
+    previewScrollEl.addEventListener('touchend', () => { isPreviewHovered = false; }, { passive: true });
+
+    const handleWindowScroll = () => {
+      if (builderMode !== 'visual') return;
+      if (isPreviewHovered) return;
+      if (!document.getElementById('builderPreviewBodyScroll')) {
+        window.removeEventListener('scroll', handleWindowScroll);
+        return;
+      }
+
+      const rect = editorPaneEl.getBoundingClientRect();
+      const editorTop = rect.top;
+      const editorHeight = rect.height;
+      const viewportHeight = window.innerHeight;
+      const scrollableDistance = editorHeight - viewportHeight + 120;
+      if (scrollableDistance <= 0) return;
+
+      const scrolled = Math.max(0, -editorTop + 72);
+      const ratio = Math.min(1, Math.max(0, scrolled / scrollableDistance));
+      const maxScroll = previewScrollEl.scrollHeight - previewScrollEl.clientHeight;
+      if (maxScroll > 0) {
+        previewScrollEl.scrollTop = ratio * maxScroll;
+      }
+    };
+
+    window.addEventListener('scroll', handleWindowScroll, { passive: true });
+  }
+
+  // Sincronización en vivo del Textarea JSON
+  if (jsonTextarea && jsonStatus) {
+    jsonTextarea.addEventListener('input', () => {
+      builderIsDirty = true;
+      try {
+        const parsed = JSON.parse(jsonTextarea.value);
+        Object.assign(builderState, parsed);
+        builderState.extras = normalizeExtras(builderState.extras);
+        jsonStatus.className = 'builderJsonStatus valid';
+        jsonStatus.textContent = '✓ Sintaxis JSON válida y actualizada en memoria.';
+        updatePreviewOnly();
+      } catch (err) {
+        jsonStatus.className = 'builderJsonStatus invalid';
+        jsonStatus.textContent = '⚠️ Error en sintaxis JSON: ' + err.message;
+      }
+    });
+  }
+
+  // Botón "Aplicar cambios al editor visual"
+  const btnSyncJson = document.getElementById('btnSyncJsonToVisual');
+  if (btnSyncJson && jsonTextarea) {
+    btnSyncJson.onclick = () => {
+      try {
+        const parsed = JSON.parse(jsonTextarea.value);
+        Object.assign(builderState, parsed);
+        builderState.extras = normalizeExtras(builderState.extras);
+        builderMode = 'visual';
+        showToast('✓ JSON aplicado al editor visual.');
+        renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+      } catch (err) {
+        alert('Error en el JSON: ' + err.message);
+      }
+    };
+  }
+
+  // Botón Copiar JSON
+  const btnCopyJson = document.getElementById('btnCopyJson');
+  if (btnCopyJson && jsonTextarea) {
+    btnCopyJson.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(jsonTextarea.value);
+        showToast('✓ JSON copiado al portapapeles.');
+      } catch (err) {
+        showToast('No se pudo copiar automáticamente.');
+      }
+    };
+  }
+
+  // Descargar JSON función común
+  const triggerDownloadJson = () => {
+    syncBuilderFromDom(container, bs);
+    const exportData = cleanBuilderStateForExport(bs);
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const slug = (bs.nombreCorto || bs.nombre || 'ficha').toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 30);
+    a.href = url;
+    a.download = `ficha_${slug}_${todayStr()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✓ Archivo JSON descargado.');
+  };
+
+  const btnDlJson1 = document.getElementById('downloadJsonBtn');
+  if (btnDlJson1) btnDlJson1.onclick = triggerDownloadJson;
+  const btnDlJson2 = document.getElementById('downloadJsonBtnCode');
+  if (btnDlJson2) btnDlJson2.onclick = triggerDownloadJson;
+
+  // Importar JSON función común
+  const handleJsonFileUpload = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (!parsed || typeof parsed !== 'object') {
+          throw new Error('El archivo no contiene un objeto JSON válido');
+        }
+        Object.assign(builderState, parsed);
+        builderState.extras = normalizeExtras(builderState.extras);
+        builderIsDirty = true;
+        showToast('✓ Plantilla cargada desde archivo JSON.');
+        renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+      } catch (err) {
+        alert('Error al leer el archivo JSON: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const importInp1 = document.getElementById('importJsonFileInput');
+  if (importInp1) {
+    importInp1.onchange = (e) => handleJsonFileUpload(e.target.files[0]);
+  }
+  const importInp2 = document.getElementById('importJsonFileInputCode');
+  if (importInp2) {
+    importInp2.onchange = (e) => handleJsonFileUpload(e.target.files[0]);
+  }
+
+  // Eventos de entrada en vivo con debounce
   let syncTimer = null;
   const onLiveInput = () => {
     builderIsDirty = true;
@@ -9107,23 +10179,240 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
   if (bIco) bIco.addEventListener('input', onLiveInput);
   const bNom = document.getElementById('b_nombre');
   if (bNom) bNom.addEventListener('input', onLiveInput);
+  const bNomCorto = document.getElementById('b_nombre_corto');
+  if (bNomCorto) bNomCorto.addEventListener('input', onLiveInput);
   const bDesc = document.getElementById('b_desc');
   if (bDesc) bDesc.addEventListener('input', onLiveInput);
   const bMod = document.getElementById('b_modalidad');
   if (bMod) bMod.addEventListener('change', () => { bs.modalidad = bMod.value; builderIsDirty = true; updatePreviewOnly(); });
   const bTip = document.getElementById('b_tipo');
   if (bTip) bTip.addEventListener('change', () => { bs.tipoRespuesta = bTip.value; builderIsDirty = true; updatePreviewOnly(); });
+  const bReg = document.getElementById('b_regla_nivel');
+  if (bReg) bReg.addEventListener('change', () => { bs.regla_nivel = bReg.value; builderIsDirty = true; updatePreviewOnly(); });
+  const bVer = document.getElementById('b_version');
+  if (bVer) bVer.addEventListener('input', onLiveInput);
 
+  // Toggle tiene visitas
+  const bTieneVisitas = document.getElementById('b_tiene_visitas');
+  if (bTieneVisitas) {
+    bTieneVisitas.addEventListener('change', () => {
+      bs.tieneVisitas = bTieneVisitas.checked;
+      builderIsDirty = true;
+      renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    });
+  }
+
+  // Agregar / Quitar Visitas
+  const addVisitaBtn = document.getElementById('addVisitaBtn');
+  if (addVisitaBtn) {
+    addVisitaBtn.addEventListener('click', () => {
+      syncBuilderFromDom(container, bs);
+      if (!Array.isArray(bs.visitas)) bs.visitas = [];
+      bs.visitas.push(`Visita ${bs.visitas.length + 1}`);
+      builderIsDirty = true;
+      renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    });
+  }
+
+  container.querySelectorAll('[data-rmvisita]').forEach(b => b.addEventListener('click', () => {
+    syncBuilderFromDom(container, bs);
+    const vIdx = +b.dataset.rmvisita;
+    if (bs.visitas.length > 1) {
+      bs.visitas.splice(vIdx, 1);
+      builderIsDirty = true;
+      renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    }
+  }));
+
+  container.querySelectorAll('[data-visitainp]').forEach(inp => inp.addEventListener('input', onLiveInput));
+
+  // Toggle y config Compromisos
+  const bCompHab = document.getElementById('b_comp_hab');
+  if (bCompHab) {
+    bCompHab.addEventListener('change', () => {
+      if (!bs.compromisos) bs.compromisos = {};
+      bs.compromisos.habilitado = bCompHab.checked;
+      builderIsDirty = true;
+      renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    });
+  }
+  const bCompDir = document.getElementById('b_comp_dir');
+  if (bCompDir) bCompDir.addEventListener('change', onLiveInput);
+  const bCompEsp = document.getElementById('b_comp_esp');
+  if (bCompEsp) bCompEsp.addEventListener('change', onLiveInput);
+  const bCompFilas = document.getElementById('b_comp_filas');
+  if (bCompFilas) bCompFilas.addEventListener('input', onLiveInput);
+
+  // Tablas Especializadas: Presets y Botones
+  const addPresetPersonalBtn = document.getElementById('addPresetPersonalBtn');
+  if (addPresetPersonalBtn) {
+    addPresetPersonalBtn.addEventListener('click', () => {
+      syncBuilderFromDom(container, bs);
+      if (!Array.isArray(bs.tablas)) bs.tablas = [];
+      bs.tablas.push({
+        id: 'tbl_personal_' + Date.now(),
+        titulo: 'Cuadro de Personal de la I.E.',
+        descripcion: 'Plazas presupuestadas y personal activo en funciones',
+        columnas: [
+          { id: 'c_cargo', nombre: 'Cargo / Especialidad', tipo: 'texto' },
+          { id: 'c_plazas', nombre: 'N° Plazas', tipo: 'numero' },
+          { id: 'c_cubiertas', nombre: 'Cubiertas', tipo: 'numero' },
+          { id: 'c_vacantes', nombre: 'Vacantes', tipo: 'numero' }
+        ],
+        filas: [
+          { id: 'f_dir', etiqueta: 'Personal Directivo' },
+          { id: 'f_jer', etiqueta: 'Personal Jerárquico' },
+          { id: 'f_doc', etiqueta: 'Personal Docente' },
+          { id: 'f_aux', etiqueta: 'Auxiliares de Educación' },
+          { id: 'f_adm', etiqueta: 'Personal Administrativo' }
+        ]
+      });
+      builderIsDirty = true;
+      renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    });
+  }
+
+  const addPresetEstudiantesBtn = document.getElementById('addPresetEstudiantesBtn');
+  if (addPresetEstudiantesBtn) {
+    addPresetEstudiantesBtn.addEventListener('click', () => {
+      syncBuilderFromDom(container, bs);
+      if (!Array.isArray(bs.tablas)) bs.tablas = [];
+      bs.tablas.push({
+        id: 'tbl_estudiantes_' + Date.now(),
+        titulo: 'Cuadro de Metas de Matrícula y Atención',
+        descripcion: 'Distribución de secciones y estudiantes matriculados',
+        columnas: [
+          { id: 'c_grado', nombre: 'Grado / Ciclo / Rango', tipo: 'texto' },
+          { id: 'c_sec', nombre: 'N° Secciones', tipo: 'numero' },
+          { id: 'c_hom', nombre: 'Hombres', tipo: 'numero' },
+          { id: 'c_muj', nombre: 'Mujeres', tipo: 'numero' },
+          { id: 'c_tot', nombre: 'Total Matriculados', tipo: 'numero' }
+        ],
+        filas: [
+          { id: 'f_g1', etiqueta: '1° Grado' },
+          { id: 'f_g2', etiqueta: '2° Grado' },
+          { id: 'f_g3', etiqueta: '3° Grado' },
+          { id: 'f_g4', etiqueta: '4° Grado' },
+          { id: 'f_g5', etiqueta: '5° Grado' },
+          { id: 'f_tot', etiqueta: 'TOTAL INSTITUCIONAL' }
+        ]
+      });
+      builderIsDirty = true;
+      renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    });
+  }
+
+  const addCustomTableBtn = document.getElementById('addCustomTableBtn');
+  if (addCustomTableBtn) {
+    addCustomTableBtn.addEventListener('click', () => {
+      syncBuilderFromDom(container, bs);
+      if (!Array.isArray(bs.tablas)) bs.tablas = [];
+      bs.tablas.push({
+        id: 'tbl_custom_' + Date.now(),
+        titulo: 'Nueva Tabla de Monitoreo',
+        descripcion: '',
+        columnas: [
+          { id: 'c_item', nombre: 'Aspecto', tipo: 'texto' },
+          { id: 'c_cant', nombre: 'Cantidad', tipo: 'numero' }
+        ],
+        filas: [
+          { id: 'f_1', etiqueta: 'Fila 1' },
+          { id: 'f_2', etiqueta: 'Fila 2' }
+        ]
+      });
+      builderIsDirty = true;
+      renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    });
+  }
+
+  // Quitar tabla
+  container.querySelectorAll('[data-rmtable]').forEach(b => b.addEventListener('click', () => {
+    syncBuilderFromDom(container, bs);
+    bs.tablas.splice(+b.dataset.rmtable, 1);
+    builderIsDirty = true;
+    renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+  }));
+
+  // Agregar Columna a tabla
+  container.querySelectorAll('[data-addtblcol]').forEach(b => b.addEventListener('click', () => {
+    syncBuilderFromDom(container, bs);
+    const ti = +b.dataset.addtblcol;
+    const nomInp = document.getElementById(`newColNom_${ti}`);
+    const tipoInp = document.getElementById(`newColTipo_${ti}`);
+    const nom = nomInp ? nomInp.value.trim() : '';
+    const tipo = tipoInp ? tipoInp.value : 'numero';
+    if (!nom) {
+      if (nomInp) nomInp.focus();
+      return;
+    }
+    if (!bs.tablas[ti].columnas) bs.tablas[ti].columnas = [];
+    bs.tablas[ti].columnas.push({ id: 'c_' + Date.now(), nombre: nom, tipo });
+    builderIsDirty = true;
+    renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+  }));
+
+  // Quitar Columna de tabla
+  container.querySelectorAll('[data-rmtblcol]').forEach(b => b.addEventListener('click', () => {
+    syncBuilderFromDom(container, bs);
+    const [ti, ci] = b.dataset.rmtblcol.split('|').map(Number);
+    if (bs.tablas[ti] && bs.tablas[ti].columnas) {
+      bs.tablas[ti].columnas.splice(ci, 1);
+      builderIsDirty = true;
+      renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    }
+  }));
+
+  // Agregar Fila a tabla
+  container.querySelectorAll('[data-addtblrow]').forEach(b => b.addEventListener('click', () => {
+    syncBuilderFromDom(container, bs);
+    const ti = +b.dataset.addtblrow;
+    const etiqInp = document.getElementById(`newRowEtiq_${ti}`);
+    const etiq = etiqInp ? etiqInp.value.trim() : '';
+    if (!etiq) {
+      if (etiqInp) etiqInp.focus();
+      return;
+    }
+    if (!bs.tablas[ti].filas) bs.tablas[ti].filas = [];
+    bs.tablas[ti].filas.push({ id: 'f_' + Date.now(), etiqueta: etiq });
+    builderIsDirty = true;
+    renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+  }));
+
+  // Quitar Fila de tabla
+  container.querySelectorAll('[data-rmtblrow]').forEach(b => b.addEventListener('click', () => {
+    syncBuilderFromDom(container, bs);
+    const [ti, ri] = b.dataset.rmtblrow.split('|').map(Number);
+    if (bs.tablas[ti] && bs.tablas[ti].filas) {
+      bs.tablas[ti].filas.splice(ri, 1);
+      builderIsDirty = true;
+      renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    }
+  }));
+
+  container.querySelectorAll('[data-tbl-titulo]').forEach(inp => inp.addEventListener('input', onLiveInput));
+  container.querySelectorAll('[data-tbl-desc]').forEach(inp => inp.addEventListener('input', onLiveInput));
+
+  // Listeners de Secciones e Indicadores
   container.querySelectorAll('[data-secname]').forEach(inp => inp.addEventListener('input', onLiveInput));
   container.querySelectorAll('[data-sec][data-item]').forEach(inp => inp.addEventListener('input', onLiveInput));
+  container.querySelectorAll('[data-sec][data-item-evidencia]').forEach(inp => inp.addEventListener('input', onLiveInput));
+  container.querySelectorAll('[data-sec][data-item-code]').forEach(inp => inp.addEventListener('input', onLiveInput));
+
+  // Listeners de Extras
   container.querySelectorAll('[data-extralabel]').forEach(inp => inp.addEventListener('input', onLiveInput));
-  container.querySelectorAll('[data-extratipo]').forEach(sel => sel.addEventListener('change', onLiveInput));
+  container.querySelectorAll('[data-extratipo]').forEach(sel => sel.addEventListener('change', () => {
+    syncBuilderFromDom(container, bs);
+    renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+  }));
   container.querySelectorAll('[data-extrareq]').forEach(chk => chk.addEventListener('change', onLiveInput));
+  container.querySelectorAll('[data-extraopts]').forEach(inp => inp.addEventListener('input', onLiveInput));
 
   // Agregar Ítem
   container.querySelectorAll('[data-additem]').forEach(b => b.addEventListener('click', () => {
     syncBuilderFromDom(container, bs);
-    bs.secciones[+b.dataset.additem].items.push({ id: genId(), texto: '' });
+    const si = +b.dataset.additem;
+    const nextIdx = (bs.secciones[si].items || []).length + 1;
+    bs.secciones[si].items.push({ id: genId(), texto: '', evidencia: '' });
     builderIsDirty = true;
     renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
   }));
@@ -9150,7 +10439,10 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
   if (addSecBtn) {
     addSecBtn.addEventListener('click', () => {
       syncBuilderFromDom(container, bs);
-      bs.secciones.push({ nombre: '', items: [{ id: genId(), texto: '' }] });
+      bs.secciones.push({
+        nombre: `Sección ${bs.secciones.length + 1}`,
+        items: [{ id: genId(), texto: '', evidencia: '' }]
+      });
       builderIsDirty = true;
       renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
     });
@@ -9233,7 +10525,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
   if (addExtraBtn) {
     addExtraBtn.addEventListener('click', () => {
       syncBuilderFromDom(container, bs);
-      bs.extras.push({ id: genId(), label: '', tipo: 'texto', required: false });
+      bs.extras.push({ id: genId(), label: '', tipo: 'texto', required: false, opciones: '' });
       builderIsDirty = true;
       renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
     });
@@ -9247,7 +10539,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
     renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
   }));
 
-  // Cancelar con confirmación de cambios pendientes
+  // Cancelar con confirmación
   const cancelBtn = document.getElementById('cancelTipoBtn');
   if (cancelBtn) {
     cancelBtn.addEventListener('click', () => {
@@ -9256,6 +10548,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         if (!ok) return;
       }
       builderIsDirty = false;
+      builderJsonUnlocked = false;
       tiposView = 'list';
       renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
     });
@@ -9274,18 +10567,27 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       }
       draftBtn.disabled = true;
       draftBtn.textContent = 'Guardando...';
+
       const payload = {
         nombre: bs.nombre.trim(),
+        nombreCorto: (bs.nombreCorto || bs.nombre).trim(),
         descripcion: (bs.descripcion || '').trim(),
         icono: (bs.icono || '📋').trim(),
         color: bs.color || FICHA_PALETTE[0].hex,
         modalidad: bs.modalidad || 'General',
         tipoRespuesta: bs.tipoRespuesta || 'si_no',
+        regla_nivel: bs.regla_nivel || 'porcentaje',
+        version: bs.version || '2026.1',
+        tieneVisitas: !!bs.tieneVisitas,
+        visitas: bs.tieneVisitas ? (Array.isArray(bs.visitas) && bs.visitas.length > 0 ? bs.visitas : ['Visita 1', 'Visita 2', 'Visita 3']) : [],
         secciones: bs.secciones,
         extras: bs.extras,
+        tablas: Array.isArray(bs.tablas) ? bs.tablas : [],
+        compromisos: bs.compromisos || { habilitado: true, director: true, especialista: true, filasPorVisita: 3 },
         esBorrador: true,
         updatedAt: Date.now()
       };
+
       try {
         if (builderEditingId) {
           await dbNs.collection('fichaTypes').doc(builderEditingId).set(payload, { merge: true });
@@ -9330,17 +10632,21 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         .filter(s => s.nombre.trim() || s.items.some(i => i.texto.trim()))
         .map(s => ({
           nombre: s.nombre.trim() || 'Sección',
-          items: (s.items || []).filter(i => i.texto.trim()).map(i => ({ id: i.id || genId(), texto: i.texto.trim() }))
+          items: (s.items || []).filter(i => i.texto.trim()).map(i => ({
+            id: i.id || genId(),
+            texto: i.texto.trim(),
+            evidencia: (i.evidencia || '').trim()
+          }))
         }));
 
       const totalValidItems = validSections.reduce((acc, s) => acc + s.items.length, 0);
       if (validSections.length === 0 || totalValidItems === 0) {
-        showToast('La ficha debe tener al menos una sección con un ítem.');
+        showToast('La ficha debe tener al menos una sección con un indicador.');
         return;
       }
 
       if (existingCount > 0) {
-        const ok = confirm(`Atención: Esta plantilla tiene ${existingCount} visita(s) registradas.\n\nLos cambios en los indicadores se aplicarán a las nuevas visitas que se registren. ¿Deseas guardar los cambios?`);
+        const ok = confirm(`Atención: Esta plantilla tiene ${existingCount} visita(s) registradas históricamente.\n\nLos cambios en indicadores y tablas se aplicarán a las nuevas visitas. ¿Deseas guardar los cambios?`);
         if (!ok) return;
       }
 
@@ -9354,13 +10660,20 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
 
       const payload = {
         nombre: bs.nombre.trim(),
+        nombreCorto: (bs.nombreCorto || bs.nombre).trim(),
         descripcion: (bs.descripcion || '').trim(),
         icono: (bs.icono || '📋').trim(),
         color: bs.color || FICHA_PALETTE[0].hex,
         modalidad: bs.modalidad || 'General',
         tipoRespuesta: bs.tipoRespuesta || 'si_no',
+        regla_nivel: bs.regla_nivel || 'porcentaje',
+        version: bs.version || '2026.1',
+        tieneVisitas: !!bs.tieneVisitas,
+        visitas: bs.tieneVisitas ? (Array.isArray(bs.visitas) && bs.visitas.length > 0 ? bs.visitas : ['Visita 1', 'Visita 2', 'Visita 3']) : [],
         secciones: validSections,
-        extras: (bs.extras || []).filter(e => e.label.trim()),
+        extras: (bs.extras || []).filter(e => e.label && e.label.trim()),
+        tablas: Array.isArray(bs.tablas) ? bs.tablas : [],
+        compromisos: bs.compromisos || { habilitado: true, director: true, especialista: true, filasPorVisita: 3 },
         esBorrador: false,
         updatedAt: Date.now()
       };
@@ -9375,13 +10688,14 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
           showToast('✓ Tipo de ficha creado exitosamente.');
         }
         builderIsDirty = false;
+        builderJsonUnlocked = false;
         tiposView = 'list';
         renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
       } catch (err) {
         console.error(err);
         showToast('No se pudo guardar la ficha: ' + err.message);
         saveBtn.disabled = false;
-        saveBtn.textContent = '💾 Guardar ficha';
+        saveBtn.textContent = '💾 Guardar ficha completa';
       }
     });
   }
@@ -10491,7 +11805,13 @@ export function getPodioLockDocId(podioKey, puestoVal) {
   return `lock_${safePodio}_${safePuesto}`.slice(0, 120);
 }
 
-let concursoSubTab = 'registrar'; // 'registrar' | 'consolidado' | 'tipos'
+let concursoSubTab = 'consolidado'; // 'consolidado' | 'registrar' | 'asignar_podios' | 'asistente' | 'tipos'
+export function getConcursoSubTab() {
+  return concursoSubTab;
+}
+export function setConcursoSubTab(tab) {
+  concursoSubTab = tab;
+}
 let concursoSelectedTipoId = null;
 let concursoEditingId = null;
 let concursoEditingData = null;
@@ -10600,7 +11920,7 @@ export function renderConcursosTab(container, state, dbNs, isAdmin, currentUser,
 
   container.querySelectorAll('[data-csubtab]').forEach(btn => {
     btn.addEventListener('click', () => {
-      concursoSubTab = btn.dataset.csubtab;
+      setConcursoSubTab(btn.dataset.csubtab);
       renderConcursosTab(container, state, dbNs, isAdmin, currentUser, navigate);
     });
   });

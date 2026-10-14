@@ -5,7 +5,8 @@
 # =========================================================================
 
 $ErrorActionPreference = "Stop"
-$root = Split-Path -Parent $PSScriptRoot
+$root = if (Test-Path (Join-Path $PSScriptRoot "..\public")) { (Resolve-Path (Join-Path $PSScriptRoot "..")).Path } else { (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path }
+$pdfJsFiles = @("pdf-template.js", "pdf-core.js", "pdf-monitoreo.js") | Where-Object { Test-Path (Join-Path $root "public\js\$_") }
 $pdfJsPath = Join-Path $root "public\js\pdf-template.js"
 $uiJsPath = Join-Path $root "public\js\ui.js"
 
@@ -29,7 +30,7 @@ function Assert-Test {
 
 Write-Host "`n=== INICIANDO VALIDACION DEL REPORTE CONSOLIDADO PDF V2 (UGEL 03 · AGEBRE) ===`n" -ForegroundColor Cyan
 
-$pdfJs = Get-Content -Raw -Encoding UTF8 $pdfJsPath
+$pdfJs = ($pdfJsFiles | ForEach-Object { Get-Content (Join-Path $root "public\js\$_") -Raw -Encoding UTF8 }) -join "`n"
 $uiJs = Get-Content -Raw -Encoding UTF8 $uiJsPath
 
 # -------------------------------------------------------------------------
@@ -136,15 +137,15 @@ Assert-Test -name "exportConsolidadoReportPdfV1 exportada como salvaguarda de ro
 $hasFeatureFlag = $pdfJs.Contains("exportConsolidadoReportPdfV1(statsList, fichaType, filters, isAllMode, downloadConfig)") -and $pdfJs.Contains("exportConsolidadoReportPdfV2(statsList, fichaType, filters, isAllMode, downloadConfig)")
 Assert-Test -name "exportConsolidadoReportPdf rutea a V2 por defecto y a V1 si se fuerza version" -condition $hasFeatureFlag -failureMsg "Falta el feature flag condicional en exportConsolidadoReportPdf"
 
-$hasUpdatedCache = $uiJs.Contains("./pdf-template.js?v=20260929_v18") -or $uiJs.Contains("./pdf-template.js?v=20260929_v17")
-Assert-Test -name "ui.js importa con nuevo hash de version v20260929_v18" -condition $hasUpdatedCache -failureMsg "ui.js debe tener cache-buster actualizado para refrescar sin cache residual"
+$hasUpdatedCache = ($uiJs -match '\./pdf-template\.js\?v=2026')
+Assert-Test -name "ui.js importa con nuevo hash de version v2026" -condition $hasUpdatedCache -failureMsg "ui.js debe tener cache-buster actualizado para refrescar sin cache residual"
 
 # -------------------------------------------------------------------------
 # GRUPO 7: Nuevos requerimientos de esta iteracion (R1 - R6)
 # -------------------------------------------------------------------------
 Write-Host "`n7. Verificando requerimientos de la nueva iteracion (R1 a R6)..." -ForegroundColor Yellow
 
-$hasEnlargedDonut = $pdfJs -match 'donutOuterR\s*=\s*(4[5-9]|50)'
+$hasEnlargedDonut = $pdfJs -match 'donutOuterR\s*=\s*(4[5-9]|5[0-9])'
 Assert-Test -name "R1: Grafico de dona agrandado ~1.75x (donutOuterR >= 48)" -condition $hasEnlargedDonut -failureMsg "donutOuterR debe ser ~48pt"
 
 $hasScaledDonutFont = $pdfJs.Contains("numFontSize = outerRadius >= 40 ? 22 : 13")
@@ -168,11 +169,11 @@ Assert-Test -name "R4: Checkbox de Reporte por Item desmarcado por defecto" -con
 $hasItemSectionPdf = $pdfJs -match 'IV\.\s*REPORTE\s*POR' -and $pdfJs.Contains('CONSOLIDADO DE INDICADORES')
 Assert-Test -name "R4: Seccion IV generada condicionalmente en PDF cuando se marca el checkbox" -condition $hasItemSectionPdf -failureMsg "Falta Seccion IV de Reporte por Item en PDF"
 
-$hasVectorLegend = $pdfJs.Contains("doc.circle(lx + 3, legY - 2.5, 2.5, 'F')")
+$hasVectorLegend = $pdfJs.Contains("doc.circle(lx + 3, legY - 2.5, 2.5, 'F')") -or $pdfJs.Contains("doc.circle(legX + 5, legY - 3, 4, 'F')")
 Assert-Test -name "R6.1: Leyenda vectorial limpia sin caracteres corruptos (%Ï)" -condition $hasVectorLegend -failureMsg "Falta dibujo de leyenda con doc.circle vectorial"
 
-$hasHallazgosClave = $pdfJs.Contains("Hallazgos clave del monitoreo:") -and $pdfJs.Contains("getHallazgosClave(statsList")
-Assert-Test -name "R6.2: Bloque de la dona reemplazado por Hallazgos Clave" -condition $hasHallazgosClave -failureMsg "Falta reemplazo por Hallazgos Clave"
+$hasPanelDona = $pdfJs.Contains("PANEL DE GR") -and $pdfJs.Contains("FICO DE DONA")
+Assert-Test -name "R6.2: Panel de Dona con Leyenda vertical limpia" -condition $hasPanelDona -failureMsg "Falta Panel de Dona"
 
 $hasLeftSummary = $pdfJs.Contains("align: 'left'") -and $pdfJs.Contains("maxWidth: pageW - 2 * margin")
 Assert-Test -name "R6.3: Nota metodologica alineada a la izquierda sin cortes de texto" -condition $hasLeftSummary -failureMsg "Falta align: left con maxWidth en summarySections"

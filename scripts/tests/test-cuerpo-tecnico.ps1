@@ -29,8 +29,7 @@ Test-Assert ($rulesContent -match 'match /logActividades/\{docId\}') 'Regla matc
 Test-Assert ($rulesContent -match 'match /logActividades/\{docId\}\s*\{\s*allow read, create:\s*if signedIn\(\);') 'Bitacora logActividades permite read y create a usuarios con sesion'
 
 # 2. Verificación de helpers y polimorfismo en pdf-template.js
-Write-Host "`n2. Verificando helpers y compatibilidad en pdf-template.js..." -ForegroundColor Yellow
-$pdfContent = Get-Content "public\js\pdf-template.js" -Raw -Encoding UTF8
+$pdfContent = if (Test-Path "public\js\pdf-concursos.js") { Get-Content "public\js\pdf-concursos.js" -Raw -Encoding UTF8 } else { Get-Content "public\js\pdf-template.js" -Raw -Encoding UTF8 }
 
 Test-Assert ($pdfContent -match 'export function generarConcursoCuerpoTecnicoDocId') 'Funcion generarConcursoCuerpoTecnicoDocId exportada'
 Test-Assert ($pdfContent -match 'export function obtenerCuerpoTecnicoGrupo') 'Funcion obtenerCuerpoTecnicoGrupo exportada'

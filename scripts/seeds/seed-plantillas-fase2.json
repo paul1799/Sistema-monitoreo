@@ -12,9 +12,9 @@
     "regla_nivel": {
       "tipo": "porcentaje",
       "umbrales": [
-        { "nivel": "Logrado",     "min": 85, "estado_panel": "Logrado"    },
-        { "nivel": "En proceso",  "min": 70, "estado_panel": "En proceso" },
-        { "nivel": "Por mejorar", "min":  0, "estado_panel": "Inicio"     }
+        { "nivel": "Logrado",     "min": 67, "estado_panel": "Logrado"    },
+        { "nivel": "Proceso",     "min": 34, "estado_panel": "En proceso" },
+        { "nivel": "Inicio",      "min":  0, "estado_panel": "Inicio"     }
       ]
     },
     "version": { "anio": 2026, "momento": "1er", "estado": "publicada" },
@@ -196,9 +196,9 @@
     "regla_nivel": {
       "tipo": "porcentaje",
       "umbrales": [
-        { "nivel": "Logrado",     "min": 85, "estado_panel": "Logrado"    },
-        { "nivel": "En proceso",  "min": 70, "estado_panel": "En proceso" },
-        { "nivel": "Por mejorar", "min":  0, "estado_panel": "Inicio"     }
+        { "nivel": "Logrado",     "min": 67, "estado_panel": "Logrado"    },
+        { "nivel": "Proceso",     "min": 34, "estado_panel": "En proceso" },
+        { "nivel": "Inicio",      "min":  0, "estado_panel": "Inicio"     }
       ]
     },
     "version": { "anio": 2026, "momento": null, "estado": "publicada" },
