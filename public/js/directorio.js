@@ -7,7 +7,7 @@
    Exportación fiel de plantilla oficial E2_Directorio_de_Directores_por_IE
    ========================================================================= */
 
-import { esc, showToast, genId, fmtDate } from './ui.js?v=20260928_v12';
+import { esc, showToast, genId, fmtDate, normalizeReiNumber } from './ui/core-utils.js?v=20261015_v1';
 
 /* =========================================================================
    1. UTILIDADES Y NORMALIZACIÓN
@@ -895,7 +895,13 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
   cleanExistingPlaceholderDirectivos(dbNs, state, currentUser);
 
   const colegios = state.colegios || [];
-  const reiList = Array.from(new Set(colegios.map(c => c.rei).filter(Boolean))).sort();
+  const standardReis = Array.from({ length: 16 }, (_, i) => String(i + 1).padStart(2, '0'));
+  const reiSet = new Set(standardReis);
+  colegios.forEach(c => {
+    const r = normalizeReiNumber(c.rei || c.red);
+    if (r) reiSet.add(r);
+  });
+  const reiList = Array.from(reiSet).sort((a, b) => Number(a) - Number(b));
   const distritoList = Array.from(new Set(colegios.map(c => c.distrito).filter(Boolean))).sort();
   const modalidadList = Array.from(new Set(colegios.map(c => c.modalidad).filter(Boolean))).sort();
   const nivelList = Array.from(new Set(colegios.map(c => c.nivelServicio).filter(Boolean))).sort();
@@ -1018,7 +1024,7 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
     return `
       <tr class="clickable directRow" data-col-id="${esc(c.id)}">
         <!-- Sticky: REI -->
-        <td class="stickyCol stickyCol1" style="font-weight:700;text-align:center;width:70px;min-width:70px;max-width:70px">${esc(c.rei || '—')}</td>
+        <td class="stickyCol stickyCol1" style="font-weight:700;text-align:center;width:70px;min-width:70px;max-width:70px">${esc(normalizeReiNumber(c.rei || c.red) || c.rei || '—')}</td>
         <!-- Sticky: Código local -->
         <td class="stickyCol stickyCol2" style="width:100px;min-width:100px;max-width:100px"><code style="font-size:11.5px">${esc(c.codigoLocal || '—')}</code></td>
         <!-- Sticky: I.E. -->
@@ -1051,7 +1057,10 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
       const dir = item.director;
       const subs = item.subdirectores;
 
-      if (dirFilters.rei && c.rei !== dirFilters.rei) return false;
+      if (dirFilters.rei) {
+        const targetRei = normalizeReiNumber(dirFilters.rei);
+        if (normalizeReiNumber(c.rei || c.red) !== targetRei) return false;
+      }
       if (dirFilters.distrito && !normalizeStr(c.distrito).includes(normalizeStr(dirFilters.distrito))) return false;
       if (dirFilters.modalidad && c.modalidad !== dirFilters.modalidad) return false;
       if (dirFilters.nivelServicio && c.nivelServicio !== dirFilters.nivelServicio) return false;
@@ -1077,9 +1086,9 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
     });
 
     list.sort((a, b) => {
-      const rA = a.colegio.rei || 'ZZZ';
-      const rB = b.colegio.rei || 'ZZZ';
-      const cmpRei = rA.localeCompare(rB, undefined, { numeric: true });
+      const rA = normalizeReiNumber(a.colegio.rei || a.colegio.red) || '99';
+      const rB = normalizeReiNumber(b.colegio.rei || b.colegio.red) || '99';
+      const cmpRei = Number(rA) - Number(rB);
       if (cmpRei !== 0) return cmpRei;
       return (a.colegio.ie || '').localeCompare(b.colegio.ie || '');
     });
@@ -1152,7 +1161,10 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
           <label for="dir_fil_rei">REI / Red</label>
           <select id="dir_fil_rei">
             <option value="">Todas</option>
-            ${reiList.map(r => `<option value="${esc(r)}" ${dirFilters.rei === r ? 'selected' : ''}>${esc(r)}</option>`).join('')}
+            ${reiList.map(r => {
+              const isSel = (r === dirFilters.rei) || (normalizeReiNumber(dirFilters.rei) === r);
+              return `<option value="${esc(r)}" ${isSel ? 'selected' : ''}>${esc(r)}</option>`;
+            }).join('')}
           </select>
         </div>
         <div class="field">
@@ -1308,7 +1320,7 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
   if (inpQ) inpQ.addEventListener('input', e => { dirFilters.q = e.target.value; updateTableOnly(); });
 
   const selRei = container.querySelector('#dir_fil_rei');
-  if (selRei) selRei.addEventListener('change', e => { dirFilters.rei = e.target.value; updateTableOnly(); });
+  if (selRei) selRei.addEventListener('change', e => { dirFilters.rei = normalizeReiNumber(e.target.value) || e.target.value; updateTableOnly(); });
 
   const inpDist = container.querySelector('#dir_fil_distrito');
   if (inpDist) inpDist.addEventListener('input', e => { dirFilters.distrito = e.target.value; updateTableOnly(); });
@@ -1492,7 +1504,7 @@ function openDirectorioDetailModal(colegio, state, dbNs, isAdmin, currentUser, o
 
         <div style="margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:12px">
           <div style="display:flex;align-items:center;gap:8px">
-            <span class="badge st-logrado" style="font-weight:700">REI ${esc(colegio.rei || '—')}</span>
+            <span class="badge st-logrado" style="font-weight:700">REI ${esc(normalizeReiNumber(colegio.rei || colegio.red) || colegio.rei || '—')}</span>
             <span style="font-size:12px;color:var(--ink-soft)">Código Local: <code>${esc(colegio.codigoLocal || '—')}</code></span>
           </div>
           <h2 style="margin:6px 0 2px;font-size:20px">${esc(colegio.ie)}</h2>
@@ -2092,7 +2104,7 @@ export async function generateDirectorioExcelFile(state, colegiosList, currentUs
 
     // Construcción del objeto fila con las 17 claves en orden fijo
     const rowObj = {
-      rei: cleanTextCode(c.rei),
+      rei: normalizeReiNumber(c.rei || c.red) || cleanTextCode(c.rei),
       codigoLocal: cleanTextCode(c.codigoLocal),
       ie: String(c.ie || '').trim(),
       modalidad: String(c.modalidad || '').trim(),
@@ -2359,7 +2371,7 @@ function openDirectorioImportModal(state, dbNs, currentUser, onSuccess) {
 
         parsedRows.push({
           rowNum: r + 1,
-          rei: cleanTextCode(row[0]),
+          rei: normalizeReiNumber(cleanTextCode(row[0])) || cleanTextCode(row[0]),
           codigoLocal: codLocal,
           ie: ie,
           dirNombre: isPlaceholderDirectivo(row[9]) ? '' : normalizeStr(row[9]),

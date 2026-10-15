@@ -145,7 +145,7 @@ export function normalizarSiNoNa(rawVal) {
   }
   const s = String(rawVal).trim().toUpperCase();
   if (s === '') return '';
-  if (s === 'SI' || s === 'SÃ' || s === 'TRUE' || s === '1' || s === 'CUMPLE' || s === 'C') return 'SI';
+  if (s === 'SI' || s === 'SÍ' || s === 'TRUE' || s === '1' || s === 'CUMPLE' || s === 'C') return 'SI';
   if (s === 'NO' || s === 'FALSE' || s === '0' || s === 'NO CUMPLE' || s === 'NC' || s === 'N') return 'NO';
   if (s === 'N/A' || s === 'NA' || s === 'NO APLICA' || s === 'NOAPLICA') return 'N/A';
   return '';
@@ -467,16 +467,16 @@ export async function exportarMatrizSeguimiento({
 
 /**
  * Dibuja la estructura y fÃ³rmulas de la hoja "MODELO JEC" segÃºn la estructura REAL del sistema:
- * - 3 Componentes oficiales: PedagÃ³gico (9), GestiÃ³n (11), Soporte (11) = 31 indicadores
- * - Opciones de respuesta: SI, NO, N/A (sin escala 1-2-3 ni conversiÃ³n inventada)
- * - FÃ³rmulas de % CUMPLIMIENTO por componente (=IFERROR(SI/(SI+NO),""))
+ * - 3 Componentes oficiales: Pedagógico (9), Gestión (11), Soporte (11) = 31 indicadores
+ * - Opciones de respuesta: SI, NO, N/A (sin escala 1-2-3 ni conversión inventada)
+ * - Fórmulas de % CUMPLIMIENTO por componente (=IFERROR(SI/(SI+NO),""))
  * - % Cumplimiento General por IIEE (sobre los 31 indicadores)
- * - Nivel de ImplementaciÃ³n por IIEE segÃºn regla oficial:
- *     24 a 31 SÃ­ -> "ImplementaciÃ³n lograda"
- *     12 a 23 SÃ­ -> "ImplementaciÃ³n parcial"
- *     0 a 11 SÃ­  -> "ImplementaciÃ³n incipiente"
- * - Bloque de estadÃ­stica con filas SÃ­ (Cumple), No (No cumple), N/A (No aplica), Total, % Cumple, % No cumple
- * - Cuadro RESULTADO oficial por niveles con fÃ³rmulas COUNTIF
+ * - Nivel de Implementación por IIEE según regla oficial:
+ *     24 a 31 Sí -> "Implementación lograda"
+ *     12 a 23 Sí -> "Implementación parcial"
+ *     0 a 11 Sí  -> "Implementación incipiente"
+ * - Bloque de estadística con filas Sí (Cumple), No (No cumple), N/A (No aplica), Total, % Cumple, % No cumple
+ * - Cuadro RESULTADO oficial por niveles con fórmulas COUNTIF
  * - Cuadro CUMPLIMIENTO POR COMPONENTE con el % agregado y estado
  */
 export function _construirHojaMatrizJec(ws, config, itemsList, state) {
@@ -702,18 +702,18 @@ export function _construirHojaMatrizJec(ws, config, itemsList, state) {
   ws.getColumn(colPctGeneral).width = 16.5;
   currentCol++;
 
-  // â”€â”€â”€ BLOQUE 12: Nivel de ImplementaciÃ³n por IIEE â”€â”€â”€
+  // ─── BLOQUE 12: Nivel de Implementación por IIEE ───
   const colNivel = currentCol;
   ws.mergeCells(1, colNivel, 3, colNivel);
   const cellNiv = ws.getCell(1, colNivel);
-  cellNiv.value = 'Nivel de ImplementaciÃ³n por IIEE';
+  cellNiv.value = 'Nivel de Implementación por IIEE';
   styleMergedRange(ws, colNivel, 1, colNivel, 3, {
     font: { name: 'Arial', size: 16, bold: true },
     fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: PALETA_MATRIZ.finalesHeader } },
     alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
     border: BORDER_THIN_BLACK
   });
-  ws.getColumn(colNivel).width = 18.0;
+  ws.getColumn(colNivel).width = 25.0;
   currentCol++;
 
   // 4 columnas vacÃ­as antes del Cuadro RESULTADO
@@ -722,13 +722,13 @@ export function _construirHojaMatrizJec(ws, config, itemsList, state) {
     currentCol++;
   }
 
-  // â”€â”€â”€ BLOQUE 13: CUADROS RESULTADO Y CUMPLIMIENTO POR COMPONENTE â”€â”€â”€
+  // ─── BLOQUE 13: CUADROS RESULTADO Y CUMPLIMIENTO POR COMPONENTE ───
   const colRes1 = currentCol;
   const colRes2 = currentCol + 1;
   const colRes3 = currentCol + 2;
   ws.getColumn(colRes1).width = 28.9;
   ws.getColumn(colRes2).width = 13.0;
-  ws.getColumn(colRes3).width = 13.0;
+  ws.getColumn(colRes3).width = 24.0;
 
   // =========================================================================
   // LLENADO DE DATOS (Filas 4 a dN)
@@ -938,11 +938,11 @@ export function _construirHojaMatrizJec(ws, config, itemsList, state) {
     genCell.numFmt = '0%';
     genCell.border = BORDER_THIN;
 
-    // Nivel de ImplementaciÃ³n por IIEE (Col BI) segÃºn regla oficial (conteo de SÃ­: >=24 Lograda, >=12 Parcial, Incipiente)
+    // Nivel de Implementación por IIEE (Col BI) según regla oficial (conteo de Sí: >=24 Lograda, >=12 Parcial, Incipiente)
     const nivelCell = row.getCell(colNivel);
     const genColLetra = colToLetter(colPctGeneral);
     nivelCell.value = {
-      formula: `IF(${genColLetra}${r}="","",IF((${countSiExpr})>=24,"ImplementaciÃ³n lograda",IF((${countSiExpr})>=12,"ImplementaciÃ³n parcial","ImplementaciÃ³n incipiente")))`
+      formula: `IF(${genColLetra}${r}="","",IF((${countSiExpr})>=24,"Implementación lograda",IF((${countSiExpr})>=12,"Implementación parcial","Implementación incipiente")))`
     };
     nivelCell.font = { name: 'Arial', size: 14, bold: true };
     nivelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PALETA_MATRIZ.nivelData } };
@@ -987,7 +987,7 @@ export function _construirHojaMatrizJec(ws, config, itemsList, state) {
     });
   });
 
-  // â”€â”€â”€ FORMATO CONDICIONAL PARA COLUMNA NIVEL (Col BI, D1:DN) â”€â”€â”€
+  // ─── FORMATO CONDICIONAL PARA COLUMNA NIVEL (Col BI, D1:DN) ───
   const colNivelLetter = colToLetter(colNivel);
   const nivelRange = `${colNivelLetter}${d1}:${colNivelLetter}${dN}`;
   ws.addConditionalFormatting({
@@ -996,19 +996,19 @@ export function _construirHojaMatrizJec(ws, config, itemsList, state) {
       {
         type: 'cellIs',
         operator: 'equal',
-        formulae: ['"ImplementaciÃ³n lograda"'],
+        formulae: ['"Implementación lograda"'],
         style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: PALETA_MATRIZ.condicionalLogrado } } }
       },
       {
         type: 'cellIs',
         operator: 'equal',
-        formulae: ['"ImplementaciÃ³n parcial"'],
+        formulae: ['"Implementación parcial"'],
         style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: PALETA_MATRIZ.condicionalProceso } } }
       },
       {
         type: 'cellIs',
         operator: 'equal',
-        formulae: ['"ImplementaciÃ³n incipiente"'],
+        formulae: ['"Implementación incipiente"'],
         style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: PALETA_MATRIZ.condicionalInicio } } }
       }
     ]
@@ -1049,7 +1049,7 @@ export function _construirHojaMatrizJec(ws, config, itemsList, state) {
 
   // Etiquetas oficiales en la columna separadora gris (Col W)
   const etiquetasStat = [
-    { row: sRow1, text: 'SÃ­ (Cumple)' },
+    { row: sRow1, text: 'Sí (Cumple)' },
     { row: sRow2, text: 'No (No cumple)' },
     { row: sRow3, text: 'N/A (No aplica)' },
     { row: sRow4, text: 'Total' },
@@ -1169,9 +1169,9 @@ export function _construirHojaMatrizJec(ws, config, itemsList, state) {
   });
 
   const nivelesJec = [
-    { row: 5, label: 'ImplementaciÃ³n incipiente', color: PALETA_MATRIZ.resultadoInicio },
-    { row: 6, label: 'ImplementaciÃ³n parcial', color: PALETA_MATRIZ.resultadoProceso },
-    { row: 7, label: 'ImplementaciÃ³n lograda', color: PALETA_MATRIZ.resultadoLogrado }
+    { row: 5, label: 'Implementación incipiente', color: PALETA_MATRIZ.resultadoInicio },
+    { row: 6, label: 'Implementación parcial', color: PALETA_MATRIZ.resultadoProceso },
+    { row: 7, label: 'Implementación lograda', color: PALETA_MATRIZ.resultadoLogrado }
   ];
 
   nivelesJec.forEach(n => {
@@ -1253,7 +1253,7 @@ export function _construirHojaMatrizJec(ws, config, itemsList, state) {
     const cEst = ws.getCell(rowIdx, colRes3);
     const valRef = `${boLetter}${rowIdx}`;
     cEst.value = {
-      formula: `IF(${valRef}="","",IF(${valRef}>=0.75,"ImplementaciÃ³n lograda",IF(${valRef}>=0.4,"ImplementaciÃ³n parcial","ImplementaciÃ³n incipiente")))`
+      formula: `IF(${valRef}="","",IF(${valRef}>=0.75,"Implementación lograda",IF(${valRef}>=0.4,"Implementación parcial","Implementación incipiente")))`
     };
     cEst.font = { name: 'Arial', size: 10, bold: true };
     cEst.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1279,7 +1279,7 @@ export function _construirHojaMatrizJec(ws, config, itemsList, state) {
   const cGenEst = ws.getCell(rowGenIdx, colRes3);
   const genValRef = `${boLetter}${rowGenIdx}`;
   cGenEst.value = {
-    formula: `IF(${genValRef}="","",IF(${genValRef}>=0.75,"ImplementaciÃ³n lograda",IF(${genValRef}>=0.4,"ImplementaciÃ³n parcial","ImplementaciÃ³n incipiente")))`
+    formula: `IF(${genValRef}="","",IF(${genValRef}>=0.75,"Implementación lograda",IF(${genValRef}>=0.4,"Implementación parcial","Implementación incipiente")))`
   };
   cGenEst.font = { name: 'Arial', size: 10, bold: true };
   cGenEst.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -2664,6 +2664,14 @@ export function _obtenerValorPersona(s, key, state = null) {
   return p.nombres;
 }
 
+function _normRei(val) {
+  if (val === undefined || val === null) return '';
+  const str = String(val).trim();
+  if (!str || str === '—' || str === '-' || str.toLowerCase().includes('no aplica')) return '';
+  const match = str.match(/\d+/);
+  return match ? String(parseInt(match[0], 10)).padStart(2, '0') : str;
+}
+
 function _obtenerValorDatoGeneral(s, key, state = null) {
   if (!s) return '';
   switch (key) {
@@ -2678,8 +2686,10 @@ function _obtenerValorDatoGeneral(s, key, state = null) {
     }
     case 'ugel':
       return s.ugel ? (String(s.ugel).toLowerCase().includes('sector') ? 'UGEL 03' : (String(s.ugel).trim() === '03' ? 'UGEL 03' : String(s.ugel).trim())) : 'UGEL 03';
-    case 'red':
-      return s.red || s.rei || (s.ie && s.ie.red) || (s.ie && s.ie.rei) || '';
+    case 'red': {
+      const rawRed = s.red || s.rei || (s.ie && s.ie.red) || (s.ie && s.ie.rei) || '';
+      return _normRei(rawRed);
+    }
     case 'fecha':
       return formatDateOnlyForExcel(s.fecha || '');
     case 'secciones': {
@@ -3019,7 +3029,7 @@ export function _construirHojaMonitoreoDocente(ws, itemsList, state) {
     const s = item.s || {};
     const instNom = s.institucion || s.nombreIe || (typeof s.ie === 'string' ? s.ie : (s.ie && s.ie.nombre) ? s.ie.nombre : '') || '';
     const codMod = s.codigoModular || s.codModular || (s.ie && s.ie.codigoModular) || '';
-    const red = s.red || s.rei || (s.ie && s.ie.red) || (s.ie && s.ie.rei) || '';
+    const red = _normRei(s.red || s.rei || (s.ie && s.ie.red) || (s.ie && s.ie.rei) || '');
     const fechaStr = formatDateOnlyForExcel(s.fecha);
     const espNom = s.responsable || s.especialista || '';
 

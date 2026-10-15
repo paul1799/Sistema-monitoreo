@@ -30,14 +30,16 @@ import {
   RUBRICAS_OBSERVACION_AULA,
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES,
+  EBR_GESTION_VISITA_3_SECCIONES,
+  getEbrSeccionesForVisita,
   migrateLegacyEbrTotals
-} from './ebr-gestion.js?v=20261012_v5';
+} from './ebr-gestion.js?v=20261015_v1';
 
 import {
   isFichaJec,
   JEC_SECCIONES,
   getNivelLogroJec
-} from './jec-monitoreo.js?v=20261012_v5';
+} from './jec-monitoreo.js?v=20261015_v1';
 
 import {
   isFichaCoordTutoriaJec,
@@ -61,11 +63,11 @@ import {
 import {
   isFichaCebeGestion,
   CEBE_SECCIONES
-} from './cebe-gestion.js?v=20261013_v7';
+} from './cebe-gestion.js?v=20261015_v1';
 import {
   isFichaPriteGestion,
   PRITE_SECCIONES
-} from './prite-gestion.js?v=20261014_v1';
+} from './prite-gestion.js?v=20261015_v1';
 
 export const SISTEMA_NOMBRE_OFICIAL = 'Sistema de Fichas de Monitoreo';
 
@@ -121,6 +123,7 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
   const visitaNum = Number(sub.visita) || 1;
   const isV1 = visitaNum === 1;
   const isV2 = visitaNum === 2;
+  const isV3 = visitaNum === 3;
 
   const ieName = sub.institucion || (colegio ? colegio.ie : 'Institución Educativa');
   const fechaVisita = formatDate(sub.fecha);
@@ -130,7 +133,7 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
   const formacionTecnica = (sub.ie && sub.ie.formacionTecnica !== undefined) ? sub.ie.formacionTecnica : (sub.formacionTecnica === true);
 
   const title = 'FICHA DE MONITOREO Y ASISTENCIA TÉCNICA A LA GESTIÓN ESCOLAR UGEL-03-EBR';
-  const subtitle = `En el marco de la RM N.° 501-2025-MINEDU · ${isV1 ? 'Visita 1 (Primer momento)' : 'Visita 2 (Segundo momento)'}`;
+  const subtitle = `En el marco de la RM N.° 501-2025-MINEDU · ${isV1 ? 'Visita 1 (Primer momento)' : isV3 ? 'Visita 3 (Tercer momento · Salida y balance anual)' : 'Visita 2 (Segundo momento)'}`;
 
   const metaGrid = [
     { label: 'INSTITUCIÓN EDUCATIVA', value: ieName },
@@ -341,10 +344,8 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
   // -------------------------------------------------------------------------
   // ASPECTOS E INDICADORES (ESCALA: INICIO / PROCESO / LOGRADO)
   // -------------------------------------------------------------------------
-  const secAspectosRomano = isV1 ? 'IV' : 'VI';
-  const seccionesDef = isV1
-    ? (fichaType.seccionesVisita1 || EBR_GESTION_VISITA_1_SECCIONES)
-    : (fichaType.seccionesVisita2 || EBR_GESTION_VISITA_2_SECCIONES);
+  const secAspectosRomano = isV2 ? 'VI' : 'IV';
+  const seccionesDef = getEbrSeccionesForVisita(visitaNum, fichaType);
 
   const respuestas = sub.respuestas || [];
   const projsInnovacion = Array.isArray(sub.proyectosInnovacion) ? sub.proyectosInnovacion.filter(p => p && p.trim()) : [];
@@ -2184,12 +2185,14 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
       ? fichaType.secciones
       : [];
     if (isFichaCebeGestion(fichaType)) {
-      seccionesParaAgg = CEBE_SECCIONES;
+      seccionesParaAgg = (fichaType.secciones?.length ? fichaType.secciones : CEBE_SECCIONES);
     } else if (isFichaPriteGestion(fichaType)) {
-      seccionesParaAgg = PRITE_SECCIONES;
+      seccionesParaAgg = (fichaType.secciones?.length ? fichaType.secciones : PRITE_SECCIONES);
     } else if (isFichaEbrGestionEscolar(fichaType)) {
+      const hasV3 = statsList.some(x => Number(x.s.visita) === 3);
       const hasV2 = statsList.some(x => Number(x.s.visita) === 2);
-      seccionesParaAgg = hasV2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
+      const vTarget = hasV3 ? 3 : (hasV2 ? 2 : 1);
+      seccionesParaAgg = getEbrSeccionesForVisita(vTarget, fichaType);
     } else if (isFichaJec(fichaType)) {
       seccionesParaAgg = (fichaType.secciones && fichaType.secciones.length === JEC_SECCIONES.length) ? fichaType.secciones : JEC_SECCIONES;
     }
@@ -2489,12 +2492,14 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
         ? groupFt.secciones
         : [];
       if (isFichaCebeGestion(groupFt)) {
-        seccionesParaAgg = CEBE_SECCIONES;
+        seccionesParaAgg = (groupFt.secciones?.length ? groupFt.secciones : CEBE_SECCIONES);
       } else if (isFichaPriteGestion(groupFt)) {
-        seccionesParaAgg = PRITE_SECCIONES;
+        seccionesParaAgg = (groupFt.secciones?.length ? groupFt.secciones : PRITE_SECCIONES);
       } else if (isFichaEbrGestionEscolar(groupFt)) {
+        const hasV3 = groupStats.some(x => Number(x.s.visita) === 3);
         const hasV2 = groupStats.some(x => Number(x.s.visita) === 2);
-        seccionesParaAgg = hasV2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
+        const vTarget = hasV3 ? 3 : (hasV2 ? 2 : 1);
+        seccionesParaAgg = getEbrSeccionesForVisita(vTarget, groupFt);
       } else if (isFichaJec(groupFt)) {
         seccionesParaAgg = (groupFt?.secciones && groupFt.secciones.length === JEC_SECCIONES.length) ? groupFt.secciones : JEC_SECCIONES;
       }
@@ -2955,8 +2960,16 @@ export async function exportColegiosReportPdf(colegios, stats = {}, downloadConf
 
   const tableHeaders = ['REI', 'Cód. Local', 'Institución Educativa', 'Distrito', 'Gestión', 'Director(a)', 'N.° Monitoreos', 'Última Visita'];
 
+  function _normRei(val) {
+    if (val === undefined || val === null) return '';
+    const str = String(val).trim();
+    if (!str || str === '—' || str === '-' || str.toLowerCase().includes('no aplica')) return '';
+    const match = str.match(/\d+/);
+    return match ? String(parseInt(match[0], 10)).padStart(2, '0') : str;
+  }
+
   const tableRows = colegios.map(c => [
-    c.rei || '—',
+    _normRei(c.rei || c.red) || c.rei || '—',
     c.codigoLocal || '—',
     c.ie || '—',
     c.distrito || '—',

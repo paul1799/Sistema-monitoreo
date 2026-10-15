@@ -28,11 +28,11 @@ import {
   openLogoutConfirmModal,
   getConcursoSubTab,
   setConcursoSubTab,
-} from './ui.js?v=20261014_v1';
+} from './ui.js?v=20261015_v8';
 
 import { renderPortalView } from './portal.js?v=20261014_v1';
-import { renderDirectorioTab } from './directorio.js?v=20261013_v1';
-import { renderAlertasTab, getAlertCount } from './alertas.js?v=20260928_v12';
+import { renderDirectorioTab } from './directorio.js?v=20261015_v1';
+import { renderAlertasTab, getAlertCount } from './alertas.js?v=20261015_v1';
 import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261013_v2';
 
 /* ============================= MANEJADORES GLOBALES DE ERROR ============================= */

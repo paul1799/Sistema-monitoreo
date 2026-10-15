@@ -45,7 +45,6 @@ import {
 } from './pdf-core.js?v=20261014_v1';
 
 import {
-  SISTEMA_NOMBRE_OFICIAL as _SISTEMA_NOMBRE_OFICIAL,
   OFFICIAL_DIRECTIVO_ITEMS as _OFFICIAL_DIRECTIVO_ITEMS,
   OFFICIAL_DIRECTIVO_DIMENSIONS as _OFFICIAL_DIRECTIVO_DIMENSIONS,
   exportEbrGestionFichaPdf as _exportEbrGestionFichaPdf,
@@ -57,7 +56,7 @@ import {
   exportConsolidadoReportPdfV1 as _exportConsolidadoReportPdfV1,
   exportConsolidadoReportPdf as _exportConsolidadoReportPdf,
   exportColegiosReportPdf as _exportColegiosReportPdf
-} from './pdf-monitoreo.js?v=20261014_v1';
+} from './pdf-monitoreo.js?v=20261015_v1';
 
 import {
   parseArteDisciplina as _parseArteDisciplina,
@@ -89,20 +88,22 @@ import {
   exportFichasGrupalesConcursoPdf as _exportFichasGrupalesConcursoPdf,
   exportConcursosReportPdf as _exportConcursosReportPdf,
   exportActaOrdenMeritoPdf as _exportActaOrdenMeritoPdf
-} from './pdf-concursos.js?v=20261014_v1';
+} from './pdf-concursos.js?v=20261015_v1';
 
 // ---------------------------------------------------------------------------
 // 2. CONSTANTES OFICIALES RE-EXPORTADAS
 // ---------------------------------------------------------------------------
-export const SISTEMA_NOMBRE_OFICIAL = _SISTEMA_NOMBRE_OFICIAL;
-export const COMMON_GIVEN_NAMES = _COMMON_GIVEN_NAMES;
-export const APELLIDOS_OBLIGATORIO = _APELLIDOS_OBLIGATORIO;
-export const PALETA_ESTANDAR = _PALETA_ESTANDAR;
-export const JEDPA_THEME = _JEDPA_THEME;
-export const DISCIPLINAS_COLECTIVAS_DEFAULT = _DISCIPLINAS_COLECTIVAS_DEFAULT;
-export const CONCURSOS_CONFIG = _CONCURSOS_CONFIG;
-export const OFFICIAL_DIRECTIVO_ITEMS = _OFFICIAL_DIRECTIVO_ITEMS;
-export const OFFICIAL_DIRECTIVO_DIMENSIONS = _OFFICIAL_DIRECTIVO_DIMENSIONS;
+export const SISTEMA_NOMBRE_OFICIAL = 'Sistema de Fichas de Monitoreo';
+export {
+  _COMMON_GIVEN_NAMES as COMMON_GIVEN_NAMES,
+  _APELLIDOS_OBLIGATORIO as APELLIDOS_OBLIGATORIO,
+  _PALETA_ESTANDAR as PALETA_ESTANDAR,
+  _JEDPA_THEME as JEDPA_THEME,
+  _DISCIPLINAS_COLECTIVAS_DEFAULT as DISCIPLINAS_COLECTIVAS_DEFAULT,
+  _CONCURSOS_CONFIG as CONCURSOS_CONFIG,
+  _OFFICIAL_DIRECTIVO_ITEMS as OFFICIAL_DIRECTIVO_ITEMS,
+  _OFFICIAL_DIRECTIVO_DIMENSIONS as OFFICIAL_DIRECTIVO_DIMENSIONS
+};
 
 // ---------------------------------------------------------------------------
 // 3. UTILIDADES CORE Y RENDERIZADO

@@ -2,7 +2,8 @@ import { calcScore, puntajeItem, estadoPorRegla } from './calcEngine.js?v=202609
 import {
   isFichaEbrGestionEscolar,
   EBR_GESTION_VISITA_1_SECCIONES,
-  EBR_GESTION_VISITA_2_SECCIONES
+  EBR_GESTION_VISITA_2_SECCIONES,
+  getEbrSeccionesForVisita
 } from './ebr-gestion.js?v=20261012_v5';
 import {
   isFichaJec,
@@ -21,12 +22,33 @@ function _normStr(str) {
   return String(str || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
+function _normRei(val) {
+  if (val === undefined || val === null) return '';
+  const str = String(val).trim();
+  if (!str || str === '—' || str === '-' || str.toLowerCase().includes('no aplica')) return '';
+  const match = str.match(/\d+/);
+  return match ? String(parseInt(match[0], 10)).padStart(2, '0') : '';
+}
+
 export function applyFilters(subs, filters, state, colegioIdx, getFichaType, normalizeText, matchColegio) {
   let filtered = subs.slice();
   
   if (filters.institucion) filtered = filtered.filter(s => (s.institucion || '').toLowerCase().includes(filters.institucion.toLowerCase()));
   if (filters.ugel) filtered = filtered.filter(s => (s.ugel || '').toLowerCase().includes(filters.ugel.toLowerCase()));
-  if (filters.red) filtered = filtered.filter(s => (s.red || '').toLowerCase().includes(filters.red.toLowerCase()));
+  if (filters.red && String(filters.red).trim()) {
+    const fRei = _normRei(filters.red);
+    const rLower = String(filters.red).trim().toLowerCase();
+    filtered = filtered.filter(s => {
+      const sRei = _normRei(s.red || s.rei);
+      if (fRei && sRei) return sRei === fRei;
+      const col = matchColegio ? matchColegio(s, colegioIdx) : null;
+      if (col) {
+        const cRei = _normRei(col.rei || col.red);
+        if (fRei && cRei) return cRei === fRei;
+      }
+      return (s.red || s.rei || '').toLowerCase().includes(rLower);
+    });
+  }
   if (filters.visita) filtered = filtered.filter(s => String(s.visita || 1) === String(filters.visita));
   if (filters.responsable) {
     const rNorm = filters.responsable.trim().toLowerCase();
@@ -360,15 +382,17 @@ export function getHallazgosClave(statsList, ft, isEbr) {
 export function computeItemAgg(subs, ft) {
   let activeFt = ft;
   if (isFichaEbrGestionEscolar(ft)) {
+    const hasV3 = (subs || []).some(s => Number(s.visita) === 3);
     const hasV2 = (subs || []).some(s => Number(s.visita) === 2);
-    const seccionesEbr = hasV2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
-    activeFt = { ...ft, secciones: (ft && ft.secciones && ft.secciones.length === seccionesEbr.length) ? ft.secciones : seccionesEbr, tipoRespuesta: 'ips' };
+    const vTarget = hasV3 ? 3 : (hasV2 ? 2 : 1);
+    const seccionesEbr = getEbrSeccionesForVisita(vTarget, ft);
+    activeFt = { ...ft, secciones: seccionesEbr, tipoRespuesta: 'ips' };
   } else if (isFichaJec(ft)) {
-    activeFt = { ...ft, secciones: (ft && ft.secciones && ft.secciones.length === JEC_SECCIONES.length) ? ft.secciones : JEC_SECCIONES, tipoRespuesta: 'si_no' };
+    activeFt = { ...ft, secciones: (ft?.secciones?.length ? ft.secciones : JEC_SECCIONES), tipoRespuesta: 'si_no' };
   } else if (isFichaCebeGestion(ft)) {
-    activeFt = { ...ft, secciones: (ft && ft.secciones && ft.secciones.length === CEBE_SECCIONES.length) ? ft.secciones : CEBE_SECCIONES, tipoRespuesta: 'ips' };
+    activeFt = { ...ft, secciones: (ft?.secciones?.length ? ft.secciones : CEBE_SECCIONES), tipoRespuesta: 'ips' };
   } else if (isFichaPriteGestion(ft)) {
-    activeFt = { ...ft, secciones: (ft && ft.secciones && ft.secciones.length === PRITE_SECCIONES.length) ? ft.secciones : PRITE_SECCIONES, tipoRespuesta: 'ips' };
+    activeFt = { ...ft, secciones: (ft?.secciones?.length ? ft.secciones : PRITE_SECCIONES), tipoRespuesta: 'ips' };
   }
   const tipoResp = activeFt?.tipoRespuesta || 'ips';
   const escala = activeFt?.escala || (tipoResp === 'ips' ? 'IPL' : (tipoResp === 'si_no' ? 'SI_NO_NA' : (tipoResp === 'nivel_1_4' ? 'NIVEL_1_4' : 'IPL')));

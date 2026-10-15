@@ -15,7 +15,7 @@
        * Implementación incipiente: De 0 a 11 respuestas "Sí"  (Inicio)
    ========================================================================= */
 
-import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui.js?v=20261012_v5';
+import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui/core-utils.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20261013_v1';
 import { RUBRICAS_OBSERVACION_AULA } from './ebr-gestion.js?v=20260928_v12';
 import { isFichaJec, REGLA_NIVEL_JEC, estadoPorRegla, ESPECIALISTA_JEC_OFICIAL, isFichaEspecialistaJec } from './calcEngine.js?v=20260928_v12';
@@ -502,11 +502,17 @@ export function preloadJecFormState(sub, ft) {
 export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEditing = false) {
   if (!host) return;
 
+  // Aspectos e ítems dinámicos desde ft.secciones o catálogo canónico JEC
+  const activeSections = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0) ? ft.secciones : JEC_SECCIONES;
+  const activeItems = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0)
+    ? ft.secciones.flatMap(s => (s.items || []).map(it => ({ ...it, seccion: s.nombre })))
+    : JEC_ITEMS;
+
   // Calcular conteo actual de respuestas Sí en tiempo real
   const conteoSi = Object.values(jecFormState.respuestas).filter(v => v === 'si').length;
   const conteoRespondidos = Object.values(jecFormState.respuestas).filter(v => v).length;
   const nivelActual = getNivelLogroJec(conteoSi);
-  const totalItems = JEC_ITEMS.length; // 31
+  const totalItems = activeItems.length || JEC_ITEMS.length;
   const pctAvance = Math.round((conteoSi / totalItems) * 100);
   const pctRespondidos = Math.round((conteoRespondidos / totalItems) * 100);
   const submitLabel = isEditing ? 'Actualizar registro' : 'Guardar registro';
@@ -727,7 +733,7 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
           • Registra en la columna "Hallazgos" información breve y objetiva sobre lo verificado en cada ítem.
         </div>
 
-        ${renderComponentesJecHtml()}
+        ${renderComponentesJecHtml(ft)}
       </div>
 
       <!-- ─── SECCIÓN VII: TABLA OFICIAL DE NIVEL DE IMPLEMENTACIÓN (IMAGEN 2) ─── -->
@@ -841,10 +847,10 @@ function renderDocentesTableJec(momentoKey, data) {
     { id: 'R2', nombre: 'R2 Razonamiento', color: '#0F766E', tint: 'rgba(13, 148, 136, 0.05)' },
     { id: 'R3', nombre: 'R3 Retroalimenta', color: '#047857', tint: 'rgba(5, 150, 105, 0.05)' },
     { id: 'R4', nombre: 'R4 Respeto', color: '#6D28D9', tint: 'rgba(124, 58, 237, 0.05)' },
-    { id: 'R5', nombre: 'R5 Comportamiento', color: '#B45309', tint: 'rgba(217, 119, 6, 0.05)' }
+    { id: 'R5', nombre: 'R5 Comportamiento', color: '#B45309', tint: 'rgba(217, 119, 6, 0.06)' }
   ];
 
-  const renderRubCell = (rubCfg, idx) => {
+  function renderRubCell(rubCfg, idx) {
     const rubId = rubCfg.id;
     const arr = d[rubId] || ['', '', '', ''];
     const val = arr[idx] !== undefined && arr[idx] !== '' ? Number(arr[idx]) : '';
@@ -859,7 +865,7 @@ function renderDocentesTableJec(momentoKey, data) {
         </div>
       </td>
     `;
-  };
+  }
 
   const renderRubFooterCell = (rubCfg) => {
     const rubId = rubCfg.id;
@@ -975,22 +981,24 @@ function renderDocentesTableJec(momentoKey, data) {
 }
 
 /**
- * Renderiza los 31 ítems organizados por los 3 componentes oficiales
+ * Renderiza los ítems organizados por componentes (dinámicos con fallback)
  */
-function renderComponentesJecHtml() {
-  return JEC_SECCIONES.map((sec, sIdx) => `
+function renderComponentesJecHtml(ft = null) {
+  const activeSections = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0) ? ft.secciones : JEC_SECCIONES;
+  return activeSections.map((sec, sIdx) => `
     <div class="jecSeccionBlock" style="margin-bottom:20px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden">
       <div style="background:var(--surface-2);padding:10px 14px;font-weight:700;font-size:13.5px;color:var(--primary-dark);border-bottom:1px solid var(--line)">
-        ${esc(sec.nombre)} <span style="font-size:11.5px;font-weight:normal;color:var(--ink-soft)">(${sec.items.length} ítems)</span>
+        ${esc(sec.nombre)} <span style="font-size:11.5px;font-weight:normal;color:var(--ink-soft)">(${(sec.items || []).length} ítems)</span>
       </div>
       <div style="padding:12px 14px;background:var(--surface)">
-        ${sec.items.map(it => {
-          const val = jecFormState.respuestas[it.id] || '';
-          const hallazgo = jecFormState.hallazgos[it.id] || '';
-          const isSi = val === 'si';
-          const isNo = val === 'no';
+        ${(sec.items || []).map((it, ii) => {
+    const val = jecFormState.respuestas[it.id] || '';
+    const hallazgo = jecFormState.hallazgos[it.id] || '';
+    const isSi = val === 'si';
+    const isNo = val === 'no';
+    const numDisplay = it.num || ((sIdx + 1) + '.' + (ii + 1));
 
-          return `
+    return `
             <div class="jecItemCard" data-item-id="${esc(it.id)}" style="border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin-bottom:12px;background:var(--surface);transition:all 0.15s ease">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">
                 <div style="flex:1">
@@ -1025,7 +1033,7 @@ function renderComponentesJecHtml() {
               </div>
             </div>
           `;
-        }).join('')}
+  }).join('')}
       </div>
     </div>
   `).join('');
@@ -1424,10 +1432,13 @@ function updateDocenteRowCalculations(momentoKey, host) {
 /**
  * Actualiza el badge superior, la barra de progreso y la tabla oficial de nivel de logro
  */
-function updateLiveNivelJec(host) {
+function updateLiveNivelJec(host, ft = null) {
   const conteoSi = Object.values(jecFormState.respuestas).filter(v => v === 'si').length;
   const conteoRespondidos = Object.values(jecFormState.respuestas).filter(v => v).length;
-  const totalItems = JEC_ITEMS.length; // 31
+  const activeItems = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0)
+    ? ft.secciones.flatMap(s => s.items || [])
+    : JEC_ITEMS;
+  const totalItems = activeItems.length || JEC_ITEMS.length;
   const pctAvance = Math.round((conteoSi / totalItems) * 100);
   const pctRespondidos = Math.round((conteoRespondidos / totalItems) * 100);
   const nivel = getNivelLogroJec(conteoSi);
@@ -1560,12 +1571,16 @@ export function collectJecFormData(host, ft, isEdit = false) {
     throw new Error('Debe consignar los Apellidos y Nombres del directivo.');
   }
 
-  // Construir array de respuestas oficial
+  // Construir array de respuestas oficial (dinámico o fallback)
+  const activeItems = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0)
+    ? ft.secciones.flatMap(s => (s.items || []).map(it => ({ ...it, seccion: s.nombre })))
+    : JEC_ITEMS;
+
   let conteoSi = 0;
   let conteoNo = 0;
   let conteoTotal = 0;
 
-  const respuestas = JEC_ITEMS.map(it => {
+  const respuestas = activeItems.map(it => {
     const val = (jecFormState.respuestas[it.id] || '').toLowerCase();
     const hallazgo = jecFormState.hallazgos[it.id] || '';
 
@@ -1584,7 +1599,7 @@ export function collectJecFormData(host, ft, isEdit = false) {
     };
   });
 
-  const totalItems = JEC_ITEMS.length; // 31
+  const totalItems = activeItems.length || JEC_ITEMS.length;
   const esBorrador = conteoTotal < totalItems;
 
   if (esBorrador) {

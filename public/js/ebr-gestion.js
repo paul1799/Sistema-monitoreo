@@ -5,11 +5,12 @@
    de docentes R1–R5, I–IV), cálculo en tiempo real, validaciones y modelo de datos.
    ========================================================================= */
 
-import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, clearEditMode } from './ui.js?v=20261012_v5';
+import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, clearEditMode } from './ui/core-utils.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20261013_v1';
 import {
   REGLA_NIVEL_EBR_GESTION_M1,
   REGLA_NIVEL_EBR_GESTION_M2,
+  REGLA_NIVEL_EBR_GESTION_M3,
   getReglaNivelEbrGestion,
   getNivelEbrGestion,
   getMomentoVisitaEbr
@@ -19,6 +20,35 @@ import {
   calcularResultadoEbrDesdeRespuestas,
   COLORES_ESTADO_EBR
 } from './instrumentoGestionEBR.js?v=20261001_v1';
+
+/**
+ * Resuelve las secciones e indicadores correspondientes a la visita (1, 2 o 3)
+ * priorizando las secciones configuradas dinámicamente en Firestore (ft.seccionesPorVisita)
+ * con fallback a los catálogos estándar para garantizar 100% de compatibilidad histórica.
+ */
+export function getEbrSeccionesForVisita(visitaNum, ft = null) {
+  const v = Number(visitaNum) || 1;
+  const vIdx = v - 1;
+
+  if (ft) {
+    if (ft.tipoVisitas === 'items_por_visita' && ft.seccionesPorVisita) {
+      if (Array.isArray(ft.seccionesPorVisita[vIdx]) && ft.seccionesPorVisita[vIdx].length > 0) {
+        return ft.seccionesPorVisita[vIdx];
+      }
+      if (Array.isArray(ft.seccionesPorVisita[String(vIdx)]) && ft.seccionesPorVisita[String(vIdx)].length > 0) {
+        return ft.seccionesPorVisita[String(vIdx)];
+      }
+    }
+    if (v === 1 && Array.isArray(ft.seccionesVisita1) && ft.seccionesVisita1.length > 0) return ft.seccionesVisita1;
+    if (v === 2 && Array.isArray(ft.seccionesVisita2) && ft.seccionesVisita2.length > 0) return ft.seccionesVisita2;
+    if (v === 3 && Array.isArray(ft.seccionesVisita3) && ft.seccionesVisita3.length > 0) return ft.seccionesVisita3;
+    if (v === 1 && Array.isArray(ft.secciones) && ft.secciones.length > 0 && !ft.tieneVisitas) return ft.secciones;
+  }
+
+  if (v === 2) return EBR_GESTION_VISITA_2_SECCIONES;
+  if (v === 3) return EBR_GESTION_VISITA_3_SECCIONES;
+  return EBR_GESTION_VISITA_1_SECCIONES;
+}
 
 
 
@@ -354,6 +384,133 @@ export const EBR_GESTION_VISITA_2_SECCIONES = [
 ];
 
 /**
+ * Secciones e ítems para Visita 3 de Gestión Escolar EBR (Tercer momento · Salida y balance anual)
+ * 15 ítems (ge3_1..ge3_15) organizados en 5 dimensiones de cierre escolar.
+ */
+export const EBR_GESTION_VISITA_3_SECCIONES = [
+  {
+    nombre: 'Monitoreo y balance a la práctica pedagógica (Salida)',
+    numRomano: '6.1',
+    items: [
+      {
+        id: 'ge3_1',
+        num: 1,
+        texto: 'El equipo directivo cuenta con el reporte consolidado de las visitas de monitoreo realizadas durante el año escolar, socializado con el equipo docente.',
+        evidencia: 'Informe anual de monitoreo, gráficos estadísticos y acta de reunión colegiada de balance.'
+      },
+      {
+        id: 'ge3_2',
+        num: 2,
+        texto: 'El equipo directivo realizó la sistematización del monitoreo en su etapa de salida, identificando el avance en el desempeño docente respecto a la línea de base.',
+        evidencia: 'Matriz comparativa diagnóstica vs. salida / Tablas comparativas por nivel.'
+      },
+      {
+        id: 'ge3_3',
+        num: 3,
+        texto: 'El equipo directivo sistematiza y analiza los resultados del monitoreo en las semanas de gestión de cierre del año escolar.',
+        evidencia: 'Actas de semanas de gestión de balance, acuerdos y compromisos de cierre.'
+      }
+    ]
+  },
+  {
+    nombre: 'Fortalecimiento de competencias y comunidades de aprendizaje',
+    numRomano: '6.2',
+    items: [
+      {
+        id: 'ge3_4',
+        num: 4,
+        texto: 'El equipo directivo evaluó el cumplimiento del Plan de Acciones Formativas y el impacto de los talleres/GIA en la práctica pedagógica.',
+        evidencia: 'Informe de evaluación del plan formativo, asistencias y productos elaborados.'
+      },
+      {
+        id: 'ge3_5',
+        num: 5,
+        texto: 'Se cuenta con evidencias de la consolidación de Comunidades de Aprendizaje Profesional (CAP) o trabajo colegiado continuo.',
+        evidencia: 'Portafolios de trabajo colegiado, actas y registros de acuerdos pedagógicos.'
+      }
+    ]
+  },
+  {
+    nombre: 'Evaluación y logros de aprendizaje (Salida)',
+    numRomano: '6.3',
+    items: [
+      {
+        id: 'ge3_6',
+        num: 6,
+        texto: 'Los directivos sistematizan, analizan y reflexionan sobre los resultados de la evaluación de salida de los estudiantes por competencias.',
+        evidencia: 'Informes de progreso final, consolidados SIAGIE y reportes comparativos.'
+      },
+      {
+        id: 'ge3_7',
+        num: 7,
+        texto: 'El equipo directivo evaluó los resultados del Plan de Refuerzo Escolar y las metas de aprendizaje alcanzadas al término del año lectivo.',
+        evidencia: 'Reporte de resultados de refuerzo escolar y porcentajes de avance por grado.'
+      },
+      {
+        id: 'ge3_8',
+        num: 8,
+        texto: 'La IE comunica a los padres de familia los resultados finales del aprendizaje de manera oportuna y transparente.',
+        evidencia: 'Cargos de entrega de informes de progreso / Actas de asambleas de aula.'
+      }
+    ]
+  },
+  {
+    nombre: 'Gestión de recursos, espacios educativos y materiales',
+    numRomano: '6.4',
+    items: [
+      {
+        id: 'ge3_9',
+        num: 9,
+        texto: 'El equipo directivo realizó el balance de uso adecuado de cuadernos de trabajo y textos escolares MINEDU entregados en el año lectivo.',
+        evidencia: 'Informe de culminación y uso de cuadernos de trabajo por nivel.'
+      },
+      {
+        id: 'ge3_10',
+        num: 10,
+        texto: 'Se constata la adecuada conservación, inventario y custodia de los materiales educativos y recursos tecnológicos para el siguiente periodo escolar.',
+        evidencia: 'Padrón de inventario actualizado, actas de recepción y resguardo.'
+      },
+      {
+        id: 'ge3_11',
+        num: 11,
+        texto: 'El equipo directivo evaluó los avances y productos logrados en el Aula de Innovación Pedagógica (AIP) y la estrategia TIC.',
+        evidencia: 'Informe final de actividades del PIP / Portafolio digital de experiencias.'
+      }
+    ]
+  },
+  {
+    nombre: 'Innovación, proyectos ambientales y cierre de gestión',
+    numRomano: '6.5',
+    items: [
+      {
+        id: 'ge3_12',
+        num: 12,
+        texto: 'La IE evaluó los resultados de la implementación de las Buenas Prácticas pedagógicas o Proyectos de Innovación desarrollados en el año.',
+        evidencia: 'Informe final del proyecto de innovación, testimonios, productos estudiantiles.'
+      },
+      {
+        id: 'ge3_13',
+        num: 13,
+        texto: 'La IE evaluó la ejecución del Plan Lector institucional y los niveles de comprensión lectora logrados por los estudiantes.',
+        evidencia: 'Informe final del Plan Lector y sistematización de lecturas ejecutadas.'
+      },
+      {
+        id: 'ge3_14',
+        num: 14,
+        texto: 'La IE evaluó la ejecución de las actividades del PEAI (enfoque ambiental) y simulacros de gestión del riesgo ejecutados.',
+        evidencia: 'Reportes en el portal de GRD / Informe ambiental institucional.'
+      },
+      {
+        id: 'ge3_15',
+        num: 15,
+        texto: 'El equipo directivo registra oportunamente en el SIMON el cierre y reporte de los planes de monitoreo correspondientes.',
+        evidencia: 'Constancias de envío o reportes descargados de la plataforma SIMON.'
+      }
+    ]
+  }
+];
+
+/**
  * Determina con alta precisión si una plantilla corresponde a la Ficha EBR de Gestión Escolar
  */
 export function isFichaEbrGestionEscolar(ft) {
@@ -614,6 +771,7 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
   const currentVisita = ebrFormState.visita;
   const isV1 = currentVisita === 1;
   const isV2 = currentVisita === 2;
+  const isV3 = currentVisita === 3;
 
   const defaultResponsable = ebrFormState.responsable ||
     (currentUser ? (currentUser.nombre || currentUser.displayName || (currentUser.email ? currentUser.email.split('@')[0] : '')) : '');
@@ -621,14 +779,14 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
     ebrFormState.responsable = defaultResponsable;
   }
 
-  // Secciones e ítems correspondientes a la visita elegida
-  const seccionesActuales = isV1
-    ? (ft.seccionesVisita1 || EBR_GESTION_VISITA_1_SECCIONES)
-    : (ft.seccionesVisita2 || EBR_GESTION_VISITA_2_SECCIONES);
-
+  // Secciones e ítems correspondientes a la visita elegida (dinámicos con fallback)
+  const seccionesActuales = getEbrSeccionesForVisita(currentVisita, ft);
   const totalItemsCount = seccionesActuales.reduce((acc, s) => acc + (s.items || []).length, 0);
 
-  // Selector visual de número de visita
+  // Determinar si Visita 3 está disponible en la plantilla o por configuración
+  const hasVisita3 = true; // Activo para soporte institucional 2026 de 3er momento / salida
+
+  // Selector visual de número de visita (1, 2 y 3)
   const visitaSelectorHtml = `
     <div class="panel ebrVisitaSelectPanel" style="margin-bottom:16px;border-left:4px solid var(--primary);background:var(--surface)">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
@@ -642,12 +800,12 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
         </div>
         ${currentVisita ? `
           <div class="badge" style="background:var(--primary-tint);color:var(--primary-dark);font-weight:700;font-size:12px;padding:4px 10px;border-radius:12px">
-            ${isV1 ? 'Visita 1 (Primer momento) · 19 ítems' : 'Visita 2 (Segundo momento) · 23 ítems'}
+            ${isV1 ? 'Visita 1 (Primer momento) · 19 ítems' : isV2 ? 'Visita 2 (Segundo momento) · 23 ítems + Tablas R1–R5' : `Visita 3 (Tercer momento · Salida) · ${totalItemsCount} ítems`}
           </div>
         ` : ''}
       </div>
 
-      <div class="ebrVisitaSelectWrap" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="ebrVisitaSelectWrap" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px">
         <!-- Tarjeta Visita 1 -->
         <button type="button" class="ebrVisitaCard ${isV1 ? 'active' : ''}" data-ebr-visita="1" style="text-align:left;padding:14px 16px;border-radius:var(--radius);border:2px solid ${isV1 ? 'var(--primary)' : 'var(--line)'};background:${isV1 ? 'var(--surface-2)' : 'var(--surface)'};cursor:pointer;transition:all 0.15s ease">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -670,11 +828,26 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
               ${isV2 ? '✓ ' : ''}Visita 2 · Segundo momento
             </span>
             <span style="font-size:11px;background:${isV2 ? 'var(--primary)' : 'var(--line)'};color:${isV2 ? '#fff' : 'var(--ink-soft)'};padding:2px 8px;border-radius:10px;font-weight:700">
-              23 ítems + Tablas R1–R5
+              23 ítems + R1–R5
             </span>
           </div>
           <div style="font-size:12px;color:var(--ink-soft);line-height:1.4">
-            Incluye <strong>Data de docentes monitoreados del 1er y 2do momento</strong> por nivel (R1–R5 y niveles I–IV), más 23 indicadores de gestión escolar (6.1–6.5).
+            Incluye <strong>Data de docentes monitoreados</strong> por nivel (R1–R5 y niveles I–IV), más 23 indicadores de gestión escolar (6.1–6.5).
+          </div>
+        </button>
+
+        <!-- Tarjeta Visita 3 -->
+        <button type="button" class="ebrVisitaCard ${isV3 ? 'active' : ''}" data-ebr-visita="3" style="text-align:left;padding:14px 16px;border-radius:var(--radius);border:2px solid ${isV3 ? 'var(--primary)' : 'var(--line)'};background:${isV3 ? 'var(--surface-2)' : 'var(--surface)'};cursor:pointer;transition:all 0.15s ease">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-weight:800;font-size:14px;color:${isV3 ? 'var(--primary)' : 'var(--ink)'}">
+              ${isV3 ? '✓ ' : ''}Visita 3 · Tercer momento
+            </span>
+            <span style="font-size:11px;background:${isV3 ? 'var(--primary)' : 'var(--line)'};color:${isV3 ? '#fff' : 'var(--ink-soft)'};padding:2px 8px;border-radius:10px;font-weight:700">
+              ${isV3 ? totalItemsCount + ' ítems' : 'Balance y Salida'}
+            </span>
+          </div>
+          <div style="font-size:12px;color:var(--ink-soft);line-height:1.4">
+            Balance anual de gestión escolar, evaluación de salida por competencias, informe de monitoreo y compromisos de cierre del año escolar.
           </div>
         </button>
       </div>
@@ -1127,9 +1300,15 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
   // =========================================================================
   // PANEL OFICIAL DE RESULTADOS Y PUNTAJE EN TIEMPO REAL
   // =========================================================================
-  const reglaEbr = isV2 ? REGLA_NIVEL_EBR_GESTION_M2 : REGLA_NIVEL_EBR_GESTION_M1;
-  const maxPtsOficial = reglaEbr.maxPuntaje;
-  const momentoTitulo = isV2 ? '2DO MOMENTO (Visita 2 · 23 ítems · Máx 69 pts)' : '1ER MOMENTO (Visita 1 · 19 ítems · Máx 57 pts)';
+  const reglaEbr = isV3 ? REGLA_NIVEL_EBR_GESTION_M3 : (isV2 ? REGLA_NIVEL_EBR_GESTION_M2 : REGLA_NIVEL_EBR_GESTION_M1);
+  const maxPtsOficial = reglaEbr.maxPuntaje || (totalItemsCount * 3);
+  const momentoTitulo = isV3
+    ? `3ER MOMENTO (Visita 3 · Salida · ${totalItemsCount} ítems · Máx ${maxPtsOficial} pts)`
+    : (isV2 ? '2DO MOMENTO (Visita 2 · 23 ítems · Máx 69 pts)' : '1ER MOMENTO (Visita 1 · 19 ítems · Máx 57 pts)');
+
+  const rLogrado = reglaEbr.rangos.find(r => r.nivel === 'Logrado') || { min: Math.round(maxPtsOficial * 0.67), max: maxPtsOficial };
+  const rProceso = reglaEbr.rangos.find(r => r.nivel === 'Proceso') || { min: Math.round(maxPtsOficial * 0.34), max: rLogrado.min - 1 };
+  const rInicio = reglaEbr.rangos.find(r => r.nivel === 'Inicio') || { min: 0, max: rProceso.min - 1 };
 
   const panelResultadosHtml = `
     <div class="panel ebrScoreLivePanel" id="ebrScoreLivePanel" style="background:var(--surface);border:2px solid var(--primary);border-radius:var(--radius);padding:18px;margin-bottom:20px;box-shadow:var(--shadow-md)">
@@ -1162,9 +1341,9 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
       <!-- Barra visual de puntaje -->
       <div style="margin-bottom:14px">
         <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:4px;color:var(--ink-soft);flex-wrap:wrap;gap:6px">
-          <span style="color:#DC2626">INICIO: 0 a ${isV2 ? 23 : 19} pts</span>
-          <span style="color:#D97706">PROCESO: ${isV2 ? 24 : 20} a ${isV2 ? 46 : 38} pts</span>
-          <span style="color:#16A34A">LOGRADO: ${isV2 ? 47 : 39} a ${isV2 ? 69 : 57} pts</span>
+          <span style="color:#DC2626">INICIO: ${rInicio.min} a ${rInicio.max} pts</span>
+          <span style="color:#D97706">PROCESO: ${rProceso.min} a ${rProceso.max} pts</span>
+          <span style="color:#16A34A">LOGRADO: ${rLogrado.min} a ${rLogrado.max} pts</span>
         </div>
         <div class="barTrack" style="height:14px;background:var(--surface-2);border-radius:7px;overflow:hidden">
           <div class="barFill" id="ebrLiveBarFill" style="width:0%;height:100%;transition:width 0.3s ease, background 0.3s ease;background:#DC2626"></div>
@@ -1180,7 +1359,6 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
       </div>
 
       <!-- Tabla oficial de baremos del momento -->
-
       <div style="overflow-x:auto">
         <table class="table" style="width:100%;border-collapse:collapse;font-size:12px;margin:0" id="ebrCriteriaTable">
           <thead>
@@ -1196,7 +1374,7 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
                 <span class="critStatusIcon">○</span> LOGRADO
               </td>
               <td style="padding:7px 10px;text-align:center;font-weight:700">
-                ${isV2 ? '47 a 69 puntos' : '39 a 57 puntos'}
+                ${rLogrado.min} a ${rLogrado.max} puntos
               </td>
               <td style="padding:7px 10px;color:var(--ink-soft);font-size:11.5px">
                 La institución educativa evidencia un nivel óptimo en la gestión escolar y condiciones pedagógicas.
@@ -1207,7 +1385,7 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
                 <span class="critStatusIcon">○</span> PROCESO
               </td>
               <td style="padding:7px 10px;text-align:center;font-weight:700">
-                ${isV2 ? '24 a 46 puntos' : '20 a 38 puntos'}
+                ${rProceso.min} a ${rProceso.max} puntos
               </td>
               <td style="padding:7px 10px;color:var(--ink-soft);font-size:11.5px">
                 La institución educativa se encuentra en proceso de implementación y requiere consolidar acciones de mejora.
@@ -1218,7 +1396,7 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
                 <span class="critStatusIcon">○</span> INICIO
               </td>
               <td style="padding:7px 10px;text-align:center;font-weight:700">
-                ${isV2 ? '0 a 23 puntos' : '0 a 19 puntos'}
+                ${rInicio.min} a ${rInicio.max} puntos
               </td>
               <td style="padding:7px 10px;color:var(--ink-soft);font-size:11.5px">
                 La institución educativa requiere asistencia técnica prioritaria para el cumplimiento de las condiciones básicas.
@@ -1432,14 +1610,14 @@ function attachVisitaSelectorEvents(host, ft, state, dbNs, currentUser, navigate
       const targetVisita = Number(card.dataset.ebrVisita);
       if (ebrFormState.visita === targetVisita) return;
 
-      // Si se pasa de Visita 2 a Visita 1 y hay datos en las tablas de docentes o ítems 20–23
-      if (ebrFormState.visita === 2 && targetVisita === 1) {
+      // Si se pasa de Visita 2 o 3 a Visita 1 y hay datos en las tablas de docentes o ítems posteriores
+      if ((ebrFormState.visita === 2 || ebrFormState.visita === 3) && targetVisita === 1) {
         const hasDocData = (ebrFormState.docentesMomento1 || []).some(r => r.total || r.monitoreados) ||
                            (ebrFormState.docentesMomento2 || []).some(r => r.total || r.monitoreados);
-        const hasExtraAnswers = Object.keys(ebrFormState.respuestas).some(k => k.startsWith('ge2_20') || k.startsWith('ge2_21') || k.startsWith('ge2_22') || k.startsWith('ge2_23'));
+        const hasExtraAnswers = Object.keys(ebrFormState.respuestas).some(k => k.startsWith('ge2_20') || k.startsWith('ge2_21') || k.startsWith('ge2_22') || k.startsWith('ge2_23') || k.startsWith('ge3_'));
 
         if (hasDocData || hasExtraAnswers) {
-          const ok = confirm('Al cambiar a Visita 1 se quitarán los datos de las tablas de docentes y de los ítems ya marcados que solo corresponden a la visita 2. ¿Deseas continuar?');
+          const ok = confirm('Al cambiar a Visita 1 se quitarán los datos de las tablas de docentes y de los ítems ya marcados que solo corresponden a visitas posteriores. ¿Deseas continuar?');
           if (!ok) return;
         }
       }
@@ -1447,11 +1625,12 @@ function attachVisitaSelectorEvents(host, ft, state, dbNs, currentUser, navigate
       // Sincronizar datos comunes antes de cambiar
       syncCommonFieldsFromDom(host);
 
-      // Re-mapear respuestas para la nueva visita (los ítems 1–19 se preservan limpiamente y se eliminan fantasmas)
+      // Re-mapear respuestas para la nueva visita
       const newRespuestas = {};
       const newObs = {};
-      const toPrefix = targetVisita === 2 ? 'ge2_' : 'ge1_';
-      const maxTargetItems = targetVisita === 2 ? 23 : 19;
+      const toPrefix = targetVisita === 3 ? 'ge3_' : (targetVisita === 2 ? 'ge2_' : 'ge1_');
+      const targetSecs = getEbrSeccionesForVisita(targetVisita, ft);
+      const maxTargetItems = targetSecs.reduce((acc, s) => acc + (s.items || []).length, 0) || (targetVisita === 2 ? 23 : (targetVisita === 3 ? 15 : 19));
 
       Object.entries(ebrFormState.respuestas || {}).forEach(([k, val]) => {
         let num = null;
@@ -1459,6 +1638,8 @@ function attachVisitaSelectorEvents(host, ft, state, dbNs, currentUser, navigate
         if (m) num = parseInt(m[1], 10);
         if (num && num >= 1 && num <= maxTargetItems && val) {
           newRespuestas[`${toPrefix}${num}`] = val;
+        } else if (val) {
+          newRespuestas[k] = val;
         }
       });
       Object.entries(ebrFormState.observacionesItems || {}).forEach(([k, obs]) => {
@@ -1467,6 +1648,8 @@ function attachVisitaSelectorEvents(host, ft, state, dbNs, currentUser, navigate
         if (m) num = parseInt(m[1], 10);
         if (num && num >= 1 && num <= maxTargetItems && obs) {
           newObs[`${toPrefix}${num}`] = obs;
+        } else if (obs) {
+          newObs[k] = obs;
         }
       });
       ebrFormState.respuestas = newRespuestas;
@@ -2131,9 +2314,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       }
 
       updateAllSectionTotals(host);
-      const seccionesActuales = ebrFormState.visita === 1
-        ? (ft.seccionesVisita1 || EBR_GESTION_VISITA_1_SECCIONES)
-        : (ft.seccionesVisita2 || EBR_GESTION_VISITA_2_SECCIONES);
+      const seccionesActuales = getEbrSeccionesForVisita(ebrFormState.visita, ft);
       const totalItemsCount = seccionesActuales.reduce((a, s) => a + (s.items || []).length, 0);
       updateEbrProgressBadge(host, totalItemsCount);
       updateEbrLiveScore(host);
@@ -2452,11 +2633,11 @@ function updateEbrProgressBadge(host, totalItems) {
  * Evalúa estrictamente cada indicador oficial de la visita exactamente UNA sola vez para evitar
  * acumulaciones indebidas por alias, claves redundantes o datos legacy.
  */
-export function calculateEbrCurrentScore(visita, respuestas) {
-  const v = Number(visita) === 2 ? 2 : 1;
-  const maxPts = v === 2 ? 69 : 57;
-  const totalItems = v === 2 ? 23 : 19;
-  const secciones = v === 2 ? EBR_GESTION_VISITA_2_SECCIONES : EBR_GESTION_VISITA_1_SECCIONES;
+export function calculateEbrCurrentScore(visita, respuestas, ft = null) {
+  const v = Number(visita) || 1;
+  const secciones = getEbrSeccionesForVisita(v, ft);
+  const totalItems = secciones.reduce((acc, s) => acc + (s.items || []).length, 0) || (v === 2 ? 23 : (v === 3 ? 15 : 19));
+  const maxPts = totalItems * 3;
 
   // Normalizar respuestas tanto si viene como Array de objetos o Map de clave-valor
   const map = {};
@@ -2474,7 +2655,7 @@ export function calculateEbrCurrentScore(visita, respuestas) {
   let pts = 0;
   let answered = 0;
 
-  // Evaluar cada uno de los 19 o 23 indicadores oficiales exactamente una vez
+  // Evaluar cada indicador oficial de la visita exactamente una vez
   secciones.forEach(sec => {
     (sec.items || []).forEach(it => {
       const vId = `ge${v}_${it.num}`;
@@ -2688,10 +2869,8 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
     }
   }
 
-  // Recolectar respuestas de ítems
-  const seccionesActuales = visita === 1
-    ? (ft.seccionesVisita1 || EBR_GESTION_VISITA_1_SECCIONES)
-    : (ft.seccionesVisita2 || EBR_GESTION_VISITA_2_SECCIONES);
+  // Recolectar respuestas de ítems (dinámicas por visita)
+  const seccionesActuales = getEbrSeccionesForVisita(visita, ft);
 
   const respuestas = [];
   let answeredCount = 0;

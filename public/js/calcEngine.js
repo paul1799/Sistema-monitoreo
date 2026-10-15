@@ -103,6 +103,18 @@ export function estadoPorRegla(resultado, regla_nivel) {
   }
 
   if (regla_nivel) {
+    if (regla_nivel === 'conteo_rangos' || (typeof regla_nivel === 'object' && (regla_nivel.tipo === 'conteo_rangos' || regla_nivel.regla_nivel_config))) {
+      const cfg = regla_nivel.regla_nivel_config || regla_nivel;
+      regla_nivel = {
+        tipo: 'conteo',
+        maxConteo: cfg.logrado?.max || 31,
+        rangos: [
+          { min: cfg.inicio?.min ?? 0, max: cfg.inicio?.max ?? 11, nivel: cfg.inicio?.label || 'Implementación incipiente', estado_panel: 'Inicio' },
+          { min: cfg.proceso?.min ?? 12, max: cfg.proceso?.max ?? 23, nivel: cfg.proceso?.label || 'Implementación parcial', estado_panel: 'En proceso' },
+          { min: cfg.logrado?.min ?? 24, max: cfg.logrado?.max ?? (cfg.logrado?.max || 31), nivel: cfg.logrado?.label || 'Implementación lograda', estado_panel: 'Logrado' }
+        ]
+      };
+    }
     // ── Tipo A: conteo absoluto de respuestas "si" (ej. JEC) ──────────
     if (regla_nivel.tipo === 'conteo') {
       const maxConteo = regla_nivel.maxConteo || 31;
@@ -355,7 +367,18 @@ export function calcScore(respuestas, fichaType) {
   const isJec = isFichaJec(fichaType) || isFichaCoordTutoriaJec(fichaType) || isFichaCoordPedagogico(fichaType) || isFichaEspecialistaJec(fichaType);
   const isEbr = isFichaEbrGestionEscolar(fichaType);
   let regla_nivel = fichaType.regla_nivel || null;
-  if (isEbr) {
+  if (fichaType.regla_nivel === 'conteo_rangos' || fichaType.regla_nivel_config) {
+    const cfg = fichaType.regla_nivel_config || {};
+    regla_nivel = {
+      tipo: 'conteo',
+      maxConteo: cfg.logrado?.max || 31,
+      rangos: [
+        { min: cfg.inicio?.min ?? 0, max: cfg.inicio?.max ?? 11, nivel: cfg.inicio?.label || 'Implementación incipiente', estado_panel: 'Inicio' },
+        { min: cfg.proceso?.min ?? 12, max: cfg.proceso?.max ?? 23, nivel: cfg.proceso?.label || 'Implementación parcial', estado_panel: 'En proceso' },
+        { min: cfg.logrado?.min ?? 24, max: cfg.logrado?.max ?? (cfg.logrado?.max || 31), nivel: cfg.logrado?.label || 'Implementación lograda', estado_panel: 'Logrado' }
+      ]
+    };
+  } else if (isEbr) {
     const v = getMomentoVisitaEbr(fichaType);
     regla_nivel = getReglaNivelEbrGestion(v);
   } else if (!isJec && (isFichaEbrEbePrite(fichaType) || fichaType?.escala === 'IPL' || fichaType?.tipoRespuesta === 'ips' || fichaType?.tipoRespuesta === 'escala1_3')) {
@@ -365,6 +388,22 @@ export function calcScore(respuestas, fichaType) {
     regla_nivel = REGLA_NIVEL_JEC;
   } else if (!regla_nivel && isFichaCoordTutoriaJec(fichaType)) {
     regla_nivel = REGLA_NIVEL_COORD_TUTORIA_JEC;
+  }
+
+  // Resolver secciones activas considerando multi-visita con indicadores diferenciados
+  let activeSections = fichaType.secciones || [];
+  if (fichaType.tieneVisitas && fichaType.tipoVisitas === 'items_por_visita' && fichaType.seccionesPorVisita) {
+    let vIdx = 0;
+    if (fichaType.visita !== undefined && fichaType.visita !== null) {
+      if (typeof fichaType.visita === 'number') vIdx = fichaType.visita - 1;
+      else if (typeof fichaType.visita === 'string') {
+        const m = fichaType.visita.match(/\d+/);
+        if (m) vIdx = parseInt(m[0], 10) - 1;
+      }
+    }
+    if (vIdx >= 0 && fichaType.seccionesPorVisita[vIdx] && fichaType.seccionesPorVisita[vIdx].length > 0) {
+      activeSections = fichaType.seccionesPorVisita[vIdx];
+    }
   }
 
   // Mapa rápido id → valor, con normalización para EBR (ge1_x / ge2_x / ge_x / num_x)
@@ -384,7 +423,7 @@ export function calcScore(respuestas, fichaType) {
   let conteo_si_global = 0;
   let puntaje_total_raw = 0;
 
-  const secciones = (fichaType.secciones || []).map(sec => {
+  const secciones = (activeSections || []).map(sec => {
     let secScore = 0;
     let secCount = 0;
     let secSi    = 0;
@@ -850,6 +889,47 @@ export const REGLA_NIVEL_EBR_GESTION_M2 = {
   ],
 };
 
+/** Regla oficial 3er Momento: Monitoreo y Asistencia Técnica a la Gestión Escolar EBR (15 ítems base, máx 45 pts) */
+export const REGLA_NIVEL_EBR_GESTION_M3 = {
+  tipo:       'puntaje',
+  escala:     'IPL',
+  momento:    3,
+  visita:     3,
+  maxPuntaje: 45,
+  minPuntaje: 0,
+  totalItems: 15,
+  nota:       'Regla oficial 3er Momento EBR Gestión Escolar: Inicio (0–15), Proceso (16–30), Logrado (31–45)',
+  rangos: [
+    {
+      nivel:        'Logrado',
+      min:          31,
+      max:          45,
+      estado_panel: 'Logrado',
+      cls:          'st-logrado',
+      color:        '#16A34A',
+      descripcion:  'Nivel Logrado: Cumplimiento óptimo en el balance y cierre de gestión escolar (31 a 45 puntos).'
+    },
+    {
+      nivel:        'Proceso',
+      min:          16,
+      max:          30,
+      estado_panel: 'En proceso',
+      cls:          'st-proceso',
+      color:        '#D97706',
+      descripcion:  'Nivel Proceso: En proceso de consolidación de resultados anuales (16 a 30 puntos).'
+    },
+    {
+      nivel:        'Inicio',
+      min:          0,
+      max:          15,
+      estado_panel: 'Inicio',
+      cls:          'st-inicio',
+      color:        '#DC2626',
+      descripcion:  'Nivel Inicio: Requiere asistencia técnica prioritaria en el balance institucional (0 a 15 puntos).'
+    },
+  ],
+};
+
 /**
  * Determina con precisión si una plantilla o ficha corresponde a la de
  * "Monitoreo y Asistencia Técnica a la Gestión Escolar - UGEL 03 EBR"
@@ -873,44 +953,47 @@ export function isFichaEbrGestionEscolar(ft) {
   if (n.includes('1er momento') || n.includes('1.er momento') || n.includes('diagnostico')) return false;
   if (n.includes('gestion escolar') && n.includes('ebr')) return true;
   if (n.includes('gestion') && n.includes('ebr')) return true;
-  if (ft.regla_nivel && ft.regla_nivel.momento && (ft.regla_nivel.maxPuntaje === 69 || ft.regla_nivel.maxPuntaje === 57)) return true;
-  if (Array.isArray(ft.respuestas) && ft.respuestas.some(r => String(r?.id || '').startsWith('ge_doc_') || String(r?.id || '').startsWith('ge_1_') || String(r?.id || '').startsWith('ge_2_'))) return true;
+  if (ft.regla_nivel && ft.regla_nivel.momento && (ft.regla_nivel.maxPuntaje === 69 || ft.regla_nivel.maxPuntaje === 57 || ft.regla_nivel.maxPuntaje === 45)) return true;
+  if (Array.isArray(ft.respuestas) && ft.respuestas.some(r => String(r?.id || '').startsWith('ge_doc_') || String(r?.id || '').startsWith('ge_1_') || String(r?.id || '').startsWith('ge_2_') || String(r?.id || '').startsWith('ge3_') || String(r?.id || '').startsWith('ge_3_'))) return true;
   return false;
 }
 
 /**
- * Detecta si una ficha o plantilla EBR corresponde al 1er o 2do Momento
+ * Detecta si una ficha o plantilla EBR corresponde al 1er, 2do o 3er Momento
  *
  * @param {Object} subOrFt - Ficha registrada o plantilla
- * @returns {number} 1 o 2
+ * @returns {number} 1, 2 o 3
  */
 export function getMomentoVisitaEbr(subOrFt) {
   if (!subOrFt) return 1;
   const v = Number(subOrFt.visita);
-  if (v === 1 || v === 2) return v;
+  if (v === 1 || v === 2 || v === 3) return v;
+  if (subOrFt.visitaTipo && String(subOrFt.visitaTipo).includes('3')) return 3;
   if (subOrFt.visitaTipo && String(subOrFt.visitaTipo).includes('2')) return 2;
   if (subOrFt.visitaTipo && String(subOrFt.visitaTipo).includes('1')) return 1;
   const n = String(subOrFt.nombre || subOrFt.fichaTypeNombre || '').toLowerCase();
+  if (n.includes('3er') || n.includes('tercer') || n.includes('momento 3') || n.includes('salida')) return 3;
   if (n.includes('2do') || n.includes('segundo') || n.includes('momento 2')) return 2;
   if (n.includes('1er') || n.includes('primer') || n.includes('momento 1')) return 1;
+  if (subOrFt.version?.momento === '3er' || subOrFt.momento === '3er' || subOrFt.momento === 3) return 3;
   if (subOrFt.version?.momento === '2do' || subOrFt.momento === '2do' || subOrFt.momento === 2) return 2;
   if (subOrFt.version?.momento === '1er' || subOrFt.momento === '1er' || subOrFt.momento === 1) return 1;
+  if (Array.isArray(subOrFt.respuestas) && subOrFt.respuestas.some(r => String(r?.id || '').startsWith('ge3_'))) return 3;
   if (Array.isArray(subOrFt.respuestas) && subOrFt.respuestas.some(r => String(r?.id || '').startsWith('ge2_'))) return 2;
-  if (Array.isArray(subOrFt.respuestas) && subOrFt.respuestas.length > 20) return 2;
-  if (Array.isArray(subOrFt.secciones) && subOrFt.secciones.length > 20) return 2;
   return 1;
 }
 
 /**
  * Devuelve la regla oficial de puntuación para EBR Gestión Escolar según la visita/momento
  *
- * @param {number|string|Object} visitaOrSub - Número de visita (1 o 2) o ficha
- * @returns {Object} Regla oficial M1 o M2
+ * @param {number|string|Object} visitaOrSub - Número de visita (1, 2 o 3) o ficha
+ * @returns {Object} Regla oficial M1, M2 o M3
  */
 export function getReglaNivelEbrGestion(visitaOrSub) {
   const v = (typeof visitaOrSub === 'object' && visitaOrSub !== null)
     ? getMomentoVisitaEbr(visitaOrSub)
-    : (Number(visitaOrSub) === 2 ? 2 : 1);
+    : (Number(visitaOrSub) || 1);
+  if (v === 3) return REGLA_NIVEL_EBR_GESTION_M3;
   return v === 2 ? REGLA_NIVEL_EBR_GESTION_M2 : REGLA_NIVEL_EBR_GESTION_M1;
 }
 

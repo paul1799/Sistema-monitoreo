@@ -1224,5 +1224,176 @@
   }
 }
 
+/* =========================================================================
+   NUEVAS EXTENSIONES: VISITAS DIFERENCIADAS, RANGOS PERSONALIZADOS Y PRESETS
+   ========================================================================= */
+
+/* Caja de selección de modalidad de visitas */
+.visitaModeBox {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+  margin-bottom: 12px;
+}
+@media (max-width: 640px) {
+  .visitaModeBox {
+    grid-template-columns: 1fr;
+  }
+}
+
+.visitaModeOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #FFFFFF;
+  border: 1.5px solid var(--border, #E2E8F0);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.visitaModeOption:hover {
+  border-color: #CBD5E1;
+  background: #F8FAFC;
+}
+.visitaModeOption.active {
+  border-color: var(--primary, #0B192C);
+  background: #EFF6FF;
+}
+.visitaModeOption input[type="radio"] {
+  margin-top: 3px;
+}
+.visitaModeTitle {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--navy-900, #0B192C);
+  display: block;
+}
+.visitaModeDesc {
+  font-size: 11px;
+  color: var(--text-600, #64748B);
+  line-height: 1.35;
+  margin-top: 2px;
+  display: block;
+}
+
+/* Pestañas de visitas para el editor de secciones diferenciadas */
+.builderVisitTabsWrap {
+  background: var(--surface-2, #F8FAFC);
+  border: 1px solid var(--border, #E2E8F0);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.builderVisitTabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.builderVisitTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: #FFFFFF;
+  border: 1px solid var(--border, #CBD5E1);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-700, #334155);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.builderVisitTab:hover {
+  background: #F1F5F9;
+  color: var(--navy-900, #0B192C);
+  border-color: #94A3B8;
+}
+.builderVisitTab.active {
+  background: var(--navy-900, #0B192C);
+  color: #FFFFFF;
+  border-color: var(--navy-900, #0B192C);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.builderVisitTabBadge {
+  background: rgba(0,0,0,0.08);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+.builderVisitTab.active .builderVisitTabBadge {
+  background: rgba(255,255,255,0.25);
+  color: #FFFFFF;
+}
+
+/* Caja de configuración de rangos de semáforo personalizados */
+.builderRangesBox {
+  background: #F8FAFC;
+  border: 1px solid var(--border, #E2E8F0);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+.rangeRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  flex-wrap: wrap;
+}
+.rangeRow.inicio {
+  border-left: 4px solid #EF4444;
+}
+.rangeRow.proceso {
+  border-left: 4px solid #F59E0B;
+}
+.rangeRow.logrado {
+  border-left: 4px solid #10B981;
+}
+.rangeBadge {
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 90px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.rangeRow.inicio .rangeBadge { color: #DC2626; }
+.rangeRow.proceso .rangeBadge { color: #D97706; }
+.rangeRow.logrado .rangeBadge { color: #15803D; }
+
+.rangeInpGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-600, #475569);
+}
+.rangeInpGroup input[type="number"] {
+  width: 65px;
+  padding: 3px 6px;
+  font-size: 12px;
+  text-align: center;
+}
+.rangeInpGroup input[type="text"] {
+  width: 140px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+
 
 

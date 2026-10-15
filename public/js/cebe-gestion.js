@@ -12,7 +12,7 @@
    - V. Compromisos de Mejora (Directivo y Especialista por visita)
    ========================================================================= */
 
-import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui.js?v=20261013_v6';
+import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, normalizeReiNumber } from './ui/core-utils.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha } from './directorio.js?v=20261013_v1';
 
 /**
@@ -414,15 +414,18 @@ export function renderCebeGestionForm(host, ft, state, dbNs, currentUser, naviga
   const totMat = iniMat + priMat;
   const totAsis = iniAsis + priAsis;
 
-  // Aspectos a Monitorear
-  const htmlSecciones = CEBE_SECCIONES.map((sec, sIdx) => {
-    const itemsHtml = sec.items.map(it => {
+  // Aspectos a Monitorear (dinámicos desde ft.secciones o catálogo estándar)
+  const activeSections = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0) ? ft.secciones : CEBE_SECCIONES;
+  const totalItemsCount = activeSections.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0) || TOTAL_CEBE_ITEMS;
+
+  const htmlSecciones = activeSections.map((sec, sIdx) => {
+    const itemsHtml = (sec.items || []).map(it => {
       const val = (respuestasActivas[it.id] || '').toLowerCase();
       const evidVal = cebeFormState.evidenciasPorItem[it.id] || '';
       return `
         <div class="cebeItemRow" data-item-id="${it.id}">
           <div class="cebeItemMain">
-            <span class="cebeItemNum">${it.num}.</span>
+            <span class="cebeItemNum">${it.num || (sIdx + 1) + '.' + (sec.items.indexOf(it) + 1)}.</span>
             <div class="cebeItemTextWrap">
               <div class="cebeItemText">${esc(it.texto)}</div>
               <div class="cebeItemEvidenciaWrap">
@@ -1056,8 +1059,10 @@ function bindCebeFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdit
       }
     });
 
-    const applicableItems = Math.max(0, TOTAL_CEBE_ITEMS - naCount);
-    const pct = Math.round((answered / TOTAL_CEBE_ITEMS) * 100);
+    const activeSections = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0) ? ft.secciones : CEBE_SECCIONES;
+    const totalItemsCount = activeSections.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0) || TOTAL_CEBE_ITEMS;
+    const applicableItems = Math.max(0, totalItemsCount - naCount);
+    const pct = Math.round((answered / totalItemsCount) * 100);
     const scorePct = applicableItems > 0 ? Math.round((score / applicableItems) * 100) : 0;
 
     let estado = 'Inicio';
@@ -1068,13 +1073,13 @@ function bindCebeFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdit
     const counter = form.querySelector('#cebeProgressCounter');
     if (counter) {
       const naText = naCount > 0 ? ` · <span style="color:#64748B;font-weight:600">${naCount} N.A.</span>` : '';
-      counter.innerHTML = `<strong>${answered} de ${TOTAL_CEBE_ITEMS}</strong> respondidos (${pct}%)${naText} · <span style="color:${estadoColor};font-weight:700">${estado}</span>`;
+      counter.innerHTML = `<strong>${answered} de ${totalItemsCount}</strong> respondidos (${pct}%)${naText} · <span style="color:${estadoColor};font-weight:700">${estado}</span>`;
     }
 
     const bBadge = form.querySelector('#cebeBottomBadge');
     if (bBadge) {
       const naBadgeText = naCount > 0 ? ` (${naCount} N.A.)` : '';
-      bBadge.innerHTML = `Avance: <strong>${answered} de ${TOTAL_CEBE_ITEMS}</strong> (${pct}%) · Puntaje: <strong>${score} / ${applicableItems}</strong> pts${naBadgeText} (${scorePct}%) · <span style="color:${estadoColor};font-weight:700">${estado}</span>`;
+      bBadge.innerHTML = `Avance: <strong>${answered} de ${totalItemsCount}</strong> (${pct}%) · Puntaje: <strong>${score} / ${applicableItems}</strong> pts${naBadgeText} (${scorePct}%) · <span style="color:${estadoColor};font-weight:700">${estado}</span>`;
     }
   };
 
@@ -1268,8 +1273,11 @@ export async function guardarFormularioCebe(form, ft, state, dbNs, currentUser, 
     let naCount = 0;
     let scorePuntos = 0;
 
-    CEBE_SECCIONES.forEach(sec => {
-      sec.items.forEach(it => {
+    const activeSections = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0) ? ft.secciones : CEBE_SECCIONES;
+    const totalItemsCount = activeSections.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0) || TOTAL_CEBE_ITEMS;
+
+    activeSections.forEach(sec => {
+      (sec.items || []).forEach(it => {
         const val = respuestasMap[it.id] || null;
         const evid = cebeFormState.evidenciasPorItem[it.id] || '';
         if (val) {
@@ -1288,8 +1296,8 @@ export async function guardarFormularioCebe(form, ft, state, dbNs, currentUser, 
       });
     });
 
-    const applicableItems = Math.max(0, TOTAL_CEBE_ITEMS - naCount);
-    const pct = Math.round((answeredCount / TOTAL_CEBE_ITEMS) * 100);
+    const applicableItems = Math.max(0, totalItemsCount - naCount);
+    const pct = Math.round((answeredCount / totalItemsCount) * 100);
     const scorePct = applicableItems > 0 ? Math.round((scorePuntos / applicableItems) * 100) : 0;
 
     let estadoTexto = 'Inicio';
@@ -1327,8 +1335,8 @@ export async function guardarFormularioCebe(form, ft, state, dbNs, currentUser, 
       })(),
       colegioId: form.dataset.selectedColegioId || cebeFormState.colegioId || null,
       ugel,
-      red: rei ? (rei.startsWith('REI') ? rei : `REI ${rei}`) : 'REI 13',
-      rei,
+      red: normalizeReiNumber(rei) || '13',
+      rei: normalizeReiNumber(rei) || '13',
       fecha: fechaActiva,
       visita: vActiva,
       responsable: responsableName,
@@ -1359,7 +1367,7 @@ export async function guardarFormularioCebe(form, ft, state, dbNs, currentUser, 
       puntaje: scorePuntos,
       porcentaje: scorePct,
       estado: estadoTexto,
-      totalItems: TOTAL_CEBE_ITEMS,
+      totalItems: totalItemsCount,
       itemsRespondidos: answeredCount,
       itemsNa: naCount,
       itemsAplicables: applicableItems,

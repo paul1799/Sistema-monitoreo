@@ -1041,11 +1041,19 @@ function _prepararFilasGenerales(colegiosEbr, submissions, state, visita) {
       }
     }
 
+    function _normRei(val) {
+      if (val === undefined || val === null) return '';
+      const str = String(val).trim();
+      if (!str || str === '—' || str === '-' || str.toLowerCase().includes('no aplica')) return '';
+      const match = str.match(/\d+/);
+      return match ? String(parseInt(match[0], 10)).padStart(2, '0') : str;
+    }
+
     return {
       codigoLocal: col.codigoLocal || sub?.ie?.codigoLocal || sub?.codigoLocal || '',
       nombreIE: col.ie || sub?.institucion || '',
       nivel: col.nivel || col.nivelServicio || sub?.nivel || '',
-      red: col.rei || col.red || sub?.ie?.red || sub?.red || '',
+      red: _normRei(col.rei || col.red || sub?.ie?.red || sub?.red || ''),
       distrito: col.distrito || '',
       ugel: col.ugel || sub?.ugel || 'UGEL 03',
       tieneFicha,
