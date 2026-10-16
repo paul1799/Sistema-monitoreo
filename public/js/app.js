@@ -28,12 +28,13 @@ import {
   openLogoutConfirmModal,
   getConcursoSubTab,
   setConcursoSubTab,
-} from './ui.js?v=20261015_v8';
+} from './ui.js?v=20261016_v6';
 
 import { renderPortalView } from './portal.js?v=20261014_v1';
 import { renderDirectorioTab } from './directorio.js?v=20261015_v1';
 import { renderAlertasTab, getAlertCount } from './alertas.js?v=20261015_v1';
-import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261013_v2';
+import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261016_v2';
+import { PLANTILLAS_BASE_OFICIALES } from './catalogo-plantillas-base.js?v=20261016_v4';
 
 /* ============================= MANEJADORES GLOBALES DE ERROR ============================= */
 if (typeof window !== 'undefined') {
@@ -85,7 +86,7 @@ if (typeof window !== 'undefined') {
 function isAdmin() { return currentRole === 'admin'; }
 
 function getFichaType(id) {
-  return state.fichaTypes.find(f => f.id === id) || null;
+  return (state.fichaTypes || []).find(f => f.id === id) || PLANTILLAS_BASE_OFICIALES[id] || null;
 }
 
 /* ============================= SELECCIÓN DE MÓDULOS ============================= */
@@ -377,7 +378,14 @@ function startListeners() {
 
   activeUnsubscribers.push(
     dbNs.collection('fichaTypes').onSnapshot(snap => {
-      state.fichaTypes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const loadedIds = new Set(loaded.map(x => x.id));
+      Object.entries(PLANTILLAS_BASE_OFICIALES).forEach(([id, baseFt]) => {
+        if (!loadedIds.has(id)) {
+          loaded.push({ id, ...baseFt });
+        }
+      });
+      state.fichaTypes = loaded;
       state.fichaTypes.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
       render();
     }, err => handleSnapErr('fichaTypes', err, true))

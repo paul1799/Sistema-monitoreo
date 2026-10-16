@@ -358,71 +358,275 @@ input[type="number"] {
   z-index: 30;
 }
 
-.ebrStickyCol {
-  position: sticky;
-  left: 0;
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.04);
+/* Columnas fijas (sticky) para tablas de docentes EBR (Nivel a la izquierda y Aplica a la derecha) */
+.ebrTableWrap {
+  position: relative;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* Escalas Inicio / Proceso / Logrado */
+.ebrDocentesTable .ebrStickyCol {
+  position: sticky !important;
+  left: 0 !important;
+  box-shadow: 3px 0 6px -1px rgba(0, 0, 0, 0.12) !important;
+}
+
+.ebrDocentesTable .ebrStickyColRight {
+  position: sticky !important;
+  right: 0 !important;
+  box-shadow: -3px 0 6px -1px rgba(0, 0, 0, 0.12) !important;
+}
+
+.ebrDocentesTable thead th.ebrStickyCol,
+.ebrDocentesTable thead th.ebrStickyColRight {
+  z-index: 6 !important;
+  background: var(--primary) !important;
+  color: #FFFFFF !important;
+}
+
+.ebrDocentesTable tbody td.ebrStickyCol,
+.ebrDocentesTable tbody td.ebrStickyColRight {
+  z-index: 3 !important;
+  background: #FFFFFF;
+}
+
+.ebrDocentesTable tfoot td.ebrStickyCol,
+.ebrDocentesTable tfoot td.ebrStickyColRight {
+  z-index: 4 !important;
+  background: var(--surface-3) !important;
+}
+
+/* Columna Nivel compacta con ajuste en hasta dos líneas si excede */
+.ebrDocentesTable .colNivelDoc,
+.ebrDocentesTable th.colNivelDoc,
+.ebrDocentesTable td.colNivelDoc {
+  width: 124px !important;
+  min-width: 120px !important;
+  max-width: 130px !important;
+  padding: 5px 6px !important;
+  box-sizing: border-box !important;
+}
+
+.ebrDocentesTable .colNivelDoc .ebrNivelCellContent {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 4px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.ebrDocentesTable .colNivelDoc .ebrNivelLabel {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  line-height: 1.25 !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: var(--ink) !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+/* Columna Aplica estática en el borde derecho */
+.ebrDocentesTable .colAplicaDoc,
+.ebrDocentesTable th.colAplicaDoc,
+.ebrDocentesTable td.colAplicaDoc {
+  width: 76px !important;
+  min-width: 74px !important;
+  max-width: 80px !important;
+  padding: 5px 4px !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+}
+
+/* Filas deshabilitadas / No Aplica */
+.ebrDocentesTable tr.row-na-disabled td {
+  background: var(--surface-2) !important;
+}
+
+.ebrDocentesTable tr.row-na-disabled td:not(.colNivelDoc):not(.colAplicaDoc) {
+  opacity: 0.45;
+}
+
+.ebrDocentesTable tr.row-na-disabled .colNivelDoc .ebrNivelLabel {
+  opacity: 0.6;
+}
+
+/* =========================================================================
+   Botones de Escala Compactos de una Sola Capa (EBR Gestión Escolar)
+   ========================================================================= */
+.ebrScaleBtns {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  flex-shrink: 0 !important;
+  user-select: none !important;
+}
+
+.ebrScaleBtns .ebrScaleBtn,
+.ebrScaleBtns .optBtn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 44px !important;
+  height: 36px !important;
+  padding: 0 14px !important;
+  margin: 0 !important;
+  border-radius: 20px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px !important;
+  cursor: pointer !important;
+  text-align: center !important;
+  user-select: none !important;
+  box-sizing: border-box !important;
+  transition: all 0.15s ease !important;
+  flex: 0 0 auto !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.ebrScaleBtns .ebrScaleBtn.optNa,
+.ebrScaleBtns .optBtn.optNa {
+  min-width: 62px !important;
+  padding: 0 14px !important;
+  border-radius: 20px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+/* Reset total del span interior para eliminar la capa secundaria circular-ovalada */
+.ebrScaleBtns span,
+.ebrScaleBtns .ebrScaleBtn span,
+.ebrScaleBtns .optBtn span,
+.ebrScaleBtns .scaleInitial {
+  display: inline !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: 1 !important;
+  min-width: 0 !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+/* Opciones de escala: Color suave/opaco en reposo -> Color nítido y sólido al seleccionar */
+
+/* Inicio (I) */
 .ebrScaleBtns .optInicio {
-  background: #FEF2F2;
-  color: #DC2626;
-  border: 1.5px solid #FCA5A5;
-  border-radius: 6px;
-  transition: all 0.15s ease;
+  background: #FEF2F2 !important;
+  color: #DC2626 !important;
+  border: 2px solid #FCA5A5 !important;
 }
 
-.ebrScaleBtns .optInicio.active,
 .ebrScaleBtns .optInicio:hover {
-  background: #DC2626;
-  color: #FFFFFF;
-  border-color: #B91C1C;
+  background: #FEE2E2 !important;
+  border-color: #EF4444 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(220, 38, 38, 0.15) !important;
 }
 
+.ebrScaleBtns .optInicio.active {
+  background: #DC2626 !important;
+  color: #FFFFFF !important;
+  border-color: #B91C1C !important;
+  box-shadow: 0 3px 8px rgba(220, 38, 38, 0.35) !important;
+}
+
+/* Proceso (P) */
 .ebrScaleBtns .optProceso {
-  background: #FFFBEB;
-  color: #D97706;
-  border: 1.5px solid #FCD34D;
-  border-radius: 6px;
-  transition: all 0.15s ease;
+  background: #FFFBEB !important;
+  color: #D97706 !important;
+  border: 2px solid #FCD34D !important;
 }
 
-.ebrScaleBtns .optProceso.active,
 .ebrScaleBtns .optProceso:hover {
-  background: #D97706;
-  color: #FFFFFF;
-  border-color: #B45309;
+  background: #FEF3C7 !important;
+  border-color: #F59E0B !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(217, 119, 6, 0.15) !important;
 }
 
+.ebrScaleBtns .optProceso.active {
+  background: #D97706 !important;
+  color: #FFFFFF !important;
+  border-color: #B45309 !important;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.35) !important;
+}
+
+/* Logrado (L) */
 .ebrScaleBtns .optLogrado {
-  background: #ECFDF5;
-  color: #059669;
-  border: 1.5px solid #6EE7B7;
-  border-radius: 6px;
-  transition: all 0.15s ease;
+  background: #ECFDF5 !important;
+  color: #059669 !important;
+  border: 2px solid #6EE7B7 !important;
 }
 
-.ebrScaleBtns .optLogrado.active,
 .ebrScaleBtns .optLogrado:hover {
-  background: #059669;
-  color: #FFFFFF;
-  border-color: #047857;
+  background: #D1FAE5 !important;
+  border-color: #10B981 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(5, 150, 105, 0.15) !important;
 }
 
+.ebrScaleBtns .optLogrado.active {
+  background: #059669 !important;
+  color: #FFFFFF !important;
+  border-color: #047857 !important;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.35) !important;
+}
+
+/* No Aplica (NA) */
 .ebrScaleBtns .optNa {
-  background: #F8FAFC;
-  color: #475569;
-  border: 1.5px solid #CBD5E1;
-  border-radius: 6px;
-  transition: all 0.15s ease;
+  background: #F8FAFC !important;
+  color: #475569 !important;
+  border: 2px solid #CBD5E1 !important;
 }
 
-.ebrScaleBtns .optNa.active,
 .ebrScaleBtns .optNa:hover {
-  background: #475569;
-  color: #FFFFFF;
-  border-color: #334155;
+  background: #F1F5F9 !important;
+  border-color: #94A3B8 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(71, 85, 105, 0.15) !important;
+}
+
+.ebrScaleBtns .optNa.active {
+  background: #475569 !important;
+  color: #FFFFFF !important;
+  border-color: #334155 !important;
+  box-shadow: 0 2px 6px rgba(71, 85, 105, 0.35) !important;
+}
+
+.ebrScaleBtns .ebrScaleBtn:active,
+.ebrScaleBtns .optBtn:active {
+  transform: scale(0.94);
+}
+
+/* Tarjeta de ítem EBR más compacta */
+.ebrItemCard {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 14px !important;
+  margin-bottom: 10px !important;
+  background: var(--surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ebrItemCard:hover {
+  border-color: var(--primary-light, #93C5FD);
 }
 
 /* Evidencias sugeridas y observaciones */
@@ -441,8 +645,49 @@ input[type="number"] {
   outline: none;
 }
 
+/* Cabecera del ítem: texto a la izquierda y botones a la derecha en escritorio */
+.ebrItemHeader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px 14px;
+  margin-bottom: 8px;
+}
+
+.ebrItemText {
+  flex: 1 1 320px;
+  min-width: 260px;
+}
+
+/* En pantallas estrechas o al acortar la ventana:
+   El texto se expande a todo el ancho arriba (2-3 líneas)
+   y los botones [ I ] [ P ] [ L ] [ NA ] se colocan justo debajo */
+@media (max-width: 860px) {
+  .ebrItemHeader {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .ebrItemText {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex: none !important;
+  }
+
+  .ebrScaleBtns {
+    align-self: flex-start !important;
+    justify-content: flex-start !important;
+    margin-top: 2px !important;
+    margin-bottom: 2px !important;
+    width: auto !important;
+  }
+}
+
 @media (max-width: 768px) {
   .ebrVisitaSelectWrap {
     grid-template-columns: 1fr !important;
   }
 }
+

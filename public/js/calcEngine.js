@@ -385,7 +385,11 @@ export function calcScore(respuestas, fichaType) {
     const totalItems = (fichaType.secciones || []).reduce((acc, s) => acc + (s.items || []).length, 0) || 25;
     regla_nivel = getReglaNivelComunEbrEbePrite(totalItems);
   } else if (!regla_nivel && isFichaJec(fichaType)) {
-    regla_nivel = REGLA_NIVEL_JEC;
+    if (isFichaJec1erMomento(fichaType)) {
+      regla_nivel = REGLA_NIVEL_JEC_1ER_MOMENTO;
+    } else {
+      regla_nivel = REGLA_NIVEL_JEC;
+    }
   } else if (!regla_nivel && isFichaCoordTutoriaJec(fichaType)) {
     regla_nivel = REGLA_NIVEL_COORD_TUTORIA_JEC;
   }
@@ -520,6 +524,73 @@ export const REGLA_NIVEL_JEC = {
   ],
 };
 
+/** Regla oficial de la Ficha del 1er Monitoreo a la Implementación del Modelo JEC (37 ítems con escala 1,2,3 - Total 111 pts) */
+export const REGLA_NIVEL_JEC_1ER_MOMENTO = {
+  tipo:       'puntaje',
+  escala:     'escala_1_3',
+  maxPuntaje: 111,
+  minPuntaje: 1,
+  nota:       'Regla oficial 1er Monitoreo JEC: Inicio (1 a 56), Proceso (57 a 83), Logrado (84 a 111)',
+  rangos: [
+    {
+      nivel:        'LOGRADO',
+      min:          84,
+      max:          111,
+      estado_panel: 'Logrado',
+      descripcion:  'La IE cumple con la mayoría de los ítems establecidos.'
+    },
+    {
+      nivel:        'PROCESO',
+      min:          57,
+      max:          83,
+      estado_panel: 'En proceso',
+      descripcion:  'La IE cumple con más de la mitad de los ítems establecidos.'
+    },
+    {
+      nivel:        'INICIO',
+      min:          1,
+      max:          56,
+      estado_panel: 'Inicio',
+      descripcion:  'La IE cumple con algunos de los ítems establecidos.'
+    },
+  ],
+};
+
+/**
+ * Obtiene el nivel de valoración del 1er Monitoreo JEC según su puntaje
+ * @param {number} puntaje 
+ * @returns {{ nivel: string, estado_panel: string, color: string, bg: string, descripcion: string }}
+ */
+export function getNivelJec1erMomento(puntaje) {
+  const p = Number(puntaje) || 0;
+  if (p >= 84) {
+    return {
+      nivel: 'LOGRADO',
+      estado_panel: 'Logrado',
+      color: '#10B981',
+      bg: '#ECFDF5',
+      descripcion: 'La IE cumple con la mayoría de los ítems establecidos.'
+    };
+  }
+  if (p >= 57) {
+    return {
+      nivel: 'PROCESO',
+      estado_panel: 'En proceso',
+      color: '#F59E0B',
+      bg: '#FFFBEB',
+      descripcion: 'La IE cumple con más de la mitad de los ítems establecidos.'
+    };
+  }
+  return {
+    nivel: 'INICIO',
+    estado_panel: 'Inicio',
+    color: '#EF4444',
+    bg: '#FEF2F2',
+    descripcion: 'La IE cumple con algunos de los ítems establecidos.'
+  };
+}
+
+
 /** Regla oficial de la Ficha de Monitoreo a las Funciones del Coordinador(a) de Tutoría (JEC) */
 export const REGLA_NIVEL_COORD_TUTORIA_JEC = {
   tipo:       'puntaje',
@@ -587,7 +658,7 @@ export const ESPECIALISTA_JEC_OFICIAL = {
 export function isFichaJec(ft, state = null) {
   if (!ft) return false;
   const id = (typeof ft === 'string' ? ft : (ft.id || ft.fichaTypeId || ft.tipo || '')).toLowerCase();
-  if (id === 'ft_msejec_2do' || id === 'ft_jec') return true;
+  if (id === 'ft_msejec_1er' || id === 'ft_msejec_2do' || id === 'ft_msejec_3er' || id === 'ft_jec') return true;
   const n = String(typeof ft === 'string' ? ft : (ft.nombre || ft.fichaTypeNombre || ft.tipo || id || ''))
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   if (n.includes('tutoria') || n.includes('pedagogic')) return false; // Evitar confundir con coordinaciones JEC
@@ -602,6 +673,36 @@ export function isFichaJec(ft, state = null) {
     if (parentFt && parentFt !== ft) return isFichaJec(parentFt);
   }
   return false;
+}
+
+/**
+ * Obtiene el momento de aplicación (1, 2 o 3) de la ficha de Implementación JEC
+ * @param {Object|string} ft - Ficha o ID
+ * @returns {number|null} 1, 2 o 3 (o 2 por defecto si es JEC institucional genérica)
+ */
+export function getMomentoFichaJec(ft) {
+  if (!ft) return null;
+  const id = (typeof ft === 'string' ? ft : (ft.id || ft.fichaTypeId || ft.tipo || '')).toLowerCase();
+  if (id === 'ft_msejec_1er' || id.includes('1er') || id.includes('m1') || id.includes('momento_1')) return 1;
+  if (id === 'ft_msejec_2do' || id === 'ft_jec' || id.includes('2do') || id.includes('m2') || id.includes('momento_2')) return 2;
+  if (id === 'ft_msejec_3er' || id.includes('3er') || id.includes('m3') || id.includes('momento_3')) return 3;
+  const n = String(typeof ft === 'string' ? ft : (ft.nombre || ft.fichaTypeNombre || '')).toLowerCase();
+  if (n.includes('1er') || n.includes('primer')) return 1;
+  if (n.includes('3er') || n.includes('tercer')) return 3;
+  if (n.includes('2do') || n.includes('segundo')) return 2;
+  return isFichaJec(ft) ? 2 : null;
+}
+
+export function isFichaJec1erMomento(ft) {
+  return isFichaJec(ft) && getMomentoFichaJec(ft) === 1;
+}
+
+export function isFichaJec2doMomento(ft) {
+  return isFichaJec(ft) && getMomentoFichaJec(ft) === 2;
+}
+
+export function isFichaJec3erMomento(ft) {
+  return isFichaJec(ft) && getMomentoFichaJec(ft) === 3;
 }
 
 /**
@@ -981,6 +1082,63 @@ export function getMomentoVisitaEbr(subOrFt) {
   if (Array.isArray(subOrFt.respuestas) && subOrFt.respuestas.some(r => String(r?.id || '').startsWith('ge3_'))) return 3;
   if (Array.isArray(subOrFt.respuestas) && subOrFt.respuestas.some(r => String(r?.id || '').startsWith('ge2_'))) return 2;
   return 1;
+}
+
+/**
+ * Resuelve de forma robusta el número canónico de visita / momento (1, 2 o 3)
+ * de cualquier ficha o envío, considerando:
+ * - Fichas institucionales JEC de momento único (1er -> 1, 2do -> 2, 3er -> 3)
+ * - Fichas EBR Gestión Escolar (según getMomentoVisitaEbr)
+ * - Campos numéricos o textuales en visita, momento o visitaTipo
+ *
+ * @param {Object} subOrFt - Ficha registrada o plantilla
+ * @param {Object} [targetFt] - Plantilla de ficha asociada
+ * @returns {number} 1, 2 o 3
+ */
+export function getSubmissionVisitaNum(subOrFt, targetFt = null) {
+  if (!subOrFt) return 1;
+
+  const ftId = String(targetFt?.id || subOrFt.fichaTypeId || subOrFt.tipo || '').toLowerCase();
+  const ftNom = String(targetFt?.nombre || subOrFt.fichaTypeNombre || subOrFt.nombre || '').toLowerCase();
+
+  // 1. Fichas de Implementación del Modelo JEC (institucional de momento fijo)
+  if (ftId === 'ft_msejec_1er' || (ftId.includes('1er') && (ftId.includes('jec') || ftNom.includes('jec')))) {
+    return 1;
+  }
+  if (ftId === 'ft_msejec_2do' || ftId === 'ft_jec' || (ftId.includes('2do') && (ftId.includes('jec') || ftNom.includes('jec')))) {
+    return 2;
+  }
+  if (ftId === 'ft_msejec_3er' || (ftId.includes('3er') && (ftId.includes('jec') || ftNom.includes('jec')))) {
+    return 3;
+  }
+
+  // 2. Campo explícito subOrFt.visita
+  if (subOrFt.visita !== undefined && subOrFt.visita !== null && subOrFt.visita !== '') {
+    const n = Number(subOrFt.visita);
+    if (!isNaN(n) && (n === 1 || n === 2 || n === 3)) return n;
+    const strV = String(subOrFt.visita).toLowerCase();
+    if (strV.includes('3') || strV.includes('tercer')) return 3;
+    if (strV.includes('2') || strV.includes('segundo')) return 2;
+    if (strV.includes('1') || strV.includes('primer')) return 1;
+  }
+
+  // 3. Campo explícito subOrFt.momento
+  if (subOrFt.momento !== undefined && subOrFt.momento !== null && subOrFt.momento !== '') {
+    const n = Number(subOrFt.momento);
+    if (!isNaN(n) && (n === 1 || n === 2 || n === 3)) return n;
+    const strM = String(subOrFt.momento).toLowerCase();
+    if (strM.includes('3') || strM.includes('tercer')) return 3;
+    if (strM.includes('2') || strM.includes('segundo')) return 2;
+    if (strM.includes('1') || strM.includes('primer')) return 1;
+  }
+
+  // 4. Si es ficha EBR Gestión Escolar
+  if (isFichaEbrGestionEscolar(targetFt || subOrFt)) {
+    return getMomentoVisitaEbr(subOrFt);
+  }
+
+  // 5. Fallback con getMomentoVisitaEbr para detección de textos y códigos
+  return getMomentoVisitaEbr(subOrFt) || 1;
 }
 
 /**

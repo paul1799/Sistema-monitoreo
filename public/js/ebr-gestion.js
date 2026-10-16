@@ -1122,45 +1122,45 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
       ` : '';
 
       return `
-        <div class="ebrItemCard" data-item-id="${esc(it.id)}" style="border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:12px;background:var(--surface)">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">
-            <div style="flex:1">
+        <div class="ebrItemCard" data-item-id="${esc(it.id)}" style="border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:10px;background:var(--surface)">
+          <div class="ebrItemHeader" style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:10px 14px;margin-bottom:8px">
+            <div class="ebrItemText" style="flex:1 1 280px;min-width:240px">
               <span style="font-weight:800;color:var(--primary);margin-right:6px">
                 ${it.num || globalItemIndex}.
               </span>
-              <span style="font-size:13.5px;color:var(--ink);font-weight:500;line-height:1.45">
+              <span style="font-size:13.5px;color:var(--ink);font-weight:500;line-height:1.35">
                 ${esc(it.texto)}
               </span>
             </div>
-            <!-- Opciones Inicio / Proceso / Logrado / No Aplica (NA) -->
-            <div class="ebrScaleBtns" style="display:flex;gap:6px;flex-shrink:0">
-              <label class="optBtn optInicio ${currentVal === 'inicio' ? 'active' : ''}" style="cursor:pointer;padding:4px 10px;font-size:12px;font-weight:700">
+            <!-- Opciones con iniciales: I / P / L / NA (capa única tipo píldora como en imagen 2) -->
+            <div class="ebrScaleBtns" role="radiogroup" aria-label="Calificación para ítem ${it.num || globalItemIndex}" style="display:inline-flex;flex-direction:row;flex-wrap:nowrap;align-items:center;gap:8px;flex-shrink:0">
+              <label class="ebrScaleBtn optInicio ${currentVal === 'inicio' ? 'active' : ''}" title="Inicio (I)" style="min-width:44px;height:36px;padding:0 14px;border-radius:20px;font-size:14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer">
                 <input type="radio" name="item_${esc(it.id)}" value="inicio" ${currentVal === 'inicio' ? 'checked' : ''} style="display:none">
-                <span>Inicio</span>
+                <span class="scaleInitial">I</span>
               </label>
-              <label class="optBtn optProceso ${currentVal === 'proceso' ? 'active' : ''}" style="cursor:pointer;padding:4px 10px;font-size:12px;font-weight:700">
+              <label class="ebrScaleBtn optProceso ${currentVal === 'proceso' ? 'active' : ''}" title="Proceso (P)" style="min-width:44px;height:36px;padding:0 14px;border-radius:20px;font-size:14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer">
                 <input type="radio" name="item_${esc(it.id)}" value="proceso" ${currentVal === 'proceso' ? 'checked' : ''} style="display:none">
-                <span>Proceso</span>
+                <span class="scaleInitial">P</span>
               </label>
-              <label class="optBtn optLogrado ${currentVal === 'logrado' ? 'active' : ''}" style="cursor:pointer;padding:4px 10px;font-size:12px;font-weight:700">
+              <label class="ebrScaleBtn optLogrado ${currentVal === 'logrado' ? 'active' : ''}" title="Logrado (L)" style="min-width:44px;height:36px;padding:0 14px;border-radius:20px;font-size:14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer">
                 <input type="radio" name="item_${esc(it.id)}" value="logrado" ${currentVal === 'logrado' ? 'checked' : ''} style="display:none">
-                <span>Logrado</span>
+                <span class="scaleInitial">L</span>
               </label>
-              <label class="optBtn optNa ${currentVal === 'na' ? 'active' : ''}" style="cursor:pointer;padding:4px 10px;font-size:12px;font-weight:700">
-                <input type="radio" name="item_${esc(it.id)}" value="na" ${currentVal === 'na' ? 'checked' : ''} style="display:none">
-                <span>No Aplica (NA)</span>
+              <label class="ebrScaleBtn optNa ${currentVal === 'na' || currentVal === 'no_aplica' ? 'active' : ''}" title="No Aplica (NA)" style="min-width:62px;height:36px;padding:0 14px;border-radius:20px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer">
+                <input type="radio" name="item_${esc(it.id)}" value="na" ${currentVal === 'na' || currentVal === 'no_aplica' ? 'checked' : ''} style="display:none">
+                <span class="scaleInitial">NA</span>
               </label>
             </div>
           </div>
 
           <!-- Evidencias sugeridas (texto de referencia no editable) -->
-          <div class="ebrEvidenciaBox" style="font-size:11.5px;color:var(--ink-soft);background:var(--surface-2);border-radius:4px;padding:5px 8px;margin-bottom:8px;line-height:1.35">
+          <div class="ebrEvidenciaBox" style="font-size:11.5px;color:var(--ink-soft);background:var(--surface-2);border-radius:4px;padding:4px 8px;margin-bottom:6px;line-height:1.3">
             <strong>Evidencias sugeridas:</strong> <em>${esc(it.evidencia || 'Sin evidencias sugeridas')}</em>
           </div>
 
           <!-- Observaciones / Hallazgos por ítem -->
           <div>
-            <textarea class="ebrItemObs" data-item-obs="${esc(it.id)}" rows="1" placeholder="Observaciones / hallazgos específicos sobre este indicador..." style="width:100%;font-size:12px;padding:4px 8px;min-height:36px">${esc(currentObs)}</textarea>
+            <textarea class="ebrItemObs" data-item-obs="${esc(it.id)}" rows="1" placeholder="Observaciones / hallazgos específicos sobre este indicador..." style="width:100%;font-size:12px;padding:4px 8px;min-height:34px">${esc(currentObs)}</textarea>
           </div>
 
           ${proyectosHtml}
@@ -1430,9 +1430,17 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
       ${seccionSubdirectoresHtml}
       ${tablasDocentesHtml}
       <div class="panel">
-        <div class="sectionHeaderTitle">
-          ${secAspectosRomano}. POLÍTICA REGIONAL 01: INSTITUCIONES EDUCATIVAS QUE ASEGURAN APRENDIZAJES
-          <small style="font-weight:normal;color:var(--text-600);margin-left:8px">Escala: Inicio / Proceso / Logrado</small>
+        <div class="sectionHeaderTitle" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div>
+            ${secAspectosRomano}. POLÍTICA REGIONAL 01: INSTITUCIONES EDUCATIVAS QUE ASEGURAN APRENDIZAJES
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--ink-soft);display:flex;align-items:center;gap:6px">
+            <span style="font-weight:600;font-size:11px">ESCALA:</span>
+            <span class="badge" style="background:#FEF2F2;color:#DC2626;border:1px solid #FCA5A5;padding:2px 6px;font-size:11px">I (Inicio)</span>
+            <span class="badge" style="background:#FFFBEB;color:#D97706;border:1px solid #FCD34D;padding:2px 6px;font-size:11px">P (Proceso)</span>
+            <span class="badge" style="background:#ECFDF5;color:#059669;border:1px solid #6EE7B7;padding:2px 6px;font-size:11px">L (Logrado)</span>
+            <span class="badge" style="background:#F8FAFC;color:#475569;border:1px solid #CBD5E1;padding:2px 6px;font-size:11px">NA (No aplica)</span>
+          </div>
         </div>
         ${seccionesAspectosHtml}
       </div>
@@ -1463,14 +1471,15 @@ function renderDocentesTableHtml(momentoKey, rows) {
     const isNa = row.noAplica === true;
     const disabledAttr = isNa ? 'disabled' : '';
     const naStyle = isNa ? 'opacity:0.4;background:var(--surface-2);' : '';
+    const cellBg = isNa ? 'var(--surface-2)' : '#ffffff';
 
     return `
-      <tr data-doc-row="${momentoKey}|${rIdx}" style="${naStyle}">
-        <!-- Nivel con opción de edición -->
-        <td class="ebrStickyCol" style="font-weight:700;background:var(--surface);position:sticky;left:0;z-index:2">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+      <tr data-doc-row="${momentoKey}|${rIdx}" class="${isNa ? 'row-na-disabled' : ''}" style="${naStyle}">
+        <!-- Nivel con opción de edición (Fija a la izquierda) -->
+        <td class="ebrStickyCol colNivelDoc" style="font-weight:700;background:${cellBg};position:sticky;left:0;z-index:3">
+          <div class="ebrNivelCellContent">
             <span class="ebrNivelLabel" title="${esc(row.nivel)}">${esc(row.nivel)}</span>
-            <button type="button" class="iconBtn small btnEditNivel" data-edit-nivel="${momentoKey}|${rIdx}" title="Editar nombre del nivel o servicio educativo" style="padding:2px 5px;font-size:11px;line-height:1.2;cursor:pointer;opacity:0.85;border:1px solid var(--line);border-radius:4px;background:var(--surface-2)">✏️</button>
+            <button type="button" class="iconBtn small btnEditNivel" data-edit-nivel="${momentoKey}|${rIdx}" title="Editar nombre del nivel o servicio educativo" style="padding:2px 4px;font-size:11px;line-height:1.1;cursor:pointer;opacity:0.85;border:1px solid var(--line);border-radius:4px;background:var(--surface-2);flex-shrink:0">✏️</button>
           </div>
         </td>
         <!-- Total -->
@@ -1497,23 +1506,25 @@ function renderDocentesTableHtml(momentoKey, rows) {
         <!-- R5: I II III IV -->
         ${renderRubricaInputsHtml(momentoKey, rIdx, 'R5', row.R5, disabledAttr, 'rgba(217, 119, 6, 0.05)')}
 
-        <!-- Acciones: No aplica / Quitar -->
-        <td style="text-align:center;white-space:nowrap">
-          <label style="font-size:11px;display:inline-flex;align-items:center;gap:3px;cursor:pointer" title="Marcar si la I.E. no brinda este nivel educativo">
-            <input type="checkbox" class="chkDocNa" data-doc-na="${momentoKey}|${rIdx}" ${isNa ? 'checked' : ''}> N/A
-          </label>
-          ${rIdx >= 3 ? `<button type="button" class="iconBtn danger small btnRmFilaDoc" data-rm-doc="${momentoKey}|${rIdx}" title="Eliminar fila" style="margin-left:4px">✕</button>` : ''}
+        <!-- Acciones: No aplica / Quitar (Fija a la derecha) -->
+        <td class="ebrStickyColRight colAplicaDoc" style="position:sticky;right:0;background:${cellBg};z-index:3;text-align:center;white-space:nowrap">
+          <div style="display:flex;align-items:center;justify-content:center;gap:3px">
+            <label style="font-size:11px;display:inline-flex;align-items:center;gap:3px;cursor:pointer;font-weight:600" title="Marcar si la I.E. no brinda este nivel educativo">
+              <input type="checkbox" class="chkDocNa" data-doc-na="${momentoKey}|${rIdx}" ${isNa ? 'checked' : ''}> N/A
+            </label>
+            ${rIdx >= 3 ? `<button type="button" class="iconBtn danger small btnRmFilaDoc" data-rm-doc="${momentoKey}|${rIdx}" title="Eliminar fila" style="padding:1px 4px;font-size:10px;margin-left:2px">✕</button>` : ''}
+          </div>
         </td>
       </tr>
     `;
   }).join('');
 
   return `
-    <div class="ebrTableWrap" style="overflow-x:auto;max-width:100%;border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow-sm)">
-      <table class="table ebrDocentesTable" style="width:100%;border-collapse:collapse;font-size:11.5px;min-width:1200px" data-momento-table="${momentoKey}">
+    <div class="ebrTableWrap" style="overflow-x:auto;max-width:100%;border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow-sm);position:relative">
+      <table class="table ebrDocentesTable" style="width:100%;border-collapse:separate;border-spacing:0;font-size:11.5px;min-width:1200px" data-momento-table="${momentoKey}">
         <thead>
           <tr style="background:var(--primary);color:#FFFFFF;text-align:center">
-            <th rowspan="2" class="ebrStickyCol" style="position:sticky;left:0;background:var(--primary);z-index:3;width:130px;min-width:130px;vertical-align:middle">
+            <th rowspan="2" class="ebrStickyCol colNivelDoc" style="position:sticky;left:0;background:var(--primary);color:#FFFFFF;z-index:6;vertical-align:middle;text-align:center">
               Nivel
             </th>
             <th rowspan="2" class="colTotalDoc ebrThNarrow" style="vertical-align:middle;text-align:center;border-right:1px solid rgba(255,255,255,0.25)">
@@ -1533,7 +1544,9 @@ function renderDocentesTableHtml(momentoKey, rows) {
             <th colspan="4" style="background:#047857;border-left:1.5px solid #fff">R3 Evalúa y retroalim. <span class="rubCheck" data-rc="R3"></span></th>
             <th colspan="4" style="background:#6D28D9;border-left:1.5px solid #fff">R4 Respeto <span class="rubCheck" data-rc="R4"></span></th>
             <th colspan="4" style="background:#B45309;border-left:1.5px solid #fff">R5 Comportamiento <span class="rubCheck" data-rc="R5"></span></th>
-            <th rowspan="2" style="width:70px;vertical-align:middle">Aplica</th>
+            <th rowspan="2" class="ebrStickyColRight colAplicaDoc" style="position:sticky;right:0;background:var(--primary);color:#FFFFFF;z-index:6;vertical-align:middle;text-align:center">
+              Aplica
+            </th>
           </tr>
           <tr style="background:var(--surface-2);color:var(--ink);text-align:center;font-size:10.5px">
             <!-- R1 subheaders -->
@@ -1553,7 +1566,7 @@ function renderDocentesTableHtml(momentoKey, rows) {
         </tbody>
         <tfoot>
           <tr style="background:var(--surface-3);font-weight:800;text-align:center;border-top:2px solid var(--primary)" class="ebrDocTotalRow">
-            <td class="ebrStickyCol" style="position:sticky;left:0;background:var(--surface-3);z-index:2;text-align:left;padding-left:8px">
+            <td class="ebrStickyCol colNivelDoc" style="position:sticky;left:0;background:var(--surface-3);z-index:4;text-align:left;padding-left:8px">
               TOTAL
             </td>
             <td class="colTotalDoc" id="tot_${momentoKey}_total">0</td>
@@ -1584,7 +1597,7 @@ function renderDocentesTableHtml(momentoKey, rows) {
             <td id="tot_${momentoKey}_R5_1">0</td>
             <td id="tot_${momentoKey}_R5_2">0</td>
             <td id="tot_${momentoKey}_R5_3">0</td>
-            <td>—</td>
+            <td class="ebrStickyColRight colAplicaDoc" style="position:sticky;right:0;background:var(--surface-3);z-index:4;text-align:center">—</td>
           </tr>
         </tfoot>
       </table>
@@ -2186,7 +2199,12 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
         if (list && list[rIdx]) list[rIdx].noAplica = chk.checked;
         const tr = chk.closest('tr');
         tr.querySelectorAll('.ebrDocInp').forEach(i => i.disabled = chk.checked);
-        tr.style.opacity = chk.checked ? '0.4' : '1';
+        tr.classList.toggle('row-na-disabled', chk.checked);
+        const cellBg = chk.checked ? 'var(--surface-2)' : '#ffffff';
+        const nivelTd = tr.querySelector('.colNivelDoc');
+        if (nivelTd) nivelTd.style.background = cellBg;
+        const aplicaTd = tr.querySelector('.colAplicaDoc');
+        if (aplicaTd) aplicaTd.style.background = cellBg;
         recalculateDocentesRow(tr);
         recalculateDocentesTotals(tr.closest('table'));
       });

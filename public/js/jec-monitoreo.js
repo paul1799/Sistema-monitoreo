@@ -526,7 +526,7 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:20px">🏫</span>
               <h2 style="margin:0;font-size:16px;font-weight:700;color:var(--ink)">
-                Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC
+                ${esc(ft?.nombre || 'Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC')}
               </h2>
             </div>
             <p style="margin:2px 0 0;font-size:12px;color:var(--ink-soft)">
@@ -1716,9 +1716,13 @@ export function collectJecFormData(host, ft, isEdit = false) {
     m2: buildMomentoSummary('momento2')
   };
 
+  const jecMomento = ft?.momento || (ft?.id && ft.id.includes('1er') ? 1 : (ft?.id && ft.id.includes('3er') ? 3 : 2));
+
   return {
     fichaTypeId: ft.id || 'ft_msejec_2do',
     fichaTypeNombre: ft.nombre || 'Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC',
+    visita: jecMomento,
+    momento: jecMomento,
     tipoRespuesta: 'si_no',
     escala: 'SI_NO_NA',
     responsable: finalRespNombre,

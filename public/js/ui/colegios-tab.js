@@ -85,6 +85,9 @@ export const INST_FIELD_ALIASES = {
   'subDirector.dni': ['subdir_dni', 'subdirector_dni', 'sub_director - dni', 'subdirector - dni', 'dni subdirector'],
   'subDirector.telefono': ['subdir_telefono', 'subdirector_telefono', 'sub_director - telefono', 'subdirector - telefono', 'sub-director - telefono', 'telefono subdirector', 'teléfono subdirector'],
   'subDirector.correo': ['subdir_correo', 'subdirector_correo', 'sub_director - correo', 'subdirector - correo', 'sub-director - correo', 'correo subdirector', 'email subdirector'],
+  esJec: ['jec', 'es_jec', 'es jec', 'modelo jec', 'modelojec'],
+  cantCoordPedag: ['cantcoordpedag', 'cant_coord_pedag', 'coord_pedag', 'coord pedagogicos', 'n_coord_pedag'],
+  cantCoordTutoria: ['cantcoordtutoria', 'cant_coord_tutoria', 'coord_tutoria', 'coord tutoria', 'n_coord_tutoria'],
 };
 
 /** Descarga una plantilla Excel lista para completar e importar */
@@ -98,12 +101,14 @@ export function downloadPlantillaExcel() {
     'Tipo de Gestión', 'Dependencia', 'Dirección', 'Distrito',
     'Director_Nombres', 'Director_DNI', 'Director_Teléfono', 'Director_Correo',
     'SubDir_Nombres', 'SubDir_DNI', 'SubDir_Teléfono', 'SubDir_Correo',
+    'Es_JEC', 'Cant_Coord_Pedag', 'Cant_Coord_Tutoria',
   ];
   const exampleRow = [
     '01', '123456', 'I.E. Ejemplo', 'EBR', 'Primaria', 'Mañana',
     'Pública - Sector Educación', 'UGEL 03', 'Jr. Ejemplo 123', 'Lima',
     'García López, Juan', '12345678', '999888777', 'director@ejemplo.pe',
     '', '', '', '',
+    'No', '1', '1',
   ];
   const ws = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
   ws['!cols'] = headers.map(() => ({ wch: 22 }));
@@ -146,6 +151,18 @@ export function sanitizeColegioRecord(r, existing, now) {
     }
   }
 
+  const esJec = (r.esJec !== undefined)
+    ? Boolean(r.esJec === true || r.es_jec === true || String(r.esJec || '').toLowerCase() === 'si' || String(r.esJec || '').toLowerCase() === 'sí' || String(r.modelo || '').toUpperCase() === 'JEC')
+    : Boolean(existing && (existing.esJec || existing.es_jec));
+
+  const cantCoordPedag = (typeof r.cantCoordPedag === 'number' && !isNaN(r.cantCoordPedag) && r.cantCoordPedag >= 1)
+    ? r.cantCoordPedag
+    : (parseInt(r.cantCoordPedag, 10) || (existing && existing.cantCoordPedag) || 1);
+
+  const cantCoordTutoria = (typeof r.cantCoordTutoria === 'number' && !isNaN(r.cantCoordTutoria) && r.cantCoordTutoria >= 1)
+    ? r.cantCoordTutoria
+    : (parseInt(r.cantCoordTutoria, 10) || (existing && existing.cantCoordTutoria) || 1);
+
   const docData = {
     rei: normalizeReiNumber(r.rei) || s(r.rei),
     codigoLocal: s(r.codigoLocal),
@@ -159,6 +176,9 @@ export function sanitizeColegioRecord(r, existing, now) {
     distrito: s(r.distrito),
     director: director,
     subDirector: subDirector,
+    esJec: esJec,
+    cantCoordPedag: cantCoordPedag,
+    cantCoordTutoria: cantCoordTutoria,
     updatedAt: now,
     createdAt: createdAt,
   };
@@ -280,7 +300,7 @@ export async function parseInstitucionesExcel(file) {
 }
 
 // Variables de estado local del tab de colegios
-let colFilters = { rei: '', distrito: '', modalidad: '', q: '', pendientes: false };
+let colFilters = { rei: '', distrito: '', modalidad: '', q: '', pendientes: false, soloJec: false };
 let colExpanded = null;
 let colShowImport = false;
 let colImportPreview = null; // {rows, errors}
@@ -293,6 +313,7 @@ function renderColegiosApartadoHtml(curFiltered, bySchool, totalColegios, filter
   const monitoreados = curFiltered.filter(c => (bySchool[c.id] || []).length > 0).length;
   const pendientes = totalInFilter - monitoreados;
   const cobertura = totalInFilter ? Math.round((monitoreados / totalInFilter) * 100) : null;
+  const jecCount = curFiltered.filter(c => c.esJec || c.es_jec || String(c.modelo || '').toUpperCase() === 'JEC').length;
 
   // Context badges activos
   const badges = [];
@@ -308,6 +329,9 @@ function renderColegiosApartadoHtml(curFiltered, bySchool, totalColegios, filter
   if (filters.pendientes) {
     badges.push('<span class="badge st-inicio">Solo pendientes</span>');
   }
+  if (filters.soloJec) {
+    badges.push('<span class="badge" style="background:#dbeafe;color:#1e40af;font-weight:700">🏛️ Modelo JEC</span>');
+  }
   if (filters.q) {
     badges.push('<span class="badge st-none">Búsqueda: "' + esc(filters.q) + '"</span>');
   }
@@ -319,6 +343,8 @@ function renderColegiosApartadoHtml(curFiltered, bySchool, totalColegios, filter
   let breakdownLabel = 'Total por modalidad en el padrón:';
   let breakdownChips = '';
 
+  const jecBtnHtml = '<button type="button" class="badge st-none colQuickJecBtn" style="font-size:11px;padding:3px 8px;font-weight:600;cursor:pointer;border:1px solid #bfdbfe;background:' + (filters.soloJec ? 'var(--primary)' : '#eff6ff') + ';color:' + (filters.soloJec ? '#fff' : '#1e40af') + '" title="Filtrar por colegios JEC">JEC: <strong>' + jecCount + '</strong></button>';
+
   if (filters.rei && !filters.modalidad) {
     breakdownLabel = 'Modalidades en REI ' + esc(filters.rei) + ':';
     const modCounts = {};
@@ -328,7 +354,7 @@ function renderColegiosApartadoHtml(curFiltered, bySchool, totalColegios, filter
     });
     breakdownChips = Object.entries(modCounts).map(([m, cnt]) =>
       '<button type="button" class="badge st-none colQuickModBtn" data-mod="' + esc(m) + '" style="font-size:11px;padding:3px 8px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface)" title="Filtrar por ' + esc(m) + '">' + esc(m) + ': <strong style="color:var(--primary)">' + cnt + '</strong></button>'
-    ).join('') || '<span style="font-size:12px;color:var(--ink-soft)">Sin datos</span>';
+    ).join('') + ' ' + jecBtnHtml;
   } else if (filters.modalidad && !filters.rei) {
     breakdownLabel = 'Modalidad ' + esc(filters.modalidad) + ':';
     const reiCounts = {};
@@ -337,10 +363,10 @@ function renderColegiosApartadoHtml(curFiltered, bySchool, totalColegios, filter
       reiCounts[r] = (reiCounts[r] || 0) + 1;
     });
     const numReis = Object.keys(reiCounts).length;
-    breakdownChips = '<span class="badge st-none" style="font-size:11px;padding:3px 8px;font-weight:600">Presente en <strong>' + numReis + '</strong> REI(s)</span>';
+    breakdownChips = '<span class="badge st-none" style="font-size:11px;padding:3px 8px;font-weight:600">Presente en <strong>' + numReis + '</strong> REI(s)</span> ' + jecBtnHtml;
   } else if (filters.rei && filters.modalidad) {
     breakdownLabel = 'Selección activa:';
-    breakdownChips = '<span class="badge" style="background:rgba(37,99,235,0.12);color:var(--primary);font-size:11px;padding:3px 8px;font-weight:600">REI ' + esc(filters.rei) + ' · ' + esc(filters.modalidad) + ': <strong>' + totalInFilter + ' colegios</strong></span>';
+    breakdownChips = '<span class="badge" style="background:rgba(37,99,235,0.12);color:var(--primary);font-size:11px;padding:3px 8px;font-weight:600">REI ' + esc(filters.rei) + ' · ' + esc(filters.modalidad) + ': <strong>' + totalInFilter + ' colegios</strong></span> ' + jecBtnHtml;
   } else {
     breakdownLabel = 'Total por modalidad en el padrón:';
     const modCounts = {};
@@ -350,7 +376,7 @@ function renderColegiosApartadoHtml(curFiltered, bySchool, totalColegios, filter
     });
     breakdownChips = Object.entries(modCounts).map(([m, cnt]) =>
       '<button type="button" class="badge st-none colQuickModBtn" data-mod="' + esc(m) + '" style="font-size:11px;padding:3px 8px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface)" title="Filtrar por ' + esc(m) + '">' + esc(m) + ': <strong style="color:var(--primary)">' + cnt + '</strong></button>'
-    ).join('') || '<span style="font-size:12px;color:var(--ink-soft)">—</span>';
+    ).join('') + ' ' + jecBtnHtml;
   }
 
   return '' +
@@ -398,10 +424,11 @@ function buildColegioRowsHtml(filtered, bySchool, getFichaType, colExpandedId, i
     const chips = typeStats.map(t => '<span class="badge st-none" style="margin:1px 3px 1px 0">' + esc(t.nombre) + ' (' + t.count + ')</span>').join('') || '<span class="helpText" style="margin:0">Sin monitoreos</span>';
     const isOpen = colExpandedId === c.id;
     const detail = isOpen ? renderColegioProfile(c, subs, typeStats, state) : '';
+    const isJec = Boolean(c.esJec === true || c.es_jec === true || String(c.modelo || '').toUpperCase() === 'JEC');
     return '<tr data-colrow="' + c.id + '" style="cursor:pointer">' +
       '<td><span class="badge" style="background:var(--accent-tint);color:var(--accent-dark);font-weight:600">' + esc(normalizeReiNumber(c.rei || c.red) || c.rei || '—') + '</span></td>' +
       '<td><code>' + esc(c.codigoLocal || '—') + '</code></td>' +
-      '<td>' + esc(c.ie || '—') + '</td>' +
+      '<td>' + esc(c.ie || '—') + (isJec ? ' <span class="badge" style="background:#dbeafe;color:#1e40af;font-size:10px;font-weight:700;padding:1px 5px;border:1px solid #bfdbfe;vertical-align:middle" title="Modelo JEC (Jornada Escolar Completa)">JEC</span>' : '') + '</td>' +
       '<td>' + esc(c.distrito || '—') + '</td>' +
       '<td><span class="badge st-none" style="font-weight:600">' + esc(c.modalidad || '—') + '</span></td>' +
       '<td>' + (subs.length ? subs.length : '<span class="badge st-inicio">0</span>') + '</td>' +
@@ -429,6 +456,7 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
   const totalColegios = state.colegios.length;
   const sinMonitoreo = state.colegios.filter(c => (bySchool[c.id] || []).length === 0).length;
   const coberturaPct = totalColegios ? Math.round((totalColegios - sinMonitoreo) / totalColegios * 100) : null;
+  const totalJec = state.colegios.filter(c => c.esJec || c.es_jec || String(c.modelo || '').toUpperCase() === 'JEC').length;
 
   const reiAgg = {};
   reiList.forEach(r => reiAgg[r] = { rei: r, total: 0, monitoreados: 0, sumPct: 0, cntPct: 0 });
@@ -457,6 +485,7 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
     if (colFilters.modalidad) list = list.filter(c => (c.modalidad || '').trim() === colFilters.modalidad.trim());
     if (colFilters.q) list = list.filter(c => normalizeText(c.ie).includes(normalizeText(colFilters.q)) || normalizeText(c.codigoLocal).includes(normalizeText(colFilters.q)));
     if (colFilters.pendientes) list = list.filter(c => (bySchool[c.id] || []).length === 0);
+    if (colFilters.soloJec) list = list.filter(c => Boolean(c.esJec === true || c.es_jec === true || String(c.modelo || '').toUpperCase() === 'JEC' || (c.modalidad || '').toUpperCase().includes('JEC')));
     list.sort((a, b) => (a.ie || '').localeCompare(b.ie || ''));
     return list;
   };
@@ -496,12 +525,14 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
       '<div class="field"><label>Modalidad</label><select id="col_fil_modalidad"><option value="">Todas</option>' + modalidadList.map(m => '<option value="' + esc(m) + '"' + (m === colFilters.modalidad ? ' selected' : '') + '>' + esc(m) + '</option>').join('') + '</select></div>' +
       '<div class="field"><label>Buscar</label><input type="search" id="col_fil_q" value="' + esc(colFilters.q) + '" placeholder="I.E. o código..."></div>' +
       '<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:0;white-space:nowrap"><input type="checkbox" id="col_fil_pend" ' + (colFilters.pendientes ? 'checked' : '') + '> Solo pendientes</label>' +
+      '<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:0;white-space:nowrap"><input type="checkbox" id="col_fil_jec" ' + (colFilters.soloJec ? 'checked' : '') + '> Solo JEC</label>' +
       '<button class="btn secondary small" id="col_fil_clear" type="button">Limpiar</button>' +
+      '<button class="btn small" id="col_btn_gestionar_jec" type="button" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:700">🏛️ Gestionar Colegios JEC (' + totalJec + '/29)</button>' +
       '<button class="btn secondary small" id="col_export" type="button" style="margin-left:auto">Exportar CSV</button>' +
       '<button class="btn small" id="col_export_pdf" type="button">⬇ Descargar padrón oficial (PDF)</button>' +
       '</div>' +
       '<div id="col_apartado_host">' + renderColegiosApartadoHtml(filtered, bySchool, totalColegios, colFilters) + '</div>' +
-      '<div class="tblWrap"><table><thead><tr><th>REI</th><th>Código local</th><th>I.E.</th><th>Distrito</th><th>Modalidad</th><th>N° monitoreos</th><th>Tipos de ficha aplicados</th><th>Última visita</th><th></th></tr></thead><tbody id="col_table_tbody">' + rows + '</tbody></table>' +
+      '<div class="tblWrap"><table><thead><tr><th>REI</th><th>Código local</th><th>I.E.</th><th>Distrito</th><th>Modalidad</th><th>N° monitoreos</th><th>Tipos de ficha aplicados</th><th>Última visita</th><th></th></tr></thead><tbody id="col_table_tbody">' + rows + '</tbody></table></div>' +
       '<div style="padding:10px 16px;background:var(--surface-2);border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink-soft)"><span id="col_table_footer_count">Mostrando <strong>' + filtered.length + '</strong> de ' + totalColegios + ' instituciones educativas</span><span>Haz clic en cualquier institución para ver fichas aplicadas y detalles</span></div>' +
       '</div>' +
       '</div>'
@@ -531,6 +562,14 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
           if (selMod) selMod.value = m;
           updateTableOnly();
         }
+      });
+    });
+    aptHost.querySelectorAll('.colQuickJecBtn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        colFilters.soloJec = !colFilters.soloJec;
+        const cb = document.getElementById('col_fil_jec');
+        if (cb) cb.checked = colFilters.soloJec;
+        updateTableOnly();
       });
     });
   };
@@ -630,14 +669,27 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
   const fPend = document.getElementById('col_fil_pend');
   if (fPend) fPend.addEventListener('change', e => { colFilters.pendientes = e.target.checked; updateTableOnly(); });
 
+  const fSoloJec = document.getElementById('col_fil_jec');
+  if (fSoloJec) fSoloJec.addEventListener('change', e => { colFilters.soloJec = e.target.checked; updateTableOnly(); });
+
+  const btnGestionarJec = document.getElementById('col_btn_gestionar_jec');
+  if (btnGestionarJec) {
+    btnGestionarJec.addEventListener('click', () => {
+      openModalGestionJec(state, dbNs, () => {
+        renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser);
+      });
+    });
+  }
+
   const fClear = document.getElementById('col_fil_clear');
   if (fClear) fClear.addEventListener('click', () => {
-    colFilters = { rei: '', distrito: '', modalidad: '', q: '', pendientes: false };
+    colFilters = { rei: '', distrito: '', modalidad: '', q: '', pendientes: false, soloJec: false };
     if (fRei) fRei.value = '';
     if (fDist) fDist.value = '';
     if (fMod) fMod.value = '';
     if (fQ) fQ.value = '';
     if (fPend) fPend.checked = false;
+    if (fSoloJec) fSoloJec.checked = false;
     updateTableOnly();
   });
   const fExport = document.getElementById('col_export');
@@ -694,6 +746,21 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
     const cancelBtn = document.getElementById('col_f_cancel');
     if (cancelBtn) cancelBtn.addEventListener('click', () => { colEditing = null; renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser); });
 
+    const adminJecBtn = document.getElementById('col_admin_gestionar_jec');
+    if (adminJecBtn) adminJecBtn.addEventListener('click', () => {
+      openModalGestionJec(state, dbNs, () => {
+        renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser);
+      });
+    });
+
+    const jecCb = document.getElementById('col_f_es_jec');
+    if (jecCb) {
+      jecCb.addEventListener('change', (e) => {
+        const cfg = document.getElementById('col_f_jec_config');
+        if (cfg) cfg.style.display = e.target.checked ? 'flex' : 'none';
+      });
+    }
+
     const impToggle = document.getElementById('col_import_toggle');
     if (impToggle) impToggle.addEventListener('click', () => { colShowImport = !colShowImport; renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser); });
 
@@ -734,12 +801,23 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
       });
     }
   }
+
+  // Auto-apertura si se solicitó desde el panel comparativo de reportes
+  if (window._openJecModalOnLoad) {
+    window._openJecModalOnLoad = false;
+    setTimeout(() => {
+      openModalGestionJec(state, dbNs, () => {
+        renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, cachedCurrentUser);
+      });
+    }, 80);
+  }
 }
 
 function renderColegiosAdminPanel(state) {
+  const totalJec = (state && state.colegios) ? state.colegios.filter(c => c.esJec || c.es_jec || String(c.modelo || '').toUpperCase() === 'JEC').length : 0;
   return '' +
     '<div class="panel"><h3>' + (colEditing && colEditing !== 'new' ? 'Editar institución' : 'Agregar institución') + '</h3>' +
-    (colEditing ? renderColegioFormPanel(state) : '<button class="btn secondary small" id="col_new_btn" type="button">+ Agregar institución manualmente</button>') +
+    (colEditing ? renderColegioFormPanel(state) : '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn secondary small" id="col_new_btn" type="button">+ Agregar institución manualmente</button><button class="btn small" id="col_admin_gestionar_jec" type="button" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:700">🏛️ Gestionar Colegios JEC (' + totalJec + '/29)</button></div>') +
     '</div>' +
     '<div class="panel">' +
     '<h3>Importar padrón desde Excel <small>archivo .xlsx</small></h3>' +
@@ -863,6 +941,9 @@ function renderColegioFormPanel(state) {
     : {};
   const dir = col.director || {};
   const sub = col.subDirector || {};
+  const isJec = Boolean(col.esJec === true || col.es_jec === true || String(col.modelo || '').toUpperCase() === 'JEC');
+  const cantPedag = col.cantCoordPedag || 1;
+  const cantTutoria = col.cantCoordTutoria || 1;
 
   return '' +
     '<div class="fieldGrid">' +
@@ -876,6 +957,25 @@ function renderColegioFormPanel(state) {
     '<div class="field"><label>Dependencia</label><input type="text" id="col_f_dependencia" value="' + esc(col.dependencia || '') + '"></div>' +
     '<div class="field" style="grid-column:span 2"><label>Dirección</label><input type="text" id="col_f_direccion" value="' + esc(col.direccion || '') + '"></div>' +
     '<div class="field"><label>Distrito</label><input type="text" id="col_f_distrito" value="' + esc(col.distrito || '') + '"></div>' +
+    '</div>' +
+    '<div class="sectionTitle">Modelo JEC (Jornada Escolar Completa)</div>' +
+    '<div style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:12px">' +
+    '  <label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer;margin-bottom:4px">' +
+    '    <input type="checkbox" id="col_f_es_jec" ' + (isJec ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:#1d4ed8">' +
+    '    🏛️ Esta institución educativa pertenece al Modelo JEC (Secundaria)' +
+    '  </label>' +
+    '  <div id="col_f_jec_config" style="display:' + (isJec ? 'flex' : 'none') + ';gap:16px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">' +
+    '    <div class="field" style="flex:1;min-width:180px">' +
+    '      <label>N° Coordinadores Pedagógicos</label>' +
+    '      <input type="number" id="col_f_cant_pedag" min="1" max="10" value="' + cantPedag + '">' +
+    '      <small style="color:var(--ink-soft);font-size:11px">Fichas esperadas por visita para Coord. Pedagógico</small>' +
+    '    </div>' +
+    '    <div class="field" style="flex:1;min-width:180px">' +
+    '      <label>N° Coordinadores de Tutoría</label>' +
+    '      <input type="number" id="col_f_cant_tutoria" min="1" max="10" value="' + cantTutoria + '">' +
+    '      <small style="color:var(--ink-soft);font-size:11px">Fichas esperadas por visita para Coord. de Tutoría</small>' +
+    '    </div>' +
+    '  </div>' +
     '</div>' +
     '<div class="sectionTitle">Datos del Director(a)</div>' +
     '<div class="fieldGrid">' +
@@ -910,6 +1010,10 @@ async function saveColegioForm(state, dbNs, container, getFichaType, isAdmin) {
   const subTel = (document.getElementById('col_f_sub_tel').value || '').trim();
   const subCorreo = (document.getElementById('col_f_sub_correo').value || '').trim();
 
+  const esJec = Boolean(document.getElementById('col_f_es_jec')?.checked);
+  const cantCoordPedag = Math.max(1, parseInt(document.getElementById('col_f_cant_pedag')?.value, 10) || 1);
+  const cantCoordTutoria = Math.max(1, parseInt(document.getElementById('col_f_cant_tutoria')?.value, 10) || 1);
+
   const raw = {
     rei: normalizeReiNumber(document.getElementById('col_f_rei')?.value) || (document.getElementById('col_f_rei')?.value || '').trim(),
     codigoLocal: codigo,
@@ -933,6 +1037,9 @@ async function saveColegioForm(state, dbNs, container, getFichaType, isAdmin) {
       telefono: subTel,
       correo: subCorreo,
     },
+    esJec: esJec,
+    cantCoordPedag: cantCoordPedag,
+    cantCoordTutoria: cantCoordTutoria,
   };
 
   const data = sanitizeColegioRecord(raw, existing, Date.now());
@@ -1106,4 +1213,362 @@ function renderColegioProfile(c, subs, typeStats, state) {
     directivosHtml +
     '<div class="sectionTitle">Monitoreos por tipo de ficha</div>' + typeRows +
     (recent ? '<div class="sectionTitle">Últimas visitas</div><ul style="margin:0;padding-left:18px">' + recent + '</ul>' : '');
+}
+
+/**
+ * Diálogo modal interactivo de selección y configuración masiva de Colegios JEC.
+ * Permite marcar las 29 instituciones educativas secundarias JEC de la UGEL 03
+ * y ajustar la cantidad de coordinadores pedagógicos y de tutoría por colegio.
+ */
+export function openModalGestionJec(state, dbNs, onSaved) {
+  const existingModal = document.getElementById('jecSelectionModal');
+  if (existingModal) existingModal.remove();
+
+  const padron = (state && Array.isArray(state.colegios)) ? state.colegios : [];
+
+  // Mapa borrador en memoria para edición ágil sin mutar Firestore hasta guardar
+  const draftMap = new Map();
+  padron.forEach(c => {
+    draftMap.set(c.id, {
+      esJec: Boolean(c.esJec === true || c.es_jec === true || String(c.modelo || '').toUpperCase() === 'JEC'),
+      cantCoordPedag: Math.max(1, Number(c.cantCoordPedag) || 1),
+      cantCoordTutoria: Math.max(1, Number(c.cantCoordTutoria) || 1)
+    });
+  });
+
+  let currentSearch = '';
+  let currentTab = 'secundaria'; // 'all' | 'secundaria' | 'jec' | 'nojec'
+
+  const countJec = () => {
+    let cnt = 0;
+    for (const v of draftMap.values()) {
+      if (v.esJec) cnt++;
+    }
+    return cnt;
+  };
+
+  const getSecundariasCount = () => {
+    return padron.filter(c => {
+      const niv = normalizeText(c.nivelServicio || c.nivel || '');
+      const mod = normalizeText(c.modalidad || '');
+      return niv.includes('secund') || mod.includes('secund') || mod.includes('ebr') || draftMap.get(c.id)?.esJec;
+    }).length;
+  };
+
+  const modalWrap = document.createElement('div');
+  modalWrap.id = 'jecSelectionModal';
+  modalWrap.className = 'downloadModalOverlay';
+  modalWrap.setAttribute('role', 'dialog');
+  modalWrap.setAttribute('aria-modal', 'true');
+
+  modalWrap.innerHTML = `
+    <div class="downloadModalCard" style="max-width:920px;width:95vw;max-height:92vh;display:flex;flex-direction:column">
+      <div class="downloadModalHeader" style="background:#0b1b36;border-bottom:3px solid #3b82f6;padding:16px 20px">
+        <div>
+          <h3 style="color:#fff;font-size:18px;display:flex;align-items:center;gap:8px;margin:0">
+            <span>🏛️</span> Configuración y Selección de Colegios JEC
+          </h3>
+          <div class="sub" style="color:#93c5fd;font-size:12px;margin-top:3px">
+            Jornada Escolar Completa · UGEL 03 · Meta Oficial: 29 Colegios
+          </div>
+        </div>
+        <button type="button" class="downloadModalClose" id="m_jec_close" aria-label="Cerrar" style="color:#fff;font-size:22px">✕</button>
+      </div>
+
+      <div class="downloadModalBody" style="padding:16px 20px;gap:12px;flex:1;overflow:hidden;display:flex;flex-direction:column">
+        <!-- Barra de métricas y contador dinámico -->
+        <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-soft);letter-spacing:0.5px">Instituciones seleccionadas como JEC:</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px">
+              <span id="m_jec_counter" style="font-size:26px;font-weight:800;color:var(--primary);line-height:1">${countJec()}</span>
+              <span style="font-size:13px;font-weight:600;color:var(--ink)">de 29 colegios JEC</span>
+              <span id="m_jec_status_badge" class="badge" style="font-size:11px;font-weight:700"></span>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--ink-soft);max-width:440px;line-height:1.4">
+            💡 Marca la casilla para cada uno de los 29 colegios JEC. Además puedes configurar la cantidad de <strong>Coordinadores Pedagógicos</strong> y <strong>de Tutoría</strong> de cada IE (por defecto 1).
+          </div>
+        </div>
+
+        <!-- Barra de búsqueda y filtros rápidos -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <input type="search" id="m_jec_search" placeholder="Buscar por nombre de colegio, código local o distrito..." style="flex:1;min-width:220px;padding:7px 12px;font-size:13px;border:1px solid var(--line);border-radius:6px;background:var(--surface)">
+          <div style="display:flex;gap:6px;flex-wrap:wrap" id="m_jec_filter_tabs">
+            <button type="button" class="badge st-none mJecTab" data-tab="secundaria" style="padding:5px 10px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface)">Secundarias (${getSecundariasCount()})</button>
+            <button type="button" class="badge st-none mJecTab" data-tab="jec" style="padding:5px 10px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface)">Seleccionados JEC (<span id="m_jec_tab_count">${countJec()}</span>)</button>
+            <button type="button" class="badge st-none mJecTab" data-tab="nojec" style="padding:5px 10px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface)">Sin seleccionar</button>
+            <button type="button" class="badge st-none mJecTab" data-tab="all" style="padding:5px 10px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface)">Todos (${padron.length})</button>
+          </div>
+        </div>
+
+        <!-- Tabla de colegios con scroll -->
+        <div style="flex:1;max-height:48vh;overflow-y:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+            <thead style="position:sticky;top:0;background:var(--surface-2);z-index:2;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+              <tr>
+                <th style="width:46px;text-align:center;padding:8px 6px">JEC</th>
+                <th style="width:55px;padding:8px 6px">REI</th>
+                <th style="width:90px;padding:8px 6px">Cód. Local</th>
+                <th style="padding:8px 8px">Institución Educativa</th>
+                <th style="width:110px;padding:8px 6px">Distrito</th>
+                <th style="width:95px;text-align:center;padding:8px 6px" title="Cantidad esperada de coordinadores pedagógicos por visita">Coord. Pedag.</th>
+                <th style="width:95px;text-align:center;padding:8px 6px" title="Cantidad esperada de coordinadores de tutoría por visita">Coord. Tutoría</th>
+              </tr>
+            </thead>
+            <tbody id="m_jec_tbody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="downloadModalFooter" style="padding:12px 20px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line)">
+        <span style="font-size:12px;color:var(--ink-soft)" id="m_jec_footer_info"></span>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn secondary small" id="m_jec_cancel">Cancelar</button>
+          <button type="button" class="btn small" id="m_jec_save" style="background:#1d4ed8;color:#fff;font-weight:700;padding:6px 14px">
+            ✓ Guardar selección JEC
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modalWrap);
+
+  const updateBadgeAndCounter = () => {
+    const cnt = countJec();
+    const cntEl = modalWrap.querySelector('#m_jec_counter');
+    const badgeEl = modalWrap.querySelector('#m_jec_status_badge');
+    const tabCnt = modalWrap.querySelector('#m_jec_tab_count');
+    if (cntEl) cntEl.textContent = cnt;
+    if (tabCnt) tabCnt.textContent = cnt;
+    if (badgeEl) {
+      if (cnt === 29) {
+        badgeEl.className = 'badge st-logrado';
+        badgeEl.textContent = '✓ 29 de 29 colegios seleccionados';
+      } else if (cnt < 29) {
+        badgeEl.className = 'badge st-proceso';
+        badgeEl.textContent = `${cnt} de 29 (faltan ${29 - cnt})`;
+      } else {
+        badgeEl.className = 'badge st-inicio';
+        badgeEl.textContent = `${cnt} seleccionados (superó por ${cnt - 29})`;
+      }
+    }
+  };
+
+  const renderTableRows = () => {
+    const tbody = modalWrap.querySelector('#m_jec_tbody');
+    if (!tbody) return;
+
+    const q = normalizeText(currentSearch.trim());
+    let list = padron.slice();
+
+    if (q) {
+      list = list.filter(c =>
+        normalizeText(c.ie || '').includes(q) ||
+        normalizeText(c.codigoLocal || '').includes(q) ||
+        normalizeText(c.distrito || '').includes(q) ||
+        normalizeText(c.rei || '').includes(q)
+      );
+    }
+
+    if (currentTab === 'secundaria') {
+      list = list.filter(c => {
+        const niv = normalizeText(c.nivelServicio || c.nivel || '');
+        const mod = normalizeText(c.modalidad || '');
+        return niv.includes('secund') || mod.includes('secund') || mod.includes('ebr') || draftMap.get(c.id)?.esJec;
+      });
+    } else if (currentTab === 'jec') {
+      list = list.filter(c => draftMap.get(c.id)?.esJec);
+    } else if (currentTab === 'nojec') {
+      list = list.filter(c => !draftMap.get(c.id)?.esJec);
+    }
+
+    // Ordenar: primero los seleccionados JEC, luego alfabéticamente
+    list.sort((a, b) => {
+      const aJ = draftMap.get(a.id)?.esJec ? 1 : 0;
+      const bJ = draftMap.get(b.id)?.esJec ? 1 : 0;
+      if (aJ !== bJ) return bJ - aJ;
+      return (a.ie || '').localeCompare(b.ie || '', 'es');
+    });
+
+    const footerInfo = modalWrap.querySelector('#m_jec_footer_info');
+    if (footerInfo) footerInfo.textContent = `Mostrando ${list.length} de ${padron.length} instituciones`;
+
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--ink-soft)">No se encontraron colegios con el filtro actual.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list.map(c => {
+      const d = draftMap.get(c.id) || { esJec: false, cantCoordPedag: 1, cantCoordTutoria: 1 };
+      const rowBg = d.esJec ? 'background:rgba(37,99,235,0.06);' : '';
+      const reiVal = normalizeReiNumber(c.rei || c.red) || c.rei || '—';
+
+      return `
+        <tr data-cid="${esc(c.id)}" style="${rowBg}border-bottom:1px solid var(--line)">
+          <td style="text-align:center;padding:6px">
+            <input type="checkbox" class="mJecCheck" data-cid="${esc(c.id)}" ${d.esJec ? 'checked' : ''} style="width:17px;height:17px;cursor:pointer;accent-color:#1d4ed8">
+          </td>
+          <td style="padding:6px"><span class="badge" style="font-size:10.5px">${esc(reiVal)}</span></td>
+          <td style="padding:6px"><code>${esc(c.codigoLocal || '—')}</code></td>
+          <td style="padding:6px">
+            <div style="font-weight:600;font-size:12.5px;color:var(--navy-900)">${esc(c.ie || '—')}</div>
+            <div style="font-size:10.5px;color:var(--ink-soft)">${esc(c.nivelServicio || c.modalidad || 'EBR')} · ${esc(c.distrito || '')}</div>
+          </td>
+          <td style="padding:6px;font-size:11.5px">${esc(c.distrito || '—')}</td>
+          <td style="text-align:center;padding:6px">
+            <input type="number" class="mJecPedag" data-cid="${esc(c.id)}" min="1" max="10" value="${d.cantCoordPedag}" style="width:52px;padding:3px 4px;font-size:12px;text-align:center;border:1px solid var(--line);border-radius:4px" ${d.esJec ? '' : 'disabled'}>
+          </td>
+          <td style="text-align:center;padding:6px">
+            <input type="number" class="mJecTutoria" data-cid="${esc(c.id)}" min="1" max="10" value="${d.cantCoordTutoria}" style="width:52px;padding:3px 4px;font-size:12px;text-align:center;border:1px solid var(--line);border-radius:4px" ${d.esJec ? '' : 'disabled'}>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Listeners de checkboxes e inputs
+    tbody.querySelectorAll('.mJecCheck').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const cid = cb.dataset.cid;
+        const d = draftMap.get(cid);
+        if (!d) return;
+        d.esJec = cb.checked;
+        const row = cb.closest('tr');
+        if (row) {
+          row.style.background = d.esJec ? 'rgba(37,99,235,0.06)' : '';
+          const pInp = row.querySelector('.mJecPedag');
+          const tInp = row.querySelector('.mJecTutoria');
+          if (pInp) pInp.disabled = !d.esJec;
+          if (tInp) tInp.disabled = !d.esJec;
+        }
+        updateBadgeAndCounter();
+      });
+    });
+
+    tbody.querySelectorAll('.mJecPedag').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const cid = inp.dataset.cid;
+        const d = draftMap.get(cid);
+        if (d) d.cantCoordPedag = Math.max(1, parseInt(inp.value, 10) || 1);
+      });
+    });
+
+    tbody.querySelectorAll('.mJecTutoria').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const cid = inp.dataset.cid;
+        const d = draftMap.get(cid);
+        if (d) d.cantCoordTutoria = Math.max(1, parseInt(inp.value, 10) || 1);
+      });
+    });
+  };
+
+  // Pestañas
+  const tabBtns = modalWrap.querySelectorAll('.mJecTab');
+  tabBtns.forEach(btn => {
+    if (btn.dataset.tab === currentTab) {
+      btn.style.background = 'var(--primary)';
+      btn.style.color = '#fff';
+      btn.style.borderColor = 'var(--primary)';
+    }
+    btn.addEventListener('click', () => {
+      currentTab = btn.dataset.tab;
+      tabBtns.forEach(b => {
+        b.style.background = 'var(--surface)';
+        b.style.color = 'var(--ink)';
+        b.style.borderColor = 'var(--line)';
+      });
+      btn.style.background = 'var(--primary)';
+      btn.style.color = '#fff';
+      btn.style.borderColor = 'var(--primary)';
+      renderTableRows();
+    });
+  });
+
+  // Buscador
+  const searchInp = modalWrap.querySelector('#m_jec_search');
+  if (searchInp) {
+    searchInp.addEventListener('input', () => {
+      currentSearch = searchInp.value;
+      renderTableRows();
+    });
+  }
+
+  // Cerrar / Cancelar
+  const close = () => { modalWrap.remove(); };
+  modalWrap.querySelector('#m_jec_close')?.addEventListener('click', close);
+  modalWrap.querySelector('#m_jec_cancel')?.addEventListener('click', close);
+  modalWrap.addEventListener('click', (e) => { if (e.target === modalWrap) close(); });
+
+  // Guardar
+  const saveBtn = modalWrap.querySelector('#m_jec_save');
+  saveBtn.addEventListener('click', async () => {
+    const changed = [];
+    padron.forEach(c => {
+      const origEsJec = Boolean(c.esJec === true || c.es_jec === true || String(c.modelo || '').toUpperCase() === 'JEC');
+      const origPedag = Math.max(1, Number(c.cantCoordPedag) || 1);
+      const origTut = Math.max(1, Number(c.cantCoordTutoria) || 1);
+      const cur = draftMap.get(c.id);
+      if (!cur) return;
+      if (cur.esJec !== origEsJec || cur.cantCoordPedag !== origPedag || cur.cantCoordTutoria !== origTut) {
+        changed.push({ c, esJec: cur.esJec, cantCoordPedag: cur.cantCoordPedag, cantCoordTutoria: cur.cantCoordTutoria });
+      }
+    });
+
+    if (changed.length === 0) {
+      showToast('No se realizaron cambios en la selección JEC.');
+      close();
+      return;
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = `Guardando ${changed.length} instituciones...`;
+
+    try {
+      const now = Date.now();
+      if (dbNs && typeof dbNs.batch === 'function') {
+        const batch = dbNs.batch();
+        changed.forEach(item => {
+          const ref = dbNs.collection('colegios').doc(item.c.id);
+          batch.set(ref, {
+            esJec: item.esJec,
+            cantCoordPedag: item.cantCoordPedag,
+            cantCoordTutoria: item.cantCoordTutoria,
+            updatedAt: now
+          }, { merge: true });
+        });
+        await batch.commit();
+      } else if (dbNs) {
+        await Promise.all(changed.map(item =>
+          dbNs.collection('colegios').doc(item.c.id).set({
+            esJec: item.esJec,
+            cantCoordPedag: item.cantCoordPedag,
+            cantCoordTutoria: item.cantCoordTutoria,
+            updatedAt: now
+          }, { merge: true })
+        ));
+      }
+
+      // Actualizar los objetos en el array local state.colegios
+      changed.forEach(item => {
+        item.c.esJec = item.esJec;
+        item.c.cantCoordPedag = item.cantCoordPedag;
+        item.c.cantCoordTutoria = item.cantCoordTutoria;
+        item.c.updatedAt = now;
+      });
+
+      showToast(`✓ Selección JEC guardada (${changed.length} instituciones actualizadas)`);
+      close();
+      if (typeof onSaved === 'function') onSaved();
+    } catch (err) {
+      console.error('Error al guardar selección JEC:', err);
+      showToast('Error al guardar: ' + (err.message || 'error'));
+      saveBtn.disabled = false;
+      saveBtn.textContent = '✓ Guardar selección JEC';
+    }
+  });
+
+  updateBadgeAndCounter();
+  renderTableRows();
 }

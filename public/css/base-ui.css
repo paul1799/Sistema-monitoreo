@@ -2306,16 +2306,19 @@ button:focus-visible {
   position: fixed;
   top: 0;
   left: 0;
-  width: 480px;
-  max-width: 92vw;
+  width: 560px;
+  max-width: 95vw;
   height: 100vh;
   background: #FFFFFF;
-  box-shadow: 6px 0 28px rgba(0, 0, 0, 0.22);
+  box-shadow: 10px 0 40px rgba(11, 27, 54, 0.28);
+  border-radius: 0 16px 16px 0;
   z-index: 1060;
   display: flex;
   flex-direction: column;
   transform: translateX(-100%);
   transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .reportFiltersDrawer.open {
@@ -2326,108 +2329,186 @@ button:focus-visible {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px;
-  background: var(--navy-900);
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #0b1b36 0%, #1e293b 100%);
   color: #FFFFFF;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
-.reportDrawerHeader h3 {
+.drawerHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.drawerHeaderIcon {
+  font-size: 20px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.drawerHeaderText h3 {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
   color: #FFFFFF;
+  line-height: 1.25;
+}
+
+.drawerHeaderText p {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.2;
 }
 
 .btnCloseDrawer {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   color: #FFFFFF;
-  font-size: 15px;
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
+  font-size: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .btnCloseDrawer:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: #FFFFFF;
+  background: rgba(239, 68, 68, 0.9);
+  border-color: #ef4444;
+  color: #FFFFFF;
+  transform: scale(1.05);
 }
 
 .reportDrawerBody {
   flex: 1;
   overflow-y: auto;
-  padding: 14px 16px 24px;
+  overflow-x: hidden;
+  padding: 16px 18px 130px;
   background: #F8FAFC;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.reportDrawerBody::-webkit-scrollbar {
+  width: 6px;
+}
+
+.reportDrawerBody::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.reportDrawerBody::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.reportDrawerBody::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.reportDrawerBody * {
+  box-sizing: border-box;
 }
 
 .reportDrawerBody .panel {
   margin-bottom: 14px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border-radius: 12px;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  max-width: 100%;
+  padding: 16px 18px !important;
+  background: #FFFFFF;
 }
 
 .reportDrawerFooter {
-  padding: 12px 16px;
-  background: #FFFFFF;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  flex-shrink: 0;
+  display: none !important;
 }
 
-/* Barra superior de Reportes con disparador de filtros */
+/* Barra superior de Reportes con disparador de filtros sticky en la parte superior izquierda */
 .reportTopbarWithTrigger {
+  position: sticky;
+  top: 96px;
+  z-index: 50;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 14px;
-  padding: 10px 14px;
-  background: #FFFFFF;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(8px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  box-shadow: 0 4px 14px rgba(11, 27, 54, 0.08);
+  transition: all 0.2s ease;
+}
+
+.reportTopbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .btnFiltrosDrawerTrigger {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #FFFFFF;
+  background: var(--navy-900);
   border: 1.5px solid var(--navy-900);
-  color: var(--navy-900);
+  color: #FFFFFF;
   font-size: 13px;
   font-weight: 700;
   padding: 7px 14px;
   border-radius: 6px;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 6px rgba(11, 27, 54, 0.18);
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .btnFiltrosDrawerTrigger:hover {
-  background: var(--navy-900);
+  background: var(--blue-600);
+  border-color: var(--blue-600);
   color: #FFFFFF;
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(11, 27, 54, 0.15);
+  box-shadow: 0 4px 10px rgba(31, 95, 168, 0.25);
+}
+
+.btnFiltrosDrawerTrigger.small {
+  padding: 4px 10px;
+  font-size: 11.5px;
 }
 
 .badgeActiveFiltersSummary {
   font-size: 11px;
-  font-weight: 700;
-  padding: 2px 7px;
+  font-weight: 600;
+  padding: 2px 8px;
   border-radius: 10px;
-  background: #EFF6FF;
-  color: #1D4ED8;
-  border: 1px solid #BFDBFE;
+  background: rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ============================= COMPARATIVA LADO A LADO ============================= */
@@ -2554,4 +2635,17 @@ button:focus-visible {
   border-radius: 5px;
   border: 1px solid var(--border);
   box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .reportFiltersDrawer {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-radius: 0 !important;
+  }
+  .downloadActionBar {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-radius: 0 !important;
+  }
 }

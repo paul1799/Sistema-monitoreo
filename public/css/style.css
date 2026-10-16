@@ -29,7 +29,7 @@
 @import './auth-login.css';
 @import './modales.css';
 @import './concursos-escolares.css';
-@import './tablero-ebr.css';
+@import './tablero-ebr.css?v=20261016_v7';
 @import './plantillas-editor.css';
 @import './cebe-gestion.css';
 @import './prite-gestion.css';
@@ -37,4 +37,4 @@
 @import './jec-monitoreo.css';
 @import './reportes.css';
 @import './portal-modulos.css';
-@import './responsive.css';
+@import './responsive.css?v=20261016_v7';

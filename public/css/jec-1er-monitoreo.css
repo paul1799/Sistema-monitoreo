@@ -1,0 +1,800 @@
+/* =========================================================================
+   jec-1er-monitoreo.css — Estilos Ficha del 1er Monitoreo y Asistencia Técnica
+   Implementación del Modelo JEC · UGEL 03 AGEBRE
+   ========================================================================= */
+
+.jec1-wrapper {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem 1rem;
+  color: #1e293b;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Encabezado Institucional */
+.jec1-header-card {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1.5rem;
+}
+
+.jec1-logos-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.jec1-logos-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.jec1-minedu-badge {
+  background: #b91c1c;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.jec1-sub-badge {
+  font-size: 0.75rem;
+  color: #475569;
+  font-weight: 600;
+  line-height: 1.25;
+  border-left: 2px solid #cbd5e1;
+  padding-left: 0.65rem;
+}
+
+.jec1-jec-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #0284c7;
+  letter-spacing: -0.5px;
+}
+
+.jec1-jec-logo span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: normal;
+}
+
+.jec1-title-area {
+  text-align: center;
+  margin: 0.75rem 0;
+}
+
+.jec1-main-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  line-height: 1.4;
+  margin: 0 0 0.35rem 0;
+}
+
+.jec1-normativa {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0284c7;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* Barra Flotante de Puntaje y Nivel */
+.jec1-live-badge-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #ffffff;
+  padding: 0.85rem 1.25rem;
+  border-radius: 10px;
+  margin-top: 1rem;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.jec1-live-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.jec1-live-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #94a3b8;
+}
+
+.jec1-live-pts {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+.jec1-live-pts small {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.jec1-live-level-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  border-radius: 30px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: all 0.25s ease;
+}
+
+.jec1-level-inicio {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #f87171;
+}
+
+.jec1-level-proceso {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fbbf24;
+}
+
+.jec1-level-logrado {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #4ade80;
+}
+
+/* Tarjetas de Secciones */
+.jec1-section-card {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.jec1-section-header {
+  background: #f1f5f9;
+  border-bottom: 1px solid #cbd5e1;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.jec1-section-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  text-transform: uppercase;
+  margin: 0;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.jec1-section-body {
+  padding: 1.25rem;
+}
+
+/* Grid de Datos Generales */
+.jec1-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.jec1-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.jec1-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.jec1-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.jec1-form-group label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+}
+
+.jec1-input, .jec1-select, .jec1-textarea {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.jec1-input:focus, .jec1-select:focus, .jec1-textarea:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+/* Casilleros Código Modular (7 casillas) */
+.jec1-modular-boxes {
+  display: flex;
+  gap: 4px;
+}
+
+.jec1-mod-box {
+  width: 32px;
+  height: 38px;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+  border: 1.5px solid #64748b;
+  border-radius: 4px;
+  background: #f8fafc;
+}
+
+.jec1-mod-box:focus {
+  border-color: #0284c7;
+  background: #ffffff;
+  outline: none;
+}
+
+/* Radio / Pill Switches Sí / No Circulares */
+.jec1-radio-group, .jec1-opt-group {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Botones Circulares para 1, 2, 3, NA (con aspecto circular similar a fichas JEC / EBR) */
+.jec1-circle-btn {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 50% !important;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  outline: none;
+  user-select: none;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.jec1-circle-btn[data-val="1"] {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.jec1-circle-btn[data-val="2"] {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #d97706;
+}
+
+.jec1-circle-btn[data-val="3"] {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #059669;
+}
+
+.jec1-circle-btn[data-val="NA"] {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
+  min-width: 44px;
+  border-radius: 20px !important;
+}
+
+.jec1-circle-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+}
+
+.jec1-circle-btn.active-1 {
+  background: #dc2626 !important;
+  border-color: #b91c1c !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.45) !important;
+  transform: scale(1.05);
+}
+
+.jec1-circle-btn.active-2 {
+  background: #d97706 !important;
+  border-color: #b45309 !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(217, 119, 6, 0.45) !important;
+  transform: scale(1.05);
+}
+
+.jec1-circle-btn.active-3 {
+  background: #059669 !important;
+  border-color: #047857 !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.45) !important;
+  transform: scale(1.05);
+}
+
+.jec1-circle-btn.active-na {
+  background: #475569 !important;
+  border-color: #334155 !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(71, 85, 105, 0.45) !important;
+  transform: scale(1.05);
+}
+
+/* Botones Circulares / Redondeados Sí / No (Pills) */
+.jec1-cond-btn {
+  min-width: 58px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 20px !important;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  outline: none;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.jec1-cond-btn[data-val="SI"] {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #16a34a;
+}
+
+.jec1-cond-btn[data-val="NO"] {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.jec1-cond-btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+.jec1-cond-btn.active-si {
+  background: #16a34a !important;
+  border-color: #15803d !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(22, 163, 74, 0.45) !important;
+  transform: scale(1.04);
+}
+
+.jec1-cond-btn.active-no {
+  background: #dc2626 !important;
+  border-color: #b91c1c !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.45) !important;
+  transform: scale(1.04);
+}
+
+.jec1-radio-label {
+  padding: 0.45rem 1.15rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  border-radius: 20px;
+}
+
+.jec1-radio-label input {
+  display: none;
+}
+
+.jec1-radio-label.active-si {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.jec1-radio-label.active-no {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* Tablas Dinámicas (Directores, Subdirectores, Coordinadores, Compromisos) */
+.jec1-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+}
+
+.jec1-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  background: #ffffff;
+}
+
+.jec1-table th {
+  background: #e2e8f0;
+  color: #1e293b;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  text-align: left;
+  letter-spacing: 0.3px;
+}
+
+.jec1-table td {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #e2e8f0;
+  vertical-align: middle;
+}
+
+.jec1-table input, .jec1-table select {
+  width: 100%;
+  border: 1px solid transparent;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  background: transparent;
+}
+
+.jec1-table input:focus, .jec1-table select:focus {
+  border-color: #0284c7;
+  background: #ffffff;
+  outline: none;
+}
+
+.jec1-table tr:hover {
+  background: #f8fafc;
+}
+
+.jec1-btn-add {
+  margin-top: 0.75rem;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px dashed #4ade80;
+  border-radius: 6px;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.15s;
+}
+
+.jec1-btn-add:hover {
+  background: #dcfce7;
+  border-color: #22c55e;
+}
+
+.jec1-btn-del {
+  background: transparent;
+  color: #ef4444;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.jec1-btn-del:hover {
+  background: #fee2e2;
+}
+
+/* Ítems de Evaluación (Condiciones y 37 Ítems) */
+.jec1-item-row {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.jec1-item-row:last-child {
+  border-bottom: none;
+}
+
+.jec1-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.jec1-item-desc {
+  flex: 1 1 480px;
+  min-width: 260px;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: #1e293b;
+}
+
+.jec1-item-num {
+  font-weight: 800;
+  color: #0284c7;
+  margin-right: 0.4rem;
+}
+
+/* Estilos de búsqueda con autocompletado */
+.jec1-search-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.jec1-search-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #ffffff;
+  border: 1.5px solid #0284c7;
+  border-radius: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+.jec1-search-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #e2e8f0;
+  transition: background 0.12s ease;
+}
+
+.jec1-search-item:last-child {
+  border-bottom: none;
+}
+
+.jec1-search-item:hover {
+  background: #f0f9ff;
+}
+
+/* COMPORTAMIENTO RESPONSIVO:
+   Cuando se minimiza la ventana o en pantallas menores a 960px,
+   los botones circulares pasan automáticamente DEBAJO del texto */
+@media (max-width: 960px) {
+  .jec1-item-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .jec1-item-desc {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  .jec1-opt-group {
+    align-self: flex-start !important;
+    margin-top: 6px !important;
+  }
+}
+
+.jec1-item-hallazgo {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  padding: 0.4rem 0.65rem;
+  width: 100%;
+}
+
+.jec1-item-hallazgo input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 0.82rem;
+  color: #334155;
+  outline: none;
+}
+
+/* Sección VI: Escala de Valoración (Image 2) */
+.jec1-scale-card {
+  border: 1.5px solid #0284c7;
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: hidden;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.jec1-scale-header {
+  background: #0284c7;
+  color: #ffffff;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.jec1-scale-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.jec1-scale-table th {
+  background: #f0f9ff;
+  color: #0369a1;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid #bae6fd;
+}
+
+.jec1-scale-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.85rem;
+}
+
+.jec1-scale-row.active-scale-row {
+  background: #e0f2fe !important;
+  font-weight: 700;
+  box-shadow: inset 4px 0 0 #0284c7;
+}
+
+.jec1-scale-level-box {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border-top: 1px solid #cbd5e1;
+  padding: 0.85rem 1.25rem;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.jec1-level-label-block {
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #1e293b;
+  min-width: 100px;
+}
+
+.jec1-level-result-display {
+  flex: 1;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Área de Recomendaciones */
+.jec1-recomendaciones-box {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: #0f172a;
+  min-height: 120px;
+  resize: vertical;
+  background-image: repeating-linear-gradient(white, white 27px, #e2e8f0 28px);
+  line-height: 28px;
+}
+
+/* Barra Inferior de Guardado */
+.jec1-submit-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.5rem 0;
+  border-top: 1px solid #cbd5e1;
+  margin-top: 2rem;
+}
+
+.jec1-btn-submit {
+  background: #0284c7;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  padding: 0.75rem 1.75rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+}
+
+.jec1-btn-submit:hover {
+  background: #0369a1;
+  transform: translateY(-1px);
+}
+
+.jec1-btn-cancel {
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.jec1-btn-cancel:hover {
+  background: #e2e8f0;
+}

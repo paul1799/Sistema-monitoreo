@@ -15,8 +15,9 @@ import {
   EBR_GESTION_VISITA_3_SECCIONES
 } from './ebr-gestion.js?v=20261015_v1';
 import { JEC_SECCIONES } from './jec-monitoreo.js?v=20261015_v1';
+import { JEC_1ER_SECCIONES } from './jec-1er-monitoreo.js?v=20261016_v4';
 
-export { EBR_GESTION_VISITA_3_SECCIONES };
+export { EBR_GESTION_VISITA_3_SECCIONES, JEC_1ER_SECCIONES };
 
 /**
  * Catálogo completo de las 8 plantillas oficiales del sistema
@@ -81,15 +82,111 @@ export const PLANTILLAS_BASE_OFICIALES = {
     esBorrador: false
   },
 
-  // 2. MODELO JEC (MSE JEC)
+  // 2. MODELO JEC (MSE JEC) — 3 MOMENTOS OFICIALES
+  ft_msejec_1er: {
+    id: 'ft_msejec_1er',
+    nombre: '1er Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC',
+    nombreCorto: '1er Monitoreo - Modelo JEC',
+    descripcion: 'Primer momento de monitoreo a la implementación del Modelo de Servicio Educativo JEC (Inicio del año escolar - RVM N°326-2019-MINEDU / RM N°501-2025-MINEDU).',
+    icono: '🏫',
+    color: '#2563EB',
+    modalidad: 'JEC',
+    momento: 1,
+    tipoRespuesta: 'escala1_3',
+    regla_nivel: 'puntaje',
+    maxPuntaje: 111,
+    regla_nivel_config: {
+      minIni: 1, maxIni: 56, lblIni: 'INICIO',
+      minProc: 57, maxProc: 83, lblProc: 'PROCESO',
+      minLog: 84, maxLog: 111, lblLog: 'LOGRADO'
+    },
+    tieneVisitas: true,
+    tipoVisitas: 'mismos_items',
+    visitas: ['1er Momento (V1)'],
+    secciones: JEC_1ER_SECCIONES,
+    extras: [
+      { id: 'ex_tecnica', label: '¿La IE implementa Secundaria con Formación Técnica?', tipo: 'opciones', required: true, opciones: 'Sí, No' },
+      { id: 'ex_secciones', label: 'N° de secciones', tipo: 'numero', required: true },
+      { id: 'ex_estudiantes', label: 'Cantidad de estudiantes', tipo: 'numero', required: true },
+      { id: 'ex_docentes', label: 'Cantidad de docentes', tipo: 'numero', required: true }
+    ],
+    tablas: [
+      {
+        id: 'tbl_directivo_jec',
+        titulo: 'Datos del Director (a)',
+        descripcion: 'Información de contacto del director(a) de la IE',
+        columnas: [
+          { id: 'c_nombres', nombre: 'Nombres y Apellidos', tipo: 'texto' },
+          { id: 'c_dni', nombre: 'DNI', tipo: 'texto' },
+          { id: 'c_tel', nombre: 'Teléfono', tipo: 'texto' },
+          { id: 'c_cond', nombre: 'Condición', tipo: 'texto' },
+          { id: 'c_correo', nombre: 'Correo', tipo: 'texto' }
+        ],
+        filas: [
+          { id: 'f_dir', etiqueta: 'Director(a)' }
+        ]
+      },
+      {
+        id: 'tbl_subdirectores_jec',
+        titulo: 'Datos de los Sub Directores',
+        descripcion: 'Subdirectores de la IE',
+        columnas: [
+          { id: 'c_nombres', nombre: 'Nombres y Apellidos', tipo: 'texto' },
+          { id: 'c_dni', nombre: 'DNI', tipo: 'texto' },
+          { id: 'c_tel', nombre: 'Teléfono', tipo: 'texto' },
+          { id: 'c_cond', nombre: 'Condición', tipo: 'texto' },
+          { id: 'c_correo', nombre: 'Correo', tipo: 'texto' }
+        ],
+        filas: []
+      },
+      {
+        id: 'tbl_coordinadores_pedagogicos',
+        titulo: 'Datos de los Coordinadores Pedagógicos',
+        descripcion: 'Coordinadores pedagógicos por área',
+        columnas: [
+          { id: 'c_nombres', nombre: 'Nombres y Apellidos', tipo: 'texto' },
+          { id: 'c_dni', nombre: 'DNI', tipo: 'texto' },
+          { id: 'c_tel', nombre: 'Teléfono', tipo: 'texto' },
+          { id: 'c_esp', nombre: 'Especialidad', tipo: 'texto' },
+          { id: 'c_correo', nombre: 'Correo', tipo: 'texto' },
+          { id: 'c_cp', nombre: 'CP', tipo: 'texto' }
+        ],
+        filas: []
+      },
+      {
+        id: 'tbl_coordinadores_tutoria',
+        titulo: 'Datos de los Coordinadores de Tutoría',
+        descripcion: 'Coordinadores de tutoría',
+        columnas: [
+          { id: 'c_nombres', nombre: 'Nombres y Apellidos', tipo: 'texto' },
+          { id: 'c_dni', nombre: 'DNI', tipo: 'texto' },
+          { id: 'c_tel', nombre: 'Teléfono', tipo: 'texto' },
+          { id: 'c_esp', nombre: 'Especialidad', tipo: 'texto' },
+          { id: 'c_correo', nombre: 'Correo', tipo: 'texto' },
+          { id: 'c_ct', nombre: 'CT', tipo: 'texto' }
+        ],
+        filas: []
+      }
+    ],
+    compromisos: {
+      habilitado: true,
+      director: true,
+      especialista: true,
+      filasPorVisita: 3
+    },
+    version: '2026.1',
+    esBorrador: false
+  },
+
   ft_msejec_2do: {
     id: 'ft_msejec_2do',
-    nombre: 'Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC',
-    nombreCorto: 'Implementación del Modelo JEC',
-    descripcion: 'Verifica la implementación de los componentes pedagógico, de gestión y de soporte del Modelo de Servicio Educativo Jornada Escolar Completa.',
+    nombre: '2do Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC',
+    nombreCorto: '2do Monitoreo - Modelo JEC',
+    descripcion: 'Segundo momento de monitoreo a la implementación de los componentes pedagógico, de gestión y de soporte del Modelo de Servicio Educativo Jornada Escolar Completa.',
     icono: '🏫',
     color: '#059669',
     modalidad: 'JEC',
+    momento: 2,
     tipoRespuesta: 'si_no',
     regla_nivel: 'conteo_rangos',
     regla_nivel_config: {
@@ -99,7 +196,60 @@ export const PLANTILLAS_BASE_OFICIALES = {
     },
     tieneVisitas: true,
     tipoVisitas: 'mismos_items',
-    visitas: ['Visita 1', 'Visita 2'],
+    visitas: ['2do Momento (V2)'],
+    secciones: JEC_SECCIONES,
+    extras: [
+      { id: 'ex_tecnica', label: '¿La IE implementa Secundaria con Formación Técnica?', tipo: 'opciones', required: true, opciones: 'Sí, No' },
+      { id: 'ex_secciones', label: 'N° de secciones', tipo: 'numero', required: true },
+      { id: 'ex_estudiantes', label: 'Cantidad de estudiantes', tipo: 'numero', required: true },
+      { id: 'ex_docentes', label: 'Cantidad de docentes', tipo: 'numero', required: true }
+    ],
+    tablas: [
+      {
+        id: 'tbl_directivo_jec',
+        titulo: 'Datos del Directivo Entrevistado',
+        descripcion: 'Información de contacto del directivo que proporciona los datos',
+        columnas: [
+          { id: 'c_cargo', nombre: 'Cargo / Condición', tipo: 'texto' },
+          { id: 'c_nombres', nombre: 'Apellidos y Nombres', tipo: 'texto' },
+          { id: 'c_dni', nombre: 'DNI', tipo: 'texto' },
+          { id: 'c_cel', nombre: 'Celular', tipo: 'texto' },
+          { id: 'c_email', nombre: 'Correo institucional', tipo: 'texto' }
+        ],
+        filas: [
+          { id: 'f_resp', etiqueta: 'Directivo informante' }
+        ]
+      }
+    ],
+    compromisos: {
+      habilitado: true,
+      director: true,
+      especialista: true,
+      filasPorVisita: 3
+    },
+    version: '2026.1',
+    esBorrador: false
+  },
+
+  ft_msejec_3er: {
+    id: 'ft_msejec_3er',
+    nombre: '3er Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC',
+    nombreCorto: '3er Monitoreo - Modelo JEC',
+    descripcion: 'Tercer momento de monitoreo, balance y cierre a la implementación del Modelo de Servicio Educativo Jornada Escolar Completa.',
+    icono: '🏫',
+    color: '#7C3AED',
+    modalidad: 'JEC',
+    momento: 3,
+    tipoRespuesta: 'si_no',
+    regla_nivel: 'conteo_rangos',
+    regla_nivel_config: {
+      minIni: 0, maxIni: 11, lblIni: 'Implementación incipiente',
+      minProc: 12, maxProc: 23, lblProc: 'Implementación parcial',
+      minLog: 24, maxLog: 31, lblLog: 'Implementación lograda'
+    },
+    tieneVisitas: true,
+    tipoVisitas: 'mismos_items',
+    visitas: ['3er Momento (V3)'],
     secciones: JEC_SECCIONES,
     extras: [
       { id: 'ex_tecnica', label: '¿La IE implementa Secundaria con Formación Técnica?', tipo: 'opciones', required: true, opciones: 'Sí, No' },
@@ -395,7 +545,7 @@ export const PLANTILLAS_BASE_OFICIALES = {
     regla_nivel: 'sumatoria',
     tieneVisitas: true,
     tipoVisitas: 'mismos_items',
-    visitas: ['Visita 1', 'Visita 2'],
+    visitas: ['2do Momento (V2)', '3er Momento (V3)'],
     extras: [
       { id: 'ex_coord', label: 'Coordinador(a) de tutoría', tipo: 'texto', required: true },
       { id: 'ex_cant_tut', label: 'N° de docentes tutores a cargo', tipo: 'numero', required: false }
