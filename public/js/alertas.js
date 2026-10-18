@@ -171,7 +171,7 @@ function computeCriticos(state, getFichaType) {
     const latestMap = {}; (latest.respuestas || []).forEach(r => latestMap[r.id] = r.valor);
     const prevMap = {}; if (prev) (prev.respuestas || []).forEach(r => prevMap[r.id] = r.valor);
     
-    // Simplistic score value logic inside this module just for alerts
+    // Lógica simplificada de cálculo de puntaje dentro de este módulo exclusivamente para las alertas
     const getScore = (val) => {
       if (val === 'si') return 1; if (val === 'no') return 0;
       if (val === 'logrado') return 1; if (val === 'proceso') return 0.5; if (val === 'inicio') return 0;

@@ -17,7 +17,7 @@ export function renderPortalView(container, { onSelectModule }) {
       
       <div class="portalHeaderBannerWrap">
         <div class="portalHeaderBanner">
-          <h1 class="portalHeaderTitle">APLICACIONES DE AGEBRE – UGEL 03</h1>
+          <h1 class="portalHeaderTitle">BIENVENIDOS A LAS APLICACIONES DE AGEBRE - UGEL 03</h1>
         </div>
       </div>
 

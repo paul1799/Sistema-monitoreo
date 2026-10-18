@@ -7,7 +7,8 @@ import {
   createOfficialPdfDocument,
   formatDate,
   drawVectorCheckmark,
-  formatPersonName
+  formatPersonName,
+  resolveDirectorData
 } from '../pdf-core.js';
 
 import {
@@ -57,12 +58,13 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
   // -------------------------------------------------------------------------
   // II. DATOS DEL DIRECTOR(A)
   // -------------------------------------------------------------------------
-  const dirObj = sub.director && typeof sub.director === 'object' ? sub.director : {};
-  const dirNombre = dirObj.nombres || (typeof sub.director === 'string' ? sub.director : '') || (colegio && colegio.director ? colegio.director.nombre : '—');
-  const dirDni = dirObj.dni || sub.directorDni || (colegio && colegio.director ? colegio.director.dni : '—') || '—';
-  const dirTel = dirObj.telefono || '—';
-  const dirCond = dirObj.condicion === 'D' ? 'Designado (D)' : (dirObj.condicion === 'E' ? 'Encargado (E)' : (dirObj.condicion || sub.condicion || '—'));
-  const dirCorreo = dirObj.correo || '—';
+  const dirData = resolveDirectorData(sub, colegio);
+  const dirNombre = dirData.nombre;
+  const dirDni = dirData.dni;
+  const dirTel = dirData.telefono;
+  const rawCond = dirData.condicion;
+  const dirCond = rawCond === 'D' ? 'Designado (D)' : (rawCond === 'E' ? 'Encargado (E)' : (rawCond || sub.condicion || '—'));
+  const dirCorreo = dirData.correo;
 
   customTables.push({
     title: 'II. DATOS DEL DIRECTOR(A)',

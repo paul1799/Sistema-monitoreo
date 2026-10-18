@@ -39,7 +39,7 @@ export async function exportColegiosReportPdf(colegios, stats = {}, downloadConf
     c.ie || '—',
     c.distrito || '—',
     c.tipoGestion || '—',
-    c.director ? c.director.nombre : '—',
+    c.director ? (typeof c.director === 'object' ? (c.director.nombre || c.director.nombres || '—') : (String(c.director).trim() !== '[object Object]' ? String(c.director).trim() : '—')) : '—',
     String(c._subsCount || 0),
     c._lastVisit ? formatDate(c._lastVisit) : '—'
   ]);

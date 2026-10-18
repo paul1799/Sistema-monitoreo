@@ -13,7 +13,7 @@
    - V. Compromisos de Mejora (Directora y Especialista por cada visita)
    ========================================================================= */
 
-import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, normalizeReiNumber } from './ui/core-utils.js?v=20261015_v1';
+import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, normalizeReiNumber, isEbeOrPriteResponsable } from './ui/core-utils.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha } from './directorio.js?v=20261013_v1';
 
 /**
@@ -36,28 +36,29 @@ export function isFichaPriteGestion(ft) {
   return false;
 }
 
-export const ESPECIALISTAS_PRITE_OFICIALES = [
-  'María Angélica Zavala Querevalú',
-  'Ana Rosario Valderrama Barrientos'
-];
+export const ESPECIALISTAS_PRITE_OFICIALES = [];
 
 export function renderEspecialistasPriteOptions(selectedVal, state) {
   const normSel = normalizeText(selectedVal || '');
-  const list = [
-    { nombre: 'María Angélica Zavala Querevalú', desc: 'Especialista EBE / PRITE · REI 13' },
-    { nombre: 'Ana Rosario Valderrama Barrientos', desc: 'Especialista EBE / PRITE · REI 15' }
-  ];
+  const list = [];
 
   if (state && Array.isArray(state.responsables)) {
     state.responsables.forEach(r => {
+      if (!isEbeOrPriteResponsable(r)) return;
       const nom = (r.nombresApellidos || r.especialista || '').trim();
-      const mod = (r.modalidad || '').toUpperCase();
-      if (nom && (mod === 'EBE' || mod === 'PRITE' || mod === 'AMBAS' || nom.toLowerCase().includes('zavala') || nom.toLowerCase().includes('valderrama'))) {
-        if (!list.some(x => normalizeText(x.nombre) === normalizeText(nom))) {
-          list.push({ nombre: nom, desc: `Especialista ${r.modalidad || 'EBE/PRITE'}${r.red ? ' · ' + r.red : ''}` });
-        }
+      if (!nom) return;
+      const modDesc = r.modalidad ? r.modalidad : 'EBE';
+      const redDesc = r.red ? ` · ${r.red}` : '';
+      const desc = `Especialista ${modDesc}${redDesc}`;
+      if (!list.some(x => normalizeText(x.nombre) === normalizeText(nom))) {
+        list.push({ nombre: nom, desc });
       }
     });
+  }
+
+  // Preservar valor histórico si ya estaba registrado
+  if (selectedVal && selectedVal.trim() && !list.some(x => normalizeText(x.nombre) === normSel)) {
+    list.push({ nombre: selectedVal.trim(), desc: 'Registrado previamente' });
   }
 
   return list.map(item => {
@@ -330,6 +331,35 @@ export const PRITE_SECCIONES = [
 export const TOTAL_PRITE_ITEMS = 32;
 
 /**
+ * Retorna las 7 secciones oficiales y 32 ítems de la Ficha PRITE (RM N° 501-2025-MINEDU).
+ * Distribución canónica: 3, 5, 6, 3, 8, 5, 2 ítems en 7 aspectos (3.1 a 3.7).
+ * Garantiza que siempre existan las 7 secciones y que sec.num ('3.1' a '3.7')
+ * e it.num (1 a 32) estén siempre definidos y nunca sean undefined.
+ */
+export function getActivePriteSections(ft) {
+  const isOfficial32 = (ft && Array.isArray(ft.secciones) && ft.secciones.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0) === 32);
+  const rawSections = isOfficial32 ? ft.secciones : PRITE_SECCIONES;
+
+  let runningItemIndex = 1;
+  return rawSections.map((sec, sIdx) => {
+    const secNum = sec.num || `3.${sIdx + 1}`;
+    const items = (sec.items || []).map((it, iIdx) => {
+      const itemNum = (it.num !== undefined && it.num !== null && it.num !== '') ? it.num : runningItemIndex;
+      runningItemIndex++;
+      return {
+        ...it,
+        num: itemNum
+      };
+    });
+    return {
+      ...sec,
+      num: secNum,
+      items
+    };
+  });
+}
+
+/**
  * Estado en memoria del formulario PRITE
  */
 let priteFormState = {
@@ -575,12 +605,12 @@ export function renderPriteGestionForm(host, ft, state, dbNs, currentUser, navig
   const iniAsis = Number(accesoData['ini_asis']) || 0;
   const iniNoAsis = accesoData['ini_noasis'] !== undefined ? accesoData['ini_noasis'] : '';
 
-  // Aspectos a Monitorear (dinámicos desde ft.secciones o catálogo estándar)
-  const activeSections = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0) ? ft.secciones : PRITE_SECCIONES;
+  // Aspectos a Monitorear (dinámicos desde ft.secciones o catálogo canónico PRITE de 32 ítems)
+  const activeSections = getActivePriteSections(ft);
   const totalItemsCount = activeSections.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0) || TOTAL_PRITE_ITEMS;
 
   const htmlSecciones = activeSections.map((sec, sIdx) => {
-    const itemsHtml = (sec.items || []).map(it => {
+    const itemsHtml = (sec.items || []).map((it, iIdx) => {
       const val = (respuestasActivas[it.id] || '').toLowerCase();
       const evidVal = priteFormState.evidenciasPorItem[it.id] || '';
       const selectedSubs = subOpcionesActivas[it.id] || [];
@@ -607,10 +637,12 @@ export function renderPriteGestionForm(host, ft, state, dbNs, currentUser, navig
         `;
       }
 
+      const itemNumDisplay = (it.num !== undefined && it.num !== null && it.num !== '') ? it.num : (iIdx + 1);
+
       return `
         <div class="cebeItemRow priteItemRow" data-item-id="${it.id}">
           <div class="cebeItemMain">
-            <span class="cebeItemNum">${it.num}.</span>
+            <span class="cebeItemNum">${itemNumDisplay}.</span>
             <div class="cebeItemTextWrap">
               <div class="cebeItemText">${esc(it.texto)}</div>
               ${subOpcionesHtml}
@@ -620,7 +652,7 @@ export function renderPriteGestionForm(host, ft, state, dbNs, currentUser, navig
               </div>
             </div>
           </div>
-          <div class="cebeScaleGroup" role="radiogroup" aria-label="Calificación para ítem ${it.num}">
+          <div class="cebeScaleGroup" role="radiogroup" aria-label="Calificación para ítem ${itemNumDisplay}">
             <label class="cebeScaleBtn optInicio ${val === 'inicio' ? 'active' : ''}" title="Inicio (I)">
               <input type="radio" name="item_${it.id}" value="inicio" ${val === 'inicio' ? 'checked' : ''}>
               <span>I</span>
@@ -642,11 +674,13 @@ export function renderPriteGestionForm(host, ft, state, dbNs, currentUser, navig
       `;
     }).join('');
 
+    const secNumDisplay = sec.num || `3.${sIdx + 1}`;
+
     return `
       <div class="formSecCard" style="margin-bottom:18px">
         <div class="formSecHeader" style="background:#F8FAFC;border-bottom:1px solid #E2E8F0;padding:12px 18px;display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:10px">
-            <span class="formSecBadge" style="background:#1E40AF;color:#FFFFFF;font-weight:700;font-size:11px;padding:3px 8px;border-radius:4px">${sec.num}</span>
+            <span class="formSecBadge" style="background:#1E40AF;color:#FFFFFF;font-weight:700;font-size:11px;padding:3px 8px;border-radius:4px">${secNumDisplay}</span>
             <h4 class="formSecTitle" style="margin:0;font-size:14px;font-weight:700;color:var(--navy-900)">${esc(sec.nombre)}</h4>
           </div>
           <span style="font-size:12px;font-weight:600;color:var(--text-600)">${sec.items.length} ítems</span>
@@ -1107,19 +1141,17 @@ function bindPriteFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
             const cRei = selected.rei || selected.red || '';
             const cReiNorm = normalizeText(cRei);
             let assignedName = '';
-            if (cReiNorm.includes('13')) {
-              assignedName = 'María Angélica Zavala Querevalú';
-            } else if (cReiNorm.includes('15')) {
-              assignedName = 'Ana Rosario Valderrama Barrientos';
-            } else if (state.responsables && state.responsables.length) {
-              const matchedResp = state.responsables.find(r => {
-                const rMod = (r.modalidad || '').toUpperCase();
-                if (rMod !== 'EBE' && rMod !== 'PRITE' && rMod !== 'AMBAS') return false;
-                const rRedNorm = normalizeText(r.red || '');
-                return rRedNorm && (rRedNorm.includes(cReiNorm) || cReiNorm.includes(rRedNorm));
-              });
-              if (matchedResp) {
-                assignedName = matchedResp.nombresApellidos || matchedResp.especialista || '';
+            if (state && Array.isArray(state.responsables)) {
+              const ebeList = state.responsables.filter(r => isEbeOrPriteResponsable(r));
+              if (ebeList.length > 0) {
+                const matchByRed = cReiNorm ? ebeList.find(r => {
+                  const rRedNorm = normalizeText(r.red || '');
+                  return rRedNorm && (rRedNorm.includes(cReiNorm) || cReiNorm.includes(rRedNorm));
+                }) : null;
+                const chosen = matchByRed || (ebeList.length === 1 ? ebeList[0] : null);
+                if (chosen) {
+                  assignedName = (chosen.nombresApellidos || chosen.especialista || '').trim();
+                }
               }
             }
 
@@ -1236,7 +1268,7 @@ function bindPriteFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       }
     });
 
-    const activeSections = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0) ? ft.secciones : PRITE_SECCIONES;
+    const activeSections = getActivePriteSections(ft);
     const totalItemsCount = activeSections.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0) || TOTAL_PRITE_ITEMS;
     const applicableItems = Math.max(0, totalItemsCount - naCount);
     const pct = Math.round((answered / totalItemsCount) * 100);
@@ -1447,7 +1479,7 @@ export async function guardarFormularioPrite(form, ft, state, dbNs, currentUser,
     let naCount = 0;
     let scorePuntos = 0;
 
-    const activeSections = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0) ? ft.secciones : PRITE_SECCIONES;
+    const activeSections = getActivePriteSections(ft);
     const totalItemsCount = activeSections.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0) || TOTAL_PRITE_ITEMS;
 
     activeSections.forEach(sec => {

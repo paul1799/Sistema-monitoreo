@@ -85,8 +85,8 @@ export const PLANTILLAS_BASE_OFICIALES = {
   // 2. MODELO JEC (MSE JEC) — 3 MOMENTOS OFICIALES
   ft_msejec_1er: {
     id: 'ft_msejec_1er',
-    nombre: '1er Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC',
-    nombreCorto: '1er Monitoreo - Modelo JEC',
+    nombre: '1er Monitoreo a la Implementación del Modelo JEC',
+    nombreCorto: '1er Monitoreo a la Implementación del Modelo JEC',
     descripcion: 'Primer momento de monitoreo a la implementación del Modelo de Servicio Educativo JEC (Inicio del año escolar - RVM N°326-2019-MINEDU / RM N°501-2025-MINEDU).',
     icono: '🏫',
     color: '#2563EB',
@@ -178,15 +178,15 @@ export const PLANTILLAS_BASE_OFICIALES = {
     esBorrador: false
   },
 
+  // 2. MODELO JEC (MSE JEC) — FICHA UNIFICADA MULTI-MOMENTO (ESTILO EBR)
   ft_msejec_2do: {
     id: 'ft_msejec_2do',
-    nombre: '2do Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC',
-    nombreCorto: '2do Monitoreo - Modelo JEC',
-    descripcion: 'Segundo momento de monitoreo a la implementación de los componentes pedagógico, de gestión y de soporte del Modelo de Servicio Educativo Jornada Escolar Completa.',
+    nombre: 'Monitoreo a la Implementación del Modelo JEC',
+    nombreCorto: 'Monitoreo a la Implementación del Modelo JEC',
+    descripcion: 'Monitoreo y asistencia técnica a la implementación del Modelo de Servicio Educativo Jornada Escolar Completa (JEC) a lo largo del año escolar (1er momento Inicio, 2do momento Proceso y 3er momento Salida).',
     icono: '🏫',
     color: '#059669',
     modalidad: 'JEC',
-    momento: 2,
     tipoRespuesta: 'si_no',
     regla_nivel: 'conteo_rangos',
     regla_nivel_config: {
@@ -195,8 +195,78 @@ export const PLANTILLAS_BASE_OFICIALES = {
       minLog: 24, maxLog: 31, lblLog: 'Implementación lograda'
     },
     tieneVisitas: true,
-    tipoVisitas: 'mismos_items',
-    visitas: ['2do Momento (V2)'],
+    tipoVisitas: 'items_por_visita',
+    visitas: [
+      '1er Monitoreo · Primer momento (Inicio)',
+      '2do Monitoreo · Segundo momento (Proceso)',
+      '3er Monitoreo · Tercer momento (Salida)'
+    ],
+    seccionesPorVisita: {
+      0: JEC_1ER_SECCIONES,
+      1: JEC_SECCIONES,
+      2: JEC_SECCIONES
+    },
+    secciones: JEC_SECCIONES,
+    extras: [
+      { id: 'ex_tecnica', label: '¿La IE implementa Secundaria con Formación Técnica?', tipo: 'opciones', required: true, opciones: 'Sí, No' },
+      { id: 'ex_secciones', label: 'N° de secciones', tipo: 'numero', required: true },
+      { id: 'ex_estudiantes', label: 'Cantidad de estudiantes', tipo: 'numero', required: true },
+      { id: 'ex_docentes', label: 'Cantidad de docentes', tipo: 'numero', required: true }
+    ],
+    tablas: [
+      {
+        id: 'tbl_directivo_jec',
+        titulo: 'Datos del Directivo Entrevistado',
+        descripcion: 'Información de contacto del directivo que proporciona los datos',
+        columnas: [
+          { id: 'c_cargo', nombre: 'Cargo / Condición', tipo: 'texto' },
+          { id: 'c_nombres', nombre: 'Apellidos y Nombres', tipo: 'texto' },
+          { id: 'c_dni', nombre: 'DNI', tipo: 'texto' },
+          { id: 'c_cel', nombre: 'Celular', tipo: 'texto' },
+          { id: 'c_email', nombre: 'Correo institucional', tipo: 'texto' }
+        ],
+        filas: [
+          { id: 'f_resp', etiqueta: 'Directivo informante' }
+        ]
+      }
+    ],
+    compromisos: {
+      habilitado: true,
+      director: true,
+      especialista: true,
+      filasPorVisita: 3
+    },
+    version: '2026.1',
+    esBorrador: false
+  },
+
+  ft_jec: {
+    id: 'ft_jec',
+    nombre: 'Monitoreo a la Implementación del Modelo JEC',
+    nombreCorto: 'Monitoreo a la Implementación del Modelo JEC',
+    descripcion: 'Monitoreo y asistencia técnica a la implementación del Modelo de Servicio Educativo Jornada Escolar Completa (JEC) a lo largo del año escolar.',
+    icono: '🏫',
+    color: '#059669',
+    modalidad: 'JEC',
+    tipoRespuesta: 'si_no',
+    regla_nivel: 'conteo_rangos',
+    regla_nivel_config: {
+      minIni: 0, maxIni: 11, lblIni: 'Implementación incipiente',
+      minProc: 12, maxProc: 23, lblProc: 'Implementación parcial',
+      minLog: 24, maxLog: 31, lblLog: 'Implementación lograda'
+    },
+    tieneVisitas: true,
+    tipoVisitas: 'items_por_visita',
+    visitas: [
+      '1er Monitoreo · Primer momento (Inicio)',
+      '2do Monitoreo · Segundo momento (Proceso)',
+      '3er Monitoreo · Tercer momento (Salida)'
+    ],
+    seccionesPorVisita: {
+      0: JEC_1ER_SECCIONES,
+      1: JEC_SECCIONES,
+      2: JEC_SECCIONES
+    },
     secciones: JEC_SECCIONES,
     extras: [
       { id: 'ex_tecnica', label: '¿La IE implementa Secundaria con Formación Técnica?', tipo: 'opciones', required: true, opciones: 'Sí, No' },
@@ -233,8 +303,8 @@ export const PLANTILLAS_BASE_OFICIALES = {
 
   ft_msejec_3er: {
     id: 'ft_msejec_3er',
-    nombre: '3er Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC',
-    nombreCorto: '3er Monitoreo - Modelo JEC',
+    nombre: '3er Monitoreo a la Implementación del Modelo JEC',
+    nombreCorto: '3er Monitoreo a la Implementación del Modelo JEC',
     descripcion: 'Tercer momento de monitoreo, balance y cierre a la implementación del Modelo de Servicio Educativo Jornada Escolar Completa.',
     icono: '🏫',
     color: '#7C3AED',

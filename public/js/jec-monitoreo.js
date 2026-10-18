@@ -316,7 +316,7 @@ export function getNivelLogroJec(conteoSi) {
 /**
  * Estado en memoria del formulario JEC
  */
-let jecFormState = {
+export let jecFormState = {
   colegioId: '',
   institucion: '',
   codigoModular: '',
@@ -497,10 +497,88 @@ export function preloadJecFormState(sub, ft) {
 }
 
 /**
+ * Selector visual de Momentos / Visitas para la ficha de Modelo JEC (idéntico al estilo de Gestión Escolar EBR)
+ */
+export function renderJecVisitaSelectorHtml(currentVisita = 2) {
+  const isV1 = Number(currentVisita) === 1;
+  const isV2 = Number(currentVisita) === 2 || !currentVisita;
+  const isV3 = Number(currentVisita) === 3;
+
+  return `
+    <div class="panel jecVisitaSelectPanel" style="margin-bottom:16px;border-left:4px solid var(--primary);background:var(--surface)">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+        <div>
+          <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px">
+            <span>🏫</span> N.° de Visita / Momento de Monitoreo · Implementación del Modelo JEC
+          </h3>
+          <p style="margin:3px 0 0;font-size:12.5px;color:var(--text-600)">
+            Elige el momento de monitoreo para cargar automáticamente los campos, rúbricas e indicadores oficiales correspondientes.
+          </p>
+        </div>
+        <div class="badge" style="background:var(--primary-tint);color:var(--primary-dark);font-weight:700;font-size:12px;padding:4px 10px;border-radius:12px">
+          ${isV1 ? '1er Monitoreo (Inicio) · 37 ítems' : isV2 ? '2do Monitoreo (Proceso) · 31 ítems + R1–R5' : '3er Monitoreo (Salida) · 31 ítems (Balance)'}
+        </div>
+      </div>
+
+      <div class="jecVisitaSelectWrap" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px">
+        <!-- Tarjeta 1er Monitoreo -->
+        <button type="button" class="jecVisitaCard ${isV1 ? 'active' : ''}" data-jec-visita="1" style="text-align:left;padding:14px 16px;border-radius:var(--radius);border:2px solid ${isV1 ? 'var(--primary)' : 'var(--line)'};background:${isV1 ? 'var(--surface-2)' : 'var(--surface)'};cursor:pointer;transition:all 0.15s ease">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-weight:800;font-size:14px;color:${isV1 ? 'var(--primary)' : 'var(--ink)'}">
+              ${isV1 ? '✓ ' : ''}1er Monitoreo · Primer momento
+            </span>
+            <span style="font-size:11px;background:${isV1 ? 'var(--primary)' : 'var(--line)'};color:${isV1 ? '#fff' : 'var(--ink-soft)'};padding:2px 8px;border-radius:10px;font-weight:700">
+              37 ítems
+            </span>
+          </div>
+          <div style="font-size:12px;color:var(--ink-soft);line-height:1.4">
+            Condiciones de inicio, 4 aspectos con puntaje (37 ítems, escala 1 a 3, máx 111 pts), datos generales y directorio de la IE.
+          </div>
+        </button>
+
+        <!-- Tarjeta 2do Monitoreo -->
+        <button type="button" class="jecVisitaCard ${isV2 ? 'active' : ''}" data-jec-visita="2" style="text-align:left;padding:14px 16px;border-radius:var(--radius);border:2px solid ${isV2 ? 'var(--primary)' : 'var(--line)'};background:${isV2 ? 'var(--surface-2)' : 'var(--surface)'};cursor:pointer;transition:all 0.15s ease">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-weight:800;font-size:14px;color:${isV2 ? 'var(--primary)' : 'var(--ink)'}">
+              ${isV2 ? '✓ ' : ''}2do Monitoreo · Segundo momento
+            </span>
+            <span style="font-size:11px;background:${isV2 ? 'var(--primary)' : 'var(--line)'};color:${isV2 ? '#fff' : 'var(--ink-soft)'};padding:2px 8px;border-radius:10px;font-weight:700">
+              31 ítems + R1–R5
+            </span>
+          </div>
+          <div style="font-size:12px;color:var(--ink-soft);line-height:1.4">
+            Data de docentes monitoreados secundaria (R1–R5 niveles I–IV), 31 indicadores oficiales (Sí/No) en 3 componentes y nivel MSE JEC en tiempo real.
+          </div>
+        </button>
+
+        <!-- Tarjeta 3er Monitoreo -->
+        <button type="button" class="jecVisitaCard ${isV3 ? 'active' : ''}" data-jec-visita="3" style="text-align:left;padding:14px 16px;border-radius:var(--radius);border:2px solid ${isV3 ? 'var(--primary)' : 'var(--line)'};background:${isV3 ? 'var(--surface-2)' : 'var(--surface)'};cursor:pointer;transition:all 0.15s ease">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-weight:800;font-size:14px;color:${isV3 ? 'var(--primary)' : 'var(--ink)'}">
+              ${isV3 ? '✓ ' : ''}3er Monitoreo · Tercer momento
+            </span>
+            <span style="font-size:11px;background:${isV3 ? 'var(--primary)' : 'var(--line)'};color:${isV3 ? '#fff' : 'var(--ink-soft)'};padding:2px 8px;border-radius:10px;font-weight:700">
+              31 ítems (Balance)
+            </span>
+          </div>
+          <div style="font-size:12px;color:var(--ink-soft);line-height:1.4">
+            Balance anual y cierre de gestión de la implementación del Modelo de Servicio Educativo JEC, compromisos de salida y acuerdos finales.
+          </div>
+        </button>
+      </div>
+
+      <div id="jecVisitaNoticeWrap" style="margin-top:12px"></div>
+    </div>
+  `;
+}
+
+/**
  * Renderiza el formulario dinámico completo de la Ficha JEC
  */
-export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEditing = false) {
+export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEditing = false, forcedVisita = null) {
   if (!host) return;
+
+  const activeVisitaNum = forcedVisita ? Number(forcedVisita) : (ft?.momento || 2);
 
   // Aspectos e ítems dinámicos desde ft.secciones o catálogo canónico JEC
   const activeSections = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0) ? ft.secciones : JEC_SECCIONES;
@@ -519,6 +597,7 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
 
   host.innerHTML = `
     <form id="regForm" autocomplete="off" class="jecFormContainer" style="max-width:1120px;margin:0 auto">
+      ${renderJecVisitaSelectorHtml(activeVisitaNum)}
       <!-- ─── BARRA FLOTANTE DE NIVEL DE LOGRO EN TIEMPO REAL ─── -->
       <div class="panel jecLiveHeader" style="position:sticky;top:68px;z-index:20;background:var(--surface);border-left:5px solid ${nivelActual.color};box-shadow:var(--shadow-md);margin-bottom:20px;padding:12px 18px">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
@@ -1003,7 +1082,7 @@ function renderComponentesJecHtml(ft = null) {
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">
                 <div style="flex:1">
                   <div style="font-weight:600;font-size:13px;line-height:1.45;color:var(--ink)">
-                    <span style="font-weight:800;color:var(--primary);margin-right:4px">${it.num}.</span>
+                    <span style="font-weight:800;color:var(--primary);margin-right:4px">${numDisplay}.</span>
                     ${esc(it.texto)}
                   </div>
                   ${it.evidencia ? `
@@ -1558,7 +1637,7 @@ function syncJecStateFromDom(host) {
 /**
  * Valida y extrae el payload estructurado completo listo para guardar en Firestore
  */
-export function collectJecFormData(host, ft, isEdit = false) {
+export function collectJecFormData(host, ft, isEdit = false, activeVisita = null) {
   syncJecStateFromDom(host);
 
   if (!jecFormState.institucion) {
@@ -1716,11 +1795,11 @@ export function collectJecFormData(host, ft, isEdit = false) {
     m2: buildMomentoSummary('momento2')
   };
 
-  const jecMomento = ft?.momento || (ft?.id && ft.id.includes('1er') ? 1 : (ft?.id && ft.id.includes('3er') ? 3 : 2));
+  const jecMomento = activeVisita ? Number(activeVisita) : (ft?.momento || (ft?.id && ft.id.includes('1er') ? 1 : (ft?.id && ft.id.includes('3er') ? 3 : 2)));
 
   return {
     fichaTypeId: ft.id || 'ft_msejec_2do',
-    fichaTypeNombre: ft.nombre || 'Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC',
+    fichaTypeNombre: ft.nombre || 'Monitoreo a la Implementación del Modelo JEC',
     visita: jecMomento,
     momento: jecMomento,
     tipoRespuesta: 'si_no',

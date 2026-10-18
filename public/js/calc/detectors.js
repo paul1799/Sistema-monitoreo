@@ -38,6 +38,16 @@ export function isFichaJec(ft, state = null) {
  */
 export function getMomentoFichaJec(ft) {
   if (!ft) return null;
+  if (typeof ft === 'object') {
+    if (ft.visita !== undefined && ft.visita !== null && ft.visita !== '') {
+      const v = Number(ft.visita);
+      if (v === 1 || v === 2 || v === 3) return v;
+    }
+    if (ft.momento !== undefined && ft.momento !== null && ft.momento !== '') {
+      const m = Number(ft.momento);
+      if (m === 1 || m === 2 || m === 3) return m;
+    }
+  }
   const id = (typeof ft === 'string' ? ft : (ft.id || ft.fichaTypeId || ft.tipo || '')).toLowerCase();
   if (id === 'ft_msejec_1er' || id.includes('1er') || id.includes('m1') || id.includes('momento_1')) return 1;
   if (id === 'ft_msejec_2do' || id === 'ft_jec' || id.includes('2do') || id.includes('m2') || id.includes('momento_2')) return 2;
@@ -217,21 +227,7 @@ export function getMomentoVisitaEbr(subOrFt) {
 export function getSubmissionVisitaNum(subOrFt, targetFt = null) {
   if (!subOrFt) return 1;
 
-  const ftId = String(targetFt?.id || subOrFt.fichaTypeId || subOrFt.tipo || '').toLowerCase();
-  const ftNom = String(targetFt?.nombre || subOrFt.fichaTypeNombre || subOrFt.nombre || '').toLowerCase();
-
-  // 1. Fichas de Implementación del Modelo JEC (institucional de momento fijo)
-  if (ftId === 'ft_msejec_1er' || (ftId.includes('1er') && (ftId.includes('jec') || ftNom.includes('jec')))) {
-    return 1;
-  }
-  if (ftId === 'ft_msejec_2do' || ftId === 'ft_jec' || (ftId.includes('2do') && (ftId.includes('jec') || ftNom.includes('jec')))) {
-    return 2;
-  }
-  if (ftId === 'ft_msejec_3er' || (ftId.includes('3er') && (ftId.includes('jec') || ftNom.includes('jec')))) {
-    return 3;
-  }
-
-  // 2. Campo explícito subOrFt.visita
+  // 1. Campo explícito subOrFt.visita (Prioridad absoluta para fichas unificadas)
   if (subOrFt.visita !== undefined && subOrFt.visita !== null && subOrFt.visita !== '') {
     const n = Number(subOrFt.visita);
     if (!isNaN(n) && (n === 1 || n === 2 || n === 3)) return n;
@@ -241,7 +237,7 @@ export function getSubmissionVisitaNum(subOrFt, targetFt = null) {
     if (strV.includes('1') || strV.includes('primer')) return 1;
   }
 
-  // 3. Campo explícito subOrFt.momento
+  // 2. Campo explícito subOrFt.momento
   if (subOrFt.momento !== undefined && subOrFt.momento !== null && subOrFt.momento !== '') {
     const n = Number(subOrFt.momento);
     if (!isNaN(n) && (n === 1 || n === 2 || n === 3)) return n;
@@ -249,6 +245,20 @@ export function getSubmissionVisitaNum(subOrFt, targetFt = null) {
     if (strM.includes('3') || strM.includes('tercer')) return 3;
     if (strM.includes('2') || strM.includes('segundo')) return 2;
     if (strM.includes('1') || strM.includes('primer')) return 1;
+  }
+
+  const ftId = String(targetFt?.id || subOrFt.fichaTypeId || subOrFt.tipo || '').toLowerCase();
+  const ftNom = String(targetFt?.nombre || subOrFt.fichaTypeNombre || subOrFt.nombre || '').toLowerCase();
+
+  // 3. Fichas históricas de Implementación del Modelo JEC (cuando no tienen visita guardada)
+  if (ftId === 'ft_msejec_1er' || (ftId.includes('1er') && (ftId.includes('jec') || ftNom.includes('jec')))) {
+    return 1;
+  }
+  if (ftId === 'ft_msejec_2do' || ftId === 'ft_jec' || (ftId.includes('2do') && (ftId.includes('jec') || ftNom.includes('jec')))) {
+    return 2;
+  }
+  if (ftId === 'ft_msejec_3er' || (ftId.includes('3er') && (ftId.includes('jec') || ftNom.includes('jec')))) {
+    return 3;
   }
 
   // 4. Si es ficha EBR Gestión Escolar

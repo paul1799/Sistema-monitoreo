@@ -37,6 +37,7 @@ async function verifyAdminPassword(pw, adminEmail) {
 let tiposView = 'list';
 let builderState = null;
 let builderEditingId = null;
+let fichaDescExpanded = {};
 
 export function normalizeExtras(extras) {
   if (!Array.isArray(extras)) return [];
@@ -80,6 +81,8 @@ export function cleanBuilderStateForExport(bs) {
     icono: bs.icono || '📋',
     color: bs.color || (FICHA_PALETTE[0] || {}).hex || '#1E40AF',
     modalidad: bs.modalidad || 'General',
+    grupo: (bs.grupo || 'EBR').trim(),
+    orden: typeof bs.orden === 'number' ? bs.orden : 99,
     tipoRespuesta: bs.tipoRespuesta || 'si_no',
     regla_nivel: bs.regla_nivel || 'porcentaje',
     regla_nivel_config: bs.regla_nivel_config || undefined,
@@ -131,6 +134,8 @@ function blankBuilder() {
     icono: '📋',
     color: FICHA_PALETTE[0].hex,
     modalidad: 'General',
+    grupo: 'EBR',
+    orden: 99,
     tipoRespuesta: 'si_no',
     regla_nivel: 'porcentaje',
     regla_nivel_config: {
@@ -201,6 +206,20 @@ function syncBuilderFromDom(container, bs) {
   if (tipoEl) bs.tipoRespuesta = tipoEl.value;
   const modEl = document.getElementById('b_modalidad');
   if (modEl) bs.modalidad = modEl.value;
+  const grpSel = document.getElementById('b_grupo');
+  const grpCustomInp = document.getElementById('b_nuevo_grupo');
+  if (grpSel) {
+    if (grpSel.value === '__NEW_GROUP__') {
+      bs.grupo = (grpCustomInp ? grpCustomInp.value : '').trim();
+    } else {
+      bs.grupo = grpSel.value.trim();
+    }
+  }
+  const ordEl = document.getElementById('b_orden');
+  if (ordEl) {
+    const parsedOrd = parseInt(ordEl.value, 10);
+    bs.orden = isNaN(parsedOrd) ? 99 : parsedOrd;
+  }
   const reglaEl = document.getElementById('b_regla_nivel');
   if (reglaEl) bs.regla_nivel = reglaEl.value;
   const verEl = document.getElementById('b_version');
@@ -355,6 +374,9 @@ export async function duplicateFichaType(ft, dbNs, state, onDone) {
     const clonedExtras = (ft.extras || []).map(ex => ({ ...ex, id: genId() }));
     const payload = {
       nombre: copyName,
+      nombreCorto: ft.nombreCorto ? `${ft.nombreCorto} (Copia)` : copyName,
+      grupo: ft.grupo || 'EBR',
+      orden: typeof ft.orden === 'number' ? ft.orden + 1 : 99,
       descripcion: ft.descripcion || '',
       icono: ft.icono || '📋',
       tipoRespuesta: ft.tipoRespuesta || 'si_no',
@@ -490,6 +512,7 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
               ${isLongDesc ? `<span class="fichaCardDescMore" data-toggle-desc="${esc(ft.id)}">${isExpanded ? 'ver menos' : 'ver más'}</span>` : ''}
             </p>
             <div class="fichaCardBadges">
+              <span class="fichaBadge" style="background:#F1F5F9;color:#334155;border:1px solid #CBD5E1;font-weight:600">📁 Grupo: ${esc(ft.grupo || 'Sin grupo')}</span>
               <span class="fichaBadge fichaBadgeModalidad">${esc(mod)}</span>
               <span class="fichaBadge fichaBadgeItems">📑 ${totalSecs} ${totalSecs === 1 ? 'sección' : 'secciones'}</span>
               <span class="fichaBadge fichaBadgeItems">🔢 ${totalItems} ítems</span>
@@ -541,7 +564,7 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
   // Attach subnav events
   container.querySelectorAll('[data-reg-sub]').forEach(b => {
     b.onclick = () => {
-      registrarSubTab = b.dataset.regSub;
+      setRegistrarSubTab(b.dataset.regSub);
       renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, isAdmin);
     };
   });
@@ -641,6 +664,8 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
       const ft = getFichaType(btn.dataset.editFt);
       if (!ft) return;
       builderState = JSON.parse(JSON.stringify(ft));
+      builderState.grupo = ft.grupo || 'EBR';
+      builderState.orden = typeof ft.orden === 'number' ? ft.orden : 99;
       builderState.extras = normalizeExtras(builderState.extras);
       builderState.nombreCorto = builderState.nombreCorto || builderState.nombre || '';
       builderState.version = typeof builderState.version === 'object' && builderState.version !== null ? (builderState.version.anio || '2026.1') : (builderState.version || '2026.1');
@@ -898,7 +923,7 @@ export function renderAreasYFirmantesView(container, state, dbNs, isAdmin, curre
   if (subNavHtml) {
     container.querySelectorAll('[data-reg-sub]').forEach(b => {
       b.onclick = () => {
-        registrarSubTab = b.dataset.regSub;
+        setRegistrarSubTab(b.dataset.regSub);
         renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, isAdmin);
       };
     });
@@ -1449,6 +1474,12 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
   if (!bs.modalidad) {
     bs.modalidad = 'General';
   }
+  if (!bs.grupo) {
+    bs.grupo = 'EBR';
+  }
+  if (typeof bs.orden !== 'number') {
+    bs.orden = 99;
+  }
   if (!bs.nombreCorto) {
     bs.nombreCorto = bs.nombre || '';
   }
@@ -1476,6 +1507,15 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
     : 0;
 
   const MODALIDADES = ['General', 'EBR Inicial', 'EBR Primaria', 'EBR Secundaria', 'JEC', 'CEBE', 'PRITE', 'EBE', 'Directivos', 'Docentes', 'Tutoría', 'Convivencia'];
+
+  const DEFAULT_GROUPS = ['Modelo JEC', 'EBR', 'CEBE / PRITE', 'PRONOEI'];
+  const customGroupsFromTypes = (state.fichaTypes || [])
+    .map(f => f.grupo)
+    .filter(g => g && !DEFAULT_GROUPS.includes(g) && g !== 'Avance general' && g !== 'JEC');
+  const allAvailableGroups = Array.from(new Set([...DEFAULT_GROUPS, ...customGroupsFromTypes]));
+  if (bs.grupo && !allAvailableGroups.includes(bs.grupo)) {
+    allAvailableGroups.push(bs.grupo);
+  }
 
   const REGLAS_NIVEL_MAP = {
     porcentaje: 'Porcentaje de logro (%) — Umbrales Logrado / En proceso / Inicio',
@@ -1741,6 +1781,23 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
               <select id="b_tipo">
                 ${Object.keys(RESPONSE_LABELS).map(k => `<option value="${k}" ${(k === bs.tipoRespuesta) ? 'selected' : ''}>${RESPONSE_LABELS[k]}</option>`).join('')}
               </select>
+            </div>
+          </div>
+
+          <div class="fieldGrid" style="margin-top:10px">
+            <div class="field" style="flex:1">
+              <label for="b_grupo">Grupo en Filtros y Reportes</label>
+              <select id="b_grupo">
+                ${allAvailableGroups.map(g => `<option value="${esc(g)}" ${(bs.grupo === g) ? 'selected' : ''}>${esc(g)}</option>`).join('')}
+                <option value="__NEW_GROUP__">＋ Crear nuevo grupo personalizado...</option>
+              </select>
+              <div id="wrap_nuevo_grupo" style="display:${(!DEFAULT_GROUPS.includes(bs.grupo) && !customGroupsFromTypes.includes(bs.grupo) && bs.grupo) ? 'block' : 'none'};margin-top:6px">
+                <input type="text" id="b_nuevo_grupo" value="${esc(bs.grupo || '')}" placeholder="Escribe el nombre del nuevo grupo (ej: EBA, Convivencia Escolar, CETPRO)...">
+              </div>
+            </div>
+            <div class="field" style="max-width:140px">
+              <label for="b_orden">Orden / Posición</label>
+              <input type="number" id="b_orden" value="${(typeof bs.orden === 'number') ? bs.orden : 99}" min="1" max="999" placeholder="99">
             </div>
           </div>
 
@@ -2065,6 +2122,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
             <h4 class="fichaCardTitle" style="font-size:14px">${esc(bs.nombre || 'Nombre de la ficha')}</h4>
             <p class="fichaCardDesc" style="font-size:12px">${esc(bs.descripcion || 'Sin descripción.')}</p>
             <div class="fichaCardBadges" style="margin-top:6px">
+              <span class="fichaBadge" style="background:#F1F5F9;color:#334155;border:1px solid #CBD5E1;font-weight:600">📁 Grupo: ${esc(bs.grupo || 'Sin grupo')}</span>
               <span class="fichaBadge fichaBadgeModalidad">${esc(bs.modalidad || 'General')}</span>
               <span class="fichaBadge fichaBadgeItems">📑 ${totalSecs} ${totalSecs === 1 ? 'sección' : 'secciones'}</span>
               <span class="fichaBadge fichaBadgeItems">🔢 ${totalItems} ítems</span>
@@ -2774,6 +2832,39 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
   if (bDesc) bDesc.addEventListener('input', onLiveInput);
   const bMod = document.getElementById('b_modalidad');
   if (bMod) bMod.addEventListener('change', () => { bs.modalidad = bMod.value; builderIsDirty = true; updatePreviewOnly(); });
+  const bGrp = document.getElementById('b_grupo');
+  const bNuevoGrp = document.getElementById('b_nuevo_grupo');
+  const wrapNuevoGrp = document.getElementById('wrap_nuevo_grupo');
+  if (bGrp) {
+    bGrp.addEventListener('change', () => {
+      if (bGrp.value === '__NEW_GROUP__') {
+        if (wrapNuevoGrp) wrapNuevoGrp.style.display = 'block';
+        if (bNuevoGrp) {
+          bNuevoGrp.focus();
+          bs.grupo = bNuevoGrp.value.trim();
+        }
+      } else {
+        if (wrapNuevoGrp) wrapNuevoGrp.style.display = 'none';
+        bs.grupo = bGrp.value.trim();
+      }
+      builderIsDirty = true;
+      updatePreviewOnly();
+    });
+  }
+  if (bNuevoGrp) {
+    bNuevoGrp.addEventListener('input', () => {
+      bs.grupo = bNuevoGrp.value.trim();
+      onLiveInput();
+    });
+  }
+  const bOrd = document.getElementById('b_orden');
+  if (bOrd) {
+    bOrd.addEventListener('input', () => {
+      const v = parseInt(bOrd.value, 10);
+      bs.orden = isNaN(v) ? 99 : v;
+      onLiveInput();
+    });
+  }
   const bTip = document.getElementById('b_tipo');
   if (bTip) bTip.addEventListener('change', () => { bs.tipoRespuesta = bTip.value; builderIsDirty = true; updatePreviewOnly(); });
   const bReg = document.getElementById('b_regla_nivel');
@@ -3338,6 +3429,8 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       const payload = {
         nombre: bs.nombre.trim(),
         nombreCorto: (bs.nombreCorto || bs.nombre).trim(),
+        grupo: (bs.grupo || 'EBR').trim(),
+        orden: typeof bs.orden === 'number' ? bs.orden : 99,
         descripcion: (bs.descripcion || '').trim(),
         icono: (bs.icono || '📋').trim(),
         color: bs.color || FICHA_PALETTE[0].hex,
@@ -3454,6 +3547,8 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       const payload = {
         nombre: bs.nombre.trim(),
         nombreCorto: (bs.nombreCorto || bs.nombre).trim(),
+        grupo: (bs.grupo || 'EBR').trim(),
+        orden: typeof bs.orden === 'number' ? bs.orden : 99,
         descripcion: (bs.descripcion || '').trim(),
         icono: (bs.icono || '📋').trim(),
         color: bs.color || FICHA_PALETTE[0].hex,

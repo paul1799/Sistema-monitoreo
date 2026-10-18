@@ -8,7 +8,8 @@ import {
   lockBodyScroll,
   unlockBodyScroll,
   forceResetBodyScroll,
-  formatPersonName
+  formatPersonName,
+  resolveDirectorName
 } from './core-utils.js';
 import {
   formatDate,
@@ -286,7 +287,8 @@ export function openDownloadConfigModal({
 
     if (tipoReporte === 'individual') {
       const sub0 = (dataRows && dataRows[0]) ? dataRows[0] : null;
-      const dirName = sub0 ? (sub0.director && sub0.director !== '—' ? sub0.director : '') : '';
+      const dirResolved = sub0 ? resolveDirectorName(sub0) : '';
+      const dirName = (dirResolved && dirResolved !== '—') ? dirResolved : '';
       const monName = sub0 ? (sub0.responsable && sub0.responsable !== '—' ? sub0.responsable : '') : '';
       const ieName = sub0 ? (sub0.institucion || 'Institución Educativa') : 'Institución Educativa';
       return [

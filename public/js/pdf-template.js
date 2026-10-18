@@ -41,7 +41,9 @@ import {
   ensureUnicodeFont as _ensureUnicodeFont,
   sanitizePdfText as _sanitizePdfText,
   drawOfficialHeader as _drawOfficialHeader,
-  createOfficialPdfDocument as _createOfficialPdfDocument
+  createOfficialPdfDocument as _createOfficialPdfDocument,
+  resolveDirectorData as _resolveDirectorData,
+  resolveDirectorName as _resolveDirectorName
 } from './pdf-core.js?v=20261014_v1';
 
 import {
@@ -138,6 +140,14 @@ export function proponerSeparacionNombre(persona) {
 
 export function formatPersonName(person) {
   return formatearNombre(person);
+}
+
+export function resolveDirectorData(sub, colegio) {
+  return _resolveDirectorData(sub, colegio);
+}
+
+export function resolveDirectorName(sub, colegio) {
+  return _resolveDirectorName(sub, colegio);
 }
 
 export function verificarTextoPdf(texto, contexto = '') {

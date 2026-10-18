@@ -167,15 +167,50 @@ export function cleanForFirestore(val) {
 /* ── Formateador Unificado de Nombres ───────────────────────────────────── */
 export function formatearNombre(p) {
   if (!p) return '—';
-  if (typeof p === 'string') return p;
-  const ap = (p.apellidos || '').trim();
-  const nom = (p.nombres || '').trim();
-  if (ap && nom) return `${ap}, ${nom}`;
-  return ap || nom || '—';
+  if (typeof p === 'string') {
+    const s = p.trim();
+    if (s === '[object Object]' || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return '—';
+    return s || '—';
+  }
+  if (typeof p === 'object') {
+    const ap = (p.apellidos || p.apellidoPaterno || '').trim();
+    const nom = (p.nombres || p.nombre || p.nombreCompleto || p.nombresApellidos || '').trim();
+    if (ap && nom) return `${ap}, ${nom}`;
+    return ap || nom || '—';
+  }
+  return String(p);
 }
 
 export function formatPersonName(person) {
   return formatearNombre(person);
+}
+
+export function resolveDirectorName(sub = null, colegio = null) {
+  if (!sub && !colegio) return '—';
+  const dirSource = (sub && sub.director !== undefined && sub.director !== null) ? sub.director : null;
+  if (dirSource && typeof dirSource === 'object') {
+    const n = (dirSource.nombre || dirSource.nombres || dirSource.nombresApellidos || dirSource.nombreCompleto || '').trim();
+    if (n) return n;
+  } else if (typeof dirSource === 'string') {
+    const s = dirSource.trim();
+    if (s && s !== '[object Object]' && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined' && s !== '—') {
+      return s;
+    }
+  }
+  if (sub && sub.directorNombre && typeof sub.directorNombre === 'string') {
+    const s = sub.directorNombre.trim();
+    if (s && s !== '[object Object]' && s !== '—') return s;
+  }
+  if (colegio && colegio.director) {
+    if (typeof colegio.director === 'object') {
+      const n = (colegio.director.nombre || colegio.director.nombres || '').trim();
+      if (n) return n;
+    } else if (typeof colegio.director === 'string') {
+      const s = colegio.director.trim();
+      if (s && s !== '[object Object]' && s !== '—') return s;
+    }
+  }
+  return '—';
 }
 
 /* ── Paleta oficial y deductores de tipos de ficha ────────────────────── */
@@ -221,4 +256,26 @@ export function getFichaModalidad(ft) {
   if (text.includes('EBR')) return 'EBR';
   if (text.includes('EBA')) return 'EBA';
   return 'General';
+}
+
+/**
+ * Determina si un registro de responsable corresponde a la modalidad EBE y/o PRITE
+ * según los datos registrados en el Directorio de Responsables (state.responsables).
+ * Excluye especialistas exclusivos de EBR.
+ */
+export function isEbeOrPriteResponsable(r) {
+  if (!r || typeof r !== 'object') return false;
+  const mod = normalizeText(r.modalidad || '');
+  const esp = normalizeText(r.especialista || '');
+  const cargo = normalizeText(r.cargo || '');
+
+  // 1. Verificación directa de modalidad
+  if (mod.includes('ebe') || mod.includes('prite')) return true;
+  if (mod === 'ambas' || (mod.includes('ebr') && mod.includes('ebe'))) return true;
+
+  // 2. Verificación por área / especialidad o cargo oficial
+  if (esp.includes('ebe') || esp.includes('prite')) return true;
+  if (cargo.includes('ebe') || cargo.includes('prite')) return true;
+
+  return false;
 }

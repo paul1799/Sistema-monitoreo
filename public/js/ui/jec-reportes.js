@@ -33,7 +33,7 @@ export const JEC_FICHAS_CONFIG = {
     momento: 1,
     visitas: [1],
     momentoLabel: '1er Momento',
-    nombreCorto: '1er Monitoreo - Modelo JEC',
+    nombreCorto: '1er Monitoreo a la Implementación del Modelo JEC',
     subTitle: 'Seguimiento por Colegio · 1er Monitoreo a la Implementación del Modelo JEC',
     desc: 'Instituciones educativas JEC monitoreadas en el 1er Momento (Inicio) a la izquierda y colegios pendientes a la derecha.'
   },
@@ -43,7 +43,7 @@ export const JEC_FICHAS_CONFIG = {
     momento: 2,
     visitas: [2],
     momentoLabel: '2do Momento',
-    nombreCorto: '2do Monitoreo - Modelo JEC',
+    nombreCorto: '2do Monitoreo a la Implementación del Modelo JEC',
     subTitle: 'Seguimiento por Colegio · 2do Monitoreo a la Implementación del Modelo JEC',
     desc: 'Instituciones educativas JEC monitoreadas en el 2do Momento a la izquierda y colegios pendientes a la derecha.'
   },
@@ -53,7 +53,7 @@ export const JEC_FICHAS_CONFIG = {
     momento: 3,
     visitas: [3],
     momentoLabel: '3er Momento',
-    nombreCorto: '3er Monitoreo - Modelo JEC',
+    nombreCorto: '3er Monitoreo a la Implementación del Modelo JEC',
     subTitle: 'Seguimiento por Colegio · 3er Monitoreo a la Implementación del Modelo JEC',
     desc: 'Instituciones educativas JEC monitoreadas en el 3er Momento (Balance y cierre) a la izquierda y colegios pendientes a la derecha.'
   },
@@ -130,34 +130,24 @@ export function renderJecVisitaSelectHtml(ft, activeVisita) {
   const cfg = getJecFichaConfig(ft);
   const curVis = String(activeVisita || '').trim();
 
-  if (!cfg) {
+  // Fichas de coordinadores (2do y 3er momento)
+  if (cfg && (cfg.tipo === 'coord_tutoria' || cfg.tipo === 'coord_pedag')) {
     return `
       <select id="fil_visita">
-        <option value="">Todas</option>
-        <option value="1"${curVis === '1' ? ' selected' : ''}>Visita 1</option>
-        <option value="2"${curVis === '2' ? ' selected' : ''}>Visita 2</option>
-        <option value="3"${curVis === '3' ? ' selected' : ''}>Visita 3</option>
+        <option value="">Todas (2do y 3er Momento)</option>
+        <option value="2"${curVis === '2' ? ' selected' : ''}>2do Momento (Visita 2)</option>
+        <option value="3"${curVis === '3' ? ' selected' : ''}>3er Momento (Visita 3)</option>
       </select>
     `;
   }
 
-  if (cfg.tipo === 'institucional') {
-    const v = cfg.momento;
-    const isVSelected = String(curVis) === String(v) || !curVis;
-    return `
-      <select id="fil_visita">
-        <option value="${v}"${isVSelected ? ' selected' : ''}>${cfg.momentoLabel} (V${v}) · Momento oficial único</option>
-        <option value=""${curVis === '' ? ' selected' : ''}>Todos los registros (sin filtro de momento)</option>
-      </select>
-    `;
-  }
-
-  // Coordinadores (2do y 3er momento)
+  // Ficha unificada de Implementación del Modelo JEC (3 momentos homogéneos estilo EBR)
   return `
     <select id="fil_visita">
-      <option value="">Todas (2do y 3er Momento)</option>
-      <option value="2"${curVis === '2' ? ' selected' : ''}>2do Momento (Visita 2)</option>
-      <option value="3"${curVis === '3' ? ' selected' : ''}>3er Momento (Visita 3)</option>
+      <option value="">Todas las visitas (1er, 2do y 3er Monitoreo)</option>
+      <option value="1"${curVis === '1' ? ' selected' : ''}>1er Monitoreo · Primer momento (Inicio)</option>
+      <option value="2"${curVis === '2' ? ' selected' : ''}>2do Monitoreo · Segundo momento (Proceso)</option>
+      <option value="3"${curVis === '3' ? ' selected' : ''}>3er Monitoreo · Tercer momento (Salida)</option>
     </select>
   `;
 }
@@ -165,7 +155,7 @@ export function renderJecVisitaSelectHtml(ft, activeVisita) {
 /**
  * Genera las insignias de visita para las instituciones monitoreadas JEC
  */
-export function buildJecVisitBadges(g, ft, state) {
+export function buildJecVisitBadges(g, ft, state, curVis = '') {
   const cfg = getJecFichaConfig(ft);
   const isCoord = cfg && (cfg.tipo === 'coord_tutoria' || cfg.tipo === 'coord_pedag');
 
@@ -195,20 +185,23 @@ export function buildJecVisitBadges(g, ft, state) {
   return keys.map(vn => {
     const count = visitaCounts[vn];
     const mLabel = vn === 1 ? '1er Momento' : (vn === 2 ? '2do Momento' : '3er Momento');
+    const isActive = String(curVis).trim() === String(vn);
 
     if (isCoord && targetCoord > 1) {
       const isComplete = count >= targetCoord;
       const bStyle = isComplete
-        ? 'background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;'
-        : 'background:#fef3c7;color:#92400e;border:1px solid #fde68a;';
-      return `<span class="badge" style="${bStyle}font-size:10px;padding:1px 5px;margin-right:2px;font-weight:700" title="${count} de ${targetCoord} coordinadores registrados en ${mLabel}">V${vn} (${count}/${targetCoord})</span>`;
+        ? (isActive ? 'background:#047857;color:#ffffff;border:1px solid #065f46;' : 'background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;')
+        : (isActive ? 'background:#b45309;color:#ffffff;border:1px solid #92400e;' : 'background:#fef3c7;color:#92400e;border:1px solid #fde68a;');
+      return `<button type="button" class="badge btnVisitaBadge ${isActive ? 'active' : ''}" data-vis="${vn}" style="${bStyle}font-size:10px;padding:2px 6px;margin-right:2px;font-weight:700;cursor:pointer;border-radius:4px" title="Filtrar reporte por ${mLabel}">V${vn} (${count}/${targetCoord})</button>`;
     }
 
     if (cfg?.tipo === 'institucional') {
-      return `<span class="badge" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:10px;padding:1px 6px;margin-right:2px;font-weight:700">${mLabel}</span>`;
+      const bStyle = isActive ? 'background:#1d4ed8;color:#ffffff;border:1px solid #1e40af;' : 'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;';
+      return `<button type="button" class="badge btnVisitaBadge ${isActive ? 'active' : ''}" data-vis="${vn}" style="${bStyle}font-size:10px;padding:2px 6px;margin-right:2px;font-weight:700;cursor:pointer;border-radius:4px" title="Filtrar reporte por ${mLabel}">${mLabel}</button>`;
     }
 
-    return `<span class="badge st-none" style="font-size:10px;padding:1px 5px;margin-right:2px;font-weight:700">V${vn}</span>`;
+    const bStyle = isActive ? 'background:#1e40af;color:#ffffff;border:1px solid #1e3a8a;' : 'background:#f1f5f9;color:#1e293b;border:1px solid #cbd5e1;';
+    return `<button type="button" class="badge btnVisitaBadge ${isActive ? 'active' : ''}" data-vis="${vn}" style="${bStyle}font-size:10px;padding:2px 6px;margin-right:2px;font-weight:700;cursor:pointer;border-radius:4px" title="Filtrar reporte por Visita ${vn}">V${vn}</button>`;
   }).join('');
 }
 

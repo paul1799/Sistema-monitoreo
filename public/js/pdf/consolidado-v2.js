@@ -611,9 +611,11 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
         ? groupFt.secciones
         : [];
       if (isFichaCebeGestion(groupFt)) {
-        seccionesParaAgg = (groupFt.secciones?.length ? groupFt.secciones : CEBE_SECCIONES);
+        const isOfficialCebe = (groupFt.secciones?.length === 7 && groupFt.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 34);
+        seccionesParaAgg = isOfficialCebe ? groupFt.secciones : CEBE_SECCIONES;
       } else if (isFichaPriteGestion(groupFt)) {
-        seccionesParaAgg = (groupFt.secciones?.length ? groupFt.secciones : PRITE_SECCIONES);
+        const isOfficialPrite = (groupFt.secciones?.length === 7 && groupFt.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 32);
+        seccionesParaAgg = isOfficialPrite ? groupFt.secciones : PRITE_SECCIONES;
       } else if (isFichaEbrGestionEscolar(groupFt)) {
         const hasV3 = groupStats.some(x => Number(x.s.visita) === 3);
         const hasV2 = groupStats.some(x => Number(x.s.visita) === 2);

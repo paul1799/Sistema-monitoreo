@@ -2,7 +2,7 @@
    ui/scoring.js — Reglas de puntuación, agregación y visualización de indicadores
    ========================================================================= */
 
-import { esc, showToast, normalizeText, normalizeReiNumber } from './core-utils.js';
+import { esc, showToast, normalizeText, normalizeReiNumber, isEbeOrPriteResponsable } from './core-utils.js';
 import { getAppState, getSessionUser } from './state.js';
 import {
   calcScore,
@@ -160,17 +160,29 @@ export function getSubmissionResponsable(s, state = null, currentUser = null) {
     return ESPECIALISTA_JEC_OFICIAL.nombresApellidos;
   }
 
-  // 1.1 REGLA ESPECÍFICA OFICIAL CEBE y PRITE:
+  // 1.1 REGLA OFICIAL CEBE y PRITE:
   // Ficha de Monitoreo y Asistencia Técnica a la Gestión Escolar - CEBE / PRITE
-  // Las 2 especialistas designadas son María Angélica Zavala Querevalú y Ana Rosario Valderrama Barrientos
+  // Se obtiene del responsable guardado o del especialista de EBE/PRITE registrado en state.responsables
   if (s && (s.fichaTypeId === 'ft_gestion_cebe' || s.fichaTypeId === 'ft_prite_gestion' || (s.fichaTypeNombre && (s.fichaTypeNombre.toLowerCase().includes('cebe') || s.fichaTypeNombre.toLowerCase().includes('prite'))))) {
     if (s.responsable && String(s.responsable).trim() && s.responsable.trim() !== '—' && !s.responsable.includes('@') && !/^\d+$/.test(String(s.responsable).trim())) {
       return String(s.responsable).trim();
     }
-    const sRei = s.rei || s.red || '';
-    const sReiNorm = normalizeText(sRei);
-    if (sReiNorm.includes('13')) return 'María Angélica Zavala Querevalú';
-    if (sReiNorm.includes('15')) return 'Ana Rosario Valderrama Barrientos';
+    if (appState && Array.isArray(appState.responsables)) {
+      const sRei = s.rei || s.red || '';
+      const sReiNorm = normalizeText(sRei);
+      const ebeList = appState.responsables.filter(r => isEbeOrPriteResponsable(r));
+      if (ebeList.length > 0) {
+        const matchByRed = sReiNorm ? ebeList.find(r => {
+          const rRedNorm = normalizeText(r.red || '');
+          return rRedNorm && (rRedNorm.includes(sReiNorm) || sReiNorm.includes(rRedNorm));
+        }) : null;
+        const chosen = matchByRed || (ebeList.length === 1 ? ebeList[0] : null);
+        if (chosen) {
+          const n = (chosen.nombresApellidos || chosen.especialista || '').trim();
+          if (n) return n;
+        }
+      }
+    }
   }
 
   // 2. Si s.responsable tiene un nombre humano real (NO vacío, NO sólo números, y NO un correo electrónico como agebre@ugel03.gob.pe):
@@ -284,17 +296,20 @@ export function getResponsableForColegio(col, ft, state = null) {
 
   // 1. Caso CEBE y PRITE
   if (ft && (isFichaCebeGestion(ft) || isFichaPriteGestion(ft))) {
-    const colRei = normalizeText(col.rei || col.red || '');
-    if (colRei.includes('13')) return 'María Angélica Zavala Querevalú';
-    if (colRei.includes('15')) return 'Ana Rosario Valderrama Barrientos';
     if (appState && Array.isArray(appState.responsables)) {
-      const respEbe = appState.responsables.find(r => {
-        const m = (r.modalidad || '').toUpperCase();
-        if (isFichaPriteGestion(ft) && (m.includes('PRITE') || (r.especialista || '').toUpperCase().includes('PRITE'))) return true;
-        if (isFichaCebeGestion(ft) && (m.includes('CEBE') || (r.especialista || '').toUpperCase().includes('CEBE'))) return true;
-        return false;
-      });
-      if (respEbe && respEbe.nombresApellidos) return respEbe.nombresApellidos.trim();
+      const colRei = normalizeText(col.rei || col.red || '');
+      const ebeList = appState.responsables.filter(r => isEbeOrPriteResponsable(r));
+      if (ebeList.length > 0) {
+        const matchByRed = colRei ? ebeList.find(r => {
+          const rRedNorm = normalizeText(r.red || '');
+          return rRedNorm && (rRedNorm.includes(colRei) || colRei.includes(rRedNorm));
+        }) : null;
+        const chosen = matchByRed || (ebeList.length === 1 ? ebeList[0] : null);
+        if (chosen) {
+          const n = (chosen.nombresApellidos || chosen.especialista || '').trim();
+          if (n) return n;
+        }
+      }
     }
   }
 
@@ -440,9 +455,11 @@ export function computeStats(sub, ft) {
   } else if (isFichaJec(ft || sub) && respuestasArray && respuestasArray.length > 0) {
     ftForCalc = { ...ft, secciones: (ft?.secciones?.length ? ft.secciones : JEC_SECCIONES), tipoRespuesta: 'si_no', regla_nivel: ft?.regla_nivel || REGLA_NIVEL_JEC };
   } else if (isFichaCebeGestion(ft || sub) && respuestasArray && respuestasArray.length > 0) {
-    ftForCalc = { ...ft, secciones: (ft?.secciones?.length ? ft.secciones : CEBE_SECCIONES), tipoRespuesta: 'ips', escala: 'IPL' };
+    const isOfficialCebe = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 34);
+    ftForCalc = { ...ft, secciones: isOfficialCebe ? ft.secciones : CEBE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
   } else if (isFichaPriteGestion(ft || sub) && respuestasArray && respuestasArray.length > 0) {
-    ftForCalc = { ...ft, secciones: (ft?.secciones?.length ? ft.secciones : PRITE_SECCIONES), tipoRespuesta: 'ips', escala: 'IPL' };
+    const isOfficialPrite = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 32);
+    ftForCalc = { ...ft, secciones: isOfficialPrite ? ft.secciones : PRITE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
   }
   const result = calcScore(respuestasArray, ftForCalc);
   let finalEstado = {

@@ -104,21 +104,133 @@ export const APELLIDOS_OBLIGATORIO = true;
 export function formatearNombre(persona) {
   if (!persona) return '';
   if (typeof persona === 'string') {
-    return persona.trim().toUpperCase();
+    const s = persona.trim();
+    if (s === '[object Object]' || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined' || s === '—') return '';
+    return s.toUpperCase();
   }
-  const nombres   = (persona.nombres   || '').trim();
-  const apellidos = (persona.apellidos || '').trim();
+  if (typeof persona === 'object') {
+    const nombres = (persona.nombres || persona.nombre || persona.nombresApellidos || persona.nombreCompleto || '').trim();
+    const apellidos = (persona.apellidos || [persona.apellidoPaterno, persona.apellidoMaterno].filter(Boolean).join(' ') || '').trim();
 
-  if (apellidos && nombres) {
-    return `${apellidos.toUpperCase()} ${nombres.toUpperCase()}`;
-  }
-  if (apellidos && !nombres) {
-    return apellidos.toUpperCase();
-  }
-  if (!apellidos && nombres) {
-    return nombres.toUpperCase();
+    if (apellidos && nombres) {
+      return `${apellidos.toUpperCase()} ${nombres.toUpperCase()}`;
+    }
+    if (apellidos && !nombres) {
+      return apellidos.toUpperCase();
+    }
+    if (!apellidos && nombres) {
+      return nombres.toUpperCase();
+    }
   }
   return '';
+}
+
+/**
+ * Extrae y normaliza de forma segura la información del director(a) desde una ficha
+ * de monitoreo (submission) y/o los datos del colegio, soportando objetos { nombre, dni, ... },
+ * strings, propiedades planas (directorNombre, dirNombre) y campos extras sin generar '[object Object]'.
+ */
+export function resolveDirectorData(sub = null, colegio = null) {
+  if (!sub && !colegio) {
+    return { nombre: '—', dni: '—', telefono: '—', condicion: '—', correo: '—' };
+  }
+
+  const dirSource = (sub && sub.director !== undefined && sub.director !== null) ? sub.director : null;
+  const colDir = (colegio && colegio.director) ? colegio.director : null;
+
+  let nombre = '';
+  let dni = '';
+  let telefono = '';
+  let condicion = '';
+  let correo = '';
+
+  // 1. Extraer desde sub.director
+  if (dirSource && typeof dirSource === 'object') {
+    nombre = dirSource.nombre || dirSource.nombres || dirSource.nombresApellidos || dirSource.nombreCompleto || '';
+    if (!nombre && (dirSource.apellidos || dirSource.apellidoPaterno)) {
+      nombre = [dirSource.apellidoPaterno || dirSource.apellidos, dirSource.apellidoMaterno, dirSource.nombres].filter(Boolean).join(' ').trim();
+    }
+    dni = dirSource.dni || '';
+    telefono = dirSource.telefono || dirSource.celular || '';
+    condicion = dirSource.condicion || '';
+    correo = dirSource.correo || dirSource.email || '';
+  } else if (typeof dirSource === 'string') {
+    const s = dirSource.trim();
+    if (s && s !== '[object Object]' && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined' && s !== '—') {
+      nombre = s;
+    }
+  }
+
+  // 2. Fallbacks desde propiedades planas de sub
+  if (sub) {
+    if (!nombre) {
+      nombre = sub.directorNombre || sub.dirNombre || sub.director_nombre || '';
+    }
+    if (!dni) {
+      dni = sub.directorDni || sub.dirDni || sub.director_dni || '';
+    }
+    if (!telefono) {
+      telefono = sub.directorTelefono || sub.dirTelefono || sub.telefonoDirector || '';
+    }
+    if (!condicion) {
+      condicion = sub.directorCondicion || sub.dirCondicion || sub.condicion || '';
+    }
+    if (!correo) {
+      correo = sub.directorCorreo || sub.dirCorreo || sub.correoDirector || '';
+    }
+
+    // Si aún no hay DNI, condición o nombre, buscar en sub.extras
+    if (Array.isArray(sub.extras) && (!dni || !condicion || !nombre)) {
+      const getExtra = (pattern) => {
+        const found = sub.extras.find(x => x && x.label && x.label.toLowerCase().includes(pattern.toLowerCase()));
+        return (found && found.value !== undefined && found.value !== null) ? String(found.value).trim() : '';
+      };
+      if (!nombre) nombre = getExtra('director') || getExtra('directivo que brinda');
+      if (!dni) dni = getExtra('dni del directivo') || getExtra('dni directivo') || getExtra('dni director');
+      if (!condicion) condicion = getExtra('condición') || getExtra('condicion');
+    }
+  }
+
+  // 3. Fallbacks desde colegio
+  if (colDir && typeof colDir === 'object') {
+    if (!nombre) {
+      nombre = colDir.nombre || colDir.nombres || colDir.nombresApellidos || colDir.nombreCompleto || '';
+      if (!nombre && (colDir.apellidos || colDir.apellidoPaterno)) {
+        nombre = [colDir.apellidoPaterno || colDir.apellidos, colDir.apellidoMaterno, colDir.nombres].filter(Boolean).join(' ').trim();
+      }
+    }
+    if (!dni) dni = colDir.dni || '';
+    if (!telefono) telefono = colDir.telefono || colDir.celular || '';
+    if (!condicion) condicion = colDir.condicion || (colegio ? colegio.tipoGestion : '') || '';
+    if (!correo) correo = colDir.correo || colDir.email || '';
+  } else if (typeof colDir === 'string' && !nombre) {
+    const s = colDir.trim();
+    if (s && s !== '[object Object]' && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined') {
+      nombre = s;
+    }
+  }
+
+  const cleanStr = (val) => {
+    if (!val || typeof val !== 'string') return '—';
+    const s = val.trim();
+    if (!s || s === '[object Object]' || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') {
+      return '—';
+    }
+    return s;
+  };
+
+  return {
+    nombre: cleanStr(nombre),
+    dni: cleanStr(dni),
+    telefono: cleanStr(telefono),
+    condicion: cleanStr(condicion),
+    correo: cleanStr(correo)
+  };
+}
+
+export function resolveDirectorName(sub = null, colegio = null) {
+  const d = resolveDirectorData(sub, colegio);
+  return d.nombre;
 }
 
 /**
@@ -621,7 +733,8 @@ export async function createOfficialPdfDocument({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(15, 27, 45);
-    const splitIntro = doc.splitTextToSize(introParagraph, pageW - 2 * margin);
+    const cleanIntro = sanitizePdfText(introParagraph);
+    const splitIntro = doc.splitTextToSize(cleanIntro, pageW - 2 * margin);
     doc.text(splitIntro, margin, curY, { maxWidth: pageW - 2 * margin, lineHeightFactor: 1.25 });
     curY += splitIntro.length * 11 + 12;
   }
@@ -655,7 +768,17 @@ export async function createOfficialPdfDocument({
 
       doc.setFont(baseFont || 'helvetica', 'normal');
       doc.setFontSize(8.5);
-      const valStr = String(item.value !== undefined && item.value !== null ? item.value : '—');
+      let valStr = '—';
+      if (item.value !== undefined && item.value !== null) {
+        if (typeof item.value === 'object') {
+          valStr = (item.value.nombre || item.value.nombres || item.value.nombresApellidos || formatearNombre(item.value) || '—').trim();
+        } else {
+          valStr = String(item.value).trim();
+          if (valStr === '[object Object]' || valStr.toLowerCase() === 'null' || valStr.toLowerCase() === 'undefined') {
+            valStr = '—';
+          }
+        }
+      }
       const valueLines = doc.splitTextToSize(valStr, maxTextW);
 
       let noteLines = [];

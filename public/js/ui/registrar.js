@@ -7,6 +7,8 @@ import {
   genId,
   showToast,
   todayStr,
+  fmtDate,
+  seedSuggestions,
   cleanForFirestore,
   normalizeText,
   normalizeInstName,
@@ -51,7 +53,15 @@ import {
   isFichaEbrGestionEscolar,
   isFichaEbrEbePrite,
   getMomentoVisitaEbr,
-  getSubmissionVisitaNum
+  getSubmissionVisitaNum,
+  isFichaCoordTutoriaJec,
+  isFichaCoordPedagogico,
+  isFichaEspecialistaJec,
+  REGLA_NIVEL_COORD_TUTORIA_JEC,
+  REGLA_NIVEL_COORD_PEDAGOGICO,
+  ESPECIALISTA_JEC_OFICIAL,
+  getNivelCoordTutoriaJec,
+  getNivelCoordPedagogicoJec
 } from '../calcEngine.js';
 import {
   renderEbrGestionForm,
@@ -66,13 +76,15 @@ import {
   collectJecFormData,
   preloadJecFormState,
   resetJecFormState,
+  jecFormState,
   JEC_SECCIONES
 } from '../jec-monitoreo.js';
 import {
   renderJec1erForm,
   collectJec1erFormData,
   preloadJec1erFormState,
-  resetJec1erFormState
+  resetJec1erFormState,
+  jec1erState
 } from '../jec-1er-monitoreo.js';
 import {
   isFichaCebeGestion,
@@ -131,6 +143,7 @@ let regSelectedTypeId = null;
 let regCompromisos = [];
 let regBuiltFor = null;
 let regSelectedColegioId = null;
+let currentJecVisita = 1;
 
 let fichaListSearchQuery = '';
 let fichaListFilterEscala = '';
@@ -150,6 +163,10 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
   // Si venimos en modo edición desde consolidado/reportes, preseleccionar la ficha y forzar subtab registrar
   if (editingSubmissionData && editingSubmissionData.fichaTypeId && !regSelectedTypeId) {
     regSelectedTypeId = editingSubmissionData.fichaTypeId;
+    if (isFichaJec(editingSubmissionData) && !isFichaCoordTutoriaJec(editingSubmissionData) && !isFichaCoordPedagogico(editingSubmissionData)) {
+      regSelectedTypeId = 'ft_msejec_2do';
+      currentJecVisita = getSubmissionVisitaNum(editingSubmissionData) || 2;
+    }
     registrarSubTab = 'registrar';
   }
 
@@ -190,6 +207,11 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
     const ft = getFichaType(regSelectedTypeId);
     const color = getFichaColor(ft);
     const mod = getFichaModalidad(ft);
+    const isJecImpl = isFichaJec(ft) && !isFichaCoordTutoriaJec(ft) && !isFichaCoordPedagogico(ft);
+    const displayName = isJecImpl ? 'Monitoreo a la Implementación del Modelo JEC' : ft.nombre;
+    const visitsBadge = (isJecImpl || ft.tieneVisitas)
+      ? '<span class="fichaBadge fichaBadgeVisitas">🏛️ 3 Visitas (Inicio, Proceso, Salida)</span>'
+      : '';
 
     const editBanner = editingSubmissionId
       ? '<div class="banner" style="background:var(--accent-tint);border-color:var(--accent);color:#8A6410;margin-bottom:16px">✏️ Modo edición — estás corrigiendo una ficha ya registrada. Al guardar se actualizará en Firestore.</div>'
@@ -209,11 +231,16 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
           <div class="fichaActiveDetails">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               <span class="fichaBadge fichaBadgeModalidad">${esc(mod)}</span>
+              ${visitsBadge}
               <span class="fichaBadge fichaBadgeEscala">⚖️ ${esc(RESPONSE_LABELS[ft.tipoRespuesta] || ft.tipoRespuesta)}</span>
-              <span class="fichaBadge fichaBadgeItems">📑 ${(ft.secciones || []).length} secciones</span>
-              <span class="fichaBadge fichaBadgeItems">🔢 ${(ft.secciones || []).reduce((a, s) => a + (s.items || []).length, 0)} ítems</span>
+              ${!isJecImpl ? `
+                <span class="fichaBadge fichaBadgeItems">📑 ${(ft.secciones || []).length} secciones</span>
+                <span class="fichaBadge fichaBadgeItems">🔢 ${(ft.secciones || []).reduce((a, s) => a + (s.items || []).length, 0)} ítems</span>
+              ` : `
+                <span class="fichaBadge fichaBadgeItems">📑 1er (37 ítems), 2do y 3er Momento (31 ítems)</span>
+              `}
             </div>
-            <h3 style="margin:4px 0 0 0;font-family:var(--serif);font-size:16px;color:var(--navy-900)">${esc(ft.nombre)}</h3>
+            <h3 style="margin:4px 0 0 0;font-family:var(--serif);font-size:16px;color:var(--navy-900)">${esc(displayName)}</h3>
           </div>
         </div>
         <button type="button" class="fichaActiveBackBtn" id="btnCambiarFicha" title="Regresar para elegir otra ficha">
@@ -293,8 +320,13 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
   allTypes.forEach(ft => escalasSet.add(ft.tipoRespuesta));
   const escalasList = Array.from(escalasSet);
 
-  // Filtrar según búsqueda y filtros activos
+  // Filtrar según búsqueda y filtros activos (deduplicando tarjetas JEC para mostrar una sola ficha institucional)
+  let seenJecCard = false;
   const filteredTypes = allTypes.filter(ft => {
+    if (isFichaJec(ft) && !isFichaCoordTutoriaJec(ft) && !isFichaCoordPedagogico(ft)) {
+      if (seenJecCard) return false;
+      seenJecCard = true;
+    }
     if (fichaListSearchQuery) {
       const q = normalizeText(fichaListSearchQuery);
       const name = normalizeText(ft.nombre || '');
@@ -316,12 +348,20 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
   ` : filteredTypes.map((ft, idx) => {
     const color = getFichaColor(ft, idx);
     const mod = getFichaModalidad(ft);
-    const count = deduplicateTwinSubmissions((state.submissions || []).filter(s => s.fichaTypeId === ft.id)).length;
+    const isJecImpl = isFichaJec(ft) && !isFichaCoordTutoriaJec(ft) && !isFichaCoordPedagogico(ft);
+    const cardFtId = isJecImpl ? 'ft_msejec_2do' : ft.id;
+    const cardTitle = isJecImpl ? 'Monitoreo a la Implementación del Modelo JEC' : ft.nombre;
+    const count = isJecImpl
+      ? deduplicateTwinSubmissions((state.submissions || []).filter(s => isFichaJec(s) && !isFichaCoordTutoriaJec(s) && !isFichaCoordPedagogico(s))).length
+      : deduplicateTwinSubmissions((state.submissions || []).filter(s => s.fichaTypeId === ft.id)).length;
     const totalItems = (ft.secciones || []).reduce((a, s) => a + (s.items || []).length, 0);
     const totalSecs = (ft.secciones || []).length;
     const descText = (ft.descripcion || '').trim();
-    const isExpanded = !!fichaDescExpanded[ft.id];
+    const isExpanded = !!fichaDescExpanded[cardFtId];
     const isLongDesc = descText.length > 140;
+    const visitsBadge = (isJecImpl || ft.tieneVisitas)
+      ? '<span class="fichaBadge fichaBadgeVisitas">🏛️ 3 Visitas (Inicio, Proceso, Salida)</span>'
+      : '';
 
     let displayDesc = descText || 'Ficha oficial de monitoreo y acompañamiento institucional.';
     if (isLongDesc && !isExpanded) {
@@ -329,29 +369,34 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
     }
 
     return `
-      <div class="fichaCard" data-select-card="${esc(ft.id)}" tabindex="0" role="button" aria-label="Registrar visita para ${esc(ft.nombre)}">
+      <div class="fichaCard" data-select-card="${esc(cardFtId)}" tabindex="0" role="button" aria-label="Registrar visita para ${esc(cardTitle)}">
         <div class="fichaCardColorStripe" style="background:${color.hex};"></div>
         <div class="fichaCardMain">
           <div class="fichaCardIconWrap" style="background:${color.bg};color:${color.hex};">
             ${esc(ft.icono || '📋')}
           </div>
           <div class="fichaCardContent">
-            <h3 class="fichaCardTitle">${esc(ft.nombre)}</h3>
+            <h3 class="fichaCardTitle">${esc(cardTitle)}</h3>
             <p class="fichaCardDesc">
               ${esc(displayDesc)}
-              ${isLongDesc ? `<span class="fichaCardDescMore" data-toggle-desc="${esc(ft.id)}">${isExpanded ? 'ver menos' : 'ver más'}</span>` : ''}
+              ${isLongDesc ? `<span class="fichaCardDescMore" data-toggle-desc="${esc(cardFtId)}">${isExpanded ? 'ver menos' : 'ver más'}</span>` : ''}
             </p>
             <div class="fichaCardBadges">
               <span class="fichaBadge fichaBadgeModalidad">${esc(mod)}</span>
-              <span class="fichaBadge fichaBadgeItems">📑 ${totalSecs} ${totalSecs === 1 ? 'sección' : 'secciones'}</span>
-              <span class="fichaBadge fichaBadgeItems">🔢 ${totalItems} ítems</span>
-              <span class="fichaBadge fichaBadgeEscala">⚖️ ${esc(RESPONSE_LABELS[ft.tipoRespuesta] || ft.tipoRespuesta)}</span>
+              ${visitsBadge}
+              ${!isJecImpl ? `
+                <span class="fichaBadge fichaBadgeItems">📑 ${totalSecs} ${totalSecs === 1 ? 'sección' : 'secciones'}</span>
+                <span class="fichaBadge fichaBadgeItems">🔢 ${totalItems} ítems</span>
+                <span class="fichaBadge fichaBadgeEscala">⚖️ ${esc(RESPONSE_LABELS[ft.tipoRespuesta] || ft.tipoRespuesta)}</span>
+              ` : `
+                <span class="fichaBadge fichaBadgeItems">📑 1er (37 ítems), 2do y 3er Momento (31 ítems)</span>
+              `}
               <span class="fichaBadge fichaBadgeCount">📊 ${count} ${count === 1 ? 'ficha registrada' : 'fichas registradas'}</span>
             </div>
           </div>
         </div>
         <div class="fichaCardActs">
-          <button type="button" class="btnRegistrarFichaAction" data-select-btn="${esc(ft.id)}">
+          <button type="button" class="btnRegistrarFichaAction" data-select-btn="${esc(cardFtId)}">
             Registrar ficha →
           </button>
         </div>
@@ -479,6 +524,122 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
   });
 }
 
+/**
+ * Sincroniza campos comunes de la IE y del equipo directivo entre estados de JEC (Momento 1 vs Momentos 2/3)
+ */
+function syncCommonJecFields(host, fromVisita, toVisita) {
+  if (!host) return;
+  const instEl = host.querySelector('#f_institucion') || host.querySelector('#jec1_institucion');
+  const instVal = instEl ? instEl.value.trim() : '';
+  const colModularEl = host.querySelector('#f_codigo') || host.querySelector('#jec1_codmodular');
+  const codModularVal = colModularEl ? colModularEl.value.trim() : '';
+  const redEl = host.querySelector('#f_red') || host.querySelector('#jec1_red');
+  const redVal = redEl ? redEl.value.trim() : '';
+  const ugelEl = host.querySelector('#f_ugel') || host.querySelector('#jec1_ugel');
+  const ugelVal = ugelEl ? ugelEl.value.trim() : 'UGEL 03';
+  const fechaEl = host.querySelector('#f_fecha') || host.querySelector('#jec1_fecha');
+  const fechaVal = fechaEl ? fechaEl.value : todayStr();
+
+  const dirNomEl = host.querySelector('#f_director') || host.querySelector('#jec1_dir_nombre');
+  const dirNomVal = dirNomEl ? dirNomEl.value.trim() : '';
+  const dirDniEl = host.querySelector('#f_director_dni') || host.querySelector('#jec1_dir_dni');
+  const dirDniVal = dirDniEl ? dirDniEl.value.trim() : '';
+  const dirTelEl = host.querySelector('#f_director_tel') || host.querySelector('#jec1_dir_tel');
+  const dirTelVal = dirTelEl ? dirTelEl.value.trim() : '';
+  const dirCondEl = host.querySelector('#f_director_cond') || host.querySelector('#jec1_dir_cond');
+  const dirCondVal = dirCondEl ? dirCondEl.value : 'D';
+  const dirMailEl = host.querySelector('#f_director_correo') || host.querySelector('#jec1_dir_correo');
+  const dirMailVal = dirMailEl ? dirMailEl.value.trim() : '';
+
+  const secEl = host.querySelector('#extra_secciones') || host.querySelector('#jec1_secciones');
+  const secVal = secEl ? secEl.value.trim() : '';
+  const estEl = host.querySelector('#extra_estudiantes') || host.querySelector('#jec1_estudiantes');
+  const estVal = estEl ? estEl.value.trim() : '';
+  const docEl = host.querySelector('#extra_docentes') || host.querySelector('#jec1_docentes');
+  const docVal = docEl ? docEl.value.trim() : '';
+
+  if (fromVisita === 1) {
+    jecFormState.institucion = instVal || jec1erState.colegioNombre || jec1erState.institucion || '';
+    jecFormState.colegioId = jec1erState.colegioId || '';
+    jecFormState.codigoModular = codModularVal || jec1erState.codModular || '';
+    jecFormState.red = redVal || jec1erState.red || '';
+    jecFormState.rei = redVal || jec1erState.red || '';
+    jecFormState.ugel = ugelVal || jec1erState.ugel || 'UGEL 03';
+    jecFormState.fecha = fechaVal || jec1erState.fecha || todayStr();
+    jecFormState.director.nombres = dirNomVal || jec1erState.director.nombres || '';
+    jecFormState.director.dni = dirDniVal || jec1erState.director.dni || '';
+    jecFormState.director.telefono = dirTelVal || jec1erState.director.telefono || '';
+    jecFormState.director.condicion = dirCondVal || jec1erState.director.condicion || 'D';
+    jecFormState.director.correo = dirMailVal || jec1erState.director.correo || '';
+    jecFormState.secciones = secVal || jec1erState.secciones || '';
+    jecFormState.estudiantes = estVal || jec1erState.estudiantes || '';
+    jecFormState.docentesTotal = docVal || jec1erState.docentes || '';
+    jecFormState.formacionTecnica = (jec1erState.secundariaTecnica === 'SI');
+  } else {
+    jec1erState.colegioNombre = instVal || jecFormState.institucion || '';
+    jec1erState.colegioId = jecFormState.colegioId || null;
+    jec1erState.codModular = codModularVal || jecFormState.codigoModular || '';
+    jec1erState.red = redVal || jecFormState.rei || jecFormState.red || '';
+    jec1erState.ugel = ugelVal || jecFormState.ugel || 'UGEL 03';
+    jec1erState.fecha = fechaVal || jecFormState.fecha || todayStr();
+    jec1erState.director.nombres = dirNomVal || jecFormState.director.nombres || '';
+    jec1erState.director.dni = dirDniVal || jecFormState.director.dni || '';
+    jec1erState.director.telefono = dirTelVal || jecFormState.director.telefono || '';
+    jec1erState.director.condicion = dirCondVal || jecFormState.director.condicion || 'DESIGNADO';
+    jec1erState.director.correo = dirMailVal || jecFormState.director.correo || '';
+    jec1erState.secciones = secVal || jecFormState.secciones || '';
+    jec1erState.estudiantes = estVal || jecFormState.estudiantes || '';
+    jec1erState.docentes = docVal || jecFormState.docentesTotal || '';
+    jec1erState.secundariaTecnica = jecFormState.formacionTecnica ? 'SI' : 'NO';
+  }
+}
+
+/**
+ * Renderiza el formulario unificado de Modelo JEC (Permite alternar interactivamente entre 1er, 2do y 3er Monitoreo)
+ */
+function renderUnifiedJecForm(host, ft, state, dbNs, currentUser, navigate, isEditing, targetVisita = null) {
+  if (targetVisita) {
+    currentJecVisita = Number(targetVisita);
+  } else if (editingSubmissionData) {
+    currentJecVisita = getSubmissionVisitaNum(editingSubmissionData, ft) || 2;
+  } else if (!currentJecVisita) {
+    currentJecVisita = 1;
+  }
+
+  if (editingSubmissionData) {
+    if (currentJecVisita === 1) {
+      preloadJec1erFormState(editingSubmissionData, ft);
+    } else {
+      preloadJecFormState(editingSubmissionData, ft);
+    }
+  }
+
+  if (currentJecVisita === 1) {
+    renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, isEditing);
+  } else {
+    renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEditing, currentJecVisita);
+  }
+
+  // Interceptar clics en los botones de selección de momento (Visita 1, 2 y 3)
+  host.querySelectorAll('[data-jec-visita]').forEach(card => {
+    card.onclick = (e) => {
+      e.preventDefault();
+      const newVis = Number(card.dataset.jecVisita);
+      if (currentJecVisita === newVis) return;
+      syncCommonJecFields(host, currentJecVisita, newVis);
+      currentJecVisita = newVis;
+      const scrollY = window.scrollY;
+      renderUnifiedJecForm(host, ft, state, dbNs, currentUser, navigate, isEditing, newVis);
+      window.scrollTo({ top: scrollY, behavior: 'instant' });
+    };
+  });
+
+  if (editingSubmissionData && editingSubmissionData.id) {
+    const f = host.querySelector('#regForm');
+    if (f) f.dataset.editingId = editingSubmissionData.id;
+  }
+}
+
 function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
   if (state) setAppState(state);
   const host = document.getElementById('regFormHost');
@@ -547,35 +708,12 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     return;
   }
 
-  // Interceptar Ficha "1er Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC"
-  if (isFichaJec1erMomento(ft)) {
-    if (editingSubmissionData) {
-      preloadJec1erFormState(editingSubmissionData, ft);
-    } else {
-      resetJec1erFormState();
-    }
-    renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData);
-    if (editingSubmissionData && editingSubmissionData.id) {
-      const f = host.querySelector('#regForm');
-      if (f) f.dataset.editingId = editingSubmissionData.id;
-    }
+  // Interceptar Ficha Unificada "Monitoreo a la Implementación del Modelo JEC" (1er, 2do y 3er momento)
+  if (isFichaJec(ft) && !isFichaCoordTutoriaJec(ft) && !isFichaCoordPedagogico(ft)) {
+    renderUnifiedJecForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData);
     host.onsubmit = async (e) => {
       if (e.target && e.target.id === 'regForm') {
         if (e.defaultPrevented) return;
-        await onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate);
-      }
-    };
-    return;
-  }
-
-  // Interceptar Ficha "Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC" (2do / genérico)
-  if (isFichaJec(ft)) {
-    if (editingSubmissionData) {
-      preloadJecFormState(editingSubmissionData, ft);
-    }
-    renderJecForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData);
-    host.onsubmit = async (e) => {
-      if (e.target && e.target.id === 'regForm') {
         await onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate);
       }
     };
@@ -829,15 +967,17 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
         '</div>'
       ) : '';
 
+      const itemNumDisplay = (it.num !== undefined && it.num !== null && it.num !== '') ? (it.num + '.') : ((iIdx + 1) + '.');
       return '<div class="itemRow" data-item-id="' + it.id + '">' +
-        '<div class="itxt"><span class="itemNum">' + (iIdx + 1) + '.</span> ' + esc(it.texto) + evidenciaHtml + '</div>' +
+        '<div class="itxt"><span class="itemNum">' + itemNumDisplay + '</span> ' + esc(it.texto) + evidenciaHtml + '</div>' +
         '<div class="optGroup">' + optsHtml + '</div>' +
         '</div>';
     }).join('');
 
+    const secBadgeDisplay = sec.num ? esc(sec.num) : ('Sección ' + (sIdx + 1));
     return '<div class="formSecCard">' +
       '<div class="formSecHeader">' +
-      '<span class="formSecBadge">Sección ' + (sIdx + 1) + '</span>' +
+      '<span class="formSecBadge">' + secBadgeDisplay + '</span>' +
       '<h4 class="formSecTitle">' + esc(sec.nombre) + '</h4>' +
       '<span class="formSecCount">' + sec.items.length + ' indicadores</span>' +
       '</div>' +
@@ -1667,9 +1807,21 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       return;
     }
 
-    // Interceptar guardado de Ficha "1er Monitoreo a la Implementación del Modelo JEC"
-    if (isFichaJec1erMomento(ft)) {
-      const jecData = collectJec1erFormData(form || document.getElementById('regFormHost'), ft, isEdit);
+    // Interceptar guardado de Ficha Unificada de Implementación del Modelo JEC (1er, 2do y 3er momento)
+    if (isFichaJec(ft) && !isFichaCoordTutoriaJec(ft) && !isFichaCoordPedagogico(ft)) {
+      const activeVis = currentJecVisita || (editingSubmissionData ? getSubmissionVisitaNum(editingSubmissionData, ft) : 2);
+      let jecData;
+      if (activeVis === 1) {
+        jecData = collectJec1erFormData(form || document.getElementById('regFormHost'), ft, isEdit);
+      } else {
+        jecData = collectJecFormData(form || document.getElementById('regFormHost'), ft, isEdit, activeVis);
+      }
+
+      jecData.visita = Number(activeVis);
+      jecData.momento = Number(activeVis);
+      jecData.fichaTypeId = 'ft_msejec_2do';
+      jecData.fichaTypeNombre = 'Monitoreo a la Implementación del Modelo JEC';
+
       let submissionToken = isEdit ? editingSubmissionId : ((form && form.dataset.submissionId) || genId());
       if (form) form.dataset.submissionId = submissionToken;
 
@@ -1688,77 +1840,23 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
           dbNs.collection('submissions').doc(editingSubmissionId).set(cleanedDocData, { merge: true }),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado al guardar en Firestore.')), 25000))
         ]);
-        showToast('✓ Ficha JEC (1er Momento) actualizada correctamente.');
+        showToast(`✓ Ficha JEC (${activeVis === 1 ? '1er Monitoreo' : (activeVis === 2 ? '2do Monitoreo' : '3er Monitoreo')}) actualizada correctamente.`);
       } else {
         await Promise.race([
           dbNs.collection('submissions').doc(submissionToken).set(cleanedDocData),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado al guardar en Firestore.')), 25000))
         ]);
-        showToast('✓ Ficha JEC (1er Momento) registrada correctamente.');
+        showToast(`✓ Ficha JEC (${activeVis === 1 ? '1er Monitoreo' : (activeVis === 2 ? '2do Monitoreo' : '3er Monitoreo')}) registrada correctamente.`);
       }
 
       // Sincronizar directorio de directivos
       try {
         const syncRes = await syncDirectivosFromFicha(dbNs, { id: isEdit ? editingSubmissionId : submissionToken, ...cleanedDocData }, activeState, currentUser);
         if (syncRes && syncRes.summary) {
-          showToast(`Ficha guardada. Directorio actualizado.`);
+          showToast('Ficha guardada. Directorio de directivos actualizado.');
         }
-      } catch (err) {
-        console.warn('Error al sincronizar directorio desde Ficha JEC 1er Momento:', err);
-      }
-
-      // Limpiar estados
-      resetJec1erFormState();
-      editingSubmissionData = null;
-      editingSubmissionId = null;
-      regSelectedTypeId = null;
-      regCompromisos = [];
-      regSelectedColegioId = null;
-
-      if (navigate) {
-        navigate('consolidado');
-      }
-      return;
-    }
-
-    // Interceptar guardado de Ficha "Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC" (2do / genérico)
-    if (isFichaJec(ft)) {
-      const jecData = collectJecFormData(form || document.getElementById('regFormHost'), ft, isEdit);
-      let submissionToken = isEdit ? editingSubmissionId : ((form && form.dataset.submissionId) || genId());
-      if (form) form.dataset.submissionId = submissionToken;
-
-      const docData = {
-        ...jecData,
-        createdBy: isEdit ? (editingSubmissionData?.createdBy || currentUser.uid) : currentUser.uid,
-        createdAt: isEdit ? (editingSubmissionData?.createdAt || Date.now()) : Date.now(),
-        updatedAt: Date.now(),
-        updatedBy: currentUser?.uid || currentUser?.email || ''
-      };
-
-      const cleanedDocData = cleanForFirestore(docData);
-
-      if (isEdit) {
-        await Promise.race([
-          dbNs.collection('submissions').doc(editingSubmissionId).set(cleanedDocData, { merge: true }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado al guardar en Firestore.')), 25000))
-        ]);
-        showToast('✓ Ficha JEC actualizada correctamente.');
-      } else {
-        await Promise.race([
-          dbNs.collection('submissions').doc(submissionToken).set(cleanedDocData),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado al guardar en Firestore.')), 25000))
-        ]);
-        showToast('✓ Ficha JEC registrada correctamente.');
-      }
-
-      // Sincronizar directorio de directivos
-      try {
-        const syncRes = await syncDirectivosFromFicha(dbNs, { id: isEdit ? editingSubmissionId : submissionToken, ...cleanedDocData }, activeState, currentUser);
-        if (syncRes && syncRes.summary) {
-          showToast(`Ficha guardada. Directorio actualizado.`);
-        }
-      } catch (syncErr) {
-        console.warn('Error sincronizando directorio desde ficha JEC:', syncErr);
+      } catch (errSync) {
+        console.warn('Error al sincronizar directorio desde Ficha JEC:', errSync);
       }
 
       const targetId = isEdit ? editingSubmissionId : submissionToken;
@@ -1771,10 +1869,15 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
         }
       }
 
+      // Limpiar estados
       if (form) form.dataset.submissionId = '';
       clearEditMode();
+      resetJec1erFormState();
       resetJecFormState();
+      currentJecVisita = 1;
       regBuiltFor = null;
+      editingSubmissionData = null;
+      editingSubmissionId = null;
       regSelectedTypeId = null;
       regCompromisos = [];
       regSelectedColegioId = null;

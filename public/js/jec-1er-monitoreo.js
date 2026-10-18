@@ -7,9 +7,10 @@
 
 import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui/core-utils.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, syncDirectivosFromFicha } from './directorio.js?v=20261013_v1';
-import { REGLA_NIVEL_JEC_1ER_MOMENTO, getNivelJec1erMomento } from './calcEngine.js?v=20261016_v2';
+import { REGLA_NIVEL_JEC_1ER_MOMENTO, getNivelJec1erMomento, ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261016_v2';
+import { renderJecVisitaSelectorHtml } from './jec-monitoreo.js';
 
-export { REGLA_NIVEL_JEC_1ER_MOMENTO, getNivelJec1erMomento };
+export { REGLA_NIVEL_JEC_1ER_MOMENTO, getNivelJec1erMomento, ESPECIALISTA_JEC_OFICIAL };
 
 /**
  * 01 ASPECTO: CONDICIONES (7 ítems de verificación inicial - Evaluación Sí / No)
@@ -344,7 +345,7 @@ export const JEC_1ER_SECCIONES = [
 /**
  * Estado interno en memoria del formulario 1er Momento JEC
  */
-let jec1erState = {
+export let jec1erState = {
   colegioId: null,
   colegioNombre: '',
   codModular: '',
@@ -601,12 +602,33 @@ export function renderSubdirectoresRowsHtml(subs = []) {
 }
 
 /**
+ * Filtro estricto: Solo colegios pertenecientes al Modelo JEC
+ */
+export const isJecColegio = (c) => {
+  if (!c) return false;
+  return Boolean(
+    c.esJec === true ||
+    c.es_jec === true ||
+    c.esJEC === true ||
+    String(c.modelo || '').toUpperCase() === 'JEC' ||
+    String(c.modalidad || '').toUpperCase().includes('JEC')
+  );
+};
+
+export const getJecColegiosList = (state) => {
+  const all = Array.isArray(state?.colegios) ? state.colegios : [];
+  const filtered = all.filter(isJecColegio);
+  return filtered.length > 0 ? filtered : all;
+};
+
+/**
  * Renderiza el formulario completo de la Ficha del 1er Monitoreo JEC
  */
 export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, isEditing = false) {
   if (!host) return;
 
-    const scoreData = calculateJec1erScore();
+  const colegiosList = getJecColegiosList(state);
+  const scoreData = calculateJec1erScore();
 
     // Código modular dividido en 7 casilleros
     const codStr = String(jec1erState.codModular || '').padStart(7, ' ').slice(0, 7);
@@ -694,11 +716,12 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
       const itemsHtml = sec.items.map((it) => {
         const val = jec1erState.puntajes[it.id];
         const hallazgo = jec1erState.puntajesHallazgos[it.id] || '';
+        const numVal = (it.num !== undefined && it.num !== null && it.num !== '') ? it.num : (sec.items.indexOf(it) + 1);
         return `
         <div class="jec1-item-row" data-item-id="${it.id}">
           <div class="jec1-item-header">
             <div class="jec1-item-desc">
-              <span class="jec1-item-num">${String(it.num).padStart(2, '0')}.</span>
+              <span class="jec1-item-num">${String(numVal).padStart(2, '0')}.</span>
               ${esc(it.texto)}
             </div>
             <div class="jec1-opt-group">
@@ -748,6 +771,7 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
     host.innerHTML = `
     <div class="jec1-wrapper">
       <form id="regForm" autocomplete="off" onsubmit="return false;">
+        ${renderJecVisitaSelectorHtml(1)}
         <!-- ENCABEZADO INSTITUCIONAL OFICIAL -->
         <div class="jec1-header-card">
           <div class="jec1-logos-banner">
@@ -791,12 +815,29 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
             <h3 class="jec1-section-title">I. DATOS GENERALES DE LA IE</h3>
           </div>
           <div class="jec1-section-body">
+            <div style="background:linear-gradient(135deg, rgba(2,132,199,0.06), rgba(14,165,233,0.02));padding:12px 14px;border-radius:8px;border:1px solid rgba(2,132,199,0.25);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+              <div>
+                <span style="font-size:11px;font-weight:700;color:#0284c7;text-transform:uppercase;letter-spacing:0.5px;display:block">
+                  Especialista Responsable de Monitoreo JEC:
+                </span>
+                <strong style="font-size:14.5px;color:#0f172a">${esc(ESPECIALISTA_JEC_OFICIAL.nombresApellidos)}</strong>
+                <span style="font-size:12px;color:#64748b;margin-left:6px">(${esc(ESPECIALISTA_JEC_OFICIAL.cargo)} · AGEBRE – UGEL 03)</span>
+              </div>
+              <span class="badge" style="background:#0284c7;color:#fff;font-size:11px;padding:3px 9px;font-weight:700">MSE JEC</span>
+            </div>
+
             <div class="jec1-grid-2">
               <div class="jec1-form-group">
                 <label for="jec1_ie_nombre">Número y/o nombre de la Institución Educativa *</label>
-                <input type="text" id="jec1_ie_nombre" class="jec1-input" list="dl_colegios_jec1" value="${esc(jec1erState.colegioNombre)}" placeholder="Escriba o seleccione la IE..." required>
+                <div class="ieSearchWrap" id="jec1_ie_search_wrap" style="position:relative">
+                  <input type="text" id="jec1_ie_nombre" class="jec1-input" list="dl_colegios_jec1" value="${esc(jec1erState.colegioNombre)}" placeholder="Escriba o seleccione la IE..." required autocomplete="off">
+                  <div class="ieDropdown" id="jec1_ie_dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid #cbd5e1;border-radius:6px;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.1)"></div>
+                </div>
+                <span id="jec1_colegio_hint" style="display:${jec1erState.colegioNombre ? 'block' : 'none'};font-size:11.5px;color:#0284c7;margin-top:4px">
+                  ${jec1erState.colegioNombre ? `✓ Vinculado al padrón JEC: ${esc(jec1erState.colegioNombre)} · ${esc(jec1erState.red || 'UGEL 03')} · Cód: ${esc(jec1erState.codModular || '—')}` : ''}
+                </span>
                 <datalist id="dl_colegios_jec1">
-                  ${colegiosList.map(c => `<option value="${esc(c.nombre)}">${esc(c.codModular || '')} - RED ${esc(c.red || '')}</option>`).join('')}
+                  ${colegiosList.map(c => `<option value="${esc(c.nombre || c.ie || '')}">${esc(c.codModular || c.codigoModular || '')} - RED ${esc(c.red || c.rei || '')}</option>`).join('')}
                 </datalist>
               </div>
 
@@ -1142,23 +1183,8 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
     });
   });
 
-  // Filtro estricto: Solo colegios pertenecientes al Modelo JEC
-  const isJecColegio = (c) => {
-    if (!c) return false;
-    return Boolean(
-      c.esJec === true ||
-      c.es_jec === true ||
-      c.esJEC === true ||
-      String(c.modelo || '').toUpperCase() === 'JEC' ||
-      String(c.modalidad || '').toUpperCase().includes('JEC')
-    );
-  };
-
-  const getJecColegiosList = () => {
-    const all = Array.isArray(state?.colegios) ? state.colegios : [];
-    const filtered = all.filter(isJecColegio);
-    return filtered.length > 0 ? filtered : all;
-  };
+  // Filtro estricto de colegios JEC usando el helper modular
+  const getJecColegios = () => getJecColegiosList(state);
 
   const onSelectColegio = (col) => {
     if (!col) return;
@@ -1262,7 +1288,7 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
   if (ieInput && dropdown) {
     const showDropdown = () => {
       const q = normalizeText(ieInput.value);
-      const list = getJecColegiosList();
+      const list = getJecColegiosList(state);
       const matches = list.filter(c => {
         if (!q) return true;
         const name = normalizeText(c.ie || c.nombre || '');
@@ -1310,8 +1336,24 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
     ieInput.addEventListener('input', showDropdown);
     ieInput.addEventListener('focus', () => { if (!ieInput.value) showDropdown(); });
     ieInput.addEventListener('blur', () => {
-      setTimeout(() => { dropdown.style.display = 'none'; }, 250);
+      setTimeout(() => { if (dropdown) dropdown.style.display = 'none'; }, 250);
     });
+
+    const tryMatchDirect = () => {
+      const val = normalizeText(ieInput.value);
+      if (!val) return;
+      const list = getJecColegiosList(state);
+      const matched = list.find(c => {
+        const nom = normalizeText(c.nombre || c.ie || '');
+        const cod = normalizeText(c.codigoModular || c.codModular || c.codigoLocal || '');
+        return nom === val || cod === val;
+      });
+      if (matched) {
+        onSelectColegio(matched);
+        if (dropdown) dropdown.style.display = 'none';
+      }
+    };
+    ieInput.addEventListener('change', tryMatchDirect);
   }
 
   // 2. Radio Secundaria Técnica
@@ -1716,19 +1758,23 @@ export function collectJec1erFormData(host, ft, isEdit = false) {
     });
 
     return {
-      fichaTypeId: ft?.id || 'ft_msejec_1er',
-      fichaTypeNombre: ft?.nombre || '1er Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC',
+      fichaTypeId: ft?.id || 'ft_msejec_2do',
+      fichaTypeNombre: ft?.nombre || 'Monitoreo a la Implementación del Modelo JEC',
       modalidad: 'JEC',
       momento: 1,
-      visita: '1er Momento (V1)',
+      visita: 1,
       fecha,
       colegioId: jec1erState.colegioId || null,
+      institucion: colegioNombre,
       colegioNombre,
       ie: colegioNombre,
       codModular,
       codigoModular: codModular,
       ugel,
       red,
+      responsable: ESPECIALISTA_JEC_OFICIAL.nombresApellidos,
+      responsableCargo: ESPECIALISTA_JEC_OFICIAL.cargo,
+      monitorJec: ESPECIALISTA_JEC_OFICIAL.nombresApellidos,
       secciones: secciones ? parseInt(secciones, 10) : null,
       cantSecciones: secciones ? parseInt(secciones, 10) : null,
       estudiantes: estudiantes ? parseInt(estudiantes, 10) : null,

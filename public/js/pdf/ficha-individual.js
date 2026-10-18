@@ -11,7 +11,8 @@ import {
   sanitizeFilename,
   drawVectorCheckmark,
   drawVectorCheckbox,
-  formatPersonName
+  formatPersonName,
+  resolveDirectorData
 } from '../pdf-core.js';
 
 import {
@@ -74,7 +75,8 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
   const responsable = isJecFicha
     ? ESPECIALISTA_JEC_OFICIAL.nombresApellidos
     : ((sub.responsable && !/^\d+$/.test(String(sub.responsable).trim()) && !sub.responsable.includes('@')) ? sub.responsable : 'Especialista UGEL 03');
-  const director = sub.director || (colegio && colegio.director ? colegio.director.nombre : '—');
+  const dirData = resolveDirectorData(sub, colegio);
+  const director = dirData.nombre;
   const ugel = sub.ugel || 'UGEL 03';
   const red = sub.red || (colegio ? colegio.rei : '—');
 
@@ -91,9 +93,9 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
     return found ? found.value : '';
   };
 
-  const directorDni = sub.directorDni || getExtraVal('dni del directivo') || (colegio && colegio.director ? colegio.director.dni : '') || '';
+  const directorDni = (dirData.dni && dirData.dni !== '—') ? dirData.dni : (sub.directorDni || getExtraVal('dni del directivo') || (colegio && colegio.director ? (colegio.director.dni || '') : '') || '');
   const monitorDni = sub.monitorDni || getExtraVal('dni del monitor') || '';
-  const condicion = sub.condicion || getExtraVal('condición') || getExtraVal('condicion') || (colegio ? colegio.tipoGestion : '') || '';
+  const condicion = (dirData.condicion && dirData.condicion !== '—') ? dirData.condicion : (sub.condicion || getExtraVal('condición') || getExtraVal('condicion') || (colegio ? colegio.tipoGestion : '') || '');
   const nivelAtencion = sub.nivelAtencion || getExtraVal('nivel educativo') || (colegio ? (colegio.nivelServicio || colegio.modalidad) : '') || '';
   const turnoAtencion = sub.turnoAtencion || getExtraVal('turno de atención') || getExtraVal('turno de atencion') || (colegio ? colegio.turnos : '') || '';
   const turnoVisitado = sub.turnoVisitado || getExtraVal('turno visitado') || '';

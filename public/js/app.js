@@ -385,6 +385,68 @@ function startListeners() {
           loaded.push({ id, ...baseFt });
         }
       });
+
+      // 1. Validar y autorreparar la plantilla oficial de PRITE (7 secciones, 32 ítems: 3, 5, 6, 3, 8, 5, 2)
+      const priteDoc = loaded.find(x => x.id === 'ft_prite_gestion');
+      const isOfficialPrite = priteDoc && Array.isArray(priteDoc.secciones) && priteDoc.secciones.length === 7 && priteDoc.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 32;
+      if (priteDoc && !isOfficialPrite) {
+        console.warn('Detectada plantilla PRITE no canónica en Firestore. Restaurando 7 secciones oficiales y 32 ítems (RM N° 501-2025-MINEDU)...');
+        Object.assign(priteDoc, PLANTILLAS_BASE_OFICIALES.ft_prite_gestion);
+        dbNs.collection('fichaTypes').doc('ft_prite_gestion').set({
+          ...PLANTILLAS_BASE_OFICIALES.ft_prite_gestion,
+          updatedAt: Date.now()
+        }, { merge: true }).catch(err => console.warn('Error autorreparando ft_prite_gestion en Firestore:', err));
+      }
+
+      // 2. Validar y autorreparar la plantilla oficial de CEBE (7 secciones, 34 ítems)
+      const cebeDoc = loaded.find(x => x.id === 'ft_gestion_cebe');
+      const isOfficialCebe = cebeDoc && Array.isArray(cebeDoc.secciones) && cebeDoc.secciones.length === 7 && cebeDoc.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 34 && cebeDoc.secciones.every(s => s.num);
+      if (cebeDoc && !isOfficialCebe) {
+        console.warn('Detectada plantilla CEBE no canónica o sin numeración en Firestore. Restaurando 7 secciones oficiales y 34 ítems...');
+        Object.assign(cebeDoc, PLANTILLAS_BASE_OFICIALES.ft_gestion_cebe);
+        dbNs.collection('fichaTypes').doc('ft_gestion_cebe').set({
+          ...PLANTILLAS_BASE_OFICIALES.ft_gestion_cebe,
+          updatedAt: Date.now()
+        }, { merge: true }).catch(err => console.warn('Error autorreparando ft_gestion_cebe en Firestore:', err));
+      }
+
+      // 3. Sanitizar sistemáticamente todas las plantillas para que sec.num e it.num nunca sean undefined
+      loaded.forEach(ftItem => {
+        // Homogeneizar la Ficha Unificada de Monitoreo a la Implementación del Modelo JEC (Estilo EBR)
+        if (ftItem.id === 'ft_msejec_2do' || ftItem.id === 'ft_jec' || ftItem.id === 'ft_msejec_1er' || ftItem.id === 'ft_msejec_3er') {
+          ftItem.nombre = 'Monitoreo a la Implementación del Modelo JEC';
+          ftItem.nombreCorto = 'Monitoreo a la Implementación del Modelo JEC';
+          ftItem.grupo = 'Modelo JEC';
+          ftItem.orden = 10;
+          ftItem.tieneVisitas = true;
+          ftItem.tipoVisitas = 'items_por_visita';
+          ftItem.visitas = [
+            '1er Monitoreo · Primer momento (Inicio)',
+            '2do Monitoreo · Segundo momento (Proceso)',
+            '3er Monitoreo · Tercer momento (Salida)'
+          ];
+        }
+
+        if (Array.isArray(ftItem.secciones)) {
+          let runningItemNum = 1;
+          ftItem.secciones.forEach((sec, sIdx) => {
+            if (!sec.num) {
+              sec.num = (ftItem.id === 'ft_prite_gestion' || ftItem.id === 'ft_gestion_cebe')
+                ? `3.${sIdx + 1}`
+                : `${sIdx + 1}`;
+            }
+            if (Array.isArray(sec.items)) {
+              sec.items.forEach(it => {
+                if (it.num === undefined || it.num === null || it.num === '') {
+                  it.num = runningItemNum;
+                }
+                runningItemNum++;
+              });
+            }
+          });
+        }
+      });
+
       state.fichaTypes = loaded;
       state.fichaTypes.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
       render();

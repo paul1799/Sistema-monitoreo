@@ -819,6 +819,52 @@
   box-shadow: none !important;
 }
 
+.btnDownloadAction.btnClearFiltersAction {
+  background: #F8FAFC;
+  color: #334155;
+  border-color: #CBD5E1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  flex: 0 0 auto;
+}
+
+.btnDownloadAction.btnClearFiltersAction:hover:not(:disabled) {
+  background: #FEE2E2;
+  border-color: #FCA5A5;
+  color: #DC2626;
+  box-shadow: 0 3px 8px rgba(220, 38, 38, 0.15);
+}
+
+/* Insignias interactivas de visita en cuadro de seguimiento */
+.btnVisitaBadge {
+  border: 1px solid #CBD5E1;
+  background: #F1F5F9;
+  color: var(--navy-900, #0F172A);
+  font-size: 10px;
+  padding: 2px 6px;
+  margin-right: 3px;
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.25;
+}
+
+.btnVisitaBadge:hover {
+  background: #2563EB;
+  color: #FFFFFF;
+  border-color: #1D4ED8;
+  transform: translateY(-1px);
+}
+
+.btnVisitaBadge.active {
+  background: #1E40AF !important;
+  color: #FFFFFF !important;
+  border-color: #1E3A8A !important;
+  box-shadow: 0 1px 3px rgba(30, 64, 175, 0.3);
+}
+
 .herramientasMenuWrap {
   position: relative;
   flex-shrink: 0;
@@ -997,4 +1043,255 @@
   font-size: 11.5px;
   color: #64748B;
   margin-top: 2px;
+}
+
+/* =========================================================================
+   PAGINACIÓN: FICHAS REGISTRADAS Y SEGUIMIENTO POR INSTITUCIÓN EDUCATIVA
+   ========================================================================= */
+
+/* Barra de paginación para la tabla de Fichas registradas */
+.tablePaginationBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #F8FAFC;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--text-600);
+  gap: 12px;
+  flex-wrap: wrap;
+  border-radius: 0 0 8px 8px;
+}
+
+.tablePaginationInfo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--navy-900);
+}
+
+.tablePaginationInfo strong {
+  color: var(--navy-900);
+}
+
+.paginationPageNum {
+  color: var(--text-600);
+  font-weight: 500;
+}
+
+.tablePaginationControls,
+.boxPaginationControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Botones de pasar o retroceder página */
+.btnPagination {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: var(--navy-900);
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.btnPagination:hover:not(:disabled) {
+  background: #F1F5F9;
+  border-color: #94A3B8;
+  color: var(--navy-900);
+}
+
+.btnPagination:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+  background: #F8FAFC;
+  border-color: #E2E8F0;
+  color: #94A3B8;
+}
+
+/* Barra de paginación en cajas comparativas (Seguimiento por IE) */
+.boxPaginationBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #F8FAFC;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--text-600);
+  gap: 8px;
+  flex-shrink: 0;
+  margin-top: auto;
+  border-radius: 0 0 7px 7px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.boxPaginationInfo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--navy-900);
+}
+
+.boxPaginationInfo strong {
+  color: var(--navy-900);
+}
+
+.boxPaginationSub {
+  color: var(--text-500);
+  font-weight: 600;
+}
+
+.boxPaginationControls .btnPagination {
+  padding: 3px 9px;
+  font-size: 11.5px;
+  border-radius: 5px;
+}
+
+/* Cabecera y Toolbar de Seguimiento por Institución Educativa */
+.comparativaHead {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.comparativaHeadTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.comparativaHeadBadges {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.comparativaHeadBottom {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btnExportExcelTop {
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: var(--navy-900);
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.btnExportExcelTop:hover {
+  background: #EFF6FF;
+  border-color: #93C5FD;
+  color: #1D4ED8;
+}
+
+.pendientesHeaderTabsWrap {
+  display: flex;
+  align-items: center;
+}
+
+.pendientesHeaderTabsWrap .pendientesVisitaTabs {
+  display: inline-flex;
+  gap: 3px;
+  background: #E2E8F0;
+  padding: 2px 3px;
+  border-radius: 6px;
+  border: 1px solid #CBD5E1;
+}
+
+.pendientesHeaderTabsWrap .btnVisitaTab {
+  border: none;
+  background: transparent;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.pendientesHeaderTabsWrap .btnVisitaTab:hover {
+  color: var(--navy-900);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.pendientesHeaderTabsWrap .btnVisitaTab.active {
+  background: #FFFFFF;
+  color: var(--navy-900);
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* Grilla comparativa: cajas simétricas y homogéneas a la misma altura sin descuadres */
+.comparativaGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.comparativaCol {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  height: 100%;
+}
+
+.comparativaColHead,
+.comparativaColHeadPendientes {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 12px;
+  background: #F8FAFC;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  min-height: 42px;
+  box-sizing: border-box;
+}
+
+/* Tablas comparativas: tamaño homogéneo con scroll interno y ajuste flexible */
+.colMonitoreados .comparativaTblWrap,
+.colPendientes .comparativaTblWrap {
+  flex: 1 1 auto;
+  min-height: 380px;
+  max-height: 460px;
+  overflow-y: auto;
 }

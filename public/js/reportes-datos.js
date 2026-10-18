@@ -129,7 +129,7 @@ export function getApiladasSeccionDataset(statsList, ft) {
     x.st.secciones.forEach(sc => { 
       if (secAgg[sc.nombre]) {
         if (sc.pct !== null) { secAgg[sc.nombre].sum += sc.pct; secAgg[sc.nombre].cnt++; }
-        // We can approximate answers distribution per section by mapping the percentage or using raw counts if available
+        // Aproximación de distribución de respuestas por sección mapeando el porcentaje o conteos directos si están disponibles
       }
     });
   });
@@ -205,7 +205,7 @@ export function getRubricasNivelDataset(statsList, ft) {
     const v = x.s.visita || 1;
     if (v > 2) return;
     (x.s.respuestas || []).forEach(r => {
-      // Find which rubric it is by text parsing or if ID has R1-R5
+      // Determinar qué rúbrica corresponde mediante análisis de texto o identificador R1-R5
       const itemDef = ft.secciones.flatMap(s => s.items).find(i => i && i.id === r.id);
       if (itemDef) {
         const textMatch = itemDef.texto.match(/(R[1-5])/);
@@ -390,9 +390,11 @@ export function computeItemAgg(subs, ft) {
   } else if (isFichaJec(ft)) {
     activeFt = { ...ft, secciones: (ft?.secciones?.length ? ft.secciones : JEC_SECCIONES), tipoRespuesta: 'si_no' };
   } else if (isFichaCebeGestion(ft)) {
-    activeFt = { ...ft, secciones: (ft?.secciones?.length ? ft.secciones : CEBE_SECCIONES), tipoRespuesta: 'ips' };
+    const isOfficialCebe = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 34);
+    activeFt = { ...ft, secciones: isOfficialCebe ? ft.secciones : CEBE_SECCIONES, tipoRespuesta: 'ips' };
   } else if (isFichaPriteGestion(ft)) {
-    activeFt = { ...ft, secciones: (ft?.secciones?.length ? ft.secciones : PRITE_SECCIONES), tipoRespuesta: 'ips' };
+    const isOfficialPrite = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 32);
+    activeFt = { ...ft, secciones: isOfficialPrite ? ft.secciones : PRITE_SECCIONES, tipoRespuesta: 'ips' };
   }
   const tipoResp = activeFt?.tipoRespuesta || 'ips';
   const escala = activeFt?.escala || (tipoResp === 'ips' ? 'IPL' : (tipoResp === 'si_no' ? 'SI_NO_NA' : (tipoResp === 'nivel_1_4' ? 'NIVEL_1_4' : 'IPL')));

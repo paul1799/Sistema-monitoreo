@@ -808,6 +808,7 @@
     justify-content: center !important;
   }
 
+  .downloadButtonsWrap .btnClearFiltersAction,
   .downloadButtonsWrap .herramientasMenuWrap {
     grid-column: 1 / -1 !important;
   }
