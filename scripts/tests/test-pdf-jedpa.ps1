@@ -59,6 +59,11 @@ Test-Assert ($appContent -match "dbNs\.collection\('concursoCuerpoTecnico'\)\.on
 # 5. Interfaz de usuario ui.js
 Write-Host "`n5. Verificando vistas, asistente y exportacion CSV en ui.js..." -ForegroundColor Yellow
 $uiContent = Get-Content "public\js\ui.js" -Raw -Encoding UTF8
+$uiSubFiles = Get-ChildItem -Path "public\js\ui" -Filter "*.js" -ErrorAction SilentlyContinue
+if ($uiSubFiles) {
+    $uiContent += "`n" + (($uiSubFiles | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }) -join "`n")
+}
+
 Test-Assert ($uiContent -match 'getConcursoConfig') 'ui.js importa getConcursoConfig'
 Test-Assert ($uiContent -match 'etiqueta_columna_asesor') 'Encabezado de columna consolidada usa concursoCfg.etiqueta_columna_asesor'
 Test-Assert ($uiContent -match 'Cuerpo t.*cnico.*nico') 'Tarjeta metrica Cuerpo tecnico unico presente en consolidado JEDPA'

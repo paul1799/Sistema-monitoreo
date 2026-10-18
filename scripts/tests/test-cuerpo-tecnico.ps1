@@ -41,6 +41,11 @@ Test-Assert ($pdfContent -match "origen:\s*'concursoCuerpoTecnico'") 'origen es 
 # 3. Verificación de ui.js
 Write-Host "`n3. Verificando logica de guardado, rollback y UI en ui.js..." -ForegroundColor Yellow
 $uiContent = Get-Content "public\js\ui.js" -Raw -Encoding UTF8
+$uiSubFiles = Get-ChildItem -Path "public\js\ui" -Filter "*.js" -ErrorAction SilentlyContinue
+if ($uiSubFiles) {
+    $uiContent += "`n" + (($uiSubFiles | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }) -join "`n")
+}
+
 
 Test-Assert ($uiContent -match 'generarConcursoCuerpoTecnicoDocId') 'ui.js importa y usa generarConcursoCuerpoTecnicoDocId'
 Test-Assert ($uiContent -match 'generarConcursoCuerpoTecnicoDocId\((\r?\n|\s)*group\.etapa') 'Generacion deterministica de docId aplicada al guardar'

@@ -4,6 +4,11 @@ Write-Host "=== VERIFICACION DE REQUISITOS JFEN Y PDF ===" -ForegroundColor Cyan
 $root = if (Test-Path "public") { "." } elseif (Test-Path (Join-Path $PSScriptRoot "..\public")) { Resolve-Path (Join-Path $PSScriptRoot "..") } else { Resolve-Path (Join-Path $PSScriptRoot "..\..") }
 $pdfTemplate = Get-Content -Raw (Join-Path $root "public/js/pdf-template.js")
 $ui = Get-Content -Raw (Join-Path $root "public/js/ui.js")
+$uiSubFiles = Get-ChildItem -Path (Join-Path $root "public/js/ui") -Filter "*.js" -ErrorAction SilentlyContinue
+if ($uiSubFiles) {
+    $ui += "`n" + (($uiSubFiles | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }) -join "`n")
+}
+
 $style = Get-Content -Raw (Join-Path $root "public/css/style.css")
 if ($style -match "@import") {
     $style = (Get-ChildItem (Join-Path $root "public/css/*.css") | Get-Content -Raw) -join "`n"

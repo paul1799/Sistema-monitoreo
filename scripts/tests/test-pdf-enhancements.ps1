@@ -43,6 +43,10 @@ Assert-Test "Archivo LiberationSans-Regular.ttf presente en public\fonts" (Test-
 Assert-Test "Archivo LiberationSans-Bold.ttf presente en public\fonts" (Test-Path $fontBoldPath) "Falta fuente Bold"
 
 $pdfJs = ($pdfJsFiles | ForEach-Object { Get-Content (Join-Path $rootDir "public\js\$_") -Raw -Encoding UTF8 }) -join "`n"
+$pdfSubFiles = Get-ChildItem -Path (Join-Path $rootDir "public\js\pdf") -Filter "*.js" -ErrorAction SilentlyContinue
+if ($pdfSubFiles) {
+    $pdfJs += "`n" + (($pdfSubFiles | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }) -join "`n")
+}
 
 Assert-Test "Funcion ensureUnicodeFont definida en pdf-template.js" ($pdfJs.Contains("async function ensureUnicodeFont")) "Falta ensureUnicodeFont"
 Assert-Test "addFileToVFS usado para registrar fuentes en jsPDF" ($pdfJs.Contains("doc.addFileToVFS")) "Falta addFileToVFS"
@@ -114,6 +118,11 @@ Assert-Test "OFFICIAL_DIRECTIVO_DIMENSIONS contiene las 6 dimensiones A-F oficia
 Write-Host "`n7. Verificando opciones de configuracion de descarga en ui.js..." -ForegroundColor Yellow
 
 $uiJs = Get-Content $uiJsPath -Raw
+$uiSubFiles = Get-ChildItem -Path (Join-Path $rootDir "public\js\ui") -Filter "*.js" -ErrorAction SilentlyContinue
+if ($uiSubFiles) {
+    $uiJs += "`n" + (($uiSubFiles | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }) -join "`n")
+}
+
 
 Assert-Test "Opciones de Ficha individual presentes en modal (intro, resumen, casillas, lineas)" ($uiJs.Contains("dl_indiv_intro") -and $uiJs.Contains("dl_indiv_resumen") -and $uiJs.Contains("dl_indiv_casillas") -and $uiJs.Contains("dl_indiv_lineas")) "Faltan opciones de ficha individual en ui.js"
 Assert-Test "Opciones de Consolidado presentes en modal (resumen, matriz, criticos, items, orden)" ($uiJs.Contains("dl_cons_resumen") -and $uiJs.Contains("dl_cons_matriz") -and $uiJs.Contains("dl_cons_criticos") -and $uiJs.Contains("dl_cons_items") -and $uiJs.Contains("dl_cons_orden")) "Faltan opciones de consolidado en ui.js"

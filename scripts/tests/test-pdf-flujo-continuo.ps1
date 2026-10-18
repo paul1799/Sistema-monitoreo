@@ -23,6 +23,11 @@ $uiPath = Join-Path $root "public\js\ui.js"
 
 $pdfContent = Get-Content $pdfPath -Raw -Encoding UTF8
 $uiContent = Get-Content $uiPath -Raw -Encoding UTF8
+$uiSubFiles = Get-ChildItem -Path (Join-Path $root "public\js\ui") -Filter "*.js" -ErrorAction SilentlyContinue
+if ($uiSubFiles) {
+    $uiContent += "`n" + (($uiSubFiles | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }) -join "`n")
+}
+
 
 Write-Host "`n=== VALIDACION: FLUJO CONTINUO Y TITULO/NOMBRE UNIVERSAL DE CONSOLIDADOS ===" -ForegroundColor Cyan
 

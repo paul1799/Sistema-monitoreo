@@ -12,9 +12,10 @@ import {
   normalizeText,
   normalizeReiNumber,
   downloadCsv,
-  cleanForFirestore,
-  bar
+  cleanForFirestore
 } from './core-utils.js?v=20261015_v1';
+import { bar } from './scoring.js';
+
 
 import { getDirectivosActivosForColegio } from '../directorio.js?v=20261015_v1';
 

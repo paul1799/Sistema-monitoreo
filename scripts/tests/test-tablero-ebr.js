@@ -121,7 +121,7 @@ async function runTests() {
   console.log('SUITE DE PRUEBAS AUTOMATIZADAS — TABLERO EBR (SECCIÓN 9)');
   console.log('=================================================================\n');
 
-  const { exportarTableroEBRCompleto } = await import('../public/js/exportarTableroEBR.js');
+  const { exportarTableroEBRCompleto } = await import('../../public/js/exportarTableroEBR.js');
   const { submissions, colegios } = await extraerSubmissionsMuestra();
 
   let passCount = 0;

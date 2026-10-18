@@ -8,7 +8,7 @@ import {
   formatDate,
   toTitleCase,
   deduplicateConcursoRows
-} from '../public/js/pdf-template.js';
+} from '../../public/js/pdf-template.js';
 
 console.log('--- TEST 1: formatPersonName ---');
 

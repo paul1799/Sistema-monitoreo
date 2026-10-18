@@ -34,6 +34,11 @@ Write-Host "`n=== INICIANDO VALIDACION DE LA FICHA DIRECTIVO Y FLUJO COMPLETO ==
 # -----------------------------------------------------------------------------
 Write-Host "`n1. Verificando correccion de 'state is not defined' y arquitectura de estado..." -ForegroundColor Yellow
 $uiJs = Get-Content $uiJsPath -Raw
+$uiSubFiles = Get-ChildItem -Path (Join-Path $root "public\js\ui") -Filter "*.js" -ErrorAction SilentlyContinue
+if ($uiSubFiles) {
+    $uiJs += "`n" + (($uiSubFiles | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }) -join "`n")
+}
+
 $appJs = Get-Content $appJsPath -Raw
 
 Assert-Test "ui.js expone setAppState y getAppState" ($uiJs -match "export function setAppState" -and $uiJs -match "export function getAppState") "Faltan setAppState o getAppState en ui.js"
@@ -146,6 +151,10 @@ Assert-Test "Caso de prueba del PDF oficial da ~88% de cumplimiento ($expectedPc
 Write-Host "`n6. Verificando generacion de PDF individual y reporte consolidado..." -ForegroundColor Yellow
 $pdfJsFiles = @("pdf-template.js", "pdf-core.js", "pdf-monitoreo.js") | Where-Object { Test-Path (Join-Path $root "public\js\$_") }
 $pdfJs = ($pdfJsFiles | ForEach-Object { Get-Content (Join-Path $root "public\js\$_") -Raw -Encoding UTF8 }) -join "`n"
+$pdfSubFiles = Get-ChildItem -Path (Join-Path $root "public\js\pdf") -Filter "*.js" -ErrorAction SilentlyContinue
+if ($pdfSubFiles) {
+    $pdfJs += "`n" + (($pdfSubFiles | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }) -join "`n")
+}
 
 Assert-Test "exportFichaIndividualPdf soporta escala nivel_1_4" ($pdfJs -match "isNivel14\s*=") "Falta detector de escala nivel_1_4 en exportFichaIndividualPdf"
 Assert-Test "PDF individual genera tabla con columnas I, II, III, IV y Evidencia con marcas" ($pdfJs -match "val === '4' \? '.*' : ''" -or $pdfJs -match "val === '4'") "Faltan marcas de cotejo en PDF individual"

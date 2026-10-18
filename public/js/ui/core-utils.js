@@ -163,39 +163,6 @@ export function cleanForFirestore(val) {
   return res;
 }
 
-/* ── Estado de Edición de Fichas ────────────────────────────────────────── */
-let editingSubmissionId = null;
-let editingSubmissionData = null;
-
-export function setEditMode(id, data) {
-  editingSubmissionId = id;
-  editingSubmissionData = data ? JSON.parse(JSON.stringify(data)) : null;
-}
-
-export function clearEditMode() {
-  editingSubmissionId = null;
-  editingSubmissionData = null;
-}
-
-export function getEditingSubmission() {
-  return { id: editingSubmissionId, data: editingSubmissionData };
-}
-
-/* ── Componente de Barra de Porcentaje ─────────────────────────────────── */
-export function bar(pct, customClsOrStatus, fichaType = null) {
-  const w = pct === null || pct === undefined ? 0 : Math.max(0, Math.min(100, pct));
-  let cls = 'none';
-  if (customClsOrStatus && typeof customClsOrStatus === 'string') {
-    const s = String(customClsOrStatus).toLowerCase().trim();
-    if (s.includes('ok') || s.includes('lograd') || s.includes('cumple')) cls = 'ok';
-    else if (s.includes('warn') || s.includes('proces') || s.includes('parcial')) cls = 'warn';
-    else if (s.includes('danger') || s.includes('inici') || s.includes('mejorar') || s.includes('no cumple')) cls = 'danger';
-    else cls = customClsOrStatus;
-  } else if (pct !== null && pct !== undefined) {
-    cls = pct >= 67 ? 'ok' : (pct >= 34 ? 'warn' : 'danger');
-  }
-  return '<div class="barTrack" title="' + (pct === null ? 'Sin datos' : pct + '%') + '"><div class="barFill ' + cls + '" style="width:' + w + '%"></div></div>';
-}
 
 /* ── Formateador Unificado de Nombres ───────────────────────────────────── */
 export function formatearNombre(p) {
@@ -205,4 +172,53 @@ export function formatearNombre(p) {
   const nom = (p.nombres || '').trim();
   if (ap && nom) return `${ap}, ${nom}`;
   return ap || nom || '—';
+}
+
+export function formatPersonName(person) {
+  return formatearNombre(person);
+}
+
+/* ── Paleta oficial y deductores de tipos de ficha ────────────────────── */
+export const FICHA_PALETTE = [
+  { id: 'blue', name: 'Azul Institucional', hex: '#1E40AF', bg: '#EFF6FF', border: '#93C5FD' },
+  { id: 'emerald', name: 'Verde Esmeralda', hex: '#047857', bg: '#ECFDF5', border: '#6EE7B7' },
+  { id: 'purple', name: 'Púrpura', hex: '#6D28D9', bg: '#F5F3FF', border: '#C4B5FD' },
+  { id: 'amber', name: 'Ámbar Dorado', hex: '#B45309', bg: '#FFFBEB', border: '#FCD34D' },
+  { id: 'crimson', name: 'Rojo Carmesí', hex: '#B91C1C', bg: '#FEF2F2', border: '#FCA5A5' },
+  { id: 'teal', name: 'Turquesa Oscuro', hex: '#0F766E', bg: '#F0FDFA', border: '#5EEAD4' },
+  { id: 'indigo', name: 'Índigo', hex: '#4338CA', bg: '#EEF2FF', border: '#A5B4FC' },
+  { id: 'cyan', name: 'Cian Profundo', hex: '#0E7490', bg: '#ECFEFF', border: '#67E8F9' },
+  { id: 'rose', name: 'Rosa Palo', hex: '#BE185D', bg: '#FDF2F8', border: '#F472B6' },
+  { id: 'slate', name: 'Gris Pizarra', hex: '#334155', bg: '#F8FAFC', border: '#94A3B8' },
+];
+
+/** Asigna o deduce un color accesible y consistente para un tipo de ficha */
+export function getFichaColor(ft, index = 0) {
+  if (ft && ft.color) {
+    const hex = String(ft.color).trim();
+    const found = FICHA_PALETTE.find(p => p.hex.toLowerCase() === hex.toLowerCase() || p.id === hex.toLowerCase());
+    if (found) return found;
+    return { id: 'custom', name: 'Personalizado', hex: hex, bg: '#F8FAFC', border: hex };
+  }
+  let hash = 0;
+  const str = (ft && (ft.id || ft.nombre)) ? String(ft.id || ft.nombre) : String(index);
+  for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) & 0xffffffff;
+  const idx = Math.abs(hash) % FICHA_PALETTE.length;
+  return FICHA_PALETTE[idx];
+}
+
+/** Deduce la modalidad o nivel institucional a partir del nombre o metadatos de la ficha */
+export function getFichaModalidad(ft) {
+  if (ft && ft.modalidad && String(ft.modalidad).trim()) return String(ft.modalidad).trim();
+  const text = ((ft && ft.nombre) || '' + ' ' + ((ft && ft.descripcion) || '')).toUpperCase();
+  if (text.includes('CEBE') && text.includes('PRITE')) return 'CEBE / PRITE';
+  if (text.includes('CEBE')) return 'CEBE';
+  if (text.includes('PRITE')) return 'PRITE';
+  if (text.includes('JEC')) return 'JEC';
+  if (text.includes('DIRECTIVO')) return 'Directivos';
+  if (text.includes('DOCENTE') || text.includes('RÚBRICA') || text.includes('RUBRICA') || text.includes('AULA')) return 'Docentes';
+  if (text.includes('TUTORÍA') || text.includes('TUTORIA')) return 'Tutoría (JEC)';
+  if (text.includes('EBR')) return 'EBR';
+  if (text.includes('EBA')) return 'EBA';
+  return 'General';
 }

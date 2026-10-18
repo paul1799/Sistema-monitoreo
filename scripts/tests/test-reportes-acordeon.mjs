@@ -11,8 +11,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const root = fs.existsSync(path.join(__dirname, '../public')) ? path.resolve(__dirname, '..') : path.resolve(__dirname, '../..');
 
-const uiJsContent = fs.readFileSync(path.join(root, 'public/js/ui.js'), 'utf-8');
+let uiJsContent = fs.readFileSync(path.join(root, 'public/js/ui.js'), 'utf-8');
+const uiDir = path.join(root, 'public/js/ui');
+if (fs.existsSync(uiDir)) {
+  const allUiModular = fs.readdirSync(uiDir)
+    .filter(f => f.endsWith('.js'))
+    .map(f => fs.readFileSync(path.join(uiDir, f), 'utf-8'))
+    .join('\n');
+  uiJsContent = uiJsContent + '\n' + allUiModular;
+}
 let cssContent = fs.readFileSync(path.join(root, 'public/css/style.css'), 'utf-8');
+
 if (cssContent.includes('@import')) {
   const cssDir = path.join(root, 'public/css');
   const allModular = fs.readdirSync(cssDir)
@@ -73,7 +82,7 @@ assertTest(5, 'Botón Expandir / Contraer todo', hasToggleAllLogic,
 
 // 6. Cambiar un filtro -> todas las secciones vuelven a cerrarse
 // Verificamos que renderConsBody vuelve a renderizar el template sin open
-const renderConsBodyCallsRender = uiJsContent.includes("renderItemReportHtml(itemAgg, ft.tipoRespuesta)");
+const renderConsBodyCallsRender = uiJsContent.includes("renderItemReportHtml(itemAgg, ft.tipoRespuesta");
 assertTest(6, 'Cambio de filtro restablece acordeón a cerrado', renderConsBodyCallsRender && !hasDetailsOpenZero,
   'renderConsBody re-evalúa el filtro y renderiza el acordeón cerrado por defecto');
 

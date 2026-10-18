@@ -20,6 +20,7 @@ import {
   forceResetBodyScroll,
   formatearNombre
 } from './core-utils.js?v=20261015_v1';
+import { proponerSeparacionNombre, obtenerCuerpoTecnicoGrupo } from '../pdf-template.js';
 
 export function parseArteDisciplina(disciplinaStr) {
   if (!disciplinaStr || !String(disciplinaStr).trim()) {
@@ -5073,7 +5074,7 @@ async function ejecutarImportacionGanadores(dbNs, state, container, isAdmin, cur
 }
 
 // Función para sincronizar / retroalimentar UGEL y RED/REI en fichas que no los tengan
-async function backfillSubmissionsUgelRed(dbNs, state) {
+export async function backfillSubmissionsUgelRed(dbNs, state) {
   const { getSubmissionResponsable } = await import('../ui.js?v=20261015_v1');
   const colegios = state.colegios || [];
   const submissions = state.submissions || [];
@@ -5179,7 +5180,7 @@ async function backfillSubmissionsUgelRed(dbNs, state) {
 }
 
 // Modal para detectar y limpiar duplicados en concursos escolares
-function openDuplicateDetectorModal(dbNs, state, container, isAdmin, currentUser, navigate) {
+export function openDuplicateDetectorModal(dbNs, state, container, isAdmin, currentUser, navigate) {
   const regs = state.concursoRegistros || [];
 
   // 1. Detectar duplicados exactos

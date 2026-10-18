@@ -138,9 +138,14 @@
 
         // Test 4: Configuración Ficha C (COORD. PEDAGOGICO)
         const configPedag = getMatrizConfig({ id: 'ft_coord_pedagogico', nombre: 'Ficha de Monitoreo a las funciones que cumple el/la Coordinador(a) Pedagógico' });
-        assert('Config Ficha C tiene 21 ítems oficiales en 5 aspectos',
-          configPedag.items.length === 21,
+        assert('Config Ficha C tiene 17 ítems oficiales en 5 aspectos',
+          configPedag.items.length === 17,
           `Total ítems: ${configPedag.items.length}`
+        );
+
+        assert('Config Ficha C límites de nivel oficiales (escala 17 a 51 pts)',
+          configPedag.limites.max === 51 && configPedag.limites.limInicio === 27 && configPedag.limites.limProceso === 40,
+          `MAX: ${configPedag.limites.max}, INICIO <= ${configPedag.limites.limInicio}, PROCESO <= ${configPedag.limites.limProceso}`
         );
 
         // Test 5: Manejo de 0 registros (debe rechazar sin descargar archivo vacío)

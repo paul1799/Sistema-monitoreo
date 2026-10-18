@@ -31,7 +31,16 @@ function Assert-Test {
 Write-Host "`n=== INICIANDO VALIDACION DEL REPORTE CONSOLIDADO PDF V2 (UGEL 03 · AGEBRE) ===`n" -ForegroundColor Cyan
 
 $pdfJs = ($pdfJsFiles | ForEach-Object { Get-Content (Join-Path $root "public\js\$_") -Raw -Encoding UTF8 }) -join "`n"
+$pdfSubFiles = Get-ChildItem -Path (Join-Path $root "public\js\pdf") -Filter "*.js" -ErrorAction SilentlyContinue
+if ($pdfSubFiles) {
+    $pdfJs += "`n" + (($pdfSubFiles | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }) -join "`n")
+}
 $uiJs = Get-Content -Raw -Encoding UTF8 $uiJsPath
+$uiSubFiles = Get-ChildItem -Path (Join-Path $root "public\js\ui") -Filter "*.js" -ErrorAction SilentlyContinue
+if ($uiSubFiles) {
+    $uiJs += "`n" + (($uiSubFiles | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }) -join "`n")
+}
+
 
 # -------------------------------------------------------------------------
 # GRUPO 1: Diagnostico y correccion de duplicacion de datos (R1)

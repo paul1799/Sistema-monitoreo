@@ -91,6 +91,11 @@ Test-Assert ($pdfContent -match 'exportJedpaFichasPdf\(cleanRows') 'Concursos gr
 # 9. Interfaz de usuario (ui.js) y catálogo
 Write-Host "`n9. Verificando ui.js y catalogo de concursos..." -ForegroundColor Yellow
 $uiContent = Get-Content "public\js\ui.js" -Raw -Encoding UTF8
+$uiSubFiles = Get-ChildItem -Path "public\js\ui" -Filter "*.js" -ErrorAction SilentlyContinue
+if ($uiSubFiles) {
+    $uiContent += "`n" + (($uiSubFiles | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }) -join "`n")
+}
+
 
 Test-Assert ($uiContent -match 'formatCodigoModular') 'ui.js importa formatCodigoModular'
 Test-Assert ($uiContent -match 'exportFichasGrupalesConcursoPdf') 'ui.js importa exportFichasGrupalesConcursoPdf'

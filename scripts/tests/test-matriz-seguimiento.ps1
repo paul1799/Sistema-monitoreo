@@ -34,7 +34,15 @@ Assert-Condition "Módulo exportarMatriz.js existe" (Test-Path $exportarMatrizPa
 Assert-Condition "Módulo jec-monitoreo.js existe" (Test-Path $jecMonitoreoPath) "Ubicación: $jecMonitoreoPath"
 
 $configContent = Get-Content $matrizConfigPath -Raw -Encoding UTF8
+if ($configContent.Contains("./matriz/")) {
+    $matrizSubFiles = Get-ChildItem "public\js\matriz\*.js" -Recurse | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }
+    $configContent = $configContent + "`n" + ($matrizSubFiles -join "`n")
+}
 $exportarContent = Get-Content $exportarMatrizPath -Raw -Encoding UTF8
+if ($exportarContent.Contains("./matriz/")) {
+    $matrizSubFiles = Get-ChildItem "public\js\matriz\*.js" -Recurse | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }
+    $exportarContent = $exportarContent + "`n" + ($matrizSubFiles -join "`n")
+}
 $jecContent = Get-Content $jecMonitoreoPath -Raw -Encoding UTF8
 
 # 2. Verificar que la definición de Ficha JEC contiene 3 componentes y 31 indicadores
@@ -66,7 +74,7 @@ $fichasTutoriaPresente = $configContent.Contains("ITEMS_COORD_TUTORIA_JEC") -and
 Assert-Condition "Configuración Ficha B (COORD. TUTORIA JEC) definida" $fichasTutoriaPresente "21 ítems en 5 aspectos"
 
 $fichasPedagPresente = $configContent.Contains("ITEMS_COORD_PEDAGOGICO") -and $configContent.Contains("COORD. PEDAGOGICO")
-Assert-Condition "Configuración Ficha C (COORD. PEDAGOGICO) definida" $fichasPedagPresente "21 ítems en 5 aspectos"
+Assert-Condition "Configuración Ficha C (COORD. PEDAGOGICO) definida" $fichasPedagPresente "17 ítems en 5 aspectos"
 
 # 6. Verificar límites de nivel de JEC (regla oficial MINEDU por conteo de 'SI')
 $limitesConteo = $configContent.Contains("tipo: 'conteo'") -and $configContent.Contains("max: 31") -and $configContent.Contains("limInicio: 11") -and $configContent.Contains("limProceso: 23")
@@ -81,6 +89,11 @@ Assert-Condition "Rango Incipiente: 0 a 11 respuestas 'Sí'" $limitesIncipiente 
 
 # 7. Verificar botón y evento en ui.js
 $uiContent = Get-Content "public\js\ui.js" -Raw -Encoding UTF8
+$uiSubFiles = Get-ChildItem -Path "public\js\ui" -Filter "*.js" -ErrorAction SilentlyContinue
+if ($uiSubFiles) {
+    $uiContent += "`n" + (($uiSubFiles | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }) -join "`n")
+}
+
 Assert-Condition "Botón Exportar Excel con id exportExcel en ui.js" ($uiContent.Contains('id="exportExcel"') -and $uiContent.Contains('Exportar Excel')) "Texto e icono actualizados"
 Assert-Condition "Antiguo exportCsv reemplazado en la barra de filtros" (-not ($uiContent -match 'id="exportCsv"[^>]*>Exportar CSV')) "Botón CSV eliminado del consolidado"
 Assert-Condition "Importación de exportarMatrizSeguimiento en ui.js" ($uiContent.Contains("exportarMatrizSeguimiento")) "Importación verificada"

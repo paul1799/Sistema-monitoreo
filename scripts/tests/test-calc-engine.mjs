@@ -21,7 +21,7 @@ import {
   getNivelEbrGestion,
   getMomentoVisitaEbr,
   isFichaEbrGestionEscolar,
-} from '../public/js/calcEngine.js';
+} from '../../public/js/calcEngine.js';
 
 /* ─── Mini-framework de tests ─────────────────────────────────────────── */
 let passed = 0;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { getSubmissionResponsable, normalizeText, normalizeInstName, clearEditMode, setEditMode } from '../public/js/ui.js';
-import { collectEbrGestionFormData, resetEbrFormState, isFichaEbrGestionEscolar } from '../public/js/ebr-gestion.js';
+import { getSubmissionResponsable, normalizeText, normalizeInstName, clearEditMode, setEditMode } from '../../public/js/ui.js';
+import { collectEbrGestionFormData, resetEbrFormState, isFichaEbrGestionEscolar } from '../../public/js/ebr-gestion.js';
 
 console.log('🧪 Iniciando suite de pruebas: Responsable y N° de Visitas (EBR y demás fichas)...');
 
