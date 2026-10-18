@@ -34,7 +34,8 @@ import { renderPortalView } from './portal.js?v=20261014_v1';
 import { renderDirectorioTab } from './directorio.js?v=20261015_v1';
 import { renderAlertasTab, getAlertCount } from './alertas.js?v=20261015_v1';
 import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261016_v2';
-import { PLANTILLAS_BASE_OFICIALES } from './catalogo-plantillas-base.js?v=20261016_v4';
+import { PLANTILLAS_BASE_OFICIALES, ALIAS_A_PLANTILLA_BASE } from './catalogo-plantillas-base.js?v=20261016_v4';
+import { isFichaEbrGestionEscolar } from './calc/detectors.js';
 
 /* ============================= MANEJADORES GLOBALES DE ERROR ============================= */
 if (typeof window !== 'undefined') {
@@ -86,7 +87,17 @@ if (typeof window !== 'undefined') {
 function isAdmin() { return currentRole === 'admin'; }
 
 function getFichaType(id) {
-  return (state.fichaTypes || []).find(f => f.id === id) || PLANTILLAS_BASE_OFICIALES[id] || null;
+  if (!id) return null;
+  const canonicalId = (ALIAS_A_PLANTILLA_BASE && ALIAS_A_PLANTILLA_BASE[id]) || (isFichaEbrGestionEscolar(id) ? 'ft_gestion_ugel03_ebr' : id);
+  let found = (state.fichaTypes || []).find(f => f.id === canonicalId || f.id === id);
+  if (!found) {
+    if (isFichaEbrGestionEscolar(id)) {
+      found = (state.fichaTypes || []).find(f => isFichaEbrGestionEscolar(f)) || PLANTILLAS_BASE_OFICIALES.ft_gestion_ugel03_ebr;
+    } else if (id === 'ft_jec' || id === 'ft_msejec_2do') {
+      found = (state.fichaTypes || []).find(f => f.id === 'ft_msejec_2do' || f.id === 'ft_jec');
+    }
+  }
+  return found || PLANTILLAS_BASE_OFICIALES[canonicalId] || PLANTILLAS_BASE_OFICIALES[id] || null;
 }
 
 /* ============================= SELECCIÓN DE MÓDULOS ============================= */
@@ -378,13 +389,58 @@ function startListeners() {
 
   activeUnsubscribers.push(
     dbNs.collection('fichaTypes').onSnapshot(snap => {
-      const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const loadedIds = new Set(loaded.map(x => x.id));
+      const rawLoaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const loadedIds = new Set(rawLoaded.map(x => x.id));
       Object.entries(PLANTILLAS_BASE_OFICIALES).forEach(([id, baseFt]) => {
         if (!loadedIds.has(id)) {
-          loaded.push({ id, ...baseFt });
+          rawLoaded.push({ id, ...baseFt });
         }
       });
+
+      // 0. Validar, autorreparar y unificar la plantilla oficial de Gestión Escolar EBR (1 sola ficha con sus 3 visitas)
+      const officialEbr = PLANTILLAS_BASE_OFICIALES.ft_gestion_ugel03_ebr;
+      let ebrDoc = rawLoaded.find(x => x.id === 'ft_gestion_ugel03_ebr');
+      if (!ebrDoc) {
+        ebrDoc = { id: 'ft_gestion_ugel03_ebr', ...officialEbr };
+      }
+      Object.assign(ebrDoc, {
+        id: 'ft_gestion_ugel03_ebr',
+        nombre: officialEbr.nombre,
+        nombreCorto: officialEbr.nombreCorto,
+        descripcion: officialEbr.descripcion,
+        icono: officialEbr.icono || '🏛️',
+        color: officialEbr.color || '#1E40AF',
+        modalidad: officialEbr.modalidad || 'EBR Primaria',
+        grupo: 'EBR',
+        orden: 20,
+        tieneVisitas: true,
+        tipoVisitas: 'items_por_visita',
+        visitas: [
+          'Visita 1 · Primer momento',
+          'Visita 2 · Segundo momento',
+          'Visita 3 · Tercer momento (Salida)'
+        ],
+        seccionesPorVisita: officialEbr.seccionesPorVisita,
+        secciones: officialEbr.secciones
+      });
+
+      // Filtrar cualquier duplicado o alias de Gestión Escolar EBR para que en el estado exista SOLO UNA ficha
+      const loaded = [];
+      let ebrAdded = false;
+      rawLoaded.forEach(item => {
+        const isEbr = isFichaEbrGestionEscolar(item) || item.id === 'ft_gestion_ugel03_ebr' || (ALIAS_A_PLANTILLA_BASE && ALIAS_A_PLANTILLA_BASE[item.id] === 'ft_gestion_ugel03_ebr');
+        if (isEbr) {
+          if (!ebrAdded) {
+            loaded.push(ebrDoc);
+            ebrAdded = true;
+          }
+          return;
+        }
+        loaded.push(item);
+      });
+      if (!ebrAdded) {
+        loaded.push(ebrDoc);
+      }
 
       // 1. Validar y autorreparar la plantilla oficial de PRITE (7 secciones, 32 ítems: 3, 5, 6, 3, 8, 5, 2)
       const priteDoc = loaded.find(x => x.id === 'ft_prite_gestion');

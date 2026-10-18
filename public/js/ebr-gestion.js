@@ -524,11 +524,9 @@ export function isFichaEbrGestionEscolar(ft) {
   const n = normalizeText(ft.nombre || ft.fichaTypeNombre || '');
   if (n.includes('cebe') || n.includes('prite') || n.includes('ceba') || n.includes('cetpro')) return false;
 
-  if (id === 'ft_gestion_ugel03_ebr') return true;
-  if (id === 'ft_ebr_gestion_1er') return false;
+  if (id === 'ft_gestion_ugel03_ebr' || id === 'ft_ebr_gestion_1er' || id === 'ft_ebr_gestion') return true;
   if (id.includes('gestion') && id.includes('ebr')) return true;
   const nNorm = normalizeText(ft.nombre || ft.fichaTypeNombre || '');
-  if (nNorm.includes('1er momento') || nNorm.includes('1.er momento') || nNorm.includes('diagnostico')) return false;
   if (nNorm.includes('gestion escolar') && nNorm.includes('ebr')) return true;
   if (nNorm.includes('gestion') && nNorm.includes('ebr')) return true;
   if (ft.regla_nivel && ft.regla_nivel.momento && (ft.regla_nivel.maxPuntaje === 69 || ft.regla_nivel.maxPuntaje === 57)) return true;
@@ -657,7 +655,8 @@ export function preloadEbrFormState(sub, ft) {
   resetEbrFormState();
   if (!sub) return;
 
-  ebrFormState.visita = sub.visita === 2 ? 2 : 1;
+  const rawV = Number(sub.visita);
+  ebrFormState.visita = rawV === 3 ? 3 : (rawV === 2 ? 2 : 1);
   ebrFormState.colegioId = sub.colegioId || (sub.ie && sub.ie.id) || '';
   ebrFormState.institucion = sub.institucion || '';
   ebrFormState.responsable = sub.responsable || '';
@@ -705,8 +704,9 @@ export function preloadEbrFormState(sub, ft) {
 
   // Respuestas y observaciones (estrictamente acotadas a la visita cargada, 1 entrada por indicador)
   const isV2 = ebrFormState.visita === 2;
-  const canonicalPrefix = isV2 ? 'ge2_' : 'ge1_';
-  const maxItems = isV2 ? 23 : 19;
+  const isV3 = ebrFormState.visita === 3;
+  const canonicalPrefix = isV3 ? 'ge3_' : (isV2 ? 'ge2_' : 'ge1_');
+  const maxItems = isV3 ? 28 : (isV2 ? 23 : 19);
 
   let rawList = [];
   if (Array.isArray(sub.respuestas)) rawList = sub.respuestas;

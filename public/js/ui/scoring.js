@@ -8,6 +8,7 @@ import {
   calcScore,
   estadoPorRegla,
   REGLA_NIVEL_JEC,
+  REGLA_NIVEL_JEC_1ER_MOMENTO,
   REGLA_NIVEL_COORD_TUTORIA_JEC,
   isFichaCoordTutoriaJec,
   isFichaCoordPedagogico,
@@ -16,6 +17,8 @@ import {
   REGLA_NIVEL_COORD_PEDAGOGICO,
   isFichaEbrGestionEscolar,
   isFichaEbrEbePrite,
+  isFichaJec1erMomento,
+  getMomentoFichaJec,
   getReglaNivelComunEbrEbePrite,
   getReglaNivelEbrGestion,
   getNivelEbrGestion,
@@ -24,6 +27,7 @@ import {
 import * as RepDatos from '../reportes-datos.js';
 import { getEbrSeccionesForVisita } from '../ebr-gestion.js';
 import { isFichaJec, JEC_SECCIONES } from '../jec-monitoreo.js';
+import { JEC_1ER_SECCIONES } from '../catalogo-plantillas-base.js';
 import { isFichaCebeGestion, CEBE_SECCIONES } from '../cebe-gestion.js';
 import { isFichaPriteGestion, PRITE_SECCIONES } from '../prite-gestion.js';
 
@@ -427,7 +431,7 @@ export function stackedBar(counts, total, tipoRespuesta) {
  * @returns {{ pct: number|null, secciones: Array, estado: Object, conteo_si: number }}
  */
 export function computeStats(sub, ft) {
-  if (!ft || !sub || !sub.respuestas) {
+  if (!ft || !sub) {
     return {
       pct: null,
       secciones: [],
@@ -437,9 +441,49 @@ export function computeStats(sub, ft) {
       puntaje_max: 0,
     };
   }
-  let respuestasArray = sub.respuestas;
+
+  let respuestasArray = sub.respuestas || sub.respuestasArray;
+  if (!respuestasArray && sub.respuestasObj && typeof sub.respuestasObj === 'object') {
+    respuestasArray = Object.entries(sub.respuestasObj).map(([id, val]) => ({
+      id,
+      valor: (val && typeof val === 'object' && val.valor !== undefined) ? val.valor : val
+    }));
+  }
   if (respuestasArray && typeof respuestasArray === 'object' && !Array.isArray(respuestasArray)) {
     respuestasArray = Object.entries(respuestasArray).map(([id, valor]) => ({ id, valor }));
+  }
+
+  // Fallback si la ficha no trae respuestas desagregadas pero tiene métricas oficiales guardadas
+  if (!respuestasArray || !Array.isArray(respuestasArray) || respuestasArray.length === 0) {
+    const rawPct = sub.pct ?? sub.porcentaje ?? sub.promedio ?? null;
+    const rawPts = sub.puntaje ?? sub.puntajeTotal ?? null;
+    const rawNivel = sub.estado_panel || sub.nivel || sub.estado?.label || sub.estado || null;
+    if (rawPct !== null || rawPts !== null || rawNivel !== null) {
+      const v = sub ? getMomentoVisitaEbr(sub) : undefined;
+      const estadoCalc = rawNivel ? {
+        label: rawNivel,
+        estado_panel: rawNivel,
+        cls: (String(rawNivel).toLowerCase().includes('lograd') || String(rawNivel).toLowerCase().includes('cumple')) ? 'st-logrado'
+          : ((String(rawNivel).toLowerCase().includes('proces') || String(rawNivel).toLowerCase().includes('parcial')) ? 'st-proceso' : 'st-inicio')
+      } : statusFromPct(rawPct, ft, null, rawPts, v);
+      return {
+        pct: rawPct !== null ? Number(rawPct) : (rawPts && sub.maxPuntaje ? Math.round((Number(rawPts) / Number(sub.maxPuntaje)) * 100) : null),
+        puntaje: rawPts !== null ? Number(rawPts) : 0,
+        puntaje_max: sub.maxPuntaje || sub.puntaje_max || 0,
+        total_items: 0,
+        secciones: [],
+        conteo_si: 0,
+        estado: estadoCalc
+      };
+    }
+    return {
+      pct: null,
+      secciones: [],
+      estado: { label: 'Sin datos', cls: 'st-none' },
+      conteo_si: 0,
+      puntaje: 0,
+      puntaje_max: 0,
+    };
   }
 
   // Para la ficha EBR Gestion Escolar, JEC o Coordinador de Tutoría JEC, usar las secciones y reglas especializadas
@@ -452,8 +496,32 @@ export function computeStats(sub, ft) {
     ftForCalc = { ...ft, secciones: seccionesEbr, tipoRespuesta: 'ips', escala: 'IPL', visita, regla_nivel: reglaEbr };
   } else if (isFichaCoordTutoriaJec(ft || sub) && respuestasArray && respuestasArray.length > 0) {
     ftForCalc = { ...ft, regla_nivel: ft?.regla_nivel || REGLA_NIVEL_COORD_TUTORIA_JEC };
+  } else if (isFichaCoordPedagogico(ft || sub) && respuestasArray && respuestasArray.length > 0) {
+    ftForCalc = { ...ft, regla_nivel: ft?.regla_nivel || REGLA_NIVEL_COORD_PEDAGOGICO };
   } else if (isFichaJec(ft || sub) && respuestasArray && respuestasArray.length > 0) {
-    ftForCalc = { ...ft, secciones: (ft?.secciones?.length ? ft.secciones : JEC_SECCIONES), tipoRespuesta: 'si_no', regla_nivel: ft?.regla_nivel || REGLA_NIVEL_JEC };
+    const vJec = getMomentoFichaJec(sub || ft) || Number(sub?.visita) || Number(ft?.visita) || 2;
+    const hasJec1Items = Array.isArray(respuestasArray) && respuestasArray.some(r => {
+      const rid = String(r?.id || '');
+      return rid.startsWith('jec1_') || rid.startsWith('cond_') || (rid.startsWith('it_') && Number(sub?.visita || ft?.visita || 1) === 1);
+    });
+    if (vJec === 1 || isFichaJec1erMomento(sub || ft) || hasJec1Items) {
+      ftForCalc = {
+        ...ft,
+        id: 'ft_msejec_1er',
+        secciones: (ft?.id === 'ft_msejec_1er' && ft?.secciones?.length) ? ft.secciones : JEC_1ER_SECCIONES,
+        tipoRespuesta: 'escala1_3',
+        escala: 'ESCALA_1_3',
+        regla_nivel: REGLA_NIVEL_JEC_1ER_MOMENTO
+      };
+    } else {
+      ftForCalc = {
+        ...ft,
+        secciones: (ft?.secciones?.length && ft?.id !== 'ft_msejec_1er') ? ft.secciones : JEC_SECCIONES,
+        tipoRespuesta: 'si_no',
+        escala: 'SI_NO_NA',
+        regla_nivel: ft?.regla_nivel || REGLA_NIVEL_JEC
+      };
+    }
   } else if (isFichaCebeGestion(ft || sub) && respuestasArray && respuestasArray.length > 0) {
     const isOfficialCebe = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 34);
     ftForCalc = { ...ft, secciones: isOfficialCebe ? ft.secciones : CEBE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };

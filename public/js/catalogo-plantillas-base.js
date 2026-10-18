@@ -748,3 +748,12 @@ export const PLANTILLAS_BASE_OFICIALES = {
     esBorrador: false
   }
 };
+
+// Mapa canónico de resolución de aliases históricos (EBR y JEC) para no duplicar fichas en el catálogo
+export const ALIAS_A_PLANTILLA_BASE = {
+  ft_ebr_gestion_1er: 'ft_gestion_ugel03_ebr',
+  ft_ebr_gestion: 'ft_gestion_ugel03_ebr',
+  ft_ebr_gestion_2do: 'ft_gestion_ugel03_ebr',
+  ft_ebr_gestion_3er: 'ft_gestion_ugel03_ebr',
+  ft_jec: 'ft_msejec_2do',
+};

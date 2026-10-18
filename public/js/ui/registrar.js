@@ -107,6 +107,7 @@ import {
   getDirectivosActivosForColegio
 } from '../directorio.js';
 import { AI_SCAN_ENDPOINT } from '../firebase-config.js';
+import { PLANTILLAS_BASE_OFICIALES } from '../catalogo-plantillas-base.js';
 import { deduplicateTwinSubmissions } from './consolidado.js';
 import {
   normalizeExtras,
@@ -320,9 +321,14 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
   allTypes.forEach(ft => escalasSet.add(ft.tipoRespuesta));
   const escalasList = Array.from(escalasSet);
 
-  // Filtrar según búsqueda y filtros activos (deduplicando tarjetas JEC para mostrar una sola ficha institucional)
+  // Filtrar según búsqueda y filtros activos (deduplicando tarjetas EBR y JEC para mostrar una sola ficha institucional con sus 3 visitas)
   let seenJecCard = false;
+  let seenEbrCard = false;
   const filteredTypes = allTypes.filter(ft => {
+    if (isFichaEbrGestionEscolar(ft)) {
+      if (seenEbrCard) return false;
+      seenEbrCard = true;
+    }
     if (isFichaJec(ft) && !isFichaCoordTutoriaJec(ft) && !isFichaCoordPedagogico(ft)) {
       if (seenJecCard) return false;
       seenJecCard = true;
@@ -349,17 +355,23 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
     const color = getFichaColor(ft, idx);
     const mod = getFichaModalidad(ft);
     const isJecImpl = isFichaJec(ft) && !isFichaCoordTutoriaJec(ft) && !isFichaCoordPedagogico(ft);
-    const cardFtId = isJecImpl ? 'ft_msejec_2do' : ft.id;
-    const cardTitle = isJecImpl ? 'Monitoreo a la Implementación del Modelo JEC' : ft.nombre;
-    const count = isJecImpl
-      ? deduplicateTwinSubmissions((state.submissions || []).filter(s => isFichaJec(s) && !isFichaCoordTutoriaJec(s) && !isFichaCoordPedagogico(s))).length
-      : deduplicateTwinSubmissions((state.submissions || []).filter(s => s.fichaTypeId === ft.id)).length;
-    const totalItems = (ft.secciones || []).reduce((a, s) => a + (s.items || []).length, 0);
-    const totalSecs = (ft.secciones || []).length;
-    const descText = (ft.descripcion || '').trim();
+    const isEbrImpl = isFichaEbrGestionEscolar(ft);
+    const cardFtId = isEbrImpl ? 'ft_gestion_ugel03_ebr' : (isJecImpl ? 'ft_msejec_2do' : ft.id);
+    const cardTitle = isEbrImpl
+      ? 'Monitoreo y Asistencia Técnica a la Gestión Escolar - UGEL 03 EBR'
+      : (isJecImpl ? 'Monitoreo a la Implementación del Modelo JEC' : ft.nombre);
+    const count = isEbrImpl
+      ? deduplicateTwinSubmissions((state.submissions || []).filter(s => isFichaEbrGestionEscolar(s))).length
+      : (isJecImpl
+        ? deduplicateTwinSubmissions((state.submissions || []).filter(s => isFichaJec(s) && !isFichaCoordTutoriaJec(s) && !isFichaCoordPedagogico(s))).length
+        : deduplicateTwinSubmissions((state.submissions || []).filter(s => s.fichaTypeId === ft.id)).length);
+    const templateForCard = isEbrImpl ? (PLANTILLAS_BASE_OFICIALES?.ft_gestion_ugel03_ebr || ft) : ft;
+    const totalItems = (templateForCard.secciones || []).reduce((a, s) => a + (s.items || []).length, 0);
+    const totalSecs = (templateForCard.secciones || []).length;
+    const descText = (templateForCard.descripcion || ft.descripcion || '').trim();
     const isExpanded = !!fichaDescExpanded[cardFtId];
     const isLongDesc = descText.length > 140;
-    const visitsBadge = (isJecImpl || ft.tieneVisitas)
+    const visitsBadge = (isEbrImpl || isJecImpl || ft.tieneVisitas)
       ? '<span class="fichaBadge fichaBadgeVisitas">🏛️ 3 Visitas (Inicio, Proceso, Salida)</span>'
       : '';
 

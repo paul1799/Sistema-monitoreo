@@ -709,9 +709,6 @@ export function renderPriteGestionForm(host, ft, state, dbNs, currentUser, navig
               Instrumento oficial para Programas de Intervención Temprana (PRITE) UGEL 03. Evalúa 32 indicadores en 7 aspectos clave a lo largo de 3 visitas independientes.
             </p>
           </div>
-          <button type="button" class="btn secondary" id="btnCambiarFichaDesdePrite" style="background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.3);color:#FFFFFF;font-size:12.5px;padding:6px 14px">
-            ← Cambiar ficha
-          </button>
         </div>
       </div>
 
@@ -1031,16 +1028,6 @@ export function renderPriteGestionForm(host, ft, state, dbNs, currentUser, navig
 function bindPriteFormEvents(host, ft, state, dbNs, currentUser, navigate, isEditing) {
   const form = host.querySelector('#regForm');
   if (!form) return;
-
-  // Cambiar ficha
-  const btnCambiar = form.querySelector('#btnCambiarFichaDesdePrite');
-  if (btnCambiar) {
-    btnCambiar.addEventListener('click', () => {
-      resetPriteFormState();
-      window.location.hash = '#registrar';
-      if (navigate) navigate('registrar');
-    });
-  }
 
   // Cancelar
   const btnCancel = form.querySelector('#btnCancelarPrite');

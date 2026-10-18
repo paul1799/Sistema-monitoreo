@@ -31,31 +31,31 @@ export const JEC_FICHAS_CONFIG = {
     id: 'ft_msejec_1er',
     tipo: 'institucional',
     momento: 1,
-    visitas: [1],
-    momentoLabel: '1er Momento',
-    nombreCorto: '1er Monitoreo a la Implementación del Modelo JEC',
-    subTitle: 'Seguimiento por Colegio · 1er Monitoreo a la Implementación del Modelo JEC',
-    desc: 'Instituciones educativas JEC monitoreadas en el 1er Momento (Inicio) a la izquierda y colegios pendientes a la derecha.'
+    visitas: [1, 2, 3],
+    momentoLabel: '1er, 2do y 3er Momento',
+    nombreCorto: 'Monitoreo a la Implementación del Modelo JEC',
+    subTitle: 'Seguimiento por Colegio · Monitoreo a la Implementación del Modelo JEC',
+    desc: 'Instituciones educativas JEC monitoreadas a la izquierda y colegios pendientes a la derecha según el momento seleccionado.'
   },
   'ft_msejec_2do': {
     id: 'ft_msejec_2do',
     tipo: 'institucional',
     momento: 2,
-    visitas: [2],
-    momentoLabel: '2do Momento',
-    nombreCorto: '2do Monitoreo a la Implementación del Modelo JEC',
-    subTitle: 'Seguimiento por Colegio · 2do Monitoreo a la Implementación del Modelo JEC',
-    desc: 'Instituciones educativas JEC monitoreadas en el 2do Momento a la izquierda y colegios pendientes a la derecha.'
+    visitas: [1, 2, 3],
+    momentoLabel: '1er, 2do y 3er Momento',
+    nombreCorto: 'Monitoreo a la Implementación del Modelo JEC',
+    subTitle: 'Seguimiento por Colegio · Monitoreo a la Implementación del Modelo JEC',
+    desc: 'Instituciones educativas JEC monitoreadas a la izquierda y colegios pendientes a la derecha según el momento seleccionado.'
   },
   'ft_msejec_3er': {
     id: 'ft_msejec_3er',
     tipo: 'institucional',
     momento: 3,
-    visitas: [3],
-    momentoLabel: '3er Momento',
-    nombreCorto: '3er Monitoreo a la Implementación del Modelo JEC',
-    subTitle: 'Seguimiento por Colegio · 3er Monitoreo a la Implementación del Modelo JEC',
-    desc: 'Instituciones educativas JEC monitoreadas en el 3er Momento (Balance y cierre) a la izquierda y colegios pendientes a la derecha.'
+    visitas: [1, 2, 3],
+    momentoLabel: '1er, 2do y 3er Momento',
+    nombreCorto: 'Monitoreo a la Implementación del Modelo JEC',
+    subTitle: 'Seguimiento por Colegio · Monitoreo a la Implementación del Modelo JEC',
+    desc: 'Instituciones educativas JEC monitoreadas a la izquierda y colegios pendientes a la derecha según el momento seleccionado.'
   },
   'ft_coord_tutoria_jec': {
     id: 'ft_coord_tutoria_jec',
@@ -192,16 +192,16 @@ export function buildJecVisitBadges(g, ft, state, curVis = '') {
       const bStyle = isComplete
         ? (isActive ? 'background:#047857;color:#ffffff;border:1px solid #065f46;' : 'background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;')
         : (isActive ? 'background:#b45309;color:#ffffff;border:1px solid #92400e;' : 'background:#fef3c7;color:#92400e;border:1px solid #fde68a;');
-      return `<button type="button" class="badge btnVisitaBadge ${isActive ? 'active' : ''}" data-vis="${vn}" style="${bStyle}font-size:10px;padding:2px 6px;margin-right:2px;font-weight:700;cursor:pointer;border-radius:4px" title="Filtrar reporte por ${mLabel}">V${vn} (${count}/${targetCoord})</button>`;
+      return `<button type="button" class="badge btnVisitaBadge ${isActive ? 'active' : ''}" data-vis="${vn}" style="${bStyle}font-size:10.5px;padding:3px 7px;font-weight:700;cursor:pointer;border-radius:5px;white-space:nowrap;display:inline-flex;align-items:center;line-height:1;margin:0" title="Filtrar reporte por ${mLabel}">V${vn} (${count}/${targetCoord})</button>`;
     }
 
     if (cfg?.tipo === 'institucional') {
       const bStyle = isActive ? 'background:#1d4ed8;color:#ffffff;border:1px solid #1e40af;' : 'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;';
-      return `<button type="button" class="badge btnVisitaBadge ${isActive ? 'active' : ''}" data-vis="${vn}" style="${bStyle}font-size:10px;padding:2px 6px;margin-right:2px;font-weight:700;cursor:pointer;border-radius:4px" title="Filtrar reporte por ${mLabel}">${mLabel}</button>`;
+      return `<button type="button" class="badge btnVisitaBadge ${isActive ? 'active' : ''}" data-vis="${vn}" style="${bStyle}font-size:10.5px;padding:3px 7px;font-weight:700;cursor:pointer;border-radius:5px;white-space:nowrap;display:inline-flex;align-items:center;line-height:1;margin:0" title="Filtrar reporte por ${mLabel}">V${vn}${count > 1 ? ` (${count})` : ''}</button>`;
     }
 
     const bStyle = isActive ? 'background:#1e40af;color:#ffffff;border:1px solid #1e3a8a;' : 'background:#f1f5f9;color:#1e293b;border:1px solid #cbd5e1;';
-    return `<button type="button" class="badge btnVisitaBadge ${isActive ? 'active' : ''}" data-vis="${vn}" style="${bStyle}font-size:10px;padding:2px 6px;margin-right:2px;font-weight:700;cursor:pointer;border-radius:4px" title="Filtrar reporte por Visita ${vn}">V${vn}</button>`;
+    return `<button type="button" class="badge btnVisitaBadge ${isActive ? 'active' : ''}" data-vis="${vn}" style="${bStyle}font-size:10.5px;padding:3px 7px;font-weight:700;cursor:pointer;border-radius:5px;white-space:nowrap;display:inline-flex;align-items:center;line-height:1;margin:0" title="Filtrar reporte por Visita ${vn}">V${vn}${count > 1 ? ` (${count})` : ''}</button>`;
   }).join('');
 }
 
@@ -284,34 +284,46 @@ export function calculateJecPendingItems(targetColegios, visitSubsMap, ft, state
  */
 export function renderJecPendingTabsHtml(ft, allPendingItems, initialVisTab) {
   const cfg = getJecFichaConfig(ft);
-  const visitas = getJecVisitasToCheck(ft);
+  const isCoord = cfg && (cfg.tipo === 'coord_tutoria' || cfg.tipo === 'coord_pedag');
 
-  if (visitas.length <= 1) {
-    const v = visitas[0] || 1;
-    const vName = v === 1 ? '1er Momento' : (v === 2 ? '2do Momento' : '3er Momento');
+  // Fichas de Coordinador Pedagógico y Tutoría: 3 botones (Todos y los 2 momentos: 2do y 3er Momento)
+  if (isCoord) {
+    const countV2 = allPendingItems.filter(p => p.visita === 2).length;
+    const countV3 = allPendingItems.filter(p => p.visita === 3).length;
+
     return `
       <div class="pendientesVisitaTabs" id="pendientesVisitaTabs">
-        <button type="button" class="btnVisitaTab active" data-tab="ALL">
-          ${vName} (${allPendingItems.length})
+        <button type="button" class="btnVisitaTab ${initialVisTab === 'ALL' ? 'active' : ''}" data-tab="ALL">
+          Todos (${allPendingItems.length})
+        </button>
+        <button type="button" class="btnVisitaTab ${initialVisTab === 'V2' ? 'active' : ''}" data-tab="V2">
+          2do Momento (${countV2})
+        </button>
+        <button type="button" class="btnVisitaTab ${initialVisTab === 'V3' ? 'active' : ''}" data-tab="V3">
+          3er Momento (${countV3})
         </button>
       </div>
     `;
   }
 
-  // Si tiene 2 visitas (ej. V2 y V3 en coordinadores)
+  // Ficha de Monitoreo a la Implementación del Modelo JEC: 4 botones (Todos, 1er Momento, 2do Momento, 3er Momento)
+  const countV1 = allPendingItems.filter(p => p.visita === 1).length;
   const countV2 = allPendingItems.filter(p => p.visita === 2).length;
   const countV3 = allPendingItems.filter(p => p.visita === 3).length;
 
   return `
     <div class="pendientesVisitaTabs" id="pendientesVisitaTabs">
       <button type="button" class="btnVisitaTab ${initialVisTab === 'ALL' ? 'active' : ''}" data-tab="ALL">
-        Todos los momentos (${allPendingItems.length})
+        Todos (${allPendingItems.length})
+      </button>
+      <button type="button" class="btnVisitaTab ${initialVisTab === 'V1' ? 'active' : ''}" data-tab="V1">
+        1er Momento (${countV1})
       </button>
       <button type="button" class="btnVisitaTab ${initialVisTab === 'V2' ? 'active' : ''}" data-tab="V2">
-        2do Momento · V2 (${countV2})
+        2do Momento (${countV2})
       </button>
       <button type="button" class="btnVisitaTab ${initialVisTab === 'V3' ? 'active' : ''}" data-tab="V3">
-        3er Momento · V3 (${countV3})
+        3er Momento (${countV3})
       </button>
     </div>
   `;

@@ -471,6 +471,11 @@ export function aplicarFiltrosReporte(submissions, filters, state, getFichaType,
       if (isTargetJec && isFichaJec(s) && !isFichaCoordTutoriaJec(s) && !isFichaCoordPedagogico(s)) {
         return true;
       }
+      // Compatibilidad unificada de Gestión Escolar EBR (todas las visitas y variantes de ID)
+      const isTargetEbr = (tid === 'ft_gestion_ugel03_ebr' || tid === 'ft_ebr_gestion_1er' || tid === 'ft_ebr_gestion' || (targetFt && isFichaEbrGestionEscolar(targetFt)));
+      if (isTargetEbr && isFichaEbrGestionEscolar(s)) {
+        return true;
+      }
       return false;
     });
 
@@ -565,7 +570,7 @@ export function aplicarFiltrosReporte(submissions, filters, state, getFichaType,
   subs.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '') || (b.createdAt || 0) - (a.createdAt || 0));
 
   let statsList = subs.map(s => {
-    const sFt = isAllMode ? getFichaType(s.fichaTypeId) : targetFt;
+    const sFt = getFichaType(s.fichaTypeId) || targetFt;
     return { s, st: sFt ? computeStats(s, sFt) : { pct: null, secciones: [] } };
   });
 
@@ -573,7 +578,7 @@ export function aplicarFiltrosReporte(submissions, filters, state, getFichaType,
   if (f.estado && f.estado.trim()) {
     const est = f.estado.trim();
     statsList = statsList.filter(x => {
-      const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : targetFt;
+      const sFt = getFichaType(x.s.fichaTypeId) || targetFt;
       const isJec = isFichaJec(sFt || targetFt || x.s) || isFichaCoordTutoriaJec(sFt || targetFt || x.s) || isFichaCoordPedagogico(sFt || targetFt || x.s) || isFichaEspecialistaJec(sFt || targetFt || x.s);
       const isEbr = !isJec && (isFichaEbrGestionEscolar(sFt || targetFt || x.s)
         || isFichaEbrEbePrite(sFt || targetFt || x.s)
@@ -605,7 +610,7 @@ export function aplicarFiltrosReporte(submissions, filters, state, getFichaType,
 
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
   statsList.forEach(x => {
-    const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : targetFt;
+    const sFt = getFichaType(x.s.fichaTypeId) || targetFt;
     const isJec = isFichaJec(sFt || targetFt || x.s) || isFichaCoordTutoriaJec(sFt || targetFt || x.s) || isFichaCoordPedagogico(sFt || targetFt || x.s) || isFichaEspecialistaJec(sFt || targetFt || x.s);
     const isEbr = !isJec && (isFichaEbrGestionEscolar(sFt || targetFt || x.s)
       || isFichaEbrEbePrite(sFt || targetFt || x.s)
@@ -616,10 +621,10 @@ export function aplicarFiltrosReporte(submissions, filters, state, getFichaType,
       || (targetFt?.tipoRespuesta === 'ips')
       || (targetFt?.escala === 'IPL'));
     let l = '';
-    if (isEbr && x.st && x.st.pct !== null) {
-      l = x.st.pct >= 67 ? 'logrado' : (x.st.pct >= 34 ? 'proceso' : 'inicio');
-    } else if (x.st && x.st.estado && (x.st.estado.estado_panel || x.st.estado.label)) {
+    if (x.st && x.st.estado && (x.st.estado.estado_panel || x.st.estado.label)) {
       l = String(x.st.estado.estado_panel || x.st.estado.label).toLowerCase();
+    } else if (isEbr && x.st && x.st.pct !== null) {
+      l = x.st.pct >= 67 ? 'logrado' : (x.st.pct >= 34 ? 'proceso' : 'inicio');
     } else {
       const v = x.s ? getMomentoVisitaEbr(x.s) : undefined;
       l = (statusFromPct(x.st?.pct, sFt, x.st?.conteo_si, x.st?.puntaje, v).label || '').toLowerCase();
@@ -627,7 +632,13 @@ export function aplicarFiltrosReporte(submissions, filters, state, getFichaType,
     if (l.includes('no cumple') || l.includes('inici') || l.includes('incipient') || l.includes('mejorar')) dist.inicio++;
     else if (l.includes('parcial') || l.includes('proces')) dist.proceso++;
     else if (l.includes('lograd') || l.includes('cumple')) dist.logrado++;
-    else dist.none++;
+    else if (x.st && x.st.pct !== null) {
+      if (x.st.pct >= 67) dist.logrado++;
+      else if (x.st.pct >= 34) dist.proceso++;
+      else dist.inicio++;
+    } else {
+      dist.none++;
+    }
   });
 
   return { subs, statsList, instCount, avgPct, dist, withPct, targetFt, isAllMode, hasInvalidDates };
@@ -704,6 +715,7 @@ function renderSection1Html(state, getFichaType, user) {
   });
 
   const seenJecUnified = new Set();
+  const seenEbrUnified = new Set();
 
   state.fichaTypes.forEach(rawFt => {
     const ft = getEnrichedFichaType(rawFt);
@@ -729,6 +741,36 @@ function renderSection1Html(state, getFichaType, user) {
         nombreCorto: 'Monitoreo a la Implementación del Modelo JEC',
         grupo: 'Modelo JEC',
         orden: 10,
+        tieneVisitas: true,
+        count,
+        isSelected
+      });
+      return;
+    }
+
+    // Ficha unificada de Gestión Escolar EBR: consolidar en una sola tarjeta canónica con sus 3 visitas
+    if (isFichaEbrGestionEscolar(ft)) {
+      const ebrGroup = 'EBR';
+      if (!groupsMap[ebrGroup]) groupsMap[ebrGroup] = [];
+      if (seenEbrUnified.has(ebrGroup)) return;
+      seenEbrUnified.add(ebrGroup);
+
+      const count = countFichasForCard('ft_gestion_ugel03_ebr', state.submissions, filtrosReporte, state, getFichaType, user);
+      const isSelected = !isAllMode && (
+        filtrosReporte.tipo === 'ft_gestion_ugel03_ebr' ||
+        filtrosReporte.tipo === 'ft_ebr_gestion' ||
+        filtrosReporte.tipo === 'ft_ebr_gestion_1er' ||
+        filtrosReporte.tipo === 'ft_ebr_gestion_2do' ||
+        filtrosReporte.tipo === 'ft_ebr_gestion_3er' ||
+        isFichaEbrGestionEscolar({ id: filtrosReporte.tipo })
+      );
+
+      groupsMap[ebrGroup].push({
+        id: 'ft_gestion_ugel03_ebr',
+        nombre: 'Monitoreo y Asistencia Técnica a la Gestión Escolar - UGEL 03 EBR',
+        nombreCorto: 'Gestión Escolar EBR',
+        grupo: 'EBR',
+        orden: 20,
         tieneVisitas: true,
         count,
         isSelected
@@ -921,13 +963,14 @@ function renderSection2Html(statsList, instCount, state, getFichaType, user, isA
     </span>
   `).join('');
 
-  const isEbrSinVisita = isEbr && (filtrosReporte.visita !== '1' && filtrosReporte.visita !== '2');
+  const isEbrSinVisita = isEbr && (!['1', '2', '3'].includes(String(filtrosReporte.visita)));
   const isCebeSinVisita = isCebe && (!['1', '2', '3'].includes(String(filtrosReporte.visita)));
-  const isGestionSinVisita = isEbrSinVisita || isCebeSinVisita;
+  const isPriteSinVisita = isPrite && (!['1', '2', '3'].includes(String(filtrosReporte.visita)));
+  const isGestionSinVisita = isEbrSinVisita || isCebeSinVisita || isPriteSinVisita;
 
-  const msgVisitaObligatoria = isCebe
+  const msgVisitaObligatoria = (isEbr || isCebe || isPrite)
     ? 'Elige Visita 1, Visita 2 o Visita 3. Cada visita se analiza y descarga por separado.'
-    : 'Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.';
+    : 'Elige una visita válida para esta ficha.';
 
   const isZeroSubmissions = statsList.length === 0;
   const downloadDisabled = isZeroSubmissions || isGestionSinVisita;
@@ -1070,8 +1113,7 @@ function updateStickyReportesBar(statsList, getFichaType) {
   const isEbr = ft && isFichaEbrGestionEscolar(ft);
   const isCebe = ft && isFichaCebeGestion(ft);
   const isPrite = ft && isFichaPriteGestion(ft);
-  const isGestionSinVisita = (isEbr && (filtrosReporte.visita !== '1' && filtrosReporte.visita !== '2')) ||
-    ((isCebe || isPrite) && (!['1', '2', '3'].includes(String(filtrosReporte.visita))));
+  const isGestionSinVisita = ((isEbr || isCebe || isPrite) && (!['1', '2', '3'].includes(String(filtrosReporte.visita))));
   const isZero = statsList.length === 0;
   const disabled = isZero || isGestionSinVisita;
 
@@ -1142,7 +1184,7 @@ export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdm
     const loaded = loadReportesFiltersFromUrl(state);
     const initFt = loaded.tipo && loaded.tipo !== '__ALL__' ? state.fichaTypes.find(t => t.id === loaded.tipo) : null;
     if (initFt && (isFichaEbrGestionEscolar(initFt) || isFichaCebeGestion(initFt) || isFichaPriteGestion(initFt))) {
-      const valid = isFichaEbrGestionEscolar(initFt) ? ['1', '2'] : ['1', '2', '3'];
+      const valid = ['1', '2', '3'];
       if (!loaded.visita || !valid.includes(String(loaded.visita))) {
         loaded.visita = '1';
       }
@@ -1376,14 +1418,16 @@ function updateSection2DynamicParts(secFiltros, statsList, instCount, ft, state,
   if (dlBar) {
     const isEbr = ft && isFichaEbrGestionEscolar(ft);
     const isCebe = ft && isFichaCebeGestion(ft);
-    const isEbrSinVisita = isEbr && (filtrosReporte.visita !== '1' && filtrosReporte.visita !== '2');
+    const isPrite = ft && isFichaPriteGestion(ft);
+    const isEbrSinVisita = isEbr && (!['1', '2', '3'].includes(String(filtrosReporte.visita)));
     const isCebeSinVisita = isCebe && (!['1', '2', '3'].includes(String(filtrosReporte.visita)));
-    const isGestionSinVisita = isEbrSinVisita || isCebeSinVisita;
+    const isPriteSinVisita = isPrite && (!['1', '2', '3'].includes(String(filtrosReporte.visita)));
+    const isGestionSinVisita = isEbrSinVisita || isCebeSinVisita || isPriteSinVisita;
     const isZeroSubmissions = statsList.length === 0;
     const downloadDisabled = isZeroSubmissions || isGestionSinVisita;
-    const msgVisitaObligatoria = isCebe
+    const msgVisitaObligatoria = (isEbr || isCebe || isPrite)
       ? 'Elige Visita 1, Visita 2 o Visita 3. Cada visita se analiza y descarga por separado.'
-      : 'Elige Visita 1 o Visita 2. Cada visita tiene indicadores distintos y se descarga por separado.';
+      : 'Elige una visita válida para esta ficha.';
     const downloadDisabledTitle = isGestionSinVisita
       ? msgVisitaObligatoria
       : (isZeroSubmissions ? 'No hay fichas con los filtros activos' : '');
@@ -1697,8 +1741,8 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     const normInst = normalizeInstName(x.s.institucion || '');
     const normUgel = normalizeText(x.s.ugel || 'UGEL 03');
     const baseKey = x.s.colegioId ? ('col_' + x.s.colegioId) : (normInst + '|' + normUgel);
-    // Group by institution AND ficha type
-    const key = baseKey + '|' + x.s.fichaTypeId;
+    // Group by institution (y ficha type solo en modo general)
+    const key = isAllMode ? (baseKey + '|' + x.s.fichaTypeId) : baseKey;
 
     if (!byInst[key]) {
       const sFt = isAllMode ? getFichaType(x.s.fichaTypeId) : ft;
@@ -1780,7 +1824,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
       : esc(g.institucion);
 
     return '<tr><td>' + displayInst + '</td><td>' + esc(g.red || '—') + '</td><td>' + esc(g.ugel || '—') + '</td>' +
-      '<td><strong>' + totalVisitas + '</strong>' + visitBadges + '</td><td>' + fmtDate(last.s.fecha) + '</td>' +
+      '<td><div class="visitasBadgesHorizWrap" style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap"><strong>' + totalVisitas + '</strong>' + visitBadges + '</div></td><td>' + fmtDate(last.s.fecha) + '</td>' +
       '<td><span' + scoreTitle + '>' + (avg === null ? '—' : avg + '%') + '</span> <span class="badge ' + gst.cls + '">' + gst.label + '</span></td></tr>';
   }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-600);padding:20px">Sin instituciones con los filtros actuales.</td></tr>';
 
@@ -1858,7 +1902,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
           ${g.red ? `<div style="font-size:10.5px;color:var(--text-500);margin-top:1px">RED: ${esc(g.red)}</div>` : ''}
           ${coordListHtml}
         </td>
-        <td style="text-align:center">${visitBadges || '—'}</td>
+        <td style="text-align:center"><div class="visitasBadgesHorizWrap" style="display:inline-flex;align-items:center;justify-content:center;gap:4px;flex-wrap:nowrap;white-space:nowrap">${visitBadges || '—'}</div></td>
         <td style="text-align:center">
           <span${scoreTitle} style="font-weight:700">${avg === null ? '—' : avg + '%'}</span>
           <span class="badge ${gst.cls}" style="font-size:10px;padding:1px 4px;margin-top:2px;display:inline-block">${gst.label}</span>
@@ -1871,7 +1915,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
   const secRegistradasHtml = `
     <div class="panel" id="secRegistradasPanel">
       <div class="sectionRegistradasHead">
-        <h3 style="margin:0">Fichas registradas · ${totalFichas}</h3>
+        <h3 style="margin:0">Fichas registradas · ${totalFichas} <span style="font-size:12.5px;font-weight:500;color:var(--text-600);margin-left:6px">(${instCount} IEs monitoreadas)</span></h3>
         <a href="#secFiltrosDescargas" id="btnAjustarFiltros" class="btnAjustarFiltros">Ajustar filtros ↑</a>
       </div>
       ${totalFichas === 0
@@ -2278,7 +2322,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
               </div>
               <div class="comparativaHeadBadges">
                 ${jecGestionBtnHtml}
-                <span class="badge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700">${iesEjecutadas} Monitoreadas</span>
+                <span class="badge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700" title="${iesEjecutadas} instituciones educativas monitoreadas">${iesEjecutadas} Monitoreadas (${statsList.length} Fichas)</span>
                 <span class="badge" style="background:#fffbeb;color:#b45309;border:1px solid #fde68a;font-weight:700">${allPendingItems.length} Pendientes</span>
                 <button type="button" id="btnExportPendientesExcel" class="btn secondary small btnExportExcelTop" title="Exportar lista de pendientes a Excel (.xlsx)">
                   📊 Excel
@@ -2315,7 +2359,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
                 <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#16a34a"></span>
                 <strong style="color:var(--navy-900);font-size:13px">I.E. Monitoreados</strong>
               </div>
-              <span class="badge st-logrado" style="font-size:11px">${instCount} IEs con avance</span>
+              <span class="badge st-logrado" style="font-size:11px" title="${instCount} instituciones educativas monitoreadas que suman ${statsList.length} fichas registradas">${instCount} IEs con avance (${statsList.length} fichas)</span>
             </div>
             <div class="comparativaTblWrap">
               <table>
@@ -2323,7 +2367,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
                   <tr>
                     <th style="width:36px;text-align:center">N°</th>
                     <th>Institución Educativa</th>
-                    <th style="width:75px;text-align:center">Visitas</th>
+                    <th style="width:115px;text-align:center">Visitas</th>
                     <th style="width:85px;text-align:center">Avance</th>
                   </tr>
                 </thead>
@@ -2579,7 +2623,7 @@ function attachSection1Listeners(secTipo, state, getFichaType, dbNs, isAdmin, na
       filtrosReporte.visita = '';
       consFilters.visita = '';
     } else if (newFt && (isFichaEbrGestionEscolar(newFt) || isFichaCebeGestion(newFt) || isFichaPriteGestion(newFt))) {
-      const validVisitas = isFichaEbrGestionEscolar(newFt) ? ['1', '2'] : ['1', '2', '3'];
+      const validVisitas = ['1', '2', '3'];
       if (!filtrosReporte.visita || !validVisitas.includes(String(filtrosReporte.visita))) {
         filtrosReporte.visita = '1';
         consFilters.visita = '1';

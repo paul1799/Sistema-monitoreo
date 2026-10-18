@@ -1998,21 +1998,23 @@ button:focus-visible {
   box-shadow: 0 2px 8px rgba(31, 95, 168, 0.35);
 }
 
-/* ---------- Barra Inferior Fija para Formularios ---------- */
+/* ---------- Barra Inferior Fija para Formularios (Todas las fichas y nuevas plantillas) ---------- */
 .formBottomBar {
   position: sticky;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
-  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1.5px solid var(--border, #cbd5e1);
+  box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.10);
   padding: 14px 24px;
-  margin: 20px -26px -22px -26px;
-  border-radius: 0 0 12px 12px;
+  margin: 24px 0 0 0;
+  border-radius: 12px 12px 0 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  z-index: 20;
+  z-index: 30;
 }
 
 .regProgressBadge {
@@ -2236,6 +2238,24 @@ button:focus-visible {
   color: var(--navy-900);
   font-weight: 700;
   box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+.visitasBadgesHorizWrap {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  flex-wrap: nowrap !important;
+  white-space: nowrap !important;
+}
+
+.visitasBadgesHorizWrap .btnVisitaBadge {
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
 }
 
 .pendientesTblWrap {

@@ -6,7 +6,7 @@
    ========================================================================= */
 
 import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui/core-utils.js?v=20261015_v1';
-import { getDirectivosActivosForColegio, syncDirectivosFromFicha } from './directorio.js?v=20261013_v1';
+import { getDirectivosActivosForColegio, cleanTextCode, isPlaceholderDirectivo, syncDirectivosFromFicha } from './directorio.js?v=20261013_v1';
 import { REGLA_NIVEL_JEC_1ER_MOMENTO, getNivelJec1erMomento, ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261016_v2';
 import { renderJecVisitaSelectorHtml } from './jec-monitoreo.js';
 
@@ -324,8 +324,9 @@ export const JEC_1ER_SECCIONES = [
     id: 'sec_condiciones',
     nombre: '01 ASPECTO: CONDICIONES',
     tipo: 'si_no',
-    items: JEC_1ER_CONDICIONES_ITEMS.map(c => ({
+    items: JEC_1ER_CONDICIONES_ITEMS.map((c, idx) => ({
       id: c.id,
+      num: idx + 1,
       texto: c.texto,
       col: c.col
     }))
@@ -336,6 +337,7 @@ export const JEC_1ER_SECCIONES = [
     tipo: 'escala1_3',
     items: sec.items.map(it => ({
       id: it.id,
+      num: it.num,
       texto: it.texto,
       col: it.col
     }))
@@ -770,41 +772,47 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
 
     host.innerHTML = `
     <div class="jec1-wrapper">
-      <form id="regForm" autocomplete="off" onsubmit="return false;">
+      <form id="regForm" autocomplete="off" class="jecFormContainer" style="max-width:1120px;margin:0 auto">
         ${renderJecVisitaSelectorHtml(1)}
-        <!-- ENCABEZADO INSTITUCIONAL OFICIAL -->
-        <div class="jec1-header-card">
-          <div class="jec1-logos-banner">
-            <div class="jec1-logos-left">
-              <div class="jec1-minedu-badge">
-                <span>🇵🇪</span> PERÚ | Ministerio de Educación
+        <!-- ─── BARRA FLOTANTE DE NIVEL DE LOGRO EN TIEMPO REAL (ESTILO JEC 2DO MOMENTO) ─── -->
+        <div class="panel jecLiveHeader" id="jec1_live_header" style="position:sticky;top:68px;z-index:20;background:var(--surface,#ffffff);border-left:5px solid ${scoreData.nivelInfo.color};box-shadow:var(--shadow-md, 0 4px 12px rgba(0,0,0,0.06));margin-bottom:20px;padding:12px 18px;border-radius:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:20px">🏫</span>
+                <h2 style="margin:0;font-size:16px;font-weight:700;color:var(--ink,#0f172a)">
+                  ${esc(ft?.nombre || 'Monitoreo a la Implementación del Modelo JEC')}
+                </h2>
               </div>
-              <div class="jec1-sub-badge">
-                Despacho Viceministerial de Gestión Institucional<br>
-                Dirección Regional de Educación de Lima Metropolitana<br>
-                <strong>Unidad de Gestión Educativa Local N° 03 · AGEBRE</strong>
-              </div>
+              <p style="margin:2px 0 0;font-size:12px;color:var(--ink-soft,#64748b)">
+                Modelo de Servicio Educativo Jornada Escolar Completa · UGEL 03 · AGEBRE
+              </p>
             </div>
-            <div class="jec1-jec-logo">
-              Jec <span>más oportunidades</span>
-            </div>
-          </div>
 
-          <div class="jec1-title-area">
-            <h2 class="jec1-main-title">FICHA DEL 1ER MONITOREO Y ASISTENCIA TÉCNICA A LA IMPLEMENTACIÓN DEL MODELO DE SERVICIO EDUCATIVO JORNADA ESCOLAR COMPLETA - JEC</h2>
-            <p class="jec1-normativa">RVM N°326-2019-MINEDU / RM N°501-2025-MINEDU</p>
-          </div>
-
-          <!-- BARRA DE PUNTAJE Y NIVEL EN VIVO -->
-          <div class="jec1-live-badge-bar">
-            <div class="jec1-live-left">
-              <span class="jec1-live-title">Resultado de Evaluación:</span>
-              <div class="jec1-live-pts">
-                <span id="jec1_live_pts_num">${scoreData.puntajeTotal}</span> <small>/ 111 pts</small>
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+              <div style="text-align:right">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-soft,#64748b);letter-spacing:0.04em">
+                  Nivel de Implementación MSE JEC
+                </div>
+                <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:2px">
+                  <span class="badge" id="jec1_live_badge" style="font-size:13px;padding:4px 12px;font-weight:700;background:${scoreData.nivelInfo.color};color:#ffffff;border-radius:4px">
+                    ${esc(scoreData.nivelInfo.nivel)}
+                  </span>
+                  <strong style="font-size:14px;color:var(--ink,#0f172a)" id="jec1_live_count_text">
+                    ${scoreData.puntajeTotal} / 111 pts (${Math.round((scoreData.puntajeTotal / 111) * 100)}%)
+                  </strong>
+                </div>
               </div>
-            </div>
-            <div id="jec1_live_level_tag" class="jec1-live-level-tag ${nivelCssClass}">
-              <span>NIVEL:</span> <strong>${scoreData.nivelInfo.nivel}</strong>
+              <div style="width:160px">
+                <div class="barTrack" style="height:10px;border-radius:5px;background:#e2e8f0;overflow:hidden" title="${scoreData.puntajeTotal} de 111 puntos">
+                  <div class="barFill" id="jec1_live_progress_bar" style="width:${Math.min(100, Math.round((scoreData.puntajeTotal / 111) * 100))}%;height:10px;border-radius:5px;background:${scoreData.nivelInfo.color};transition:width 0.3s ease, background 0.3s ease"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft,#64748b);margin-top:2px">
+                  <span>1-56 Inicio</span>
+                  <span>57-83 Proceso</span>
+                  <span>84-111 Logrado</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -830,15 +838,12 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
               <div class="jec1-form-group">
                 <label for="jec1_ie_nombre">Número y/o nombre de la Institución Educativa *</label>
                 <div class="ieSearchWrap" id="jec1_ie_search_wrap" style="position:relative">
-                  <input type="text" id="jec1_ie_nombre" class="jec1-input" list="dl_colegios_jec1" value="${esc(jec1erState.colegioNombre)}" placeholder="Escriba o seleccione la IE..." required autocomplete="off">
-                  <div class="ieDropdown" id="jec1_ie_dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid #cbd5e1;border-radius:6px;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.1)"></div>
+                  <input type="text" id="jec1_ie_nombre" class="jec1-input" value="${esc(jec1erState.colegioNombre)}" placeholder="Buscar IE por nombre o código modular (UGEL 03)..." required autocomplete="off" style="font-weight:600">
+                  <div class="ieDropdown" id="jec1_ie_dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#ffffff;border:1px solid #cbd5e1;border-radius:6px;max-height:240px;overflow-y:auto;box-shadow:0 6px 16px rgba(0,0,0,0.12)"></div>
                 </div>
                 <span id="jec1_colegio_hint" style="display:${jec1erState.colegioNombre ? 'block' : 'none'};font-size:11.5px;color:#0284c7;margin-top:4px">
                   ${jec1erState.colegioNombre ? `✓ Vinculado al padrón JEC: ${esc(jec1erState.colegioNombre)} · ${esc(jec1erState.red || 'UGEL 03')} · Cód: ${esc(jec1erState.codModular || '—')}` : ''}
                 </span>
-                <datalist id="dl_colegios_jec1">
-                  ${colegiosList.map(c => `<option value="${esc(c.nombre || c.ie || '')}">${esc(c.codModular || c.codigoModular || '')} - RED ${esc(c.red || c.rei || '')}</option>`).join('')}
-                </datalist>
               </div>
 
               <div class="jec1-form-group">
@@ -1066,16 +1071,6 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
               </tr>
             </tbody>
           </table>
-
-          <div class="jec1-scale-level-box">
-            <div class="jec1-level-label-block">NIVEL:</div>
-            <div class="jec1-level-result-display" id="jec1_level_display_box">
-              <span id="jec1_level_name" style="color:${scoreData.nivelInfo.color};">${scoreData.nivelInfo.nivel}</span>
-              <span id="jec1_score_ratio" style="font-size:0.95rem; color:#64748b; font-weight:700;">
-                ${scoreData.puntajeTotal} / 111 puntos (${Math.round((scoreData.puntajeTotal / 111) * 100)}%)
-              </span>
-            </div>
-          </div>
         </div>
 
         <!-- VII. RECOMENDACIONES (IMAGE 2) -->
@@ -1115,14 +1110,13 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
           </div>
         </div>
 
-        <!-- BOTONES DE ACCIÓN -->
-        <div class="jec1-submit-bar">
-          <button type="button" class="jec1-btn-cancel" id="jec1_btn_cancel">
-            Cancelar
-          </button>
-          <button type="submit" class="jec1-btn-submit" id="jec1_btn_submit">
-            ${isEditing ? 'Actualizar Ficha JEC (1er Momento)' : 'Guardar Ficha JEC (1er Momento)'}
-          </button>
+        <!-- ─── BARRA INFERIOR FIJA FLOTANTE (ESTILO GESTIÓN ESCOLAR / JEC 2DO MOMENTO) ─── -->
+        <div class="formBottomBar">
+          <div class="regProgressBadge" id="regProgressBadge">
+            Avance: <strong>${scoreData.totalItemsRespondidos + (scoreData.condSi + scoreData.condNo)} de 44</strong> ítems respondidos (${Math.round(((scoreData.totalItemsRespondidos + (scoreData.condSi + scoreData.condNo)) / 44) * 100)}%)
+          </div>
+          <button type="button" class="btn secondary" id="cancelFormBtn">Cancelar</button>
+          <button type="submit" class="btn" id="saveFormBtn">${isEditing ? 'Actualizar Ficha JEC (1er Momento)' : 'Guardar Ficha JEC (1er Momento)'}</button>
         </div>
       </form>
     </div>
@@ -1166,6 +1160,17 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
     modBoxes.forEach(b => { code += (b.value || ''); });
     if (modHidden) modHidden.value = code;
     jec1erState.codModular = code;
+
+    if (code.length === 7) {
+      const list = getJecColegiosList(state);
+      const matched = list.find(c => {
+        const cCode = cleanTextCode(c.codigoModular || c.codModular || c.codigoLocal || '');
+        return cCode === code;
+      });
+      if (matched && matched.id !== jec1erState.colegioId) {
+        onSelectColegio(matched);
+      }
+    }
   };
 
   modBoxes.forEach((box, idx) => {
@@ -1181,6 +1186,15 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
         modBoxes[idx - 1].focus();
       }
     });
+    box.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const pasted = (e.clipboardData || window.clipboardData).getData('text');
+      const clean = String(pasted || '').replace(/\D/g, '').slice(0, 7);
+      if (clean) {
+        syncModularFromCode(clean);
+        syncModularFromBoxes();
+      }
+    });
   });
 
   // Filtro estricto de colegios JEC usando el helper modular
@@ -1189,11 +1203,11 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
   const onSelectColegio = (col) => {
     if (!col) return;
     const ieName = col.ie || col.nombre || '';
-    const codMod = String(col.codigoModular || col.codModular || col.codigoLocal || '').replace(/\D/g, '');
+    const codMod = cleanTextCode(col.codigoModular || col.codModular || col.codigoLocal || '');
     const rawRed = col.red || col.rei || '';
     const redStr = rawRed ? ('RED ' + String(rawRed).replace(/\D/g, '').padStart(2, '0')) : '';
 
-    jec1erState.colegioId = col.id;
+    jec1erState.colegioId = col.id || '';
     jec1erState.colegioNombre = ieName;
     jec1erState.codModular = codMod;
     jec1erState.red = redStr;
@@ -1220,45 +1234,44 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
     let subList = [];
 
     try {
-      const dirRes = getDirectivosActivosForColegio(state, col.id, col.codigoLocal, col.codigoModular || col.codModular);
-      const dirActivo = dirRes?.director;
-      const subsActivos = dirRes?.subdirectores || [];
+      const { director: dirActivo, subdirectores: subsActivos } = getDirectivosActivosForColegio(state, col.id, col.codigoLocal, col.codigoModular || col.codModular);
 
       if (dirActivo) {
         dirData.nombres = dirActivo.apellidosNombres || '';
-        dirData.dni = String(dirActivo.dni || '').replace(/\D/g, '');
-        dirData.telefono = String(dirActivo.telefono || '').replace(/\D/g, '');
+        dirData.dni = cleanTextCode(dirActivo.dni || '');
+        dirData.telefono = cleanTextCode(dirActivo.telefono || '');
         dirData.condicion = (dirActivo.condicion === 'E' || String(dirActivo.cargo || '').toUpperCase().includes('ENCARG')) ? 'ENCARGADO' : 'DESIGNADO';
         dirData.correo = dirActivo.correo || '';
       } else if (col.director) {
-        dirData.nombres = col.director.nombre || '';
-        dirData.dni = String(col.director.dni || '').replace(/\D/g, '');
-        dirData.telefono = String(col.director.telefono || '').replace(/\D/g, '');
-        dirData.condicion = (col.director.condicion && String(col.director.condicion).toUpperCase().includes('ENCARG')) ? 'ENCARGADO' : 'DESIGNADO';
-        dirData.correo = col.director.correo || '';
+        const colDir = typeof col.director === 'object' ? col.director : { nombre: col.director };
+        dirData.nombres = colDir.nombre || colDir.apellidosNombres || '';
+        dirData.dni = cleanTextCode(colDir.dni || '');
+        dirData.telefono = cleanTextCode(colDir.telefono || '');
+        dirData.condicion = (colDir.condicion && String(colDir.condicion).toUpperCase().includes('ENCARG')) ? 'ENCARGADO' : 'DESIGNADO';
+        dirData.correo = colDir.correo || '';
       }
 
       if (Array.isArray(subsActivos) && subsActivos.length > 0) {
         subList = subsActivos.map(s => ({
           nombres: s.apellidosNombres || s.nombres || '',
-          dni: String(s.dni || '').replace(/\D/g, ''),
-          telefono: String(s.telefono || '').replace(/\D/g, ''),
+          dni: cleanTextCode(s.dni || ''),
+          telefono: cleanTextCode(s.telefono || ''),
           condicion: (s.condicion === 'E' || String(s.cargo || '').toUpperCase().includes('ENCARG')) ? 'ENCARGADO' : 'DESIGNADO',
           correo: s.correo || ''
         }));
       } else if (col.subDirector && col.subDirector.nombre) {
         subList = [{
           nombres: col.subDirector.nombre,
-          dni: String(col.subDirector.dni || '').replace(/\D/g, ''),
-          telefono: String(col.subDirector.telefono || '').replace(/\D/g, ''),
+          dni: cleanTextCode(col.subDirector.dni || ''),
+          telefono: cleanTextCode(col.subDirector.telefono || ''),
           condicion: (col.subDirector.condicion && String(col.subDirector.condicion).toUpperCase().includes('ENCARG')) ? 'ENCARGADO' : 'DESIGNADO',
           correo: col.subDirector.correo || ''
         }];
       } else if (Array.isArray(col.subdirectores) && col.subdirectores.length > 0) {
         subList = col.subdirectores.map(s => ({
           nombres: s.nombre || s.nombres || s.apellidosNombres || '',
-          dni: String(s.dni || '').replace(/\D/g, ''),
-          telefono: String(s.telefono || '').replace(/\D/g, ''),
+          dni: cleanTextCode(s.dni || ''),
+          telefono: cleanTextCode(s.telefono || ''),
           condicion: String(s.condicion || '').toUpperCase().includes('ENCARG') ? 'ENCARGADO' : 'DESIGNADO',
           correo: s.correo || ''
         }));
@@ -1302,14 +1315,15 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
         return;
       }
 
-      dropdown.innerHTML = matches.map(c => {
+      dropdown.innerHTML = matches.map((c, idx) => {
         const cNom = c.ie || c.nombre || '';
         const cCod = c.codigoModular || c.codModular || c.codigoLocal || '';
         const cRed = (c.red || c.rei) ? `RED ${String(c.red || c.rei).replace(/\D/g, '').padStart(2, '0')}` : '';
-        const cDir = c.director?.nombre ? `Dir: ${c.director.nombre}` : '';
+        const dirNom = c.director?.nombre || c.director?.apellidosNombres || (typeof c.director === 'string' ? c.director : '');
+        const cDir = dirNom ? `Dir: ${dirNom}` : '';
         return `
-          <div class="jec1-search-item" data-col-id="${esc(c.id)}">
-            <div style="font-weight:700; color:#0f172a; font-size:0.9rem;">${esc(cNom)}</div>
+          <div class="jec1-search-item" data-match-idx="${idx}" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #e2e8f0;background:#ffffff">
+            <div style="font-weight:700; color:#0f172a; font-size:0.88rem;">${esc(cNom)}</div>
             <div style="font-size:0.78rem; color:#64748b; margin-top:2px; display:flex; gap:8px;">
               <span>Cód: <strong>${esc(cCod)}</strong></span>
               ${cRed ? `<span>· ${esc(cRed)}</span>` : ''}
@@ -1324,7 +1338,8 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
       dropdown.querySelectorAll('.jec1-search-item').forEach(item => {
         item.addEventListener('mousedown', (e) => {
           e.preventDefault();
-          const col = list.find(x => x.id === item.dataset.colId);
+          const idx = Number(item.dataset.matchIdx);
+          const col = matches[idx];
           if (col) {
             onSelectColegio(col);
           }
@@ -1566,7 +1581,7 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
   }
 
   // 10. Botón Cancelar
-  const btnCancel = host.querySelector('#jec1_btn_cancel');
+  const btnCancel = host.querySelector('#cancelFormBtn') || host.querySelector('#jec1_btn_cancel');
   if (btnCancel) {
     btnCancel.addEventListener('click', () => {
       if (navigate) navigate('consolidado');
@@ -1593,20 +1608,29 @@ function updateLiveScoreUI(host) {
   const sub5 = host.querySelector('#subtotal_sec_aspecto_05');
   if (sub5) sub5.textContent = `Subtotal: ${scoreData.subtotales.aspecto5} / 21 pts`;
 
-  // Actualizar barra de cabecera
-  const ptsNum = host.querySelector('#jec1_live_pts_num');
-  if (ptsNum) ptsNum.textContent = scoreData.puntajeTotal;
-
-  const levelTag = host.querySelector('#jec1_live_level_tag');
-  if (levelTag) {
-    levelTag.className = 'jec1-live-level-tag';
-    if (scoreData.nivelInfo.nivel === 'LOGRADO') levelTag.classList.add('jec1-level-logrado');
-    else if (scoreData.nivelInfo.nivel === 'PROCESO') levelTag.classList.add('jec1-level-proceso');
-    else levelTag.classList.add('jec1-level-inicio');
-    levelTag.innerHTML = `<span>NIVEL:</span> <strong>${scoreData.nivelInfo.nivel}</strong>`;
+  // Actualizar barra de cabecera en tiempo real (estilo 2do momento)
+  const headerCard = host.querySelector('#jec1_live_header');
+  if (headerCard) {
+    headerCard.style.borderLeftColor = scoreData.nivelInfo.color;
+  }
+  const badge = host.querySelector('#jec1_live_badge');
+  if (badge) {
+    badge.textContent = scoreData.nivelInfo.nivel;
+    badge.style.background = scoreData.nivelInfo.color;
+  }
+  const countText = host.querySelector('#jec1_live_count_text');
+  if (countText) {
+    const pct = Math.round((scoreData.puntajeTotal / 111) * 100);
+    countText.textContent = `${scoreData.puntajeTotal} / 111 pts (${pct}%)`;
+  }
+  const progressBar = host.querySelector('#jec1_live_progress_bar');
+  if (progressBar) {
+    const pct = Math.min(100, Math.round((scoreData.puntajeTotal / 111) * 100));
+    progressBar.style.width = `${pct}%`;
+    progressBar.style.background = scoreData.nivelInfo.color;
   }
 
-  // Actualizar Sección VI (Escala de valoración)
+  // Actualizar filas activas en el cuadro de escala valorativa
   const rowInicio = host.querySelector('#scale_row_inicio');
   const rowProceso = host.querySelector('#scale_row_proceso');
   const rowLogrado = host.querySelector('#scale_row_logrado');
@@ -1615,16 +1639,13 @@ function updateLiveScoreUI(host) {
   if (rowProceso) rowProceso.classList.toggle('active-scale-row', scoreData.nivelInfo.nivel === 'PROCESO');
   if (rowLogrado) rowLogrado.classList.toggle('active-scale-row', scoreData.nivelInfo.nivel === 'LOGRADO');
 
-  const lvlName = host.querySelector('#jec1_level_name');
-  if (lvlName) {
-    lvlName.textContent = scoreData.nivelInfo.nivel;
-    lvlName.style.color = scoreData.nivelInfo.color;
-  }
-
-  const scoreRatio = host.querySelector('#jec1_score_ratio');
-  if (scoreRatio) {
-    const pct = Math.round((scoreData.puntajeTotal / 111) * 100);
-    scoreRatio.textContent = `${scoreData.puntajeTotal} / 111 puntos (${pct}%)`;
+  // Actualizar contador en la barra fija inferior flotante
+  const progBadge = host.querySelector('#regProgressBadge');
+  if (progBadge) {
+    const respondidos = scoreData.totalItemsRespondidos + (scoreData.condSi + scoreData.condNo);
+    const total44 = 44;
+    const pct44 = Math.round((respondidos / total44) * 100);
+    progBadge.innerHTML = `Avance: <strong>${respondidos} de ${total44}</strong> ítems respondidos (${pct44}%)`;
   }
 }
 

@@ -1723,13 +1723,17 @@ export function collectJecFormData(host, ft, isEdit = false, activeVisita = null
   });
 
   if (momentErrors.length > 0) {
-    if (esBorrador) {
-      const proceedDraft = confirm(`Se detectaron observaciones en la Data de Docentes Monitoreados:\n\n${momentErrors.join('\n\n')}\n\n¿Deseas guardar la ficha como BORRADOR de todos modos?`);
-      if (!proceedDraft) {
-        throw new Error('Corrija la suma de docentes monitoreados por rúbrica antes de registrar la ficha.');
-      }
-    } else {
-      throw new Error(`Corrija la Data de Docentes Monitoreados para que las rúbricas sumen el 100%:\n\n${momentErrors.join('\n\n')}`);
+    const isEditMode = Boolean(
+      window.editingSubmissionId ||
+      window.__jecEditDocId ||
+      document.querySelector('.banner[style*="Modo edición"]') ||
+      document.querySelector('#btnSubmitRegistro')?.textContent?.includes('Actualizar')
+    );
+    const actionLabel = isEditMode ? 'actualizar' : (esBorrador ? 'guardar como BORRADOR' : 'guardar');
+    const msg = `Se detectaron observaciones en la Data de Docentes Monitoreados:\n\n${momentErrors.join('\n\n')}\n\n¿Deseas ${actionLabel} la ficha de todos modos?`;
+    const proceed = confirm(msg);
+    if (!proceed) {
+      throw new Error('Operación cancelada por el usuario. Corrija los valores de docentes monitoreados antes de guardar.');
     }
   }
 

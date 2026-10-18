@@ -122,13 +122,23 @@ export function calcScore(respuestas, fichaType) {
     }
   }
 
-  // Mapa rápido id → valor, con normalización para EBR (ge1_x / ge2_x / ge_x / num_x)
+  // Mapa rápido id → valor, con normalización para EBR (ge1_x / ge2_x / ge_x / num_x) y JEC (it_01 / it_1 / jec1_1 / jec_1)
   const valMap = Object.create(null);
   for (const r of respuestas) {
     if (!r) continue;
     valMap[r.id] = r.valor;
     const norm = String(r.id || '').replace(/^ge\d*_/, 'ge_');
     if (norm && valMap[norm] === undefined) valMap[norm] = r.valor;
+    const jecNumMatch = String(r.id || '').match(/^(?:it_|jec1?_)?0*(\d+)$/i);
+    if (jecNumMatch) {
+      const n = parseInt(jecNumMatch[1], 10);
+      const pad = String(n).padStart(2, '0');
+      if (valMap['it_' + pad] === undefined) valMap['it_' + pad] = r.valor;
+      if (valMap['it_' + n] === undefined) valMap['it_' + n] = r.valor;
+      if (valMap['jec1_' + n] === undefined) valMap['jec1_' + n] = r.valor;
+      if (valMap['jec_' + n] === undefined) valMap['jec_' + n] = r.valor;
+      if (valMap['num_' + n] === undefined) valMap['num_' + n] = r.valor;
+    }
     if (r.num !== undefined && r.num !== null && valMap['num_' + r.num] === undefined) {
       valMap['num_' + r.num] = r.valor;
     }
@@ -146,8 +156,15 @@ export function calcScore(respuestas, fichaType) {
     let secPuntos = 0;
 
     for (const it of (sec.items || [])) {
-      const v = valMap[it.id] ?? valMap[String(it.id).replace(/^ge\d*_/, 'ge_')] ?? (it.num ? valMap['num_' + it.num] : undefined);
-      const sc = puntajeItem(escala, v);
+      const v = valMap[it.id]
+        ?? valMap[String(it.id).replace(/^ge\d*_/, 'ge_')]
+        ?? (it.num ? valMap['num_' + it.num] : undefined)
+        ?? (it.num ? valMap['it_' + String(it.num).padStart(2, '0')] : undefined)
+        ?? (it.num ? valMap['it_' + it.num] : undefined)
+        ?? (it.num ? valMap['jec1_' + it.num] : undefined)
+        ?? (it.num ? valMap['jec_' + it.num] : undefined);
+      const secEscala = sec.escala || (sec.tipo ? (LEGADO_A_ESCALA[sec.tipo] || sec.tipo) : null) || escala;
+      const sc = puntajeItem(secEscala, v);
       if (sc !== null) {
         secScore += sc;
         secCount++;

@@ -523,9 +523,6 @@ export function renderCebeGestionForm(host, ft, state, dbNs, currentUser, naviga
               Instrumento oficial para Centros de Educación Básica Especial (CEBE) UGEL 03. Evalúa 34 indicadores en 7 aspectos clave a lo largo de 3 visitas.
             </p>
           </div>
-          <button type="button" class="btn secondary" id="btnCambiarFichaDesdeCebe" style="background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.3);color:#FFFFFF;font-size:12.5px;padding:6px 14px">
-            ← Cambiar ficha
-          </button>
         </div>
       </div>
 
@@ -875,16 +872,6 @@ export function renderCebeGestionForm(host, ft, state, dbNs, currentUser, naviga
 function bindCebeFormEvents(host, ft, state, dbNs, currentUser, navigate, isEditing) {
   const form = host.querySelector('#regForm');
   if (!form) return;
-
-  // Cambiar ficha
-  const btnCambiar = form.querySelector('#btnCambiarFichaDesdeCebe');
-  if (btnCambiar) {
-    btnCambiar.addEventListener('click', () => {
-      resetCebeFormState();
-      window.location.hash = '#registrar';
-      if (navigate) navigate('registrar');
-    });
-  }
 
   // Cancelar
   const btnCancel = form.querySelector('#btnCancelarCebe');
