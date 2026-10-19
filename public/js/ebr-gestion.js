@@ -1125,14 +1125,22 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
 
       return `
         <div class="ebrItemCard" data-item-id="${esc(it.id)}" style="border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:10px;background:var(--surface)">
-          <div class="ebrItemHeader" style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:10px 14px;margin-bottom:8px">
+          <div class="ebrItemHeader" style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:10px 14px;margin-bottom:4px">
             <div class="ebrItemText" style="flex:1 1 280px;min-width:240px">
-              <span style="font-weight:800;color:var(--primary);margin-right:6px">
-                ${it.num || globalItemIndex}.
-              </span>
-              <span style="font-size:13.5px;color:var(--ink);font-weight:500;line-height:1.35">
-                ${esc(it.texto)}
-              </span>
+              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+                <span style="font-weight:800;color:var(--primary);margin-right:2px">
+                  ${it.num || globalItemIndex}.
+                </span>
+                <span style="font-size:13.5px;color:var(--ink);font-weight:500;line-height:1.35;flex:1;min-width:220px">
+                  ${esc(it.texto)}
+                </span>
+                <button type="button" class="btnToggleObs btnToggleEvidencia ${currentObs ? 'has-content' : ''}" data-target-obs="evid_ebr_${esc(it.id)}" data-target-evid="evid_ebr_${esc(it.id)}" title="Describir observaciones o hallazgos verificados">
+                  💬 Observación ${currentObs ? '✓' : ''}
+                </button>
+              </div>
+              <div class="itemObsWrap itemEvidenciaWrap" id="evid_ebr_${esc(it.id)}" style="display:${currentObs ? 'block' : 'none'};margin-top:8px">
+                <textarea class="ebrItemObs" data-item-obs="${esc(it.id)}" rows="2" placeholder="${it.evidencia ? esc(it.evidencia) : 'Describa aquí los hallazgos u observaciones identificados en este indicador...'}" style="width:100%;font-size:12px;padding:6px 10px;border:1.5px solid #CBD5E1;border-radius:6px;min-height:44px;box-sizing:border-box">${esc(currentObs)}</textarea>
+              </div>
             </div>
             <!-- Opciones con iniciales: I / P / L / NA (capa única tipo píldora como en imagen 2) -->
             <div class="ebrScaleBtns" role="radiogroup" aria-label="Calificación para ítem ${it.num || globalItemIndex}" style="display:inline-flex;flex-direction:row;flex-wrap:nowrap;align-items:center;gap:8px;flex-shrink:0">
@@ -1153,16 +1161,6 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
                 <span class="scaleInitial">NA</span>
               </label>
             </div>
-          </div>
-
-          <!-- Evidencias sugeridas (texto de referencia no editable) -->
-          <div class="ebrEvidenciaBox" style="font-size:11.5px;color:var(--ink-soft);background:var(--surface-2);border-radius:4px;padding:4px 8px;margin-bottom:6px;line-height:1.3">
-            <strong>Evidencias sugeridas:</strong> <em>${esc(it.evidencia || 'Sin evidencias sugeridas')}</em>
-          </div>
-
-          <!-- Observaciones / Hallazgos por ítem -->
-          <div>
-            <textarea class="ebrItemObs" data-item-obs="${esc(it.id)}" rows="1" placeholder="Observaciones / hallazgos específicos sobre este indicador..." style="width:100%;font-size:12px;padding:4px 8px;min-height:34px">${esc(currentObs)}</textarea>
           </div>
 
           ${proyectosHtml}
@@ -2345,6 +2343,52 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
   host.querySelectorAll('.ebrItemObs').forEach(tx => {
     tx.addEventListener('input', () => {
       ebrFormState.observacionesItems[tx.dataset.itemObs] = tx.value;
+      const wrap = tx.closest('.itemObsWrap, .itemEvidenciaWrap');
+      if (wrap) {
+        const btn = host.querySelector(`[data-target-obs="${wrap.id}"], [data-target-evid="${wrap.id}"]`);
+        if (btn) {
+          if (tx.value.trim()) {
+            btn.classList.add('has-content');
+            btn.textContent = '💬 Observación ✓';
+          } else {
+            btn.classList.remove('has-content');
+            btn.textContent = '💬 Observación';
+          }
+        }
+      }
+    });
+  });
+
+  // Toggle de visibilidad de observaciones / hallazgos en indicadores EBR
+  host.querySelectorAll('.btnToggleObs, .btnToggleEvidencia').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const targetId = btn.dataset.targetObs || btn.dataset.targetEvid;
+      if (!targetId) return;
+      const wrap = host.querySelector('#' + targetId);
+      if (!wrap) return;
+
+      const isHidden = (wrap.style.display === 'none' || getComputedStyle(wrap).display === 'none');
+      if (isHidden) {
+        wrap.style.display = 'block';
+        btn.classList.add('active');
+        btn.textContent = '✕ Ocultar obs.';
+        const tx = wrap.querySelector('textarea, input');
+        if (tx) tx.focus();
+      } else {
+        wrap.style.display = 'none';
+        btn.classList.remove('active');
+        const tx = wrap.querySelector('textarea, input');
+        const hasVal = tx && Boolean(tx.value.trim());
+        if (hasVal) {
+          btn.classList.add('has-content');
+          btn.textContent = '💬 Observación ✓';
+        } else {
+          btn.classList.remove('has-content');
+          btn.textContent = '💬 Observación';
+        }
+      }
     });
   });
 

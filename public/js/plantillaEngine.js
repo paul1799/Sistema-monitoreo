@@ -336,22 +336,31 @@ function renderItemsValorables(b, bi, values, ro) {
       }).join('');
 
       const hallazgoVal = esc(values[item.id + '_hallazgo'] || '');
-      const hallazgoHtml = tieneHallazgos ? `
-        <div class="hallazgoWrap" style="margin-top:4px">
-          <input type="text" class="input" style="font-size:12px;padding:4px 8px"
-            placeholder="Hallazgo u observación (opcional)"
-            id="hallazgo_${esc(item.id)}" data-item-id="${esc(item.id)}_hallazgo"
-            value="${hallazgoVal}" ${ro}>
-        </div>` : '';
+      const hasHallazgo = Boolean(hallazgoVal);
+      const hallazgoBtnHtml = tieneHallazgos ? `
+        <button type="button" class="btnToggleObs btnToggleEvidencia ${hasHallazgo ? 'has-content' : ''}" data-target-obs="evid_pe_${esc(item.id)}" data-target-evid="evid_pe_${esc(item.id)}" title="Describir observaciones o hallazgos">
+          💬 Observación ${hasHallazgo ? '✓' : ''}
+        </button>` : '';
 
       return `
         <tr class="itemRow" data-item-num="${ii + 1}">
           <td class="itemNum">${(sec.numRomano ? sec.numRomano + '.' : '') + (ii + 1)}</td>
-          <td class="itemTexto">${esc(item.texto)}${item.evidencia ? `<div class="itemEvidencia">📎 ${esc(item.evidencia)}</div>` : ''}</td>
+          <td class="itemTexto">
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+              <span style="flex:1;min-width:200px">${esc(item.texto)}</span>
+              ${hallazgoBtnHtml}
+            </div>
+            ${tieneHallazgos ? `
+              <div class="hallazgoWrap itemObsWrap itemEvidenciaWrap" id="evid_pe_${esc(item.id)}" style="display:${hasHallazgo ? 'block' : 'none'};margin-top:6px">
+                <input type="text" class="input peObsInput" style="font-size:12px;padding:4px 8px;width:100%;box-sizing:border-box"
+                  placeholder="${item.evidencia ? esc(item.evidencia) : 'Describa aquí los hallazgos u observaciones...'}"
+                  id="hallazgo_${esc(item.id)}" data-item-id="${esc(item.id)}_hallazgo"
+                  value="${hallazgoVal}" ${ro}>
+              </div>` : ''}
+          </td>
           <td class="itemEscala">
             <div class="escalaBtnGroup">${btns}</div>
             ${subcampos}
-            ${hallazgoHtml}
           </td>
         </tr>`;
     }).join('');

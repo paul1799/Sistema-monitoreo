@@ -208,13 +208,39 @@ export function getSubmissionResponsable(s, state = null, currentUser = null) {
     if (ex && ex.value.trim()) return ex.value.trim();
   }
 
+  // 3.5 Búsqueda por colegio en state.colegios (para obtener su responsable asignado específico antes de fallback de RED)
+  if (s && (s.colegioId || s.institucion || s.codigoLocal) && appState && Array.isArray(appState.colegios)) {
+    const col = appState.colegios.find(c =>
+      (s.colegioId && c.id === s.colegioId) ||
+      (s.codigoLocal && (c.codigoLocal === s.codigoLocal || c.codLocal === s.codigoLocal)) ||
+      (s.institucion && normalizeText(c.ie || c.nombre || '') === normalizeText(s.institucion))
+    );
+    if (col) {
+      if (col.responsable && !col.responsable.includes('@') && !/^\d+$/.test(col.responsable.trim())) {
+        return col.responsable.trim();
+      }
+      if (col.responsableId && Array.isArray(appState.responsables)) {
+        const rMatch = appState.responsables.find(r => r.id === col.responsableId);
+        if (rMatch && (rMatch.nombresApellidos || rMatch.especialista)) {
+          return (rMatch.nombresApellidos || rMatch.especialista).trim();
+        }
+      }
+      if (Array.isArray(appState.responsables) && col.id) {
+        const rMatchCol = appState.responsables.find(r => Array.isArray(r.colegios) && r.colegios.includes(col.id));
+        if (rMatchCol && (rMatchCol.nombresApellidos || rMatchCol.especialista)) {
+          return (rMatchCol.nombresApellidos || rMatchCol.especialista).trim();
+        }
+      }
+    }
+  }
+
   // 4. Especialista asignado a la RED / REI (para las demás fichas)
   const red = s ? (s.red || (s.ie && s.ie.red) || s.rei) : '';
   if (red && red !== 'No aplica' && appState && Array.isArray(appState.responsables)) {
     const redNorm = normalizeText(red);
     const redNum = normalizeReiNumber(red);
 
-    const matchedResp = appState.responsables.find(r => {
+    const redResps = appState.responsables.filter(r => {
       if (!r.red) return false;
       if (redNum) {
         const rNums = (String(r.red).match(/\d+/g) || []).map(n => normalizeReiNumber(n));
@@ -224,8 +250,8 @@ export function getSubmissionResponsable(s, state = null, currentUser = null) {
       return rRedNorm.includes(redNorm) || redNorm.includes(rRedNorm);
     });
 
-    if (matchedResp) {
-      const cand = (matchedResp.nombresApellidos || matchedResp.especialista || '').trim();
+    if (redResps.length === 1) {
+      const cand = (redResps[0].nombresApellidos || redResps[0].especialista || '').trim();
       if (cand && !/^\d+$/.test(cand) && !cand.includes('@')) {
         return cand;
       }
@@ -243,7 +269,7 @@ export function getSubmissionResponsable(s, state = null, currentUser = null) {
       const colRed = col.red || col.rei;
       const colRedNorm = normalizeText(colRed);
       const colNum = normalizeReiNumber(colRed);
-      const matchedResp = appState.responsables.find(r => {
+      const redResps = appState.responsables.filter(r => {
         if (!r.red) return false;
         if (colNum) {
           const rNums = (String(r.red).match(/\d+/g) || []).map(n => normalizeReiNumber(n));
@@ -252,8 +278,8 @@ export function getSubmissionResponsable(s, state = null, currentUser = null) {
         const rRedNorm = normalizeText(r.red);
         return rRedNorm.includes(colRedNorm) || colRedNorm.includes(rRedNorm);
       });
-      if (matchedResp) {
-        const cand = (matchedResp.nombresApellidos || matchedResp.especialista || '').trim();
+      if (redResps.length === 1) {
+        const cand = (redResps[0].nombresApellidos || redResps[0].especialista || '').trim();
         if (cand && !/^\d+$/.test(cand) && !cand.includes('@')) {
           return cand;
         }
@@ -292,13 +318,41 @@ export function getSubmissionResponsable(s, state = null, currentUser = null) {
 
 /**
  * Obtiene el especialista responsable asignado a una institución educativa
- * según su RED/REI oficial y la modalidad de la ficha (EBR, CEBE, PRITE).
+ * según su asignación directa (responsable/responsableId) o según su RED/REI oficial.
+ * Soporta de manera transparente REDs compartidas por varios especialistas.
  */
 export function getResponsableForColegio(col, ft, state = null) {
   if (!col) return '—';
   const appState = state || getAppState() || (typeof window !== 'undefined' ? window.state : null) || {};
 
-  // 1. Caso CEBE y PRITE
+  // 1. Caso JEC oficial (siempre Fanny Liliana Arias Quiróz para fichas del Modelo JEC)
+  if (ft && isFichaEspecialistaJec(ft)) {
+    return ESPECIALISTA_JEC_OFICIAL.nombresApellidos;
+  }
+
+  // 2. PRIORIDAD MÁXIMA: Asignación explícita al colegio (por responsableId o nombre de responsable)
+  if (col.responsableId && appState && Array.isArray(appState.responsables)) {
+    const matched = appState.responsables.find(r => r.id === col.responsableId);
+    if (matched && (matched.nombresApellidos || matched.especialista)) {
+      return (matched.nombresApellidos || matched.especialista).trim();
+    }
+  }
+  if (col.responsable && String(col.responsable).trim() && col.responsable.trim() !== '—') {
+    const cResp = String(col.responsable).trim();
+    if (!/^\d+$/.test(cResp) && !cResp.includes('@')) {
+      return cResp;
+    }
+  }
+
+  // 3. PRIORIDAD 2: Si algún especialista tiene este colegio en su lista `colegios: [colId]`
+  if (appState && Array.isArray(appState.responsables) && col.id) {
+    const matchedByCol = appState.responsables.find(r => Array.isArray(r.colegios) && r.colegios.includes(col.id));
+    if (matchedByCol && (matchedByCol.nombresApellidos || matchedByCol.especialista)) {
+      return (matchedByCol.nombresApellidos || matchedByCol.especialista).trim();
+    }
+  }
+
+  // 4. Caso CEBE y PRITE (si no tuvo asignación explícita anterior)
   if (ft && (isFichaCebeGestion(ft) || isFichaPriteGestion(ft))) {
     if (appState && Array.isArray(appState.responsables)) {
       const colRei = normalizeText(col.rei || col.red || '');
@@ -317,13 +371,14 @@ export function getResponsableForColegio(col, ft, state = null) {
     }
   }
 
-  // 2. Búsqueda por REI / RED en appState.responsables (EBR y general)
+  // 5. Búsqueda por REI / RED en appState.responsables (EBR y general)
   const colRed = col.rei || col.red || '';
   if (colRed && appState && Array.isArray(appState.responsables)) {
     const colNum = normalizeReiNumber(colRed);
     const colRedNorm = normalizeText(colRed);
 
-    const matchedResp = appState.responsables.find(r => {
+    // Encontrar TODOS los especialistas asignados a esta RED
+    const matchedResps = appState.responsables.filter(r => {
       if (!r.red) return false;
       if (colNum) {
         const rNums = (String(r.red).match(/\d+/g) || []).map(n => normalizeReiNumber(n));
@@ -333,18 +388,17 @@ export function getResponsableForColegio(col, ft, state = null) {
       return rRedNorm.includes(colRedNorm) || colRedNorm.includes(rRedNorm);
     });
 
-    if (matchedResp) {
-      const cand = (matchedResp.nombresApellidos || matchedResp.especialista || '').trim();
+    if (matchedResps.length === 1) {
+      // Solo 1 especialista para esta RED -> Asignación directa automática
+      const cand = (matchedResps[0].nombresApellidos || matchedResps[0].especialista || '').trim();
       if (cand && !/^\d+$/.test(cand) && !cand.includes('@')) {
         return cand;
       }
+    } else if (matchedResps.length > 1) {
+      // RED COMPARTIDA: Hay 2 o más especialistas cubriendo esta RED.
+      // Como no se ha asignado individualmente a este colegio, se reporta claramente como compartida
+      return 'Por asignar (RED compartida)';
     }
-  }
-
-  // 3. Si el colegio tiene un responsable asignado directamente en sus campos
-  if (col.responsable && String(col.responsable).trim() && col.responsable.trim() !== '—') {
-    const cResp = String(col.responsable).trim();
-    if (!/^\d+$/.test(cResp) && !cResp.includes('@')) return cResp;
   }
 
   return 'Por asignar';

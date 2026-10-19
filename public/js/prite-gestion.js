@@ -639,16 +639,21 @@ export function renderPriteGestionForm(host, ft, state, dbNs, currentUser, navig
 
       const itemNumDisplay = (it.num !== undefined && it.num !== null && it.num !== '') ? it.num : (iIdx + 1);
 
+      const hasObs = Boolean(evidVal && evidVal.trim());
       return `
         <div class="cebeItemRow priteItemRow" data-item-id="${it.id}">
           <div class="cebeItemMain">
             <span class="cebeItemNum">${itemNumDisplay}.</span>
             <div class="cebeItemTextWrap">
-              <div class="cebeItemText">${esc(it.texto)}</div>
+              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+                <div class="cebeItemText" style="flex:1;min-width:240px">${esc(it.texto)}</div>
+                <button type="button" class="btnToggleObs ${hasObs ? 'has-content' : ''}" data-target-obs="obs_wrap_prite_${it.id}" title="Describir observaciones o hallazgos verificados">
+                  💬 Observación ${hasObs ? '✓' : ''}
+                </button>
+              </div>
               ${subOpcionesHtml}
-              <div class="cebeItemEvidenciaWrap">
-                <span class="cebeEvidLabel">📎 Evidencia:</span>
-                <input type="text" class="cebeEvidInp" id="evid_${it.id}" placeholder="${esc(it.evidencia || 'Evidencia verificable...')}" value="${esc(evidVal)}">
+              <div class="itemObsWrap" id="obs_wrap_prite_${it.id}" style="display:${hasObs ? 'block' : 'none'};margin-top:8px">
+                <textarea class="cebeEvidInp cebeObsTextarea" id="evid_${it.id}" rows="2" placeholder="${it.evidencia ? esc(it.evidencia) : 'Describa aquí los hallazgos u observaciones identificados en este indicador...'}" style="width:100%;font-size:12px;padding:6px 10px;border:1.5px solid #CBD5E1;border-radius:6px;min-height:44px;box-sizing:border-box">${esc(evidVal)}</textarea>
               </div>
             </div>
           </div>
@@ -816,7 +821,12 @@ export function renderPriteGestionForm(host, ft, state, dbNs, currentUser, navig
         <!-- Tabla Personal y Acceso en 2 columnas -->
         <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:16px">
           <div>
-            <h4 style="font-size:13px;font-weight:700;color:var(--navy-900);margin:0 0 8px">Cuadro 1: PERSONAL</h4>
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+              <h4 style="font-size:13px;font-weight:700;color:var(--navy-900);margin:0">Cuadro 1: PERSONAL</h4>
+              <button type="button" id="btnCopiarPersonalPriteV1" class="btn secondary small" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:4px 11px;border-radius:6px;border:1.5px solid #0284C7;color:#0284C7;background:#F0F9FF;font-weight:700;cursor:pointer;transition:all 0.15s ease" title="Copiar datos de personal y docentes registrados en la Visita 1">
+                📋 Copiar personal de Visita 1
+              </button>
+            </div>
             <div class="tblWrap" style="overflow-x:auto">
               <table class="cebeDataTable" style="width:100%;border-collapse:collapse;font-size:12px">
                 <thead>
@@ -1128,7 +1138,15 @@ function bindPriteFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
             const cRei = selected.rei || selected.red || '';
             const cReiNorm = normalizeText(cRei);
             let assignedName = '';
-            if (state && Array.isArray(state.responsables)) {
+            if (selected.responsable && !selected.responsable.includes('@') && !/^\d+$/.test(selected.responsable.trim())) {
+              assignedName = selected.responsable.trim();
+            } else if (selected.responsableId && state && Array.isArray(state.responsables)) {
+              const rMatch = state.responsables.find(r => r.id === selected.responsableId);
+              if (rMatch && (rMatch.nombresApellidos || rMatch.especialista)) {
+                assignedName = (rMatch.nombresApellidos || rMatch.especialista).trim();
+              }
+            }
+            if (!assignedName && state && Array.isArray(state.responsables)) {
               const ebeList = state.responsables.filter(r => isEbeOrPriteResponsable(r));
               if (ebeList.length > 0) {
                 const matchByRed = cReiNorm ? ebeList.find(r => {
@@ -1283,6 +1301,128 @@ function bindPriteFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
     r.addEventListener('change', updatePriteProgress);
   });
   updatePriteProgress();
+
+  // Toggle de visibilidad de área de observaciones/hallazgos por indicador en PRITE
+  form.querySelectorAll('.btnToggleObs').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const targetId = btn.dataset.targetObs;
+      if (!targetId) return;
+      const wrap = form.querySelector('#' + targetId);
+      if (!wrap) return;
+
+      const isHidden = (wrap.style.display === 'none' || getComputedStyle(wrap).display === 'none');
+      if (isHidden) {
+        wrap.style.display = 'block';
+        btn.classList.add('active');
+        btn.textContent = '✕ Ocultar obs.';
+        const ta = wrap.querySelector('textarea, input');
+        if (ta) ta.focus();
+      } else {
+        wrap.style.display = 'none';
+        btn.classList.remove('active');
+        const ta = wrap.querySelector('textarea, input');
+        const hasVal = ta && Boolean(ta.value.trim());
+        if (hasVal) {
+          btn.classList.add('has-content');
+          btn.textContent = '💬 Observación ✓';
+        } else {
+          btn.classList.remove('has-content');
+          btn.textContent = '💬 Observación';
+        }
+      }
+    });
+  });
+
+  // Sincronizar texto de observaciones con el estado y botón de PRITE
+  form.querySelectorAll('.cebeObsTextarea').forEach(tx => {
+    tx.addEventListener('input', () => {
+      const row = tx.closest('.cebeItemRow');
+      const itemId = row?.dataset?.itemId;
+      if (itemId) {
+        priteFormState.evidenciasPorItem[itemId] = tx.value;
+      }
+      const wrap = tx.closest('.itemObsWrap');
+      if (wrap) {
+        const btn = form.querySelector(`[data-target-obs="${wrap.id}"]`);
+        if (btn) {
+          if (tx.value.trim()) {
+            btn.classList.add('has-content');
+            btn.textContent = '💬 Observación ✓';
+          } else {
+            btn.classList.remove('has-content');
+            btn.textContent = '💬 Observación';
+          }
+        }
+      }
+    });
+  });
+
+  // Copiar docentes y personal registrados en la primera visita (Visita 1) en PRITE
+  const btnCopiarPersonalPrite = form.querySelector('#btnCopiarPersonalPriteV1');
+  if (btnCopiarPersonalPrite) {
+    btnCopiarPersonalPrite.onclick = () => {
+      const colId = form.dataset.selectedColegioId || priteFormState.colegioId || '';
+      const codLocal = cleanTextCode(form.querySelector('#prite_cod_local')?.value || priteFormState.codigoLocal || '');
+      const ieName = normalizeText(form.querySelector('#f_institucion')?.value || priteFormState.institucion || '');
+
+      // 1. Buscar en state.submissions una ficha previa de Visita 1 para este PRITE
+      const submissions = Array.isArray(state?.submissions) ? state.submissions : [];
+      const subV1 = submissions.find(s => {
+        if (!isFichaPriteGestion(s)) return false;
+        const vNum = Number(s.visita) || 1;
+        if (vNum !== 1) return false;
+        if (colId && s.colegioId && s.colegioId === colId) return true;
+        if (codLocal && cleanTextCode(s.codigoLocal) === codLocal) return true;
+        if (ieName && normalizeText(s.institucion || s.nombreIe || s.ie || '') === ieName) return true;
+        return false;
+      });
+
+      let personalSource = null;
+      let estudiantesSource = null;
+
+      if (subV1) {
+        if (subV1.tablasPersonal) {
+          personalSource = subV1.tablasPersonal.personal;
+          estudiantesSource = subV1.tablasPersonal.accesoEstudiantes;
+        } else {
+          personalSource = subV1.personal;
+          estudiantesSource = subV1.accesoEstudiantes;
+        }
+      } else if (priteFormState.personal && Object.keys(priteFormState.personal).length > 0) {
+        personalSource = priteFormState.personal;
+        estudiantesSource = priteFormState.accesoEstudiantes;
+      }
+
+      if (!personalSource || Object.keys(personalSource).length === 0) {
+        showToast('⚠️ No se encontró registro previo de la Visita 1 con datos de personal para este PRITE.');
+        return;
+      }
+
+      // Rellenar Cuadro 1: PERSONAL en PRITE
+      Object.keys(personalSource).forEach(k => {
+        const inp = form.querySelector(`#pp_${k}`);
+        if (inp) {
+          inp.value = personalSource[k] !== undefined ? personalSource[k] : '';
+        }
+        priteFormState.personal[k] = personalSource[k];
+      });
+
+      // Rellenar Cuadro 2: ACCESO Y PERMANENCIA
+      if (estudiantesSource) {
+        ['ini_mat', 'ini_asis', 'ini_noasis'].forEach(k => {
+          const inp = form.querySelector(`#prite_est_${k}`);
+          if (inp && estudiantesSource[k] !== undefined) {
+            inp.value = estudiantesSource[k];
+          }
+        });
+        priteFormState.accesoEstudiantes = { ...estudiantesSource };
+      }
+
+      showToast('✓ Datos de personal y docentes de Visita 1 copiados con éxito.');
+    };
+  }
 
   // Guardado en Firestore
   form.onsubmit = async (e) => {

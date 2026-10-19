@@ -2,19 +2,16 @@
    ui.js — Puente de conexión retrocompatible hacia el subsistema UI desfragmentado
    ========================================================================= */
 
-// Importación con cache-buster para trazabilidad
-import './pdf-template.js?v=20261016_v2';
 import {
   parseArteDisciplina,
   exportJfenFichasPdf,
   exportFichasGrupalesConcursoPdf,
+  getTituloConsolidadoConcurso,
   PALETA_ESTANDAR
-} from './pdf-template.js';
-
-
+} from './pdf-template.js?v=20261019_v2';
 
 // Re-exportación completa de todos los submódulos desfragmentados
-export * from './ui/index.js';
+export * from './ui/index.js?v=20261019_v2';
 
 // Re-exportaciones explícitas de compatibilidad para analizadores estáticos y pruebas
 export {
@@ -98,6 +95,7 @@ export {
   groupSubmissionsByColegio,
   colegioFichaTypeStats,
   openModalGestionJec,
+  openModalRedistribucionColegios,
   RESP_FIELD_ALIASES,
   docIdForResponsable,
   sanitizeResponsableRecord,
@@ -120,6 +118,7 @@ export {
   setSelectedCategorias,
   renderConcursosTab,
   renderConcursoConsolidadoView,
+  getTituloConsolidadoConcurso,
   CONCURSO_TIPO_ID_MAP,
   openConsolidarCuerpoTecnicoModal,
   JEC_FICHAS_CONFIG,
@@ -134,6 +133,8 @@ export {
   cleanBuilderStateForExport,
   duplicateFichaType,
   confirmDeleteFichaType,
+  getDeletedFichaTypeIds,
+  addDeletedFichaTypeId,
   renderPlantillasManagementView,
   renderTiposTab,
   renderSplitScreenBuilder,

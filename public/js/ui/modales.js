@@ -16,7 +16,6 @@ import {
   getLimaDateStr,
   esDisciplinaColectiva
 } from '../pdf-template.js';
-import { openDuplicateDetectorModal } from './concursos-tab.js';
 
 export const DEFAULT_AREAS = [
   { id: 'agebre', nombre: 'Área de Gestión de la Educación Básica Regular y Especial', sigla: 'AGEBRE', descripcionEncabezado: 'Área de Gestión de la\nEducación Básica (2026)', logo: '', activa: true, esPredeterminada: true, orden: 1 },
@@ -883,13 +882,20 @@ export function openDownloadConfigModal({
 
     const fixBtn = document.getElementById('dl_btn_fix');
     if (fixBtn) {
-      fixBtn.onclick = () => {
+      fixBtn.onclick = async () => {
         close();
-        if (anomalies.posiblesDuplicados > 0 && typeof openDuplicateDetectorModal === 'function') {
-          openDuplicateDetectorModal(dbNs, state, document.getElementById('main'), isAdmin, currentUser, null);
-        } else {
-          showToast('Revisa los registros señalados en la tabla para completar los datos faltantes.');
+        if (anomalies.posiblesDuplicados > 0) {
+          try {
+            const { openDuplicateDetectorModal } = await import('./concursos-tab.js');
+            if (typeof openDuplicateDetectorModal === 'function') {
+              openDuplicateDetectorModal(dbNs, state, document.getElementById('main'), isAdmin, currentUser, null);
+              return;
+            }
+          } catch (e) {
+            console.warn('No se pudo abrir el detector de duplicados:', e);
+          }
         }
+        showToast('Revisa los registros señalados en la tabla para completar los datos faltantes.');
       };
     }
 

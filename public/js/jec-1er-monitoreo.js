@@ -632,12 +632,7 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
   const colegiosList = getJecColegiosList(state);
   const scoreData = calculateJec1erScore();
 
-    // Código modular dividido en 7 casilleros
-    const codStr = String(jec1erState.codModular || '').padStart(7, ' ').slice(0, 7);
-    const modBoxesHtml = Array.from({ length: 7 }, (_, i) => {
-      const char = codStr[i] && codStr[i] !== ' ' ? codStr[i] : '';
-      return `<input type="text" class="jec1-mod-box" maxlength="1" data-mod-idx="${i}" value="${esc(char)}" aria-label="Dígito modular ${i + 1}">`;
-    }).join('');
+
 
     // Filas de Subdirectores dinámicas
     const subdirectoresRowsHtml = renderSubdirectoresRowsHtml(jec1erState.subdirectores);
@@ -685,9 +680,12 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
       return `
       <div class="jec1-item-row" data-cond-id="${it.id}">
         <div class="jec1-item-header">
-          <div class="jec1-item-desc">
-            <span class="jec1-item-num">${String(idx + 1).padStart(2, '0')}.</span>
-            ${esc(it.texto)}
+          <div class="jec1-item-desc" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;flex:1">
+            <span class="jec1-item-num" style="margin-right:2px">${String(idx + 1).padStart(2, '0')}.</span>
+            <span style="flex:1;min-width:200px">${esc(it.texto)}</span>
+            <button type="button" class="btnToggleObs btnToggleEvidencia ${hallazgo ? 'has-content' : ''}" data-target-obs="evid_cond_${it.id}" data-target-evid="evid_cond_${it.id}" title="Describir observaciones o hallazgos">
+              💬 Observación ${hallazgo ? '✓' : ''}
+            </button>
           </div>
           <div class="jec1-opt-group">
             <button type="button" class="jec1-cond-btn ${val === 'SI' ? 'active-si' : ''}" data-cond-id="${it.id}" data-val="SI" title="Sí cumple la condición">
@@ -698,8 +696,8 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
             </button>
           </div>
         </div>
-        <div class="jec1-item-hallazgo">
-          <input type="text" class="jec1-cond-hallazgo" data-cond-id="${it.id}" value="${esc(hallazgo)}" placeholder="Hallazgos / Evidencias / Observaciones (opcional)...">
+        <div class="jec1-item-hallazgo itemObsWrap itemEvidenciaWrap" id="evid_cond_${it.id}" style="display:${hallazgo ? 'block' : 'none'};margin-top:6px">
+          <input type="text" class="jec1-cond-hallazgo" data-cond-id="${it.id}" value="${esc(hallazgo)}" placeholder="${it.evidencia ? esc(it.evidencia) : 'Describa aquí los hallazgos u observaciones identificados...'}" style="width:100%;font-size:12px;padding:6px 10px;border:1.5px solid #CBD5E1;border-radius:6px;box-sizing:border-box">
         </div>
       </div>
     `;
@@ -722,9 +720,12 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
         return `
         <div class="jec1-item-row" data-item-id="${it.id}">
           <div class="jec1-item-header">
-            <div class="jec1-item-desc">
-              <span class="jec1-item-num">${String(numVal).padStart(2, '0')}.</span>
-              ${esc(it.texto)}
+            <div class="jec1-item-desc" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;flex:1">
+              <span class="jec1-item-num" style="margin-right:2px">${String(numVal).padStart(2, '0')}.</span>
+              <span style="flex:1;min-width:200px">${esc(it.texto)}</span>
+              <button type="button" class="btnToggleObs btnToggleEvidencia ${hallazgo ? 'has-content' : ''}" data-target-obs="evid_item_${it.id}" data-target-evid="evid_item_${it.id}" title="Describir observaciones o hallazgos">
+                💬 Observación ${hallazgo ? '✓' : ''}
+              </button>
             </div>
             <div class="jec1-opt-group">
               <button type="button" class="jec1-circle-btn ${String(val) === '1' ? 'active-1' : ''}" data-item-id="${it.id}" data-val="1" title="1: Nivel Inicio (1 punto)">
@@ -741,8 +742,8 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
               </button>
             </div>
           </div>
-          <div class="jec1-item-hallazgo">
-            <input type="text" class="jec1-item-hallazgo-input" data-item-id="${it.id}" value="${esc(hallazgo)}" placeholder="Hallazgos / Evidencias / Observaciones (opcional)...">
+          <div class="jec1-item-hallazgo itemObsWrap itemEvidenciaWrap" id="evid_item_${it.id}" style="display:${hallazgo ? 'block' : 'none'};margin-top:6px">
+            <input type="text" class="jec1-item-hallazgo-input" data-item-id="${it.id}" value="${esc(hallazgo)}" placeholder="${it.evidencia ? esc(it.evidencia) : 'Describa aquí los hallazgos u observaciones identificados...'}" style="width:100%;font-size:12px;padding:6px 10px;border:1.5px solid #CBD5E1;border-radius:6px;box-sizing:border-box">
           </div>
         </div>
       `;
@@ -775,7 +776,7 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
       <form id="regForm" autocomplete="off" class="jecFormContainer" style="max-width:1120px;margin:0 auto">
         ${renderJecVisitaSelectorHtml(1)}
         <!-- ─── BARRA FLOTANTE DE NIVEL DE LOGRO EN TIEMPO REAL (ESTILO JEC 2DO MOMENTO) ─── -->
-        <div class="panel jecLiveHeader" id="jec1_live_header" style="position:sticky;top:68px;z-index:20;background:var(--surface,#ffffff);border-left:5px solid ${scoreData.nivelInfo.color};box-shadow:var(--shadow-md, 0 4px 12px rgba(0,0,0,0.06));margin-bottom:20px;padding:12px 18px;border-radius:8px">
+        <div class="panel jecLiveHeader" id="jec1_live_header" style="position:sticky;top:104px;z-index:25;background:var(--surface,#ffffff);border-left:5px solid ${scoreData.nivelInfo.color};box-shadow:var(--shadow-md, 0 4px 12px rgba(0,0,0,0.06));margin-bottom:20px;padding:12px 18px;border-radius:8px">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
             <div>
               <div style="display:flex;align-items:center;gap:8px">
@@ -847,11 +848,9 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
               </div>
 
               <div class="jec1-form-group">
-                <label>Código Modular (7 dígitos) *</label>
-                <div class="jec1-modular-boxes" id="jec1_modular_container">
-                  ${modBoxesHtml}
-                </div>
-                <input type="hidden" id="jec1_cod_modular_hidden" value="${esc(jec1erState.codModular)}">
+                <label for="jec1_cod_modular">Código Modular (7 dígitos) *</label>
+                <input type="text" id="jec1_cod_modular" class="jec1-input" placeholder="Ej: 0334680" maxlength="7" value="${esc(jec1erState.codModular || '')}" required style="font-weight:700;letter-spacing:1px">
+                <input type="hidden" id="jec1_cod_modular_hidden" value="${esc(jec1erState.codModular || '')}">
               </div>
             </div>
 
@@ -1134,7 +1133,7 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
   const ieInput = host.querySelector('#jec1_ie_nombre');
   const dropdown = host.querySelector('#jec1_ie_dropdown');
   const hint = host.querySelector('#jec1_colegio_hint');
-  const modBoxes = host.querySelectorAll('.jec1-mod-box');
+  const modInput = host.querySelector('#jec1_cod_modular');
   const modHidden = host.querySelector('#jec1_cod_modular_hidden');
   const ugelInput = host.querySelector('#jec1_ugel');
   const redInput = host.querySelector('#jec1_red');
@@ -1146,56 +1145,48 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
   const subTbody = host.querySelector('#jec1_subdirectores_tbody');
 
   const syncModularFromCode = (code) => {
-    const raw = String(code || '').replace(/\D/g, '');
-    const s = raw.padStart(7, ' ').slice(0, 7);
-    modBoxes.forEach((box, i) => {
-      box.value = s[i] && s[i] !== ' ' ? s[i] : '';
-    });
-    if (modHidden) modHidden.value = raw || '';
-    jec1erState.codModular = raw || '';
+    const raw = String(code || '').replace(/\D/g, '').slice(0, 7);
+    if (modInput) modInput.value = raw;
+    if (modHidden) modHidden.value = raw;
+    jec1erState.codModular = raw;
   };
 
-  const syncModularFromBoxes = () => {
-    let code = '';
-    modBoxes.forEach(b => { code += (b.value || ''); });
-    if (modHidden) modHidden.value = code;
-    jec1erState.codModular = code;
+  if (modInput) {
+    modInput.addEventListener('input', () => {
+      const clean = modInput.value.replace(/\D/g, '').slice(0, 7);
+      modInput.value = clean;
+      if (modHidden) modHidden.value = clean;
+      jec1erState.codModular = clean;
 
-    if (code.length === 7) {
-      const list = getJecColegiosList(state);
-      const matched = list.find(c => {
-        const cCode = cleanTextCode(c.codigoModular || c.codModular || c.codigoLocal || '');
-        return cCode === code;
-      });
-      if (matched && matched.id !== jec1erState.colegioId) {
-        onSelectColegio(matched);
-      }
-    }
-  };
-
-  modBoxes.forEach((box, idx) => {
-    box.addEventListener('input', () => {
-      box.value = box.value.replace(/\D/g, '').slice(0, 1);
-      if (box.value && idx < modBoxes.length - 1) {
-        modBoxes[idx + 1].focus();
-      }
-      syncModularFromBoxes();
-    });
-    box.addEventListener('keydown', (e) => {
-      if (e.key === 'Backspace' && !box.value && idx > 0) {
-        modBoxes[idx - 1].focus();
+      if (clean.length === 7) {
+        const list = getJecColegiosList(state);
+        const matched = list.find(c => {
+          const cCode = cleanTextCode(c.codigoModular || c.codModular || c.codigoLocal || '');
+          return cCode === clean;
+        });
+        if (matched && matched.id !== jec1erState.colegioId) {
+          onSelectColegio(matched);
+        }
       }
     });
-    box.addEventListener('paste', (e) => {
+
+    modInput.addEventListener('paste', (e) => {
       e.preventDefault();
       const pasted = (e.clipboardData || window.clipboardData).getData('text');
       const clean = String(pasted || '').replace(/\D/g, '').slice(0, 7);
-      if (clean) {
-        syncModularFromCode(clean);
-        syncModularFromBoxes();
+      syncModularFromCode(clean);
+      if (clean.length === 7) {
+        const list = getJecColegiosList(state);
+        const matched = list.find(c => {
+          const cCode = cleanTextCode(c.codigoModular || c.codModular || c.codigoLocal || '');
+          return cCode === clean;
+        });
+        if (matched && matched.id !== jec1erState.colegioId) {
+          onSelectColegio(matched);
+        }
       }
     });
-  });
+  }
 
   // Filtro estricto de colegios JEC usando el helper modular
   const getJecColegios = () => getJecColegiosList(state);
@@ -1528,6 +1519,19 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
     inp.addEventListener('input', () => {
       const cid = inp.dataset.condId;
       if (cid) jec1erState.condicionesHallazgos[cid] = inp.value;
+      const wrap = inp.closest('.itemObsWrap, .itemEvidenciaWrap');
+      if (wrap) {
+        const btn = host.querySelector(`[data-target-obs="${wrap.id}"], [data-target-evid="${wrap.id}"]`);
+        if (btn) {
+          if (inp.value.trim()) {
+            btn.classList.add('has-content');
+            btn.textContent = '💬 Observación ✓';
+          } else {
+            btn.classList.remove('has-content');
+            btn.textContent = '💬 Observación';
+          }
+        }
+      }
     });
   });
 
@@ -1569,6 +1573,52 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
     inp.addEventListener('input', () => {
       const iid = inp.dataset.itemId;
       if (iid) jec1erState.puntajesHallazgos[iid] = inp.value;
+      const wrap = inp.closest('.itemObsWrap, .itemEvidenciaWrap');
+      if (wrap) {
+        const btn = host.querySelector(`[data-target-obs="${wrap.id}"], [data-target-evid="${wrap.id}"]`);
+        if (btn) {
+          if (inp.value.trim()) {
+            btn.classList.add('has-content');
+            btn.textContent = '💬 Observación ✓';
+          } else {
+            btn.classList.remove('has-content');
+            btn.textContent = '💬 Observación';
+          }
+        }
+      }
+    });
+  });
+
+  // Toggle de visibilidad de evidencias/hallazgos para acortar la ficha
+  host.querySelectorAll('.btnToggleObs, .btnToggleEvidencia').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const targetId = btn.dataset.targetObs || btn.dataset.targetEvid;
+      if (!targetId) return;
+      const wrap = host.querySelector('#' + targetId);
+      if (!wrap) return;
+
+      const isHidden = (wrap.style.display === 'none' || getComputedStyle(wrap).display === 'none');
+      if (isHidden) {
+        wrap.style.display = 'block';
+        btn.classList.add('active');
+        btn.textContent = '✕ Ocultar obs.';
+        const inp = wrap.querySelector('input, textarea');
+        if (inp) inp.focus();
+      } else {
+        wrap.style.display = 'none';
+        btn.classList.remove('active');
+        const inp = wrap.querySelector('input, textarea');
+        const hasVal = inp && Boolean(inp.value.trim());
+        if (hasVal) {
+          btn.classList.add('has-content');
+          btn.textContent = '💬 Observación ✓';
+        } else {
+          btn.classList.remove('has-content');
+          btn.textContent = '💬 Observación';
+        }
+      }
     });
   });
 
@@ -1657,7 +1707,7 @@ export function collectJec1erFormData(host, ft, isEdit = false) {
 
     // Recoger Datos Generales
     const colegioNombre = (host.querySelector('#jec1_ie_nombre')?.value || jec1erState.colegioNombre || '').trim();
-    const codModular = (host.querySelector('#jec1_cod_modular_hidden')?.value || jec1erState.codModular || '').trim();
+    const codModular = (host.querySelector('#jec1_cod_modular')?.value || host.querySelector('#jec1_cod_modular_hidden')?.value || jec1erState.codModular || '').trim();
     const ugel = (host.querySelector('#jec1_ugel')?.value || '03').trim();
     const red = (host.querySelector('#jec1_red')?.value || '').trim();
     const fecha = (host.querySelector('#jec1_fecha')?.value || todayStr()).trim();

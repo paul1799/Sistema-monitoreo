@@ -28,7 +28,8 @@ import {
   openLogoutConfirmModal,
   getConcursoSubTab,
   setConcursoSubTab,
-} from './ui.js?v=20261016_v6';
+  getDeletedFichaTypeIds,
+} from './ui.js?v=20261019_v3';
 
 import { renderPortalView } from './portal.js?v=20261014_v1';
 import { renderDirectorioTab } from './directorio.js?v=20261015_v1';
@@ -93,7 +94,7 @@ function getFichaType(id) {
   if (!found) {
     if (isFichaEbrGestionEscolar(id)) {
       found = (state.fichaTypes || []).find(f => isFichaEbrGestionEscolar(f)) || PLANTILLAS_BASE_OFICIALES.ft_gestion_ugel03_ebr;
-    } else if (id === 'ft_jec' || id === 'ft_msejec_2do') {
+    } else if (id === 'ft_jec' || id === 'ft_msejec_2do' || id === 'ft_msejec_1er' || id === 'ft_msejec_3er') {
       found = (state.fichaTypes || []).find(f => f.id === 'ft_msejec_2do' || f.id === 'ft_jec');
     }
   }
@@ -390,99 +391,165 @@ function startListeners() {
   activeUnsubscribers.push(
     dbNs.collection('fichaTypes').onSnapshot(snap => {
       const rawLoaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const loadedIds = new Set(rawLoaded.map(x => x.id));
+      const deletedIds = getDeletedFichaTypeIds();
+
+      // 1. Filtrar cualquier documento que el usuario haya eliminado explícitamente
+      const activeRaw = rawLoaded.filter(x => !deletedIds.has(x.id));
+      const loadedIds = new Set(activeRaw.map(x => x.id));
+
+      // 2. Inyectar plantillas oficiales base si no existen en Firestore y no fueron eliminadas ni son alias
       Object.entries(PLANTILLAS_BASE_OFICIALES).forEach(([id, baseFt]) => {
-        if (!loadedIds.has(id)) {
-          rawLoaded.push({ id, ...baseFt });
+        if (!loadedIds.has(id) && !deletedIds.has(id) && (!ALIAS_A_PLANTILLA_BASE || !ALIAS_A_PLANTILLA_BASE[id])) {
+          activeRaw.push({ id, ...baseFt });
         }
       });
 
-      // 0. Validar, autorreparar y unificar la plantilla oficial de Gestión Escolar EBR (1 sola ficha con sus 3 visitas)
+      // 3. Unificar Gestión Escolar EBR (1 sola ficha con sus 3 visitas, preservando modificaciones del usuario)
       const officialEbr = PLANTILLAS_BASE_OFICIALES.ft_gestion_ugel03_ebr;
-      let ebrDoc = rawLoaded.find(x => x.id === 'ft_gestion_ugel03_ebr');
+      let ebrDoc = activeRaw.find(x => x.id === 'ft_gestion_ugel03_ebr' || isFichaEbrGestionEscolar(x));
       if (!ebrDoc) {
         ebrDoc = { id: 'ft_gestion_ugel03_ebr', ...officialEbr };
+      } else {
+        ebrDoc.id = 'ft_gestion_ugel03_ebr';
+        ebrDoc.nombre = ebrDoc.nombre || officialEbr.nombre;
+        ebrDoc.nombreCorto = ebrDoc.nombreCorto || officialEbr.nombreCorto;
+        ebrDoc.descripcion = ebrDoc.descripcion || officialEbr.descripcion;
+        ebrDoc.icono = ebrDoc.icono || officialEbr.icono || '🏛️';
+        ebrDoc.color = ebrDoc.color || officialEbr.color || '#1E40AF';
+        ebrDoc.modalidad = ebrDoc.modalidad || officialEbr.modalidad || 'EBR Primaria';
+        ebrDoc.grupo = ebrDoc.grupo || 'EBR';
+        ebrDoc.orden = typeof ebrDoc.orden === 'number' ? ebrDoc.orden : 20;
+        ebrDoc.tieneVisitas = true;
+        ebrDoc.tipoVisitas = 'items_por_visita';
+        ebrDoc.visitas = Array.isArray(ebrDoc.visitas) && ebrDoc.visitas.length > 0 ? ebrDoc.visitas : officialEbr.visitas;
+        ebrDoc.seccionesPorVisita = ebrDoc.seccionesPorVisita || officialEbr.seccionesPorVisita;
+        ebrDoc.secciones = Array.isArray(ebrDoc.secciones) && ebrDoc.secciones.length > 0 ? ebrDoc.secciones : officialEbr.secciones;
       }
-      Object.assign(ebrDoc, {
-        id: 'ft_gestion_ugel03_ebr',
-        nombre: officialEbr.nombre,
-        nombreCorto: officialEbr.nombreCorto,
-        descripcion: officialEbr.descripcion,
-        icono: officialEbr.icono || '🏛️',
-        color: officialEbr.color || '#1E40AF',
-        modalidad: officialEbr.modalidad || 'EBR Primaria',
-        grupo: 'EBR',
-        orden: 20,
-        tieneVisitas: true,
-        tipoVisitas: 'items_por_visita',
-        visitas: [
-          'Visita 1 · Primer momento',
-          'Visita 2 · Segundo momento',
-          'Visita 3 · Tercer momento (Salida)'
-        ],
-        seccionesPorVisita: officialEbr.seccionesPorVisita,
-        secciones: officialEbr.secciones
-      });
 
-      // Filtrar cualquier duplicado o alias de Gestión Escolar EBR para que en el estado exista SOLO UNA ficha
+      // 4. Unificar Modelo JEC (1 sola ficha canónica ft_msejec_2do con sus 3 momentos/visitas, preservando ediciones)
+      const officialJec = PLANTILLAS_BASE_OFICIALES.ft_msejec_2do;
+      const isJecImplementation = (item) => {
+        if (!item) return false;
+        const id = item.id || '';
+        if (id === 'ft_msejec_2do' || id === 'ft_jec' || id === 'ft_msejec_1er' || id === 'ft_msejec_3er') return true;
+        if (ALIAS_A_PLANTILLA_BASE && ALIAS_A_PLANTILLA_BASE[id] === 'ft_msejec_2do') return true;
+        const n = (item.nombre || '').toLowerCase();
+        if (n.includes('implementación del modelo jec') || n.includes('implementacion del modelo jec') || n.includes('modelo jec')) {
+          if (!n.includes('tutoría') && !n.includes('tutoria')) return true;
+        }
+        return false;
+      };
+
+      let jecDoc = activeRaw.find(x => x.id === 'ft_msejec_2do') || activeRaw.find(isJecImplementation);
+      if (!jecDoc) {
+        jecDoc = { id: 'ft_msejec_2do', ...officialJec };
+      } else {
+        jecDoc.id = 'ft_msejec_2do';
+        jecDoc.nombre = jecDoc.nombre || officialJec.nombre;
+        jecDoc.nombreCorto = jecDoc.nombreCorto || officialJec.nombreCorto;
+        jecDoc.descripcion = jecDoc.descripcion || officialJec.descripcion;
+        jecDoc.icono = jecDoc.icono || officialJec.icono || '🏫';
+        jecDoc.color = jecDoc.color || officialJec.color || '#059669';
+        jecDoc.modalidad = jecDoc.modalidad || 'JEC';
+        jecDoc.grupo = jecDoc.grupo || 'Modelo JEC';
+        jecDoc.orden = typeof jecDoc.orden === 'number' ? jecDoc.orden : 10;
+        jecDoc.tieneVisitas = true;
+        jecDoc.tipoVisitas = 'items_por_visita';
+        jecDoc.visitas = Array.isArray(jecDoc.visitas) && jecDoc.visitas.length > 0 ? jecDoc.visitas : officialJec.visitas;
+        jecDoc.seccionesPorVisita = jecDoc.seccionesPorVisita || officialJec.seccionesPorVisita;
+        jecDoc.secciones = Array.isArray(jecDoc.secciones) && jecDoc.secciones.length > 0 ? jecDoc.secciones : officialJec.secciones;
+      }
+
+      // 5. Unificar Ficha de Directivo (1 sola ficha, deduplicando copias sin registros)
+      const isDirectivoDoc = (item) => {
+        if (!item) return false;
+        if (item.id === 'ft_directivo') return true;
+        const n = (item.nombre || '').trim().toLowerCase();
+        return n === 'ficha de monitoreo al directivo de ie';
+      };
+
+      const directivoCandidates = activeRaw.filter(isDirectivoDoc);
+      let directivoDoc = null;
+      if (directivoCandidates.length > 0) {
+        const currentSubs = state.submissions || [];
+        directivoDoc = directivoCandidates.find(c => currentSubs.some(s => s.fichaTypeId === c.id)) || directivoCandidates[0];
+        if ((!directivoDoc.secciones || directivoDoc.secciones.length === 0) && PLANTILLAS_BASE_OFICIALES.ft_directivo) {
+          directivoDoc.secciones = PLANTILLAS_BASE_OFICIALES.ft_directivo.secciones;
+        }
+      }
+
+      // 6. Sanitizar PRITE y CEBE (fallback inicial si estuvieran vacíos, sin sobreescribir ediciones del usuario)
+      const priteDoc = activeRaw.find(x => x.id === 'ft_prite_gestion');
+      if (priteDoc && (!Array.isArray(priteDoc.secciones) || priteDoc.secciones.length === 0)) {
+        Object.assign(priteDoc, PLANTILLAS_BASE_OFICIALES.ft_prite_gestion);
+      }
+
+      const cebeDoc = activeRaw.find(x => x.id === 'ft_gestion_cebe');
+      if (cebeDoc && (!Array.isArray(cebeDoc.secciones) || cebeDoc.secciones.length === 0)) {
+        Object.assign(cebeDoc, PLANTILLAS_BASE_OFICIALES.ft_gestion_cebe);
+      }
+
+      // 7. Filtrar la lista final deduplicando EBR, JEC y Directivos
       const loaded = [];
       let ebrAdded = false;
-      rawLoaded.forEach(item => {
-        const isEbr = isFichaEbrGestionEscolar(item) || item.id === 'ft_gestion_ugel03_ebr' || (ALIAS_A_PLANTILLA_BASE && ALIAS_A_PLANTILLA_BASE[item.id] === 'ft_gestion_ugel03_ebr');
-        if (isEbr) {
+      let jecAdded = false;
+      let directivoAdded = false;
+
+      activeRaw.forEach(item => {
+        if (deletedIds.has(item.id)) return;
+
+        // EBR
+        if (isFichaEbrGestionEscolar(item) || item.id === 'ft_gestion_ugel03_ebr' || (ALIAS_A_PLANTILLA_BASE && ALIAS_A_PLANTILLA_BASE[item.id] === 'ft_gestion_ugel03_ebr')) {
           if (!ebrAdded) {
             loaded.push(ebrDoc);
             ebrAdded = true;
           }
           return;
         }
-        loaded.push(item);
-      });
-      if (!ebrAdded) {
-        loaded.push(ebrDoc);
-      }
 
-      // 1. Validar y autorreparar la plantilla oficial de PRITE (7 secciones, 32 ítems: 3, 5, 6, 3, 8, 5, 2)
-      const priteDoc = loaded.find(x => x.id === 'ft_prite_gestion');
-      const isOfficialPrite = priteDoc && Array.isArray(priteDoc.secciones) && priteDoc.secciones.length === 7 && priteDoc.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 32;
-      if (priteDoc && !isOfficialPrite) {
-        console.warn('Detectada plantilla PRITE no canónica en Firestore. Restaurando 7 secciones oficiales y 32 ítems (RM N° 501-2025-MINEDU)...');
-        Object.assign(priteDoc, PLANTILLAS_BASE_OFICIALES.ft_prite_gestion);
-        dbNs.collection('fichaTypes').doc('ft_prite_gestion').set({
-          ...PLANTILLAS_BASE_OFICIALES.ft_prite_gestion,
-          updatedAt: Date.now()
-        }, { merge: true }).catch(err => console.warn('Error autorreparando ft_prite_gestion en Firestore:', err));
-      }
-
-      // 2. Validar y autorreparar la plantilla oficial de CEBE (7 secciones, 34 ítems)
-      const cebeDoc = loaded.find(x => x.id === 'ft_gestion_cebe');
-      const isOfficialCebe = cebeDoc && Array.isArray(cebeDoc.secciones) && cebeDoc.secciones.length === 7 && cebeDoc.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 34 && cebeDoc.secciones.every(s => s.num);
-      if (cebeDoc && !isOfficialCebe) {
-        console.warn('Detectada plantilla CEBE no canónica o sin numeración en Firestore. Restaurando 7 secciones oficiales y 34 ítems...');
-        Object.assign(cebeDoc, PLANTILLAS_BASE_OFICIALES.ft_gestion_cebe);
-        dbNs.collection('fichaTypes').doc('ft_gestion_cebe').set({
-          ...PLANTILLAS_BASE_OFICIALES.ft_gestion_cebe,
-          updatedAt: Date.now()
-        }, { merge: true }).catch(err => console.warn('Error autorreparando ft_gestion_cebe en Firestore:', err));
-      }
-
-      // 3. Sanitizar sistemáticamente todas las plantillas para que sec.num e it.num nunca sean undefined
-      loaded.forEach(ftItem => {
-        // Homogeneizar la Ficha Unificada de Monitoreo a la Implementación del Modelo JEC (Estilo EBR)
-        if (ftItem.id === 'ft_msejec_2do' || ftItem.id === 'ft_jec' || ftItem.id === 'ft_msejec_1er' || ftItem.id === 'ft_msejec_3er') {
-          ftItem.nombre = 'Monitoreo a la Implementación del Modelo JEC';
-          ftItem.nombreCorto = 'Monitoreo a la Implementación del Modelo JEC';
-          ftItem.grupo = 'Modelo JEC';
-          ftItem.orden = 10;
-          ftItem.tieneVisitas = true;
-          ftItem.tipoVisitas = 'items_por_visita';
-          ftItem.visitas = [
-            '1er Monitoreo · Primer momento (Inicio)',
-            '2do Monitoreo · Segundo momento (Proceso)',
-            '3er Monitoreo · Tercer momento (Salida)'
-          ];
+        // JEC
+        if (isJecImplementation(item)) {
+          if (!jecAdded) {
+            loaded.push(jecDoc);
+            jecAdded = true;
+          }
+          // Limpiar de Firestore duplicados residuales sin registros
+          if (item.id !== 'ft_msejec_2do' && dbNs && (item.id === 'ft_msejec_1er' || item.id === 'ft_jec' || item.id === 'ft_msejec_3er')) {
+            const currentSubs = state.submissions || [];
+            const hasSubs = currentSubs.some(s => s.fichaTypeId === item.id);
+            if (!hasSubs) {
+              dbNs.collection('fichaTypes').doc(item.id).delete().catch(() => {});
+            }
+          }
+          return;
         }
 
+        // Directivo
+        if (isDirectivoDoc(item)) {
+          if (!directivoAdded && directivoDoc) {
+            loaded.push(directivoDoc);
+            directivoAdded = true;
+          }
+          // Limpiar de Firestore duplicados residuales sin registros
+          if (directivoDoc && item.id !== directivoDoc.id && dbNs) {
+            const currentSubs = state.submissions || [];
+            const hasSubs = currentSubs.some(s => s.fichaTypeId === item.id);
+            if (!hasSubs) {
+              dbNs.collection('fichaTypes').doc(item.id).delete().catch(() => {});
+            }
+          }
+          return;
+        }
+
+        loaded.push(item);
+      });
+
+      if (!ebrAdded && ebrDoc) loaded.push(ebrDoc);
+      if (!jecAdded && jecDoc) loaded.push(jecDoc);
+      if (!directivoAdded && directivoDoc) loaded.push(directivoDoc);
+
+      // 8. Sanitizar que sec.num e it.num no sean undefined
+      loaded.forEach(ftItem => {
         if (Array.isArray(ftItem.secciones)) {
           let runningItemNum = 1;
           ftItem.secciones.forEach((sec, sIdx) => {
@@ -838,6 +905,38 @@ async function initApp() {
       'No se pudo inicializar Firebase. Revisa la configuración (firebase-config.js).';
     return;
   }
+
+  // Manejador delegado universal para botones de observación, evidencia y hallazgos en todas las fichas
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btnToggleObs, .btnToggleEvidencia');
+    if (!btn) return;
+    const targetId = btn.dataset.targetObs || btn.dataset.targetEvid;
+    if (!targetId) return;
+    const wrap = document.getElementById(targetId);
+    if (!wrap) return;
+
+    e.preventDefault();
+    const isHidden = (wrap.style.display === 'none' || window.getComputedStyle(wrap).display === 'none');
+    if (isHidden) {
+      wrap.style.display = 'block';
+      btn.classList.add('active');
+      btn.textContent = '✕ Ocultar obs.';
+      const inp = wrap.querySelector('textarea, input');
+      if (inp) inp.focus();
+    } else {
+      wrap.style.display = 'none';
+      btn.classList.remove('active');
+      const inp = wrap.querySelector('textarea, input');
+      const hasVal = inp && Boolean(inp.value.trim());
+      if (hasVal) {
+        btn.classList.add('has-content');
+        btn.textContent = '💬 Observación ✓';
+      } else {
+        btn.classList.remove('has-content');
+        btn.textContent = '💬 Observación';
+      }
+    }
+  });
 
   // Configurar navegación entre pestañas
   setupNavigation(state, render);

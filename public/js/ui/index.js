@@ -33,7 +33,7 @@ export * from './responsables-tab.js';
 export * from './colegios-tab.js';
 
 // Concursos escolares y consolidados
-export * from './concursos-tab.js';
+export * from './concursos-tab.js?v=20261019_v2';
 
 // Reportes y reglas JEC (3 momentos)
 export * from './jec-reportes.js';

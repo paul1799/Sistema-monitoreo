@@ -19,8 +19,63 @@ import {
   unlockBodyScroll,
   forceResetBodyScroll,
   formatearNombre
-} from './core-utils.js?v=20261015_v1';
-import { proponerSeparacionNombre, obtenerCuerpoTecnicoGrupo } from '../pdf-template.js';
+} from './core-utils.js';
+import {
+  proponerSeparacionNombre,
+  obtenerCuerpoTecnicoGrupo as _obtenerCuerpoTecnicoGrupo,
+  getTituloConsolidadoConcurso as _getTituloConsolidadoTemplate
+} from '../pdf-template.js';
+import {
+  obtenerCuerpoTecnicoGrupo as _obtenerCtGrupoConcursos,
+  exportActaOrdenMeritoPdf,
+  exportConcursosReportPdf,
+  getTituloConsolidadoConcurso as _getTituloConsolidadoConcursos
+} from '../pdf-concursos.js';
+import { openDownloadConfigModal } from './modales.js';
+
+export function getTituloConsolidadoConcurso(tipoConcurso) {
+  if (typeof _getTituloConsolidadoConcursos === 'function') {
+    try {
+      const res = _getTituloConsolidadoConcursos(tipoConcurso);
+      if (res) return res;
+    } catch (e) {
+      console.warn('Aviso resolviendo getTituloConsolidadoConcurso en pdf-concursos:', e);
+    }
+  }
+  if (typeof _getTituloConsolidadoTemplate === 'function') {
+    try {
+      const res = _getTituloConsolidadoTemplate(tipoConcurso);
+      if (res) return res;
+    } catch (e) {
+      console.warn('Aviso resolviendo getTituloConsolidadoConcurso en pdf-template:', e);
+    }
+  }
+  const nombre = tipoConcurso ? (tipoConcurso.nombre || tipoConcurso.id || '') : 'CONCURSOS EDUCATIVOS ESCOLARES';
+  return `CONSOLIDADO OFICIAL DE LOS RESULTADOS - ${String(nombre).toUpperCase().trim()}`;
+}
+
+export function obtenerCuerpoTecnicoGrupo(target, arg2 = [], arg3 = {}, arg4 = null) {
+  if (typeof _obtenerCtGrupoConcursos === 'function') {
+    try {
+      return _obtenerCtGrupoConcursos(target, arg2, arg3, arg4);
+    } catch (e) {
+      console.warn('Aviso resolviendo cuerpo técnico en pdf-concursos:', e);
+    }
+  }
+  if (typeof _obtenerCuerpoTecnicoGrupo === 'function') {
+    try {
+      return _obtenerCuerpoTecnicoGrupo(target, arg2, arg3, arg4);
+    } catch (e) {
+      console.warn('Aviso resolviendo cuerpo técnico en pdf-template:', e);
+    }
+  }
+  return {
+    miembros: [],
+    personas: [],
+    origen: 'empty',
+    esGrupoFormalizado: false
+  };
+}
 
 export function parseArteDisciplina(disciplinaStr) {
   if (!disciplinaStr || !String(disciplinaStr).trim()) {
@@ -450,10 +505,10 @@ export function renderConcursosTab(container, state, dbNs, isAdmin, currentUser,
     }
   }
 
-  // Definir sub-pestañas disponibles
+  // Definir sub-pestañas disponibles alineadas con la barra superior
   const subTabs = [
-    { id: 'registrar', label: '➕ Registrar participante' },
     { id: 'consolidado', label: '📊 Ver consolidado' },
+    { id: 'registrar', label: '➕ Registrar participante' },
     { id: 'asignar_podios', label: '🏆 Asignar puestos' },
     { id: 'asistente', label: '🔤 Revisar nombres' },
   ];
@@ -461,9 +516,9 @@ export function renderConcursosTab(container, state, dbNs, isAdmin, currentUser,
     subTabs.push({ id: 'tipos', label: '⚙ Tipos de concurso' });
   }
 
-  // Si un no-admin quedó en subpestaña 'tipos', redirigir a 'registrar'
+  // Si un no-admin quedó en subpestaña 'tipos', redirigir a 'consolidado'
   if (!isAdmin && concursoSubTab === 'tipos') {
-    concursoSubTab = 'registrar';
+    concursoSubTab = 'consolidado';
   }
 
   const subTabButtonsHtml = subTabs.map(t =>
@@ -480,7 +535,15 @@ export function renderConcursosTab(container, state, dbNs, isAdmin, currentUser,
 
   container.querySelectorAll('[data-csubtab]').forEach(btn => {
     btn.addEventListener('click', () => {
-      setConcursoSubTab(btn.dataset.csubtab);
+      const newSub = btn.dataset.csubtab;
+      setConcursoSubTab(newSub);
+      // Sincronizar barra superior si existe en el DOM
+      const topNav = document.getElementById('subNavBar');
+      if (topNav) {
+        topNav.querySelectorAll('.navbtn[data-csubtab]').forEach(b => {
+          b.classList.toggle('active', b.dataset.csubtab === newSub);
+        });
+      }
       renderConcursosTab(container, state, dbNs, isAdmin, currentUser, navigate);
     });
   });
@@ -488,16 +551,30 @@ export function renderConcursosTab(container, state, dbNs, isAdmin, currentUser,
   const host = document.getElementById('concursoSubHost');
   if (!host) return;
 
-  if (concursoSubTab === 'registrar') {
-    renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, container, navigate);
-  } else if (concursoSubTab === 'consolidado') {
-    renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
-  } else if (concursoSubTab === 'asignar_podios') {
-    renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate);
-  } else if (concursoSubTab === 'asistente') {
-    renderAsistenteSeparacionNombres(host, state, dbNs, isAdmin, currentUser, container, navigate);
-  } else if (concursoSubTab === 'tipos' && isAdmin) {
-    renderConcursoTiposCatalogView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+  try {
+    if (concursoSubTab === 'registrar') {
+      renderConcursoRegistroView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    } else if (concursoSubTab === 'consolidado') {
+      renderConcursoConsolidadoView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    } else if (concursoSubTab === 'asignar_podios') {
+      renderAsignarPodiosView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    } else if (concursoSubTab === 'asistente') {
+      renderAsistenteSeparacionNombres(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    } else if (concursoSubTab === 'tipos' && isAdmin) {
+      renderConcursoTiposCatalogView(host, state, dbNs, isAdmin, currentUser, container, navigate);
+    }
+  } catch (err) {
+    console.error(`Error renderizando subpestaña ${concursoSubTab}:`, err);
+    host.innerHTML = `
+      <div class="panel" style="padding:24px;border-left:4px solid var(--danger,#ef4444);background:#fef2f2;margin-top:16px">
+        <h4 style="color:#991b1b;margin-bottom:8px">Ocurrió un inconveniente al cargar esta sección</h4>
+        <p style="color:#7f1d1d;font-size:13px;margin-bottom:14px">${esc(err.message || 'Error inesperado')}</p>
+        <button type="button" class="btn small" id="btnRetryConcursoSub">Reintentar</button>
+      </div>
+    `;
+    document.getElementById('btnRetryConcursoSub')?.addEventListener('click', () => {
+      renderConcursosTab(container, state, dbNs, isAdmin, currentUser, navigate);
+    });
   }
 }
 
@@ -2609,14 +2686,16 @@ export function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, curren
 
   // Cálculo de cuerpo técnico único para JEDPA
   const ctSet = new Set();
-  filtered.forEach(r => {
-    const ctInfo = obtenerCuerpoTecnicoGrupo(r, state.concursoCuerpoTecnico || [], filtered);
-    (ctInfo.miembros || []).forEach(m => {
-      const k = (m.dni && m.dni.trim()) ? m.dni.trim() : [m.nombres, m.apellidos].filter(Boolean).join(' ').trim().toUpperCase();
-      if (k) ctSet.add(k);
+  if (isJedpa) {
+    filtered.forEach(r => {
+      const ctInfo = obtenerCuerpoTecnicoGrupo(r, state.concursoCuerpoTecnico || [], filtered);
+      (ctInfo?.miembros || []).forEach(m => {
+        const k = (m.dni && m.dni.trim()) ? m.dni.trim() : [m.nombres, m.apellidos].filter(Boolean).join(' ').trim().toUpperCase();
+        if (k) ctSet.add(k);
+      });
     });
-  });
-  const totalCtUnicos = ctSet.size > 0 ? ctSet.size : totalAsesUnicos;
+  }
+  const totalCtUnicos = isJedpa ? (ctSet.size > 0 ? ctSet.size : totalAsesUnicos) : totalAsesUnicos;
 
   // Banner informativo del cuerpo técnico si se está filtrando un grupo específico en JEDPA
   const isGroupFiltered = isJedpa && concursoFilters.disciplina && concursoFilters.categoria && concursoFilters.genero;
@@ -3128,7 +3207,7 @@ export function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, curren
               <button type="button" class="btn secondary small" id="cf_detectDuplicatesBtn" title="Buscar registros duplicados o puestos repetidos">🔍 Detectar duplicados</button>
             </div>
             <div class="concursoActionsRight">
-              <button type="button" class="btn secondary small" id="cf_exportCsv">Exportar CSV</button>
+              <button type="button" class="btn secondary small" id="cf_exportCsv" title="Descargar datos en formato oficial Excel (.xlsx) o CSV">📊 Descargar Excel (.xlsx)</button>
               <button type="button" class="btn small" id="cf_exportPdf">⬇ Descargar reporte (PDF)</button>
             </div>
           </div>
@@ -3225,7 +3304,7 @@ export function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, curren
               <button type="button" class="btn secondary small" id="cf_detectDuplicatesBtn" title="Buscar registros duplicados o puestos repetidos">🔍 Detectar duplicados</button>
             </div>
             <div class="concursoActionsRight">
-              <button type="button" class="btn secondary small" id="cf_exportCsv">Exportar CSV</button>
+              <button type="button" class="btn secondary small" id="cf_exportCsv" title="Descargar datos en formato oficial Excel (.xlsx) o CSV">📊 Descargar Excel (.xlsx)</button>
               <button type="button" class="btn small" id="cf_exportPdf">⬇ Descargar reporte (PDF)</button>
             </div>
           </div>
@@ -3283,7 +3362,7 @@ export function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, curren
               <button type="button" class="btn secondary small" id="cf_detectDuplicatesBtn" title="Buscar registros duplicados o puestos repetidos">🔍 Detectar duplicados</button>
             </div>
             <div class="concursoActionsRight">
-              <button type="button" class="btn secondary small" id="cf_exportCsv">Exportar CSV</button>
+              <button type="button" class="btn secondary small" id="cf_exportCsv" title="Descargar datos en formato oficial Excel (.xlsx) o CSV">📊 Descargar Excel (.xlsx)</button>
               <button type="button" class="btn small" id="cf_exportPdf">⬇ Descargar reporte (PDF)</button>
             </div>
           </div>
@@ -3605,8 +3684,10 @@ export function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, curren
 
   // Exportar PDF oficial de concursos (Acta de Resultados A4 Landscape o Fichas JFEN A4 Portrait o Fichas JEDPA Colectivas)
   document.getElementById('cf_exportPdf').addEventListener('click', async () => {
-    const { openDownloadConfigModal } = await import('../ui.js?v=20261015_v1');
-    const { exportActaOrdenMeritoPdf, exportConcursosReportPdf } = await import('../pdf-concursos.js?v=20261014_v1');
+    if (!filtered || filtered.length === 0) {
+      showToast('No hay registros de ganadores para descargar con los filtros actuales.');
+      return;
+    }
     const formatoTipo = getFormatoPdfConcurso(tipo);
     const esJfenConcurso = isJfen;
     const esJedpaConcurso = isJedpa || (tipo && (tipo.id === 'jedpa' || (tipo.nombre || '').toUpperCase().includes('JEDPA')));
@@ -3624,17 +3705,22 @@ export function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, curren
       filters: concursoFilters,
       formatoPdfActas: formatoTipo,
       onConfirm: async (cfg) => {
-        if (cfg.formatoConcurso === 'orden_merito') {
-          await exportActaOrdenMeritoPdf(filtered, tipo, concursoFilters, cfg);
+        const curTipo = tipo || (state.tiposConcurso || []).find(t => t.id === concursoFilters.tipoId) || null;
+        if (cfg && cfg.formatoConcurso === 'orden_merito') {
+          await exportActaOrdenMeritoPdf(filtered, curTipo, concursoFilters, cfg);
         } else {
-          await exportConcursosReportPdf(filtered, tipo, concursoFilters, cfg);
+          await exportConcursosReportPdf(filtered, curTipo, concursoFilters, cfg);
         }
       }
     });
   });
 
-  // Exportar CSV — columnas separadas: Apellidos | Nombres | DNI | Rol
+  // Exportar Excel (.xlsx) oficial o CSV — columnas separadas: Apellidos | Nombres | DNI | Rol
   document.getElementById('cf_exportCsv').addEventListener('click', () => {
+    if (!filtered || filtered.length === 0) {
+      showToast('No hay registros para exportar con los filtros seleccionados.');
+      return;
+    }
     let headers;
     if (isJedpa) {
       headers = [
@@ -3670,7 +3756,9 @@ export function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, curren
 
       if (isJedpa) {
         // En JEDPA: participantes individuales + cuerpo técnico del grupo (o individual) en mayúsculas
-        const grupoCt = obtenerCuerpoTecnicoGrupo(r, state.concursoCuerpoTecnico || [], filtered);
+        const grupoCt = typeof obtenerCuerpoTecnicoGrupo === 'function'
+          ? obtenerCuerpoTecnicoGrupo(r, state.concursoCuerpoTecnico || [], filtered)
+          : { miembros: [], origen: 'individual' };
         const ctMiembros = (grupoCt.miembros && grupoCt.miembros.length > 0)
           ? grupoCt.miembros.map(m => ({ ...m, _origen: grupoCt.origen === 'concursoCuerpoTecnico' ? 'grupo' : 'grupo' }))
           : (r.asesores || []).map(a => ({ ...a, _origen: 'individual' }));
@@ -3736,7 +3824,33 @@ export function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, curren
         }
       }
     });
-    downloadCsv('concursos_' + (tipo ? tipo.id : 'todos') + '_' + todayStr() + '.csv', headers, rows);
+
+    const fileBaseName = 'concursos_' + (tipo ? tipo.id : 'todos') + '_' + todayStr();
+    if (typeof XLSX !== 'undefined') {
+      try {
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        const colWidths = headers.map((h, i) => {
+          let maxLen = String(h).length;
+          for (let r = 0; r < Math.min(rows.length, 120); r++) {
+            const val = rows[r][i];
+            if (val) maxLen = Math.max(maxLen, String(val).length);
+          }
+          return { wch: Math.min(Math.max(maxLen + 3, 10), 45) };
+        });
+        ws['!cols'] = colWidths;
+        const wb = XLSX.utils.book_new();
+        const sheetTitle = (tipo?.nombre || 'Concursos').slice(0, 31).replace(/[:\\\/\?\*\[\]]/g, '');
+        XLSX.utils.book_append_sheet(wb, ws, sheetTitle);
+        XLSX.writeFile(wb, `${fileBaseName}.xlsx`);
+        showToast('✓ Archivo Excel (.xlsx) generado exitosamente.');
+      } catch (err) {
+        console.error('Error generando archivo Excel:', err);
+        showToast('Generando archivo CSV de respaldo...');
+        downloadCsv(`${fileBaseName}.csv`, headers, rows);
+      }
+    } else {
+      downloadCsv(`${fileBaseName}.csv`, headers, rows);
+    }
   });
 
   // Expandir fila al hacer clic
@@ -5075,7 +5189,7 @@ async function ejecutarImportacionGanadores(dbNs, state, container, isAdmin, cur
 
 // Función para sincronizar / retroalimentar UGEL y RED/REI en fichas que no los tengan
 export async function backfillSubmissionsUgelRed(dbNs, state) {
-  const { getSubmissionResponsable } = await import('../ui.js?v=20261015_v1');
+  const { getSubmissionResponsable } = await import('./scoring.js');
   const colegios = state.colegios || [];
   const submissions = state.submissions || [];
   if (!submissions.length) return 0;

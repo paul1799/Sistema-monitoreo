@@ -2669,3 +2669,65 @@ button:focus-visible {
     border-radius: 0 !important;
   }
 }
+
+/* ---------- Botón colapsable para Observaciones / Hallazgos / Evidencias ---------- */
+.btnToggleObs,
+.btnToggleEvidencia {
+  background: var(--surface-2, #f8fafc);
+  border: 1px dashed #94a3b8;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+  line-height: 1.3;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.btnToggleObs:hover,
+.btnToggleEvidencia:hover {
+  background: #f1f5f9;
+  border-color: #64748b;
+  color: #1e293b;
+  transform: translateY(-1px);
+}
+
+.btnToggleObs.has-content,
+.btnToggleObs.active,
+.btnToggleEvidencia.has-content,
+.btnToggleEvidencia.active {
+  background: rgba(2, 132, 199, 0.08);
+  border: 1px solid #0284c7;
+  color: #0369a1;
+  font-weight: 700;
+}
+
+.btnToggleObs.has-content:hover,
+.btnToggleObs.active:hover,
+.btnToggleEvidencia.has-content:hover,
+.btnToggleEvidencia.active:hover {
+  background: rgba(2, 132, 199, 0.16);
+  border-color: #0284c7;
+}
+
+.itemObsWrap,
+.itemEvidenciaWrap {
+  animation: fadeInEvid 0.18s ease-out;
+}
+
+@keyframes fadeInEvid {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -90,7 +90,7 @@ import {
   exportFichasGrupalesConcursoPdf as _exportFichasGrupalesConcursoPdf,
   exportConcursosReportPdf as _exportConcursosReportPdf,
   exportActaOrdenMeritoPdf as _exportActaOrdenMeritoPdf
-} from './pdf-concursos.js?v=20261015_v1';
+} from './pdf-concursos.js?v=20261019_v2';
 
 // ---------------------------------------------------------------------------
 // 2. CONSTANTES OFICIALES RE-EXPORTADAS

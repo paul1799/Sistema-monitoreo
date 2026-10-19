@@ -39,6 +39,28 @@ let builderState = null;
 let builderEditingId = null;
 let fichaDescExpanded = {};
 
+export function getDeletedFichaTypeIds() {
+  try {
+    const raw = localStorage.getItem('deleted_ficha_types');
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch (e) {
+    return new Set();
+  }
+}
+
+export function addDeletedFichaTypeId(id) {
+  if (!id) return;
+  try {
+    const set = getDeletedFichaTypeIds();
+    set.add(id);
+    localStorage.setItem('deleted_ficha_types', JSON.stringify([...set]));
+  } catch (e) {
+    console.warn('Error saving deleted_ficha_types to localStorage:', e);
+  }
+}
+
 export function normalizeExtras(extras) {
   if (!Array.isArray(extras)) return [];
   return extras.map((ex, idx) => {
@@ -441,7 +463,29 @@ export function confirmDeleteFichaType(ft, state, dbNs, onDeleted) {
     btn.disabled = true;
     btn.textContent = 'Eliminando...';
     try {
-      await dbNs.collection('fichaTypes').doc(ft.id).delete();
+      addDeletedFichaTypeId(ft.id);
+      if (dbNs) {
+        try {
+          await dbNs.collection('fichaTypes').doc(ft.id).delete();
+        } catch (delErr) {
+          console.warn('Error borrando doc en Firestore (puede ser doc virtual o ya borrado):', delErr);
+        }
+        try {
+          const set = getDeletedFichaTypeIds();
+          await dbNs.collection('_metadata').doc('deleted_ficha_types').set({
+            ids: [...set],
+            updatedAt: Date.now()
+          }, { merge: true });
+        } catch (metaErr) {
+          // ignore non-essential metadata error
+        }
+      }
+
+      // Remover inmediatamente del estado en memoria
+      if (state && Array.isArray(state.fichaTypes)) {
+        state.fichaTypes = state.fichaTypes.filter(f => f.id !== ft.id);
+      }
+
       showToast('✓ Tipo de ficha eliminado.');
       close();
       if (onDeleted) onDeleted();
@@ -452,7 +496,7 @@ export function confirmDeleteFichaType(ft, state, dbNs, onDeleted) {
       btn.textContent = 'Sí, eliminar ficha';
     }
   };
-}
+};
 
 export function renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml) {
   if (tiposView === 'builder') {
@@ -2324,18 +2368,21 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         return `
                     <div style="padding:8px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px">
                       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-                        <span style="font-size:12px;color:var(--ink);font-weight:500">
-                          <strong style="color:var(--primary)">${esc(itCode)}</strong> ${esc(it.texto || 'Indicador sin texto')}
-                        </span>
+                        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;flex:1">
+                          <span style="font-size:12px;color:var(--ink);font-weight:500">
+                            <strong style="color:var(--primary)">${esc(itCode)}</strong> ${esc(it.texto || 'Indicador sin texto')}
+                          </span>
+                          <button type="button" class="btnToggleObs btnToggleEvidencia" data-target-obs="prev_obs_${it.id}" data-target-evid="prev_obs_${it.id}" title="Describir observaciones o hallazgos" style="padding:2px 8px;font-size:11px">
+                            💬 Observación
+                          </button>
+                        </div>
                         <a href="javascript:void(0)" class="previewValItem" data-target="[data-sec='${si}'][data-item='${ii}']" style="font-size:11px;color:var(--ink-soft)" title="Ir a editar este ítem">
                           ✏️
                         </a>
                       </div>
-                      ${it.evidencia ? `
-                        <div style="font-size:11px;color:var(--text-500);display:flex;align-items:center;gap:4px">
-                          <span>📂</span> <em>Evidencia: ${esc(it.evidencia)}</em>
-                        </div>
-                      ` : ''}
+                      <div class="itemObsWrap itemEvidenciaWrap" id="prev_obs_${it.id}" style="display:none;margin-top:4px">
+                        <textarea rows="2" placeholder="${it.evidencia ? esc(it.evidencia) : 'Describa aquí los hallazgos u observaciones identificados en este indicador...'}" style="width:100%;font-size:11.5px;padding:4px 8px;border:1.5px solid #CBD5E1;border-radius:6px;box-sizing:border-box" disabled></textarea>
+                      </div>
                       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11.5px">
                         ${renderItemResponseInputs(it, bs.tipoRespuesta, ans)}
                       </div>
@@ -3452,15 +3499,29 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       };
 
       try {
-        if (builderEditingId) {
-          await dbNs.collection('fichaTypes').doc(builderEditingId).set(payload, { merge: true });
+        let finalDocId = builderEditingId;
+        if (finalDocId) {
+          await dbNs.collection('fichaTypes').doc(finalDocId).set(payload);
           showToast('✓ Borrador de ficha actualizado.');
         } else {
           payload.createdAt = Date.now();
           const docRef = await dbNs.collection('fichaTypes').add(payload);
-          builderEditingId = docRef.id;
+          finalDocId = docRef.id;
+          builderEditingId = finalDocId;
           showToast('✓ Borrador guardado exitosamente.');
         }
+
+        // Sincronizar inmediatamente en el estado en memoria para que no haya desfasaje
+        if (state && Array.isArray(state.fichaTypes)) {
+          const savedItem = { id: finalDocId, ...payload };
+          const idx = state.fichaTypes.findIndex(f => f.id === finalDocId);
+          if (idx !== -1) {
+            state.fichaTypes[idx] = savedItem;
+          } else {
+            state.fichaTypes.push(savedItem);
+          }
+        }
+
         builderIsDirty = false;
         const di = document.getElementById('dirtyIndicator');
         if (di) di.style.display = 'none';
@@ -3570,14 +3631,29 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       };
 
       try {
-        if (builderEditingId) {
-          await dbNs.collection('fichaTypes').doc(builderEditingId).set(payload, { merge: true });
+        let finalDocId = builderEditingId;
+        if (finalDocId) {
+          await dbNs.collection('fichaTypes').doc(finalDocId).set(payload);
           showToast('✓ Tipo de ficha actualizado exitosamente.');
         } else {
           payload.createdAt = Date.now();
-          await dbNs.collection('fichaTypes').add(payload);
+          const docRef = await dbNs.collection('fichaTypes').add(payload);
+          finalDocId = docRef.id;
+          builderEditingId = finalDocId;
           showToast('✓ Tipo de ficha creado exitosamente.');
         }
+
+        // Sincronizar inmediatamente en el estado en memoria para que cualquier re-verificación o edición inmediata tenga los datos exactos
+        if (state && Array.isArray(state.fichaTypes)) {
+          const savedItem = { id: finalDocId, ...payload };
+          const idx = state.fichaTypes.findIndex(f => f.id === finalDocId);
+          if (idx !== -1) {
+            state.fichaTypes[idx] = savedItem;
+          } else {
+            state.fichaTypes.push(savedItem);
+          }
+        }
+
         builderIsDirty = false;
         builderJsonUnlocked = false;
         tiposView = 'list';

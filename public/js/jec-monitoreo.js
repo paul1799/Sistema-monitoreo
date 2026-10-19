@@ -599,7 +599,7 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
     <form id="regForm" autocomplete="off" class="jecFormContainer" style="max-width:1120px;margin:0 auto">
       ${renderJecVisitaSelectorHtml(activeVisitaNum)}
       <!-- ─── BARRA FLOTANTE DE NIVEL DE LOGRO EN TIEMPO REAL ─── -->
-      <div class="panel jecLiveHeader" style="position:sticky;top:68px;z-index:20;background:var(--surface);border-left:5px solid ${nivelActual.color};box-shadow:var(--shadow-md);margin-bottom:20px;padding:12px 18px">
+      <div class="panel jecLiveHeader" style="position:sticky;top:104px;z-index:25;background:var(--surface);border-left:5px solid ${nivelActual.color};box-shadow:var(--shadow-md);margin-bottom:20px;padding:12px 18px">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
           <div>
             <div style="display:flex;align-items:center;gap:8px">
@@ -1079,17 +1079,20 @@ function renderComponentesJecHtml(ft = null) {
 
     return `
             <div class="jecItemCard" data-item-id="${esc(it.id)}" style="border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin-bottom:12px;background:var(--surface);transition:all 0.15s ease">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
                 <div style="flex:1">
-                  <div style="font-weight:600;font-size:13px;line-height:1.45;color:var(--ink)">
-                    <span style="font-weight:800;color:var(--primary);margin-right:4px">${numDisplay}.</span>
-                    ${esc(it.texto)}
-                  </div>
-                  ${it.evidencia ? `
-                    <div style="font-size:11.5px;color:var(--ink-soft);margin-top:3px;font-style:italic">
-                      Evidencia sugerida: ${esc(it.evidencia)}
+                  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+                    <div style="font-weight:600;font-size:13px;line-height:1.45;color:var(--ink);flex:1;min-width:240px">
+                      <span style="font-weight:800;color:var(--primary);margin-right:4px">${numDisplay}.</span>
+                      ${esc(it.texto)}
                     </div>
-                  ` : ''}
+                    <button type="button" class="btnToggleObs btnToggleEvidencia ${hallazgo ? 'has-content' : ''}" data-target-obs="evid_jec_${esc(it.id)}" data-target-evid="evid_jec_${esc(it.id)}" title="Describir observaciones o hallazgos verificados">
+                      💬 Observación ${hallazgo ? '✓' : ''}
+                    </button>
+                  </div>
+                  <div class="itemObsWrap itemEvidenciaWrap" id="evid_jec_${esc(it.id)}" style="display:${hallazgo ? 'block' : 'none'};margin-top:8px">
+                    <textarea class="jecItemHallazgo" data-item="${esc(it.id)}" rows="2" placeholder="${it.evidencia ? esc(it.evidencia) : 'Describa aquí los hallazgos u observaciones identificados en este indicador...'}" style="width:100%;font-size:12px;padding:6px 10px;border:1.5px solid #CBD5E1;border-radius:6px;min-height:44px;box-sizing:border-box">${esc(hallazgo)}</textarea>
+                  </div>
                 </div>
 
                 <!-- Botones interactivos Sí / No -->
@@ -1101,14 +1104,6 @@ function renderComponentesJecHtml(ft = null) {
                     No
                   </button>
                 </div>
-              </div>
-
-              <!-- Columna / Campo Hallazgos por ítem -->
-              <div style="margin-top:8px">
-                <label style="font-size:11px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:3px">
-                  Hallazgos verificados en este ítem:
-                </label>
-                <textarea class="jecItemHallazgo" data-item="${esc(it.id)}" rows="1" placeholder="Registra en la columna 'Hallazgos' información breve y objetiva sobre lo verificado..." style="width:100%;font-size:12px;padding:5px 8px;min-height:34px;border:1px solid var(--line);border-radius:4px">${esc(hallazgo)}</textarea>
               </div>
             </div>
           `;
@@ -1310,12 +1305,78 @@ function attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
     };
   });
 
-  // 6. Textareas de hallazgos
+  // 6. Textareas de hallazgos / observaciones
   host.querySelectorAll('.jecItemHallazgo').forEach(ta => {
     ta.addEventListener('input', () => {
       jecFormState.hallazgos[ta.dataset.item] = ta.value;
+      const wrap = ta.closest('.itemObsWrap, .itemEvidenciaWrap');
+      if (wrap) {
+        const btn = host.querySelector(`[data-target-obs="${wrap.id}"], [data-target-evid="${wrap.id}"]`);
+        if (btn) {
+          if (ta.value.trim()) {
+            btn.classList.add('has-content');
+            btn.textContent = '💬 Observación ✓';
+          } else {
+            btn.classList.remove('has-content');
+            btn.textContent = '💬 Observación';
+          }
+        }
+      }
     });
   });
+
+  // Toggle de visibilidad de evidencias/hallazgos para acortar la ficha JEC
+  host.querySelectorAll('.btnToggleObs, .btnToggleEvidencia').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const targetId = btn.dataset.targetObs || btn.dataset.targetEvid;
+      if (!targetId) return;
+      const wrap = host.querySelector('#' + targetId);
+      if (!wrap) return;
+
+      const isHidden = (wrap.style.display === 'none' || getComputedStyle(wrap).display === 'none');
+      if (isHidden) {
+        wrap.style.display = 'block';
+        btn.classList.add('active');
+        btn.textContent = '✕ Ocultar obs.';
+        const ta = wrap.querySelector('textarea, input');
+        if (ta) ta.focus();
+      } else {
+        wrap.style.display = 'none';
+        btn.classList.remove('active');
+        const ta = wrap.querySelector('textarea, input');
+        const hasVal = ta && Boolean(ta.value.trim());
+        if (hasVal) {
+          btn.classList.add('has-content');
+          btn.textContent = '💬 Observación ✓';
+        } else {
+          btn.classList.remove('has-content');
+          btn.textContent = '💬 Observación';
+        }
+      }
+    });
+  });
+
+  // Sincronización reactiva del código modular en caja única (7 dígitos)
+  const codModInput = host.querySelector('#jec_cod_modular');
+  if (codModInput) {
+    codModInput.addEventListener('input', () => {
+      const cleanVal = codModInput.value.replace(/\D/g, '').slice(0, 7);
+      codModInput.value = cleanVal;
+      jecFormState.codigoModular = cleanVal;
+      if (cleanVal.length === 7) {
+        const list = (state?.colegios || []);
+        const matched = list.find(c => {
+          const cCode = cleanTextCode(c.codigoModular || c.codModular || c.codigoLocal || '');
+          return cCode === cleanVal;
+        });
+        if (matched && matched.id !== jecFormState.colegioId) {
+          onSelectColegio(matched);
+        }
+      }
+    });
+  }
 
   // 7. Cancelar
   const btnCancel = host.querySelector('#cancelFormBtn') || host.querySelector('#btnCancelJec');

@@ -15,6 +15,7 @@ import {
 } from './core-utils.js?v=20261015_v1';
 
 import { ESPECIALISTA_JEC_OFICIAL } from '../calcEngine.js?v=20261013_v2';
+import { openModalRedistribucionColegios } from './colegios-tab.js?v=20261019_v2';
 
 export const RESP_FIELD_ALIASES = {
   red: ['red', 'redes', 'rei', 'reis', 'red(es)', 'red (es)', 'redes a cargo'],
@@ -63,6 +64,10 @@ export function sanitizeResponsableRecord(r, existing, now) {
     modalidad = 'EBR';
   }
 
+  const colegios = Array.isArray(r.colegios)
+    ? r.colegios.map(s).filter(Boolean)
+    : (existing && Array.isArray(existing.colegios) ? existing.colegios.map(s).filter(Boolean) : []);
+
   const docData = {
     red: normalizeReiList(r.red) || s(r.red),
     distrito: s(r.distrito),
@@ -72,6 +77,7 @@ export function sanitizeResponsableRecord(r, existing, now) {
     modalidad: modalidad,
     celular: s(r.celular),
     correo: s(r.correo),
+    colegios: colegios,
     updatedAt: now,
     createdAt: createdAt,
   };
@@ -279,20 +285,66 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
         return respName && myName && (respName.includes(myName) || myName.includes(respName));
       }).length;
 
-      const detailHtml = isOpen
-        ? '<div style="background:var(--surface-2);border-radius:var(--radius);padding:14px;margin:6px 0;font-size:13px;line-height:1.6">' +
-        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' +
-        '<div><strong>RED(s) asignadas:</strong> ' + esc(normalizeReiList(r.red) || r.red || '—') + '</div>' +
-        '<div><strong>Distrito(s):</strong> ' + esc(r.distrito || '—') + '</div>' +
-        '<div><strong>Área / Especialidad:</strong> ' + esc(r.especialista || '—') + '</div>' +
-        '<div><strong>Cargo oficial:</strong> ' + esc(r.cargo || '—') + '</div>' +
-        '<div><strong>Modalidad:</strong> ' + modalidadBadge(r.modalidad) + '</div>' +
-        '<div><strong>N° Celular:</strong> ' + (r.celular ? (isAdmin ? '<a href="tel:' + esc(r.celular) + '">📞 ' + esc(r.celular) + '</a>' : '📞 ***' + esc(r.celular).slice(-3)) : '—') + '</div>' +
-        '<div><strong>Correo:</strong> ' + (r.correo ? '<a href="mailto:' + esc(r.correo) + '">✉ ' + esc(r.correo) + '</a>' : '—') + '</div>' +
-        '<div><strong>Fichas registradas:</strong> <span class="badge ' + (subsCount ? 'st-logrado' : 'st-none') + '">' + subsCount + ' ficha(s)</span></div>' +
-        '</div>' +
-        '</div>'
-        : '';
+      let detailHtml = '';
+      if (isOpen) {
+        // Encontrar colegios asignados directamente a este especialista
+        const myColegios = (state.colegios || []).filter(c => {
+          if (c.responsableId && c.responsableId === r.id) return true;
+          if (Array.isArray(r.colegios) && r.colegios.includes(c.id)) return true;
+          if (c.responsable && normalizeText(c.responsable) === normalizeText(r.nombresApellidos)) return true;
+          return false;
+        }).sort((a, b) => (a.ie || '').localeCompare(b.ie || '', 'es'));
+
+        const rRedList = (String(r.red || '').match(/\d+/g) || []).map(normalizeReiNumber).filter(Boolean);
+        const isSharedRed = rRedList.some(redNum => {
+          const others = (state.responsables || []).filter(other => {
+            if (other.id === r.id) return false;
+            const oNums = (String(other.red || '').match(/\d+/g) || []).map(normalizeReiNumber);
+            return oNums.includes(redNum);
+          });
+          return others.length > 0;
+        });
+
+        let colegiosCargoHtml = '';
+        if (myColegios.length) {
+          colegiosCargoHtml = '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">' +
+            '<div style="font-weight:700;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
+            '<span>🏫 Colegios asignados a su cargo (' + myColegios.length + '):</span>' +
+            (isAdmin ? '<button type="button" class="btn secondary small btnRedistRedResp" data-red="' + esc(rRedList[0] || '') + '" style="font-size:11px;padding:2px 8px">🔀 Redistribuir colegios de esta RED</button>' : '') +
+            '</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
+            myColegios.map(c => '<span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:11px;padding:3px 8px" title="Cód: ' + esc(c.codigoLocal) + ' · REI ' + esc(c.rei || '') + ' · ' + esc(c.distrito || '') + '">🏫 ' + esc(c.ie) + '</span>').join('') +
+            '</div>' +
+            '</div>';
+        } else if (isSharedRed) {
+          colegiosCargoHtml = '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
+            '<div><span class="badge" style="background:#fef3c7;color:#92400e;font-size:11px;font-weight:700">⚠ RED compartida</span> <span style="font-size:12px;color:var(--ink-soft)">Este especialista aún no tiene colegios asignados individualmente.</span></div>' +
+            (isAdmin ? '<button type="button" class="btn small btnRedistRedResp" data-red="' + esc(rRedList[0] || '') + '" style="background:#10b981;color:#fff;font-size:11px;font-weight:700;padding:3px 10px">🔀 Asignar colegios de RED ' + esc(rRedList.join(', ')) + '</button>' : '') +
+            '</div>';
+        } else {
+          const totalColegiosInRed = (state.colegios || []).filter(c => {
+            const cRei = normalizeReiNumber(c.rei || c.red);
+            return cRei && rRedList.includes(cRei);
+          }).length;
+          colegiosCargoHtml = '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--ink-soft)">' +
+            '🏫 Atiende automáticamente la totalidad de colegios de su RED (' + totalColegiosInRed + ' instituciones educativas).' +
+            '</div>';
+        }
+
+        detailHtml = '<div style="background:var(--surface-2);border-radius:var(--radius);padding:14px;margin:6px 0;font-size:13px;line-height:1.6">' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' +
+          '<div><strong>RED(s) asignadas:</strong> ' + esc(normalizeReiList(r.red) || r.red || '—') + '</div>' +
+          '<div><strong>Distrito(s):</strong> ' + esc(r.distrito || '—') + '</div>' +
+          '<div><strong>Área / Especialidad:</strong> ' + esc(r.especialista || '—') + '</div>' +
+          '<div><strong>Cargo oficial:</strong> ' + esc(r.cargo || '—') + '</div>' +
+          '<div><strong>Modalidad:</strong> ' + modalidadBadge(r.modalidad) + '</div>' +
+          '<div><strong>N° Celular:</strong> ' + (r.celular ? (isAdmin ? '<a href="tel:' + esc(r.celular) + '">📞 ' + esc(r.celular) + '</a>' : '📞 ***' + esc(r.celular).slice(-3)) : '—') + '</div>' +
+          '<div><strong>Correo:</strong> ' + (r.correo ? '<a href="mailto:' + esc(r.correo) + '">✉ ' + esc(r.correo) + '</a>' : '—') + '</div>' +
+          '<div><strong>Fichas registradas:</strong> <span class="badge ' + (subsCount ? 'st-logrado' : 'st-none') + '">' + subsCount + ' ficha(s)</span></div>' +
+          '</div>' +
+          colegiosCargoHtml +
+          '</div>';
+      }
 
       return '<tr class="clickable" data-resprow="' + esc(r.id) + '">' +
         '<td>' + (r.red ? '<span class="badge badge-red">' + esc(normalizeReiList(r.red) || r.red) + '</span>' : '<span style="color:var(--ink-soft)">—</span>') + '</td>' +
@@ -401,6 +453,7 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
     '<input type="search" id="resp_fil_q" value="' + esc(respFilters.q) + '" placeholder="Nombre, cargo, área, RED o distrito...">' +
     '</div>' +
     '<button class="btn secondary small" id="resp_fil_clear" type="button" style="align-self:flex-end;margin-bottom:2px">Limpiar</button>' +
+    (isAdmin ? '<button class="btn small" id="resp_btn_redistribuir" type="button" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;font-weight:700;align-self:flex-end;margin-bottom:2px">🔀 Distribuir Colegios por RED</button>' : '') +
     '<button class="btn secondary small" id="resp_export" type="button" style="margin-left:auto;align-self:flex-end;margin-bottom:2px">Exportar CSV</button>' +
     '</div>' +
     '<div class="tblWrap"><table><thead><tr><th>RED</th><th>Distrito(s)</th><th>Especialista responsable</th><th>Nombres y apellidos</th><th>Cargo</th><th>Modalidad</th><th>N°Celular</th><th>Correo Institucional</th>' + (isAdmin ? '<th></th>' : '') + '</tr></thead><tbody id="resp_table_tbody">' + rows + '</tbody></table></div>' +
@@ -431,10 +484,20 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
   const bindRespRowEvents = () => {
     container.querySelectorAll('tr[data-resprow]').forEach(tr => {
       tr.addEventListener('click', (e) => {
-        if (e.target.closest('[data-respenit],[data-respdel],a')) return;
+        if (e.target.closest('[data-respenit],[data-respdel],.btnRedistRedResp,a')) return;
         const id = tr.dataset.resprow;
         respExpanded = respExpanded === id ? null : id;
         updateRespTableOnly();
+      });
+    });
+
+    container.querySelectorAll('.btnRedistRedResp').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const targetRed = btn.dataset.red || '';
+        openModalRedistribucionColegios(state, dbNs, () => {
+          renderResponsablesTab(container, state, dbNs, isAdmin, currentUser);
+        }, targetRed);
       });
     });
 
@@ -450,10 +513,31 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
       container.querySelectorAll('[data-respdel]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           e.stopPropagation();
-          if (!confirm('¿Eliminar este especialista del directorio?')) return;
+          const delId = btn.dataset.respdel;
+          const respObj = (state.responsables || []).find(r => r.id === delId);
+          const nombreResp = respObj ? respObj.nombresApellidos : 'este especialista';
+          if (!confirm(`¿Eliminar a ${nombreResp} del directorio? Si tiene colegios asignados, quedarán disponibles para reasignación.`)) return;
           try {
-            await dbNs.collection('responsables').doc(btn.dataset.respdel).delete();
-            showToast('Especialista eliminado.');
+            await dbNs.collection('responsables').doc(delId).delete();
+            // Desasignar en colegios vinculados
+            const now = Date.now();
+            const colsToUnassign = (state.colegios || []).filter(c => c.responsableId === delId);
+            colsToUnassign.forEach(c => {
+              c.responsable = '';
+              c.responsableId = '';
+              c.responsableEmail = '';
+              c.updatedAt = now;
+              dbNs.collection('colegios').doc(c.id).set({
+                responsable: '',
+                responsableId: '',
+                responsableEmail: '',
+                updatedAt: now
+              }, { merge: true }).catch(console.warn);
+            });
+            // Eliminar de state.responsables en memoria
+            state.responsables = (state.responsables || []).filter(r => r.id !== delId);
+            showToast('Especialista eliminado y colegios desvinculados.');
+            renderResponsablesTab(container, state, dbNs, isAdmin, currentUser);
           } catch (err) {
             console.error('Error eliminando responsable:', err);
             showToast('No se pudo eliminar: [' + (err.code || 'error') + '] ' + err.message);
@@ -471,6 +555,16 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
   if (fRed) fRed.addEventListener('change', e => { respFilters.red = normalizeReiNumber(e.target.value) || e.target.value; updateRespTableOnly(); });
   const fQ = document.getElementById('resp_fil_q');
   if (fQ) fQ.addEventListener('input', e => { respFilters.q = e.target.value; updateRespTableOnly(); });
+
+  const btnRedist = document.getElementById('resp_btn_redistribuir');
+  if (btnRedist) {
+    btnRedist.addEventListener('click', () => {
+      openModalRedistribucionColegios(state, dbNs, () => {
+        renderResponsablesTab(container, state, dbNs, isAdmin, currentUser);
+      }, respFilters.red || '');
+    });
+  }
+
   const fClear = document.getElementById('resp_fil_clear');
   if (fClear) fClear.addEventListener('click', () => {
     respFilters = { modalidad: '', red: '', q: '' };
@@ -512,6 +606,20 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
       respEditing = null;
       renderResponsablesTab(container, state, dbNs, isAdmin, currentUser);
     });
+
+    const btnSelAllCols = document.getElementById('resp_btn_sel_all_cols');
+    if (btnSelAllCols) {
+      btnSelAllCols.addEventListener('click', () => {
+        container.querySelectorAll('.resp_f_col_check').forEach(cb => { cb.checked = true; });
+      });
+    }
+
+    const btnDeselAllCols = document.getElementById('resp_btn_desel_all_cols');
+    if (btnDeselAllCols) {
+      btnDeselAllCols.addEventListener('click', () => {
+        container.querySelectorAll('.resp_f_col_check').forEach(cb => { cb.checked = false; });
+      });
+    }
 
     const impToggle = document.getElementById('resp_import_toggle');
     if (impToggle) impToggle.addEventListener('click', () => {
@@ -589,6 +697,57 @@ function renderResponsableFormPanel(existing, state) {
 
   const modVal = existing ? (existing.modalidad || '') : 'EBR';
 
+  const existingRedNums = existing ? (String(existing.red || '').match(/\d+/g) || []).map(normalizeReiNumber) : [];
+  const assignedColegiosIds = new Set(existing ? (existing.colegios || []) : []);
+  if (existing) {
+    (state.colegios || []).forEach(c => {
+      if (c.responsableId === existing.id || (!c.responsableId && c.responsable && normalizeText(c.responsable) === normalizeText(existing.nombresApellidos))) {
+        assignedColegiosIds.add(c.id);
+      }
+    });
+  }
+
+  // Colegios de las REDs del especialista
+  const candidateColegios = (state.colegios || []).filter(c => {
+    const cRei = normalizeReiNumber(c.rei || c.red);
+    return cRei && existingRedNums.includes(cRei);
+  }).sort((a, b) => (a.ie || '').localeCompare(b.ie || '', 'es'));
+
+  let colegiosAssignHtml = '';
+  if (candidateColegios.length) {
+    const colCheckboxesHtml = candidateColegios.map(c => {
+      const isChecked = assignedColegiosIds.has(c.id);
+      const isOtherResp = c.responsableId && (!existing || c.responsableId !== existing.id);
+      const otherRespName = isOtherResp ? c.responsable : '';
+      return '<label style="display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 6px;border-radius:4px;cursor:pointer;background:' + (isChecked ? 'rgba(37,99,235,0.06)' : 'transparent') + '">' +
+        '<input type="checkbox" class="resp_f_col_check" value="' + esc(c.id) + '" ' + (isChecked ? 'checked' : '') + ' style="width:15px;height:15px">' +
+        '<span style="font-weight:600;color:var(--navy-900)">' + esc(c.ie) + '</span>' +
+        '<span style="color:var(--ink-soft);font-size:11px">(' + esc(c.codigoLocal || '—') + ' · ' + esc(c.distrito || '') + ')</span>' +
+        (otherRespName ? ' <span class="badge" style="font-size:10px;background:#fef3c7;color:#92400e;padding:1px 5px">Asignado a: ' + esc(otherRespName) + '</span>' : '') +
+        '</label>';
+    }).join('');
+
+    colegiosAssignHtml = '<div style="grid-column:span 2;margin-top:12px;padding:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">' +
+      '<div>' +
+      '<div style="font-weight:700;font-size:12.5px;color:var(--navy-900)">🏫 Colegios asignados en sus REDs (' + candidateColegios.length + ' colegios en RED ' + esc(existingRedNums.join(', ')) + ')</div>' +
+      '<div style="font-size:11px;color:var(--ink-soft)">Marca los colegios a cargo de este especialista. Al guardar, se sincronizará automáticamente en la data de Colegios.</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px">' +
+      '<button type="button" class="btn secondary small" id="resp_btn_sel_all_cols" style="font-size:10.5px;padding:2px 8px">Marcar todos</button>' +
+      '<button type="button" class="btn secondary small" id="resp_btn_desel_all_cols" style="font-size:10.5px;padding:2px 8px">Desmarcar</button>' +
+      '</div>' +
+      '</div>' +
+      '<div style="max-height:220px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px;border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--surface)">' +
+      colCheckboxesHtml +
+      '</div>' +
+      '</div>';
+  } else if (existing && existingRedNums.length) {
+    colegiosAssignHtml = '<div style="grid-column:span 2;margin-top:10px;font-size:12px;color:var(--ink-soft);background:var(--surface-2);padding:10px;border-radius:6px;border:1px solid var(--line)">' +
+      'No se encontraron colegios cargados en el padrón para la RED ' + esc(existingRedNums.join(', ')) + '.' +
+      '</div>';
+  }
+
   return '' +
     '<div class="fieldGrid">' +
     '<div class="field">' +
@@ -628,8 +787,9 @@ function renderResponsableFormPanel(existing, state) {
     '<label>Correo Institucional</label>' +
     '<input type="email" id="resp_f_correo" value="' + esc(existing ? existing.correo : '') + '" placeholder="usuario@ugel03.gob.pe">' +
     '</div>' +
+    colegiosAssignHtml +
     '</div>' +
-    '<div style="display:flex;gap:8px;margin-top:4px">' +
+    '<div style="display:flex;gap:8px;margin-top:12px">' +
     '<button class="btn small" id="resp_f_save" type="button">' + (existing ? 'Actualizar especialista' : 'Guardar especialista') + '</button>' +
     '<button class="btn secondary small" id="resp_f_cancel" type="button">Cancelar</button>' +
     '</div>';
@@ -654,10 +814,80 @@ async function saveResponsableForm(state, dbNs, container, isAdmin, currentUser)
     correo: correo,
   };
 
+  const checkedBoxes = container.querySelectorAll('.resp_f_col_check');
+  const hasColCheckboxes = checkedBoxes.length > 0;
+  const selectedColIds = hasColCheckboxes ? Array.from(checkedBoxes).filter(cb => cb.checked).map(cb => cb.value) : (existing ? (existing.colegios || []) : []);
+  const unselectedColIds = hasColCheckboxes ? Array.from(checkedBoxes).filter(cb => !cb.checked).map(cb => cb.value) : [];
+
+  raw.colegios = selectedColIds;
+
   const data = sanitizeResponsableRecord(raw, existing, Date.now());
   try {
+    const now = Date.now();
     await dbNs.collection('responsables').doc(id).set(data);
-    showToast('Especialista guardado con éxito.');
+
+    // Actualizar state.responsables en memoria
+    const rIdx = (state.responsables || []).findIndex(x => x.id === id);
+    if (rIdx >= 0) {
+      state.responsables[rIdx] = { ...state.responsables[rIdx], ...data, id };
+    } else {
+      if (!state.responsables) state.responsables = [];
+      state.responsables.push({ ...data, id });
+    }
+
+    // Sincronización automática con la data de Colegios
+    if (hasColCheckboxes) {
+      // 1. Asignar colegios marcados
+      for (const cid of selectedColIds) {
+        await dbNs.collection('colegios').doc(cid).set({
+          responsable: nombres,
+          responsableId: id,
+          responsableEmail: correo,
+          updatedAt: now
+        }, { merge: true });
+        const cObj = (state.colegios || []).find(c => c.id === cid);
+        if (cObj) {
+          cObj.responsable = nombres;
+          cObj.responsableId = id;
+          cObj.responsableEmail = correo;
+          cObj.updatedAt = now;
+        }
+      }
+
+      // 2. Desasignar colegios desmarcados que antes pertenecían a este especialista
+      for (const cid of unselectedColIds) {
+        const cObj = (state.colegios || []).find(c => c.id === cid);
+        if (cObj && cObj.responsableId === id) {
+          await dbNs.collection('colegios').doc(cid).set({
+            responsable: '',
+            responsableId: '',
+            responsableEmail: '',
+            updatedAt: now
+          }, { merge: true });
+          cObj.responsable = '';
+          cObj.responsableId = '';
+          cObj.responsableEmail = '';
+          cObj.updatedAt = now;
+        }
+      }
+    } else {
+      // Si se actualizaron nombres o correo del especialista, actualizar colegios vinculados
+      const linkedCols = (state.colegios || []).filter(c => c.responsableId === id);
+      for (const c of linkedCols) {
+        if (c.responsable !== nombres || c.responsableEmail !== correo) {
+          c.responsable = nombres;
+          c.responsableEmail = correo;
+          c.updatedAt = now;
+          dbNs.collection('colegios').doc(c.id).set({
+            responsable: nombres,
+            responsableEmail: correo,
+            updatedAt: now
+          }, { merge: true }).catch(console.warn);
+        }
+      }
+    }
+
+    showToast('✓ Especialista y colegios asignados guardados con éxito.');
     respEditing = null;
   } catch (err) {
     console.error('Error al guardar especialista en Firestore:', err);

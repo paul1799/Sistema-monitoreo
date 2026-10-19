@@ -973,15 +973,26 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
         return '<label class="optBtn" ' + descTooltip + '><input type="radio" name="item_' + it.id + '" value="' + o.v + '"><span>' + o.l + '</span></label>';
       }).join('');
 
-      const evidenciaHtml = isDirectivo ? (
-        '<div class="itemEvidencia">' +
-        '<input type="text" class="evidenciaInput" name="evidencia_' + it.id + '" id="evid_' + it.id + '" placeholder="Evidencia verificable (RD, actas, planificaciones, fotos, registros, enlaces)..." aria-label="Evidencia para indicador ' + (iIdx + 1) + '">' +
-        '</div>'
-      ) : '';
-
       const itemNumDisplay = (it.num !== undefined && it.num !== null && it.num !== '') ? (it.num + '.') : ((iIdx + 1) + '.');
+      const obsPlaceholder = it.evidencia ? esc(it.evidencia) : 'Describa aquí los hallazgos u observaciones identificados en este indicador...';
+      const cleanTexto = (it.texto || '').replace(/^\s*\d+[\.\)\-]\s*/, '');
+      const evidenciaHtml = `
+        <div class="itemObsWrap itemEvidenciaWrap itemEvidencia" id="evid_wrap_${it.id}" style="display:none;margin-top:6px">
+          <textarea class="evidenciaInput" name="evidencia_${it.id}" id="evid_${it.id}" rows="2" placeholder="${obsPlaceholder}" aria-label="Observaciones para indicador ${itemNumDisplay}" style="width:100%;font-size:12px;padding:6px 10px;border:1.5px solid #CBD5E1;border-radius:6px;min-height:44px;box-sizing:border-box"></textarea>
+        </div>
+      `;
+
       return '<div class="itemRow" data-item-id="' + it.id + '">' +
-        '<div class="itxt"><span class="itemNum">' + itemNumDisplay + '</span> ' + esc(it.texto) + evidenciaHtml + '</div>' +
+        '<div class="itxt" style="flex:1;min-width:240px">' +
+          '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">' +
+            '<span class="itemNum">' + itemNumDisplay + '</span> ' +
+            '<span style="flex:1;min-width:200px">' + esc(cleanTexto) + '</span>' +
+            '<button type="button" class="btnToggleObs btnToggleEvidencia" data-target-obs="evid_wrap_' + it.id + '" data-target-evid="evid_wrap_' + it.id + '" title="Describir observaciones o hallazgos">' +
+              '💬 Observación' +
+            '</button>' +
+          '</div>' +
+          evidenciaHtml +
+        '</div>' +
         '<div class="optGroup">' + optsHtml + '</div>' +
         '</div>';
     }).join('');
@@ -1205,6 +1216,39 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
   });
   updateProgressBadge();
 
+  // Toggle de visibilidad de observaciones / hallazgos en indicadores
+  host.querySelectorAll('.btnToggleObs, .btnToggleEvidencia').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const targetId = btn.dataset.targetObs || btn.dataset.targetEvid;
+      if (!targetId) return;
+      const wrap = host.querySelector('#' + targetId) || document.getElementById(targetId);
+      if (!wrap) return;
+
+      const isHidden = (wrap.style.display === 'none' || getComputedStyle(wrap).display === 'none');
+      if (isHidden) {
+        wrap.style.display = 'block';
+        btn.classList.add('active');
+        btn.textContent = '✕ Ocultar obs.';
+        const inp = wrap.querySelector('input, textarea');
+        if (inp) inp.focus();
+      } else {
+        wrap.style.display = 'none';
+        btn.classList.remove('active');
+        const inp = wrap.querySelector('input, textarea');
+        const hasVal = inp && Boolean(inp.value.trim());
+        if (hasVal) {
+          btn.classList.add('has-content');
+          btn.textContent = '💬 Observación ✓';
+        } else {
+          btn.classList.remove('has-content');
+          btn.textContent = '💬 Observación';
+        }
+      }
+    });
+  });
+
   // Control para campos especiales de condición (mostrar input 'Otro')
   host.querySelectorAll('.extraCondicionSelect').forEach(sel => {
     const otroInp = document.getElementById(sel.id + '_otro');
@@ -1356,7 +1400,7 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
       }
     });
 
-    // Auto-sugerir / completar especialista: para fichas JEC la especialista oficial es Fanny Liliana Arias Quiróz, para el resto según REI del colegio
+    // Auto-sugerir / completar especialista: para fichas JEC la especialista oficial es Fanny Liliana Arias Quiróz, para el resto según asignación específica del colegio o RED
     const currentFt = state.selectedFichaType || (state.currentFicha ? state.currentFicha.tipo : '') || '';
     if (isFichaEspecialistaJec(currentFt)) {
       respInputs.forEach(rInp => {
@@ -1367,24 +1411,56 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
           hEl.style.display = 'block';
         }
       });
-    } else if ((c.rei || c.red) && state.responsables && state.responsables.length) {
-      const cReiNum = normalizeReiNumber(c.rei || c.red);
-      const cReiNorm = normalizeText(c.rei || c.red);
-      const matchedResp = state.responsables.find(r => {
-        if (!r.red) return false;
-        if (cReiNum) {
-          const rNums = (String(r.red).match(/\d+/g) || []).map(n => normalizeReiNumber(n));
-          if (rNums.includes(cReiNum)) return true;
+    } else if (state.responsables && state.responsables.length) {
+      let matchedResp = null;
+
+      // 1. Prioridad: Especialista asignado explícitamente a este colegio
+      if (c.responsableId) {
+        matchedResp = state.responsables.find(r => r.id === c.responsableId);
+      }
+      if (!matchedResp && c.responsable) {
+        const cRespNorm = normalizeText(c.responsable);
+        matchedResp = state.responsables.find(r => {
+          const rNom = normalizeText(r.nombresApellidos || '');
+          return rNom && (rNom === cRespNorm || rNom.includes(cRespNorm) || cRespNorm.includes(rNom));
+        });
+      }
+
+      // 2. Prioridad: Especialista que tiene este colegio en su lista `r.colegios`
+      if (!matchedResp && c.id) {
+        matchedResp = state.responsables.find(r => Array.isArray(r.colegios) && r.colegios.includes(c.id));
+      }
+
+      // 3. Prioridad: RED con especialista único (no compartida)
+      if (!matchedResp && (c.rei || c.red)) {
+        const cReiNum = normalizeReiNumber(c.rei || c.red);
+        const cReiNorm = normalizeText(c.rei || c.red);
+        const redMatches = state.responsables.filter(r => {
+          if (!r.red) return false;
+          if (cReiNum) {
+            const rNums = (String(r.red).match(/\d+/g) || []).map(n => normalizeReiNumber(n));
+            if (rNums.includes(cReiNum)) return true;
+          }
+          const rRedNorm = normalizeText(r.red);
+          return rRedNorm.includes(cReiNorm) || cReiNorm.includes(rRedNorm);
+        });
+        if (redMatches.length === 1) {
+          matchedResp = redMatches[0];
         }
-        const rRedNorm = normalizeText(r.red);
-        return rRedNorm.includes(cReiNorm) || cReiNorm.includes(rRedNorm);
-      });
+      }
 
       if (matchedResp) {
         respInputs.forEach(rInp => {
-          if (!rInp.value) {
-            const hEl = rInp.closest('.field') ? rInp.closest('.field').querySelector('.respHint') : null;
-            selectResponsable(matchedResp, rInp, hEl);
+          const hEl = rInp.closest('.field') ? rInp.closest('.field').querySelector('.respHint') : null;
+          selectResponsable(matchedResp, rInp, hEl);
+        });
+      } else if (c.responsable && !c.responsable.includes('@') && !/^\d+$/.test(c.responsable.trim())) {
+        respInputs.forEach(rInp => {
+          rInp.value = c.responsable.trim();
+          const hEl = rInp.closest('.field') ? rInp.closest('.field').querySelector('.respHint') : null;
+          if (hEl) {
+            hEl.textContent = '✓ Especialista asignado: ' + c.responsable.trim();
+            hEl.style.display = 'block';
           }
         });
       }
@@ -1559,8 +1635,17 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
         (d.respuestas || []).forEach(r => {
           const radio = document.querySelector('input[name="item_' + r.id + '"][value="' + r.valor + '"]');
           if (radio) radio.checked = true;
-          const evidInp = document.getElementById('evid_' + r.id) || document.querySelector('input[name="evidencia_' + r.id + '"]');
-          if (evidInp && r.evidencia) evidInp.value = r.evidencia;
+          const evidInp = document.getElementById('evid_' + r.id) || document.querySelector('input[name="evidencia_' + r.id + '"]') || document.querySelector('textarea[name="evidencia_' + r.id + '"]');
+          if (evidInp && r.evidencia) {
+            evidInp.value = r.evidencia;
+            const wrap = document.getElementById('evid_wrap_' + r.id);
+            if (wrap) wrap.style.display = 'block';
+            const btn = document.querySelector(`[data-target-evid="evid_wrap_${r.id}"], [data-target-obs="evid_wrap_${r.id}"]`);
+            if (btn) {
+              btn.classList.add('has-content');
+              btn.textContent = '💬 Observación ✓';
+            }
+          }
         });
 
         // Precargar síntesis por dimensión
@@ -1640,6 +1725,25 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     renderCompList();
   });
   renderCompList();
+
+  // Sincronizar estado visual de los botones de observación en tiempo real
+  host.querySelectorAll('.evidenciaInput').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const wrap = inp.closest('.itemObsWrap, .itemEvidenciaWrap');
+      if (wrap) {
+        const btn = host.querySelector(`[data-target-obs="${wrap.id}"], [data-target-evid="${wrap.id}"]`);
+        if (btn) {
+          if (inp.value.trim()) {
+            btn.classList.add('has-content');
+            btn.textContent = '💬 Observación ✓';
+          } else {
+            btn.classList.remove('has-content');
+            btn.textContent = '💬 Observación';
+          }
+        }
+      }
+    });
+  });
 
   const cancelFormBtn = document.getElementById('cancelFormBtn');
   if (cancelFormBtn) {
@@ -1740,10 +1844,20 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
 
       const fallbackResp = (currentUser && (currentUser.nombre || currentUser.displayName || currentUser.email)) || '';
       let finalResp = (ebrData.responsable && ebrData.responsable.trim()) || '';
+      if (!finalResp && (ebrData.colegioId || regSelectedColegioId)) {
+        const cId = ebrData.colegioId || regSelectedColegioId;
+        const col = (activeState.colegios || []).find(c => c.id === cId);
+        if (col) {
+          const rCol = getResponsableForColegio(col, ft, activeState);
+          if (rCol && rCol !== 'Por asignar' && !rCol.includes('compartida') && rCol !== '—') {
+            finalResp = rCol;
+          }
+        }
+      }
       if (!finalResp && ebrData.red && activeState.responsables && activeState.responsables.length) {
         const cReiNum = normalizeReiNumber(ebrData.red);
         const cReiNorm = normalizeText(ebrData.red);
-        const matchedResp = activeState.responsables.find(r => {
+        const redMatches = activeState.responsables.filter(r => {
           if (!r.red) return false;
           if (cReiNum) {
             const rNums = (String(r.red).match(/\d+/g) || []).map(n => normalizeReiNumber(n));
@@ -1752,8 +1866,8 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
           const rRedNorm = normalizeText(r.red);
           return rRedNorm.includes(cReiNorm) || cReiNorm.includes(rRedNorm);
         });
-        if (matchedResp) {
-          finalResp = (matchedResp.nombresApellidos || matchedResp.especialista || '').trim();
+        if (redMatches.length === 1) {
+          finalResp = (redMatches[0].nombresApellidos || redMatches[0].especialista || '').trim();
         }
       }
       if (!finalResp) {
@@ -2139,10 +2253,22 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
     } else {
       const fallbackResp = (currentUser && (currentUser.nombre || currentUser.displayName || currentUser.email)) || '';
       if (!responsableVal || !responsableVal.trim() || /^\d+$/.test(responsableVal.trim())) {
+        const cId = form.dataset.selectedColegioId || regSelectedColegioId;
+        if (cId) {
+          const col = (activeState.colegios || []).find(c => c.id === cId);
+          if (col) {
+            const rCol = getResponsableForColegio(col, ft, activeState);
+            if (rCol && rCol !== 'Por asignar' && !rCol.includes('compartida') && rCol !== '—') {
+              responsableVal = rCol;
+            }
+          }
+        }
+      }
+      if (!responsableVal || !responsableVal.trim() || /^\d+$/.test(responsableVal.trim())) {
         if (redVal && redVal !== 'No aplica' && activeState.responsables && activeState.responsables.length) {
           const redNum = normalizeReiNumber(redVal);
           const redNorm = normalizeText(redVal);
-          const matchedResp = activeState.responsables.find(r => {
+          const redMatches = activeState.responsables.filter(r => {
             if (!r.red) return false;
             if (redNum) {
               const rNums = (String(r.red).match(/\d+/g) || []).map(n => normalizeReiNumber(n));
@@ -2151,8 +2277,8 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
             const rRedNorm = normalizeText(r.red);
             return rRedNorm.includes(redNorm) || redNorm.includes(rRedNorm);
           });
-          if (matchedResp && (matchedResp.nombresApellidos || matchedResp.especialista)) {
-            responsableVal = (matchedResp.nombresApellidos || matchedResp.especialista).trim();
+          if (redMatches.length === 1 && (redMatches[0].nombresApellidos || redMatches[0].especialista)) {
+            responsableVal = (redMatches[0].nombresApellidos || redMatches[0].especialista).trim();
           }
         }
       }
