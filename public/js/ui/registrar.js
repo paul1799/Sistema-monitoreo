@@ -132,6 +132,9 @@ function syncEditingState() {
   if (stateCol) {
     regSelectedColegioId = stateCol;
   }
+  if (getRegBuiltFor() === null) {
+    regBuiltFor = null;
+  }
 }
 
 let registrarSubTab = 'registrar'; // 'registrar' | 'plantillas' | 'areas'
@@ -145,6 +148,13 @@ let regCompromisos = [];
 let regBuiltFor = null;
 let regSelectedColegioId = null;
 let currentJecVisita = 1;
+
+export function resetRegBuiltFor() {
+  regBuiltFor = null;
+  setRegBuiltFor(null);
+  const host = document.getElementById('regFormHost');
+  if (host) host.innerHTML = '';
+}
 
 let fichaListSearchQuery = '';
 let fichaListFilterEscala = '';
@@ -661,8 +671,8 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
   if (!ft) { host.innerHTML = ''; return; }
 
   // Reconstruir si no está construido o si el contenedor quedó vacío
-  if (regBuiltFor === regSelectedTypeId && !editingSubmissionData && host.querySelector('#regForm')) return;
   regBuiltFor = regSelectedTypeId;
+  setRegBuiltFor(regSelectedTypeId);
   if (!editingSubmissionData) {
     regCompromisos = [];
     regSelectedColegioId = null;
@@ -1333,10 +1343,10 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
         matchVal = dirActivo ? dirActivo.apellidosNombres : (c.director && c.director.nombre ? c.director.nombre : '');
       } else if (lower.includes('director') && !lower.includes('docente') && lower.includes('dni')) {
         matchVal = dirActivo ? dirActivo.dni : (c.director && c.director.dni ? c.director.dni : '');
-      } else if (lower.includes('director') && (lower.includes('tel') || lower.includes('cel'))) {
-        matchVal = dirActivo ? dirActivo.telefono : (c.director && c.director.telefono ? c.director.telefono : '');
-      } else if (lower.includes('director') && lower.includes('correo')) {
-        matchVal = dirActivo ? dirActivo.correo : (c.director && c.director.correo ? c.director.correo : '');
+      } else if (lower.includes('tel') || lower.includes('cel')) {
+        matchVal = dirActivo ? dirActivo.telefono : (c.director && c.director.telefono ? c.director.telefono : (c.telefono || ''));
+      } else if (lower.includes('correo') || lower.includes('email')) {
+        matchVal = dirActivo ? dirActivo.correo : (c.director && c.director.correo ? c.director.correo : (c.email || ''));
       } else if (lower.includes('ugel')) {
         matchVal = c.dependencia || 'UGEL 03';
       } else if (lower.includes('modalidad')) {

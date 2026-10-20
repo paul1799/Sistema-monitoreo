@@ -21,18 +21,42 @@ import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha 
  */
 export function isFichaPriteGestion(ft) {
   if (!ft) return false;
-  const id = String(ft.id || ft.fichaTypeId || '').toLowerCase();
-  // Exclusiones estrictas
-  if (id.includes('cebe') || id.includes('ceba') || id.includes('cetpro') || id.includes('ebr')) {
-    // A menos que sea explícitamente prite
-    if (!id.includes('prite')) return false;
-  }
-  if (id === 'ft_prite_gestion') return true;
-  if (id.includes('prite') && (id.includes('gestion') || id.includes('asistencia') || id.includes('monitoreo'))) return true;
+  const id = (typeof ft === 'string' ? ft : (ft.id || ft.fichaTypeId || ft.tipo || '')).toLowerCase();
 
-  const n = String(ft.nombre || ft.fichaTypeNombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  if (n.includes('cebe') && !n.includes('prite')) return false;
-  if (n.includes('prite') && (n.includes('gestion') || n.includes('asistencia tecnica') || n.includes('monitoreo') || n.includes('multi-visita'))) return true;
+  // EXCLUSIONES ESTRICTAS: Fichas de materiales educativos, tutoría, directivos, rúbricas o lectora
+  if (id.includes('material') || id.includes('tutoria') || id.includes('directivo') || id.includes('rubrica') || id.includes('lector')) return false;
+
+  const n = String(typeof ft === 'string' ? ft : (ft.nombre || ft.fichaTypeNombre || ft.tipo || id || ''))
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  if (n.includes('material') || n.includes('tutoria') || n.includes('directivo') || n.includes('rubrica') || n.includes('lector') || n.includes('lectura')) return false;
+
+  // Si tiene escala Sí/No, nivel 1-4 o escala 1-3, es una ficha estándar/dinámica, NO la de Gestión Escolar PRITE
+  if (typeof ft === 'object' && ft !== null) {
+    const escala = String(ft.tipoRespuesta || ft.escala || '').toLowerCase();
+    if (escala === 'si_no' || escala === 'escala_1_3' || escala === 'nivel_1_4') return false;
+  }
+
+  // Exclusiones estrictas: CEBE, CEBA, CETPRO, EBR
+  if (id.includes('cebe') || id.includes('ceba') || id.includes('cetpro') || id.includes('ebr')) return false;
+  if (n.includes('cebe') || n.includes('ceba') || n.includes('cetpro') || n.includes('ebr')) return false;
+
+  // Identificador canónico oficial
+  if (id === 'ft_prite_gestion' || id === 'ft_gestion_prite') return true;
+
+  // Si el id es de gestión PRITE (pero no de materiales ni CEBE)
+  if (id.includes('prite') && id.includes('gestion') && !id.includes('material')) return true;
+
+  // Por nombre oficial: "gestión escolar" específico de PRITE
+  if (n.includes('prite') && (n.includes('gestion escolar') || (n.includes('gestion') && n.includes('asistencia tecnica')))) {
+    if (!n.includes('material') && !n.includes('cebe')) return true;
+  }
+
+  // Verificación por ítems específicos de la ficha oficial PRITE si vienen en el objeto
+  if (typeof ft === 'object' && ft !== null) {
+    if (Array.isArray(ft.respuestas) && ft.respuestas.some(r => String(r?.id || '').startsWith('gp_') || String(r?.id || '').startsWith('prite_'))) return true;
+    if (Array.isArray(ft.secciones) && ft.secciones.some(s => Array.isArray(s?.items) && s.items.some(i => String(i?.id || '').startsWith('gp_')))) return true;
+  }
+
   return false;
 }
 

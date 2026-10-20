@@ -472,19 +472,27 @@ export const PLANTILLAS_BASE_OFICIALES = {
   // 8. MATERIALES EDUCATIVOS (CEBE/PRITE)
   ft_materiales_cebe: {
     id: 'ft_materiales_cebe',
-    nombre: 'Monitoreo de Gestión y Uso Pedagógico de Materiales Educativos (CEBE/PRITE)',
+    nombre: 'Ficha de Monitoreo de la Gestión y Uso Pedagógico de los Materiales Educativos en los CEBE y PRITE',
     nombreCorto: 'Materiales educativos (CEBE/PRITE)',
-    descripcion: 'Verifica la recepción, distribución, uso pedagógico, seguimiento y conservación de los materiales educativos en CEBE y PRITE.',
+    descripcion: 'Verifica la recepción, distribución, uso pedagógico, seguimiento y conservación de los materiales educativos en los CEBE y PRITE de la UGEL 03.',
     icono: '📦',
     color: '#EAB308',
-    modalidad: 'CEBE',
+    modalidad: 'CEBE / PRITE',
+    grupo: 'CEBE / PRITE',
     tipoRespuesta: 'si_no',
     regla_nivel: 'porcentaje',
     tieneVisitas: false,
     tipoVisitas: 'mismos_items',
     visitas: [],
     extras: [
-      { id: 'ex_rei', label: 'REI', tipo: 'texto', required: false }
+      { id: 'ex_ugel', label: 'UGEL', tipo: 'texto', required: false },
+      { id: 'ex_cod_local', label: 'Código local', tipo: 'texto', required: false },
+      { id: 'ex_rei', label: 'REI', tipo: 'texto', required: false },
+      { id: 'ex_direccion', label: 'Dirección', tipo: 'texto', required: false },
+      { id: 'ex_telefono', label: 'Teléfono', tipo: 'texto', required: false },
+      { id: 'ex_directora', label: 'Directora', tipo: 'texto', required: false },
+      { id: 'ex_correo', label: 'Correo Electrónico', tipo: 'texto', required: false },
+      { id: 'ex_responsable', label: 'Responsable Del Monitoreo', tipo: 'texto', required: false }
     ],
     secciones: [
       {

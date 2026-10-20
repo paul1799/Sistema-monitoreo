@@ -26,7 +26,8 @@ import {
   DEFAULT_PLANTILLAS
 } from './modales.js';
 import { PLANTILLAS_BASE_OFICIALES } from '../catalogo-plantillas-base.js';
-import { renderRegistrarTab, setRegistrarSubTab } from './registrar.js';
+import { renderRegistrarTab, setRegistrarSubTab, resetRegBuiltFor } from './registrar.js';
+import { setRegBuiltFor } from './state.js';
 import { deduplicateTwinSubmissions } from './consolidado.js';
 async function verifyAdminPassword(pw, adminEmail) {
   const authModule = await import('../auth.js');
@@ -722,10 +723,10 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
       }
       builderState.tablas = Array.isArray(builderState.tablas) ? builderState.tablas : [];
 
-      // Auto-popular tablas institucionales si están vacías y es CEBE o PRITE
+      // Auto-popular tablas institucionales si están vacías y es estrictamente la Ficha de Gestión Escolar CEBE o PRITE
+      const idLower = String(ft.id || '').toLowerCase();
       if (builderState.tablas.length === 0) {
-        const idLower = String(ft.id || '').toLowerCase();
-        if (idLower.includes('prite')) {
+        if (idLower === 'ft_prite_gestion' || idLower === 'ft_gestion_prite') {
           builderState.tablas = [
             {
               id: 'tbl_personal_prite',
@@ -760,7 +761,7 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
               ]
             }
           ];
-        } else if (idLower.includes('cebe')) {
+        } else if (idLower === 'ft_gestion_cebe' || idLower === 'ft_cebe_gestion') {
           builderState.tablas = [
             {
               id: 'tbl_personal_cebe',
@@ -795,6 +796,11 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
             }
           ];
         }
+      }
+
+      // Si la ficha es de Materiales Educativos, asegurar que no arrastre las tablas de gestión escolar de CEBE/PRITE
+      if (idLower === 'ft_materiales_cebe' || idLower.includes('material')) {
+        builderState.tablas = (builderState.tablas || []).filter(t => t.id !== 'tbl_personal_cebe' && t.id !== 'tbl_saanee_cebe' && t.id !== 'tbl_personal_prite' && t.id !== 'tbl_estudiantes_prite');
       }
 
       if (!builderState.compromisos) {
@@ -3512,8 +3518,8 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         }
 
         // Sincronizar inmediatamente en el estado en memoria para que no haya desfasaje
+        const savedItem = { id: finalDocId, ...payload };
         if (state && Array.isArray(state.fichaTypes)) {
-          const savedItem = { id: finalDocId, ...payload };
           const idx = state.fichaTypes.findIndex(f => f.id === finalDocId);
           if (idx !== -1) {
             state.fichaTypes[idx] = savedItem;
@@ -3521,6 +3527,18 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
             state.fichaTypes.push(savedItem);
           }
         }
+        if (typeof window !== 'undefined' && window.state && Array.isArray(window.state.fichaTypes)) {
+          const idx = window.state.fichaTypes.findIndex(f => f.id === finalDocId);
+          if (idx !== -1) {
+            window.state.fichaTypes[idx] = savedItem;
+          } else {
+            window.state.fichaTypes.push(savedItem);
+          }
+        }
+
+        // Invalidar caché de formulario de registro para reflejar los cambios de inmediato
+        setRegBuiltFor(null);
+        resetRegBuiltFor();
 
         builderIsDirty = false;
         const di = document.getElementById('dirtyIndicator');
@@ -3644,8 +3662,8 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         }
 
         // Sincronizar inmediatamente en el estado en memoria para que cualquier re-verificación o edición inmediata tenga los datos exactos
+        const savedItem = { id: finalDocId, ...payload };
         if (state && Array.isArray(state.fichaTypes)) {
-          const savedItem = { id: finalDocId, ...payload };
           const idx = state.fichaTypes.findIndex(f => f.id === finalDocId);
           if (idx !== -1) {
             state.fichaTypes[idx] = savedItem;
@@ -3653,6 +3671,18 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
             state.fichaTypes.push(savedItem);
           }
         }
+        if (typeof window !== 'undefined' && window.state && Array.isArray(window.state.fichaTypes)) {
+          const idx = window.state.fichaTypes.findIndex(f => f.id === finalDocId);
+          if (idx !== -1) {
+            window.state.fichaTypes[idx] = savedItem;
+          } else {
+            window.state.fichaTypes.push(savedItem);
+          }
+        }
+
+        // Invalidar caché del formulario de registro para reflejar los cambios de inmediato
+        setRegBuiltFor(null);
+        resetRegBuiltFor();
 
         builderIsDirty = false;
         builderJsonUnlocked = false;

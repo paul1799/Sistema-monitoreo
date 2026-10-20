@@ -20,11 +20,41 @@ import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha 
  */
 export function isFichaCebeGestion(ft) {
   if (!ft) return false;
-  const id = String(ft.id || ft.fichaTypeId || '').toLowerCase();
-  if (id === 'ft_gestion_cebe') return true;
-  if (id.includes('cebe') && id.includes('gestion')) return true;
-  const n = String(ft.nombre || ft.fichaTypeNombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  if (n.includes('cebe') && (n.includes('gestion') || n.includes('asistencia tecnica'))) return true;
+  const id = (typeof ft === 'string' ? ft : (ft.id || ft.fichaTypeId || ft.tipo || '')).toLowerCase();
+
+  // EXCLUSIONES ESTRICTAS: Fichas de materiales educativos, tutoría, directivos, rúbricas o lectora
+  if (id.includes('material') || id.includes('tutoria') || id.includes('directivo') || id.includes('rubrica') || id.includes('lector')) return false;
+
+  const n = String(typeof ft === 'string' ? ft : (ft.nombre || ft.fichaTypeNombre || ft.tipo || id || ''))
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  if (n.includes('material') || n.includes('tutoria') || n.includes('directivo') || n.includes('rubrica') || n.includes('lector') || n.includes('lectura')) return false;
+
+  // Si tiene escala Sí/No, nivel 1-4 o escala 1-3, es una ficha estándar/dinámica, NO la de Gestión Escolar CEBE
+  if (typeof ft === 'object' && ft !== null) {
+    const escala = String(ft.tipoRespuesta || ft.escala || '').toLowerCase();
+    if (escala === 'si_no' || escala === 'escala_1_3' || escala === 'nivel_1_4') return false;
+  }
+
+  // Si incluye PRITE en el nombre o id y no es puramente CEBE, descartar
+  if ((n.includes('prite') || id.includes('prite')) && !id.includes('cebe')) return false;
+
+  // Identificador canónico oficial
+  if (id === 'ft_gestion_cebe' || id === 'ft_cebe_gestion') return true;
+
+  // Si el id es de gestión CEBE (pero no de materiales ni PRITE)
+  if (id.includes('cebe') && id.includes('gestion') && !id.includes('prite') && !id.includes('material')) return true;
+
+  // Por nombre oficial: "gestión escolar" específico de CEBE
+  if (n.includes('cebe') && (n.includes('gestion escolar') || (n.includes('gestion') && n.includes('asistencia tecnica')))) {
+    if (!n.includes('material') && !n.includes('prite')) return true;
+  }
+
+  // Verificación por ítems específicos de la ficha oficial CEBE si vienen en el objeto
+  if (typeof ft === 'object' && ft !== null) {
+    if (Array.isArray(ft.respuestas) && ft.respuestas.some(r => String(r?.id || '').startsWith('gc_') || String(r?.id || '').startsWith('cebe_'))) return true;
+    if (Array.isArray(ft.secciones) && ft.secciones.some(s => Array.isArray(s?.items) && s.items.some(i => String(i?.id || '').startsWith('gc_')))) return true;
+  }
+
   return false;
 }
 

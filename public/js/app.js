@@ -498,6 +498,20 @@ function startListeners() {
         Object.assign(cebeDoc, PLANTILLAS_BASE_OFICIALES.ft_gestion_cebe);
       }
 
+      // Sanitizar Materiales Educativos (CEBE/PRITE) si arrastraba tablas institucionales de Gestión Escolar y sincronizar cabecera oficial
+      const matCebeDoc = activeRaw.find(x => x.id === 'ft_materiales_cebe');
+      if (matCebeDoc) {
+        if (Array.isArray(matCebeDoc.tablas)) {
+          matCebeDoc.tablas = matCebeDoc.tablas.filter(t => t.id !== 'tbl_personal_cebe' && t.id !== 'tbl_saanee_cebe' && t.id !== 'tbl_personal_prite' && t.id !== 'tbl_estudiantes_prite');
+        }
+        if (!matCebeDoc.extras || matCebeDoc.extras.length <= 1) {
+          matCebeDoc.extras = PLANTILLAS_BASE_OFICIALES.ft_materiales_cebe.extras;
+        }
+        matCebeDoc.nombre = PLANTILLAS_BASE_OFICIALES.ft_materiales_cebe.nombre;
+        matCebeDoc.modalidad = 'CEBE / PRITE';
+        matCebeDoc.grupo = 'CEBE / PRITE';
+      }
+
       // 7. Filtrar la lista final deduplicando EBR, JEC y Directivos
       const loaded = [];
       let ebrAdded = false;

@@ -3,10 +3,11 @@
    ========================================================================= */
 
 import { forceResetBodyScroll } from './core-utils.js';
-import { clearEditMode, setAppState, getSessionUser } from './state.js';
+import { clearEditMode, setAppState, getSessionUser, setRegBuiltFor } from './state.js';
 import { openDownloadConfigModal } from './modales.js';
 import { computeStats } from './scoring.js';
 import { exportConsolidadoReportPdf } from '../pdf-template.js';
+import { setRegistrarSubTab, resetRegBuiltFor } from './registrar.js';
 
 /* ============================= NAVEGACIÓN ============================= */
 export function renderForbidden(c) {
@@ -41,6 +42,8 @@ export function setupNavigation(state, renderFn) {
       state.activeTab = b.dataset.tab;
       if (state.activeTab === 'registrar') {
         clearEditMode();
+        setRegistrarSubTab('registrar');
+        resetRegBuiltFor();
       }
       cleanConcursoParams(state.activeTab);
       renderFn();
@@ -55,6 +58,8 @@ export function setupNavigation(state, renderFn) {
       window.scrollTo({ top: 0, behavior: 'instant' });
       state.activeTab = 'registrar';
       clearEditMode();
+      setRegistrarSubTab('registrar');
+      resetRegBuiltFor();
       cleanConcursoParams('registrar');
       document.querySelectorAll('.navbtn').forEach(x => x.classList.remove('active'));
       const btn = document.querySelector('.navbtn[data-tab="registrar"]');

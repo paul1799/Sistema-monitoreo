@@ -143,15 +143,23 @@ export function isFichaEbrGestionEscolar(ft) {
   const id = (typeof ft === 'string' ? ft : (ft.id || ft.fichaTypeId || ft.tipo || '')).toLowerCase();
   // EXCLUSIONES ESTRICTAS: CEBE, PRITE, CEBA, CETPRO NO son Ficha EBR Gestión Escolar
   if (id.includes('cebe') || id.includes('prite') || id.includes('ceba') || id.includes('cetpro')) return false;
+  if (id.includes('material') || id.includes('tutoria') || id.includes('directivo') || id.includes('rubrica') || id.includes('lector')) return false;
 
   const n = String(typeof ft === 'string' ? ft : (ft.nombre || ft.fichaTypeNombre || ft.tipo || id || ''))
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   if (n.includes('cebe') || n.includes('prite') || n.includes('ceba') || n.includes('cetpro')) return false;
+  if (n.includes('material') || n.includes('tutoria') || n.includes('directivo') || n.includes('rubrica') || n.includes('lector') || n.includes('lectura')) return false;
+
+  // Si tiene escala Sí/No, nivel 1-4 o escala 1-3, es una ficha estándar/dinámica, no la de Gestión Escolar EBR
+  if (typeof ft === 'object' && ft !== null) {
+    const escala = String(ft.tipoRespuesta || ft.escala || '').toLowerCase();
+    if (escala === 'si_no' || escala === 'escala_1_3' || escala === 'nivel_1_4') return false;
+  }
 
   if (id === 'ft_gestion_ugel03_ebr' || id === 'ft_ebr_gestion_1er' || id === 'ft_ebr_gestion' || id === 'ft_ebr_gestion_2do' || id === 'ft_ebr_gestion_3er') return true;
-  if (id.includes('gestion') && id.includes('ebr')) return true;
+  if (id.includes('gestion') && id.includes('ebr') && !id.includes('material')) return true;
   if (n.includes('gestion escolar') && n.includes('ebr')) return true;
-  if (n.includes('gestion') && n.includes('ebr')) return true;
+  if (n.includes('gestion') && n.includes('ebr') && n.includes('asistencia tecnica')) return true;
   if (typeof ft === 'object') {
     if (ft.regla_nivel && ft.regla_nivel.momento && (ft.regla_nivel.maxPuntaje === 69 || ft.regla_nivel.maxPuntaje === 57 || ft.regla_nivel.maxPuntaje === 45)) return true;
     if (Array.isArray(ft.respuestas) && ft.respuestas.some(r => String(r?.id || '').startsWith('ge_doc_') || String(r?.id || '').startsWith('ge_1_') || String(r?.id || '').startsWith('ge_2_') || String(r?.id || '').startsWith('ge3_') || String(r?.id || '').startsWith('ge_3_'))) return true;

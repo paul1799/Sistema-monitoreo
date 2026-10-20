@@ -520,15 +520,22 @@ export function isFichaEbrGestionEscolar(ft) {
   const id = String(ft.id || ft.fichaTypeId || '').toLowerCase();
   // EXCLUSIONES ESTRICTAS: CEBE, PRITE, CEBA, CETPRO NO son Ficha EBR Gestión Escolar
   if (id.includes('cebe') || id.includes('prite') || id.includes('ceba') || id.includes('cetpro')) return false;
+  if (id.includes('material') || id.includes('tutoria') || id.includes('directivo') || id.includes('rubrica') || id.includes('lector')) return false;
 
   const n = normalizeText(ft.nombre || ft.fichaTypeNombre || '');
   if (n.includes('cebe') || n.includes('prite') || n.includes('ceba') || n.includes('cetpro')) return false;
+  if (n.includes('material') || n.includes('tutoria') || n.includes('directivo') || n.includes('rubrica') || n.includes('lector') || n.includes('lectura')) return false;
+
+  if (typeof ft === 'object' && ft !== null) {
+    const escala = String(ft.tipoRespuesta || ft.escala || '').toLowerCase();
+    if (escala === 'si_no' || escala === 'escala_1_3' || escala === 'nivel_1_4') return false;
+  }
 
   if (id === 'ft_gestion_ugel03_ebr' || id === 'ft_ebr_gestion_1er' || id === 'ft_ebr_gestion') return true;
-  if (id.includes('gestion') && id.includes('ebr')) return true;
+  if (id.includes('gestion') && id.includes('ebr') && !id.includes('material')) return true;
   const nNorm = normalizeText(ft.nombre || ft.fichaTypeNombre || '');
   if (nNorm.includes('gestion escolar') && nNorm.includes('ebr')) return true;
-  if (nNorm.includes('gestion') && nNorm.includes('ebr')) return true;
+  if (nNorm.includes('gestion') && nNorm.includes('ebr') && nNorm.includes('asistencia tecnica')) return true;
   if (ft.regla_nivel && ft.regla_nivel.momento && (ft.regla_nivel.maxPuntaje === 69 || ft.regla_nivel.maxPuntaje === 57)) return true;
   if (Array.isArray(ft.respuestas) && ft.respuestas.some(r => String(r?.id || '').startsWith('ge_doc_') || String(r?.id || '').startsWith('ge_1_') || String(r?.id || '').startsWith('ge_2_'))) return true;
   return false;
