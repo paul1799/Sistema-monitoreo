@@ -32,6 +32,8 @@ import {
   getTituloConsolidadoConcurso as _getTituloConsolidadoConcursos
 } from '../pdf-concursos.js';
 import { openDownloadConfigModal } from './modales.js';
+import { exportarConcursosExcelOficial } from '../concursos-excel.js';
+export { exportarConcursosExcelOficial };
 
 export function getTituloConsolidadoConcurso(tipoConcurso) {
   if (typeof _getTituloConsolidadoConcursos === 'function') {
@@ -426,6 +428,12 @@ export function getConcursoSubTab() {
 }
 export function setConcursoSubTab(tab) {
   concursoSubTab = tab;
+  const topNav = document.getElementById('subNavBar');
+  if (topNav) {
+    topNav.querySelectorAll('.navbtn[data-csubtab]').forEach(b => {
+      b.classList.toggle('active', b.dataset.csubtab === tab);
+    });
+  }
 }
 let concursoSelectedTipoId = null;
 let concursoEditingId = null;
@@ -505,48 +513,12 @@ export function renderConcursosTab(container, state, dbNs, isAdmin, currentUser,
     }
   }
 
-  // Definir sub-pestañas disponibles alineadas con la barra superior
-  const subTabs = [
-    { id: 'consolidado', label: '📊 Ver consolidado' },
-    { id: 'registrar', label: '➕ Registrar participante' },
-    { id: 'asignar_podios', label: '🏆 Asignar puestos' },
-    { id: 'asistente', label: '🔤 Revisar nombres' },
-  ];
-  if (isAdmin) {
-    subTabs.push({ id: 'tipos', label: '⚙ Tipos de concurso' });
-  }
-
   // Si un no-admin quedó en subpestaña 'tipos', redirigir a 'consolidado'
   if (!isAdmin && concursoSubTab === 'tipos') {
     concursoSubTab = 'consolidado';
   }
 
-  const subTabButtonsHtml = subTabs.map(t =>
-    '<button type="button" class="subTabBtn' + (concursoSubTab === t.id ? ' active' : '') + '" data-csubtab="' + t.id + '">' + t.label + '</button>'
-  ).join('');
-
-  container.innerHTML = '' +
-    '<div class="pageHead">' +
-    '<h2>Concursos Escolares</h2>' +
-    '<p>Registro, premiación y consolidado de participantes de concursos oficiales (JMA, ONEM, Eureka, JFEN, JEDPA y más).</p>' +
-    '</div>' +
-    '<div class="subTabBar">' + subTabButtonsHtml + '</div>' +
-    '<div id="concursoSubHost"></div>';
-
-  container.querySelectorAll('[data-csubtab]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const newSub = btn.dataset.csubtab;
-      setConcursoSubTab(newSub);
-      // Sincronizar barra superior si existe en el DOM
-      const topNav = document.getElementById('subNavBar');
-      if (topNav) {
-        topNav.querySelectorAll('.navbtn[data-csubtab]').forEach(b => {
-          b.classList.toggle('active', b.dataset.csubtab === newSub);
-        });
-      }
-      renderConcursosTab(container, state, dbNs, isAdmin, currentUser, navigate);
-    });
-  });
+  container.innerHTML = '<div id="concursoSubHost"></div>';
 
   const host = document.getElementById('concursoSubHost');
   if (!host) return;
@@ -3715,143 +3687,13 @@ export function renderConcursoConsolidadoView(host, state, dbNs, isAdmin, curren
     });
   });
 
-  // Exportar Excel (.xlsx) oficial o CSV — columnas separadas: Apellidos | Nombres | DNI | Rol
-  document.getElementById('cf_exportCsv').addEventListener('click', () => {
-    if (!filtered || filtered.length === 0) {
-      showToast('No hay registros para exportar con los filtros seleccionados.');
-      return;
-    }
-    let headers;
-    if (isJedpa) {
-      headers = [
-        'Puesto', 'Podio', 'Institución', 'Código Modular', 'Concurso', 'Etapa',
-        'Categoría', 'Género', 'Arte / Disciplina', 'Título', 'Seudónimo',
-        'Tipo Persona', 'Rol cuerpo técnico', 'Apellidos', 'Nombres', 'DNI/Doc.',
-        'Origen', 'Resolución', 'Fecha'
-      ];
-    } else {
-      headers = [
-        'Puesto', 'Podio', 'Institución', 'Código Modular', 'Concurso', 'Etapa',
-        'Categoría', 'Género', 'Arte / Disciplina', 'Título', 'Seudónimo',
-        'Tipo Persona', 'Apellidos', 'Nombres', 'DNI/Doc.', 'Rol',
-        'Nombre heredado (texto libre)', 'Resolución', 'Fecha'
-      ];
-    }
-    const rows = [];
-    filtered.forEach(r => {
-      const curTipoObj = (state.tiposConcurso || []).find(t => t.id === r.tipoConcursoId || t.nombre === r.tipoConcursoNombre) || tipo;
-      const base = [
-        r.puesto || '',
-        getPodioLabel(r, curTipoObj),
-        r.institucion || '',
-        r.codigoModular || '',
-        r.tipoConcursoNombre || r.tipoConcurso || '',
-        r.etapa || '',
-        r.categoria || '',
-        formatGeneroDisplay(r.genero),
-        r.disciplina || '',
-        r.tituloTrabajo || '',
-        r.seudonimo || ''
-      ];
-
-      if (isJedpa) {
-        // En JEDPA: participantes individuales + cuerpo técnico del grupo (o individual) en mayúsculas
-        const grupoCt = typeof obtenerCuerpoTecnicoGrupo === 'function'
-          ? obtenerCuerpoTecnicoGrupo(r, state.concursoCuerpoTecnico || [], filtered)
-          : { miembros: [], origen: 'individual' };
-        const ctMiembros = (grupoCt.miembros && grupoCt.miembros.length > 0)
-          ? grupoCt.miembros.map(m => ({ ...m, _origen: grupoCt.origen === 'concursoCuerpoTecnico' ? 'grupo' : 'grupo' }))
-          : (r.asesores || []).map(a => ({ ...a, _origen: 'individual' }));
-
-        const deportistas = (r.participantes || []).map(p => ({
-          _tipo: 'Deportista / Participante',
-          rol: p.rol || 'Deportista',
-          apellidos: (p.apellidos || '').trim().toUpperCase(),
-          nombres: (p.nombres || '').trim().toUpperCase(),
-          dni: (p.dni || '').trim(),
-          origen: 'individual'
-        }));
-
-        const ctExport = ctMiembros.map(a => ({
-          _tipo: 'Cuerpo Técnico',
-          rol: (a.rol || 'Delegado').toUpperCase(),
-          apellidos: (a.apellidos || '').trim().toUpperCase(),
-          nombres: (a.nombres || '').trim().toUpperCase(),
-          dni: (a.dni || '').trim(),
-          origen: a._origen || 'grupo'
-        }));
-
-        const totalJ = [...deportistas, ...ctExport];
-        if (totalJ.length === 0) {
-          rows.push([...base, '', '', '', '', '', '', r.resolucionRef || '', r.fecha || '']);
-        } else {
-          totalJ.forEach(p => {
-            rows.push([
-              ...base,
-              p._tipo,
-              p.rol,
-              p.apellidos,
-              p.nombres,
-              p.dni,
-              p.origen,
-              r.resolucionRef || '',
-              r.fecha || ''
-            ]);
-          });
-        }
-      } else {
-        const personas = [
-          ...(r.participantes || []).map(p => ({ ...p, _tipo: 'Participante' })),
-          ...(r.asesores || []).map(a => ({ ...a, _tipo: 'Asesor/Entrenador' }))
-        ];
-        if (personas.length === 0) {
-          rows.push([...base, '', '', '', '', '', '', r.resolucionRef || '', r.fecha || '']);
-        } else {
-          personas.forEach(p => {
-            const esHeredado = !((p.apellidos || '').trim()) && (p.nombres || '').trim();
-            rows.push([
-              ...base,
-              p._tipo,
-              (p.apellidos || '').trim(),
-              (p.nombres || '').trim(),
-              (p.dni || '').trim(),
-              p.rol || '',
-              esHeredado ? (p.nombres || '').trim() : '',
-              r.resolucionRef || '',
-              r.fecha || ''
-            ]);
-          });
-        }
-      }
+  // Exportar Excel (.xlsx) oficial rediseñado — formato en cuadros con super-encabezados y soporte individual/grupal
+  const btnExportExcel = document.getElementById('cf_exportCsv');
+  if (btnExportExcel) {
+    btnExportExcel.addEventListener('click', async () => {
+      await exportarConcursosExcelOficial(filtered, tipo, concursoFilters, state);
     });
-
-    const fileBaseName = 'concursos_' + (tipo ? tipo.id : 'todos') + '_' + todayStr();
-    if (typeof XLSX !== 'undefined') {
-      try {
-        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-        const colWidths = headers.map((h, i) => {
-          let maxLen = String(h).length;
-          for (let r = 0; r < Math.min(rows.length, 120); r++) {
-            const val = rows[r][i];
-            if (val) maxLen = Math.max(maxLen, String(val).length);
-          }
-          return { wch: Math.min(Math.max(maxLen + 3, 10), 45) };
-        });
-        ws['!cols'] = colWidths;
-        const wb = XLSX.utils.book_new();
-        const sheetTitle = (tipo?.nombre || 'Concursos').slice(0, 31).replace(/[:\\\/\?\*\[\]]/g, '');
-        XLSX.utils.book_append_sheet(wb, ws, sheetTitle);
-        XLSX.writeFile(wb, `${fileBaseName}.xlsx`);
-        showToast('✓ Archivo Excel (.xlsx) generado exitosamente.');
-      } catch (err) {
-        console.error('Error generando archivo Excel:', err);
-        showToast('Generando archivo CSV de respaldo...');
-        downloadCsv(`${fileBaseName}.csv`, headers, rows);
-      }
-    } else {
-      downloadCsv(`${fileBaseName}.csv`, headers, rows);
-    }
-  });
+  }
 
   // Expandir fila al hacer clic
   host.querySelectorAll('tr[data-crow]').forEach(tr => {

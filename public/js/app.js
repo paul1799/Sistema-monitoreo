@@ -104,17 +104,21 @@ function getFichaType(id) {
 /* ============================= SELECCIÓN DE MÓDULOS ============================= */
 function seleccionarModulo(mod) {
   state.modulo = mod;
+  const welcomeBanner = document.getElementById('welcomeBanner');
   if (mod === 'portal') {
     sessionStorage.removeItem('agebre_active_modulo');
     state.activeTab = 'portal';
+    if (welcomeBanner) welcomeBanner.classList.remove('welcomeBanner--concursos');
   } else if (mod === 'monitoreo') {
     sessionStorage.setItem('agebre_active_modulo', 'monitoreo');
     if (state.activeTab === 'portal' || state.activeTab === 'concursos') {
       state.activeTab = 'dashboard';
     }
+    if (welcomeBanner) welcomeBanner.classList.remove('welcomeBanner--concursos');
   } else if (mod === 'concursos') {
     sessionStorage.setItem('agebre_active_modulo', 'concursos');
     state.activeTab = 'concursos';
+    if (welcomeBanner) welcomeBanner.classList.add('welcomeBanner--concursos');
   }
   forceResetBodyScroll();
   window.scrollTo({ top: 0, behavior: 'instant' });
@@ -138,7 +142,10 @@ function renderSubNavBar() {
 
   if (state.modulo === 'portal') {
     subNav.style.display = 'none';
-    if (welcomeBanner) welcomeBanner.style.display = 'none';
+    if (welcomeBanner) {
+      welcomeBanner.style.display = 'none';
+      welcomeBanner.classList.remove('welcomeBanner--concursos');
+    }
     return;
   }
 
@@ -146,6 +153,7 @@ function renderSubNavBar() {
   if (welcomeBanner) welcomeBanner.style.display = 'flex';
 
   if (state.modulo === 'monitoreo') {
+    welcomeBanner?.classList.remove('welcomeBanner--concursos');
     const titleEl = welcomeBanner?.querySelector('.welcomeTitle');
     const subEl = welcomeBanner?.querySelector('.welcomeSub');
     if (titleEl) titleEl.textContent = 'Panel de Monitoreo y Acompañamiento 2026';
@@ -184,6 +192,7 @@ function renderSubNavBar() {
     });
 
   } else if (state.modulo === 'concursos') {
+    welcomeBanner?.classList.add('welcomeBanner--concursos');
     const titleEl = welcomeBanner?.querySelector('.welcomeTitle');
     const subEl = welcomeBanner?.querySelector('.welcomeSub');
     if (titleEl) titleEl.textContent = 'Gestión Integral de Concursos Escolares 2026';

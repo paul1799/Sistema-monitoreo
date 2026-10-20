@@ -118,6 +118,7 @@ export {
   setSelectedCategorias,
   renderConcursosTab,
   renderConcursoConsolidadoView,
+  exportarConcursosExcelOficial,
   getTituloConsolidadoConcurso,
   CONCURSO_TIPO_ID_MAP,
   openConsolidarCuerpoTecnicoModal,

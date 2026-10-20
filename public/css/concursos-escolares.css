@@ -887,3 +887,77 @@
   background: #FBF9FD;
   border-top: 1px solid #E2D9EA;
 }
+
+/* =========================================================================
+   ESTILOS INSTITUCIONALES PARA CONCURSOS ESCOLARES (TEMA ALEGRE Y LUMINOSO)
+   Diferenciado del tema azul marino oscuro de Monitoreo General
+   ========================================================================= */
+
+/* 1. Banner Institucional de Concursos Escolares (Gestión Integral de Concursos Escolares 2026) */
+.welcomeBanner.welcomeBanner--concursos {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 45%, #0284c7 100%) !important;
+  border-left: 5px solid #f59e0b !important;
+  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.22) !important;
+  color: #FFFFFF !important;
+}
+
+.welcomeBanner.welcomeBanner--concursos .welcomeTitle {
+  color: #FFFFFF !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.welcomeBanner.welcomeBanner--concursos .welcomeSub {
+  color: #E0F2FE !important;
+}
+
+.welcomeBanner.welcomeBanner--concursos .welcomeSub em {
+  color: #FDE68A !important;
+  font-weight: 600;
+}
+
+.welcomeBanner.welcomeBanner--concursos .welcomeMeta {
+  color: #BAE6FD !important;
+}
+
+.welcomeBanner.welcomeBanner--concursos .welcomeMeta strong {
+  color: #FFFFFF !important;
+}
+
+.welcomeBanner.welcomeBanner--concursos .welcomeMeta .badge {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+}
+
+/* 2. Barra de Resultados Consolidados (Resultados consolidados: Todos los concursos escolares) */
+.concursoResultsHeader {
+  background: linear-gradient(135deg, #EFF6FF 0%, #E0F2FE 100%);
+  border-left: 4px solid #0284C7;
+  border-radius: 8px;
+  padding: 12px 18px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.concursoResultsHeader h3 {
+  color: #0369A1 !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  letter-spacing: -0.01em;
+}
+
+/* 3. Encabezados de tabla para Concursos Escolares (Puesto, Institución, Categoría, Detalle, etc.) */
+#concursoReportCapture thead th,
+#concursoSubHost .tblWrap thead th,
+.jfenFichaCard thead th {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #0284c7 100%) !important;
+  color: #FFFFFF !important;
+  border-bottom: 2px solid #38bdf8 !important;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
