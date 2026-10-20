@@ -6,8 +6,8 @@
    ========================================================================= */
 
 import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui/core-utils.js?v=20261015_v1';
-import { clearEditMode } from './ui/state.js?v=20261016_v1';
-
+import { clearEditMode, getRegTargetVisita, getRegSelectedColegioId } from './ui/state.js?v=20261016_v1';
+import { getResponsableForColegio } from './ui/scoring.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20261013_v1';
 import {
   REGLA_NIVEL_EBR_GESTION_M1,
@@ -656,6 +656,51 @@ export function resetEbrFormState() {
 }
 
 /**
+ * Asigna los datos generales de una Institución Educativa a ebrFormState:
+ * IE, código local, RED/REI, Director(a), Subdirectores y Especialista oficial asignado a la RED.
+ */
+export function applyColegioToEbrFormState(c, state, ft = null) {
+  if (!c) return;
+  ebrFormState.colegioId = c.id || '';
+  ebrFormState.institucion = c.ie || c.nombre || '';
+  ebrFormState.codigoLocal = cleanTextCode(c.codigoLocal || c.codigoModular || '');
+  ebrFormState.red = c.rei || c.red || '';
+
+  // 1. Directivo y Subdirectores desde la fuente única del directorio
+  const { director: dirActivo, subdirectores: subsActivos } = getDirectivosActivosForColegio(state, c.id, c.codigoLocal, c.codigoModular);
+  if (dirActivo) {
+    ebrFormState.director.nombres = dirActivo.apellidosNombres || '';
+    ebrFormState.director.dni = cleanTextCode(dirActivo.dni || '');
+    ebrFormState.director.telefono = cleanTextCode(dirActivo.telefono || '');
+    ebrFormState.director.correo = dirActivo.correo || '';
+    ebrFormState.director.condicion = dirActivo.condicion || 'D';
+  } else if (c.director) {
+    ebrFormState.director.nombres = c.director.nombre || c.director.nombres || '';
+    ebrFormState.director.dni = cleanTextCode(c.director.dni || '');
+    ebrFormState.director.telefono = cleanTextCode(c.director.telefono || '');
+    ebrFormState.director.correo = c.director.correo || '';
+    ebrFormState.director.condicion = c.director.condicion || 'D';
+  }
+
+  if (subsActivos && subsActivos.length > 0) {
+    ebrFormState.subdirectores = subsActivos.map(s => ({
+      id: s.id || genId(),
+      nombres: s.apellidosNombres || '',
+      dni: cleanTextCode(s.dni || ''),
+      telefono: cleanTextCode(s.telefono || ''),
+      condicion: s.condicion || 'D',
+      correo: s.correo || ''
+    }));
+  }
+
+  // 2. Especialista correspondiente a la RED de la institución
+  const respColegio = getResponsableForColegio(c, ft, state);
+  if (respColegio && respColegio !== '—' && respColegio !== 'Por asignar') {
+    ebrFormState.responsable = respColegio;
+  }
+}
+
+/**
  * Precarga el estado a partir de una ficha guardada previamente (modo edición)
  */
 export function preloadEbrFormState(sub, ft) {
@@ -774,8 +819,38 @@ export function preloadEbrFormState(sub, ft) {
 /**
  * Renderiza el formulario dinámico completo de EBR Gestión Escolar según la Visita activa
  */
-export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing = false) {
+export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing = false, prefillOptions = null) {
   if (!host || !ft) return;
+
+  if (!isEditing) {
+    const targetVis = (prefillOptions && prefillOptions.visita)
+      ? Number(prefillOptions.visita)
+      : ((getRegTargetVisita ? Number(getRegTargetVisita()) : null) || (function() {
+          try {
+            const v = sessionStorage.getItem('reg_prefill_visita');
+            return v ? Number(v) : null;
+          } catch (_) { return null; }
+        })());
+
+    const targetColId = (prefillOptions && prefillOptions.colegioId)
+      ? prefillOptions.colegioId
+      : ((getRegSelectedColegioId ? getRegSelectedColegioId() : null) || (function() {
+          try { return sessionStorage.getItem('reg_prefill_colegioid'); } catch (_) { return null; }
+        })());
+
+    if (targetVis && [1, 2, 3].includes(targetVis)) {
+      ebrFormState.visita = targetVis;
+    }
+
+    if (targetColId && (!ebrFormState.colegioId || ebrFormState.colegioId !== targetColId)) {
+      const col = (state && Array.isArray(state.colegios))
+        ? state.colegios.find(c => c.id === targetColId || c.codigoLocal === targetColId || c.codigoModular === targetColId)
+        : null;
+      if (col) {
+        applyColegioToEbrFormState(col, state, ft);
+      }
+    }
+  }
 
   const currentVisita = ebrFormState.visita;
   const isV1 = currentVisita === 1;
@@ -1847,49 +1922,43 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
   const dropdown = host.querySelector('#ieDropdown');
   const hint = host.querySelector('#regColegioHint');
 
+  // Inicializar hints si la IE y especialista ya vienen precargados
+  if (hint && ebrFormState.institucion) {
+    hint.style.display = 'block';
+    hint.textContent = `✓ Vinculada al padrón: ${ebrFormState.institucion} · RED ${ebrFormState.red || '—'} · Cód: ${ebrFormState.codigoLocal || '—'}`;
+  }
+  const initRHint = host.querySelector('#ebrRespHint');
+  if (initRHint && ebrFormState.responsable) {
+    initRHint.style.display = 'block';
+    initRHint.textContent = `✓ Especialista asignado(a) a la RED: ${ebrFormState.responsable}`;
+  }
+
   const onSelectColegioEbr = (c) => {
-    instInput.value = c.ie || '';
-    ebrFormState.colegioId = c.id || '';
-    ebrFormState.codigoLocal = cleanTextCode(c.codigoLocal || c.codigoModular || '');
-    ebrFormState.red = c.rei || '';
+    applyColegioToEbrFormState(c, state, ft);
+
+    instInput.value = ebrFormState.institucion;
     const codEl = host.querySelector('#ebr_cod_local');
     if (codEl) codEl.value = ebrFormState.codigoLocal;
     const redEl = host.querySelector('#ebr_red');
     if (redEl) redEl.value = ebrFormState.red;
 
-    // Precargar Director y Subdirectores desde la fuente única 'directivos'
-    const { director: dirActivo, subdirectores: subsActivos } = getDirectivosActivosForColegio(state, c.id, c.codigoLocal, c.codigoModular);
+    const dNom = host.querySelector('#ebr_dir_nombre');
+    if (dNom) dNom.value = ebrFormState.director.nombres;
+    const dDni = host.querySelector('#ebr_dir_dni');
+    if (dDni) dDni.value = ebrFormState.director.dni;
+    const dTel = host.querySelector('#ebr_dir_tel');
+    if (dTel) dTel.value = ebrFormState.director.telefono;
+    const dMail = host.querySelector('#ebr_dir_correo');
+    if (dMail) dMail.value = ebrFormState.director.correo;
+    const dCond = host.querySelector('#ebr_dir_cond');
+    if (dCond) dCond.value = ebrFormState.director.condicion;
 
-    if (dirActivo) {
-      ebrFormState.director.nombres = dirActivo.apellidosNombres || '';
-      ebrFormState.director.dni = cleanTextCode(dirActivo.dni || '');
-      ebrFormState.director.telefono = cleanTextCode(dirActivo.telefono || '');
-      ebrFormState.director.correo = dirActivo.correo || '';
-      ebrFormState.director.condicion = dirActivo.condicion || 'D';
-
-      const dNom = host.querySelector('#ebr_dir_nombre');
-      if (dNom) dNom.value = ebrFormState.director.nombres;
-      const dDni = host.querySelector('#ebr_dir_dni');
-      if (dDni) dDni.value = ebrFormState.director.dni;
-      const dTel = host.querySelector('#ebr_dir_tel');
-      if (dTel) dTel.value = ebrFormState.director.telefono;
-      const dMail = host.querySelector('#ebr_dir_correo');
-      if (dMail) dMail.value = ebrFormState.director.correo;
-      const dCond = host.querySelector('#ebr_dir_cond');
-      if (dCond) dCond.value = ebrFormState.director.condicion;
-    }
-
-    let reRenderNeeded = false;
-    if (subsActivos && subsActivos.length > 0) {
-      ebrFormState.subdirectores = subsActivos.map(s => ({
-        id: s.id || genId(),
-        nombres: s.apellidosNombres || '',
-        dni: cleanTextCode(s.dni || ''),
-        telefono: cleanTextCode(s.telefono || ''),
-        condicion: s.condicion || 'D',
-        correo: s.correo || ''
-      }));
-      reRenderNeeded = true;
+    const rInp = host.querySelector('#ebr_responsable');
+    if (rInp) rInp.value = ebrFormState.responsable;
+    const rHint = host.querySelector('#ebrRespHint');
+    if (rHint && ebrFormState.responsable) {
+      rHint.style.display = 'block';
+      rHint.textContent = `✓ Especialista asignado(a) a la RED: ${ebrFormState.responsable}`;
     }
 
     if (hint) {
@@ -1897,37 +1966,12 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       hint.textContent = `✓ Vinculada al padrón: ${c.ie} · RED ${c.rei || '—'} · Cód: ${c.codigoLocal || '—'}`;
     }
 
-    // Auto-sugerir especialista según RED del colegio
-    if (c.rei && state.responsables && state.responsables.length) {
-      const cReiNorm = normalizeText(c.rei);
-      const matchedResp = state.responsables.find(r => {
-        if (!r.red) return false;
-        const rRedNorm = normalizeText(r.red);
-        return rRedNorm.includes(cReiNorm) || cReiNorm.includes(rRedNorm) ||
-          (c.rei.match(/\d+/) && r.red.includes(c.rei.match(/\d+/)[0]));
-      });
-
-      if (matchedResp) {
-        const respName = matchedResp.nombresApellidos || matchedResp.especialista || '';
-        const userEmailName = (currentUser?.email ? currentUser.email.split('@')[0] : '');
-        if (respName && (!ebrFormState.responsable || ebrFormState.responsable === userEmailName)) {
-          ebrFormState.responsable = respName;
-          const rInp = host.querySelector('#ebr_responsable');
-          if (rInp) rInp.value = respName;
-          const rHint = host.querySelector('#ebrRespHint');
-          if (rHint) {
-            rHint.style.display = 'block';
-            rHint.textContent = '✓ ' + (matchedResp.cargo || matchedResp.especialista || 'Especialista') +
-              (matchedResp.red ? ' · ' + matchedResp.red : '');
-          }
-        }
-      }
+    // Comprobar si ya tiene fichas EBR en 2026 para sugerir Visita 1 o Visita 2 (solo si aún no se eligió visita)
+    if (!ebrFormState.visita) {
+      checkExistingVisitasEbr(c, host, state, ft, dbNs, currentUser, navigate, isEditing);
     }
 
-    // Comprobar si ya tiene fichas EBR en 2026 para sugerir Visita 1 o Visita 2
-    checkExistingVisitasEbr(c, host, state, ft, dbNs, currentUser, navigate, isEditing);
-
-    if (reRenderNeeded) {
+    if (ebrFormState.subdirectores && ebrFormState.subdirectores.length > 0) {
       syncAllEbrFormDataFromDom(host);
       const scrollY = window.scrollY;
       renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing);

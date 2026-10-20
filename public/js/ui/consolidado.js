@@ -28,7 +28,9 @@ import {
   setSessionUser,
   setRegSelectedTypeId,
   setRegBuiltFor,
-  setRegSelectedColegioId
+  setRegSelectedColegioId,
+  setRegTargetVisita,
+  getRegTargetVisita
 } from './state.js';
 import {
   RESPONSE_OPTIONS,
@@ -3265,17 +3267,22 @@ function attachReportHostListeners(host, state, getFichaType, dbNs, isAdmin, nav
 
     const handleRegistrarClick = (btn) => {
       const colId = btn.dataset.colId;
-      const visNum = Number(btn.dataset.vis) || 1;
-      const ftId = btn.dataset.ftId || (currentReportFt ? currentReportFt.id : null);
-      if (!ftId) return;
+      const visNum = Number(btn.dataset.vis) || (filtrosReporte.visita ? Number(filtrosReporte.visita) : 1);
+      const ftId = btn.dataset.ftId || (currentReportFt ? currentReportFt.id : (filtrosReporte.tipo && filtrosReporte.tipo !== '__ALL__' ? filtrosReporte.tipo : null));
+      if (!ftId || ftId === '__ALL__') {
+        showToast('Por favor selecciona una ficha específica en el reporte antes de registrar.');
+        return;
+      }
 
       clearEditMode();
       setRegSelectedTypeId(ftId);
       setRegBuiltFor(null);
       setRegSelectedColegioId(colId || null);
+      setRegTargetVisita(visNum || 1);
       try {
         if (colId) sessionStorage.setItem('reg_prefill_colegioid', colId);
         if (visNum) sessionStorage.setItem('reg_prefill_visita', String(visNum));
+        if (ftId) sessionStorage.setItem('reg_prefill_ftid', ftId);
       } catch (_) { }
       if (navigate) navigate('registrar');
     };
@@ -3321,9 +3328,10 @@ function attachReportHostListeners(host, state, getFichaType, dbNs, isAdmin, nav
       });
     });
 
-    // Botones "Registrar →" iniciales
-    tbody?.querySelectorAll('.btnRegistrarPendiente').forEach(btn => {
+    // Botones "Registrar →" de instituciones pendientes
+    rootScope.querySelectorAll('.btnRegistrarPendiente').forEach(btn => {
       btn.addEventListener('click', (e) => {
+        e.preventDefault();
         e.stopPropagation();
         handleRegistrarClick(btn);
       });

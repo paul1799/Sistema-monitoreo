@@ -14,6 +14,8 @@
    ========================================================================= */
 
 import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, normalizeReiNumber, isEbeOrPriteResponsable } from './ui/core-utils.js?v=20261015_v1';
+import { getRegTargetVisita, getRegSelectedColegioId } from './ui/state.js?v=20261016_v1';
+import { getResponsableForColegio } from './ui/scoring.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha } from './directorio.js?v=20261013_v1';
 
 /**
@@ -445,6 +447,42 @@ export function resetPriteFormState() {
 }
 
 /**
+ * Asigna los datos generales de un PRITE a priteFormState:
+ * IE, código local, REI, Directora y Especialista asignado.
+ */
+export function applyColegioToPriteFormState(c, state, ft = null) {
+  if (!c) return;
+  priteFormState.colegioId = c.id || null;
+  priteFormState.institucion = c.ie || c.nombre || '';
+  priteFormState.codigoLocal = cleanTextCode(c.codigoLocal || c.codigoModular || '');
+  priteFormState.rei = c.rei || (c.red ? String(c.red).replace(/\D+/g, '') : '') || '';
+
+  const { director: dirActivo } = getDirectivosActivosForColegio(state, c.id, c.codigoLocal, c.codigoModular);
+  if (dirActivo) {
+    priteFormState.director = {
+      nombres: dirActivo.apellidosNombres || '',
+      dni: cleanTextCode(dirActivo.dni || ''),
+      telefono: cleanTextCode(dirActivo.telefono || ''),
+      correo: dirActivo.correo || '',
+      condicion: dirActivo.condicion || 'Encargada'
+    };
+  } else if (c.director) {
+    priteFormState.director = {
+      nombres: c.director.nombre || c.director.nombres || '',
+      dni: cleanTextCode(c.director.dni || ''),
+      telefono: cleanTextCode(c.director.telefono || ''),
+      correo: c.director.correo || '',
+      condicion: c.director.condicion || 'Encargada'
+    };
+  }
+
+  const resp = getResponsableForColegio(c, ft, state);
+  if (resp && resp !== '—' && resp !== 'Por asignar') {
+    priteFormState.responsable = resp;
+  }
+}
+
+/**
  * Precarga datos desde una ficha registrada previamente
  */
 export function preloadPriteFormState(sub, ft) {
@@ -588,8 +626,38 @@ export function preloadPriteFormState(sub, ft) {
 /**
  * Renderiza el formulario completo de PRITE
  */
-export function renderPriteGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing = false) {
+export function renderPriteGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing = false, prefillOptions = null) {
   if (!host) return;
+
+  if (!isEditing) {
+    const targetVis = (prefillOptions && prefillOptions.visita)
+      ? Number(prefillOptions.visita)
+      : ((getRegTargetVisita ? Number(getRegTargetVisita()) : null) || (function() {
+          try {
+            const v = sessionStorage.getItem('reg_prefill_visita');
+            return v ? Number(v) : null;
+          } catch (_) { return null; }
+        })());
+
+    const targetColId = (prefillOptions && prefillOptions.colegioId)
+      ? prefillOptions.colegioId
+      : ((getRegSelectedColegioId ? getRegSelectedColegioId() : null) || (function() {
+          try { return sessionStorage.getItem('reg_prefill_colegioid'); } catch (_) { return null; }
+        })());
+
+    if (targetVis && [1, 2, 3].includes(targetVis)) {
+      priteFormState.visita = targetVis;
+    }
+
+    if (targetColId && (!priteFormState.colegioId || priteFormState.colegioId !== targetColId)) {
+      const col = (state && Array.isArray(state.colegios))
+        ? state.colegios.find(c => c.id === targetColId || c.codigoLocal === targetColId || c.codigoModular === targetColId)
+        : null;
+      if (col) {
+        applyColegioToPriteFormState(col, state, ft);
+      }
+    }
+  }
 
   const vActiva = priteFormState.visita || 1;
   const kActiva = `v${vActiva}`;
@@ -1146,51 +1214,24 @@ function bindPriteFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
           const cid = item.dataset.colId;
           const selected = colegios.find(c => c.id === cid);
           if (selected) {
+            applyColegioToPriteFormState(selected, state, ft);
             form.dataset.selectedColegioId = selected.id;
-            inpInst.value = selected.ie || selected.nombre;
-            if (inpCodLocal) inpCodLocal.value = selected.codigoLocal || '';
-            if (inpRei) inpRei.value = selected.rei || selected.red || '';
+            inpInst.value = priteFormState.institucion;
+            if (inpCodLocal) inpCodLocal.value = priteFormState.codigoLocal;
+            if (inpRei) inpRei.value = priteFormState.rei;
 
-            if (selected.director) {
-              if (inpDirNom && selected.director.nombre) inpDirNom.value = selected.director.nombre;
-              if (inpDirDni && selected.director.dni) inpDirDni.value = selected.director.dni;
-              if (inpDirTel && selected.director.telefono) inpDirTel.value = selected.director.telefono;
-              if (inpDirCorreo && selected.director.correo) inpDirCorreo.value = selected.director.correo;
-            }
+            if (inpDirNom) inpDirNom.value = priteFormState.director.nombres;
+            if (inpDirDni) inpDirDni.value = priteFormState.director.dni;
+            if (inpDirTel) inpDirTel.value = priteFormState.director.telefono;
+            if (inpDirCorreo) inpDirCorreo.value = priteFormState.director.correo;
+            if (selDirCond) selDirCond.value = priteFormState.director.condicion || 'Encargada';
 
-            // Auto-asignar Especialista Responsable según REI del PRITE / CEBE
-            const cRei = selected.rei || selected.red || '';
-            const cReiNorm = normalizeText(cRei);
-            let assignedName = '';
-            if (selected.responsable && !selected.responsable.includes('@') && !/^\d+$/.test(selected.responsable.trim())) {
-              assignedName = selected.responsable.trim();
-            } else if (selected.responsableId && state && Array.isArray(state.responsables)) {
-              const rMatch = state.responsables.find(r => r.id === selected.responsableId);
-              if (rMatch && (rMatch.nombresApellidos || rMatch.especialista)) {
-                assignedName = (rMatch.nombresApellidos || rMatch.especialista).trim();
-              }
-            }
-            if (!assignedName && state && Array.isArray(state.responsables)) {
-              const ebeList = state.responsables.filter(r => isEbeOrPriteResponsable(r));
-              if (ebeList.length > 0) {
-                const matchByRed = cReiNorm ? ebeList.find(r => {
-                  const rRedNorm = normalizeText(r.red || '');
-                  return rRedNorm && (rRedNorm.includes(cReiNorm) || cReiNorm.includes(rRedNorm));
-                }) : null;
-                const chosen = matchByRed || (ebeList.length === 1 ? ebeList[0] : null);
-                if (chosen) {
-                  assignedName = (chosen.nombresApellidos || chosen.especialista || '').trim();
-                }
-              }
-            }
-
-            if (assignedName) {
-              priteFormState.responsable = assignedName;
+            if (priteFormState.responsable) {
               const selResp = form.querySelector('#prite_responsable');
-              if (selResp) selResp.value = assignedName;
+              if (selResp) selResp.value = priteFormState.responsable;
               const rHint = form.querySelector('#priteRespHint');
               if (rHint) {
-                rHint.innerHTML = `✓ Especialista asignada: <strong>${esc(assignedName)}</strong>`;
+                rHint.innerHTML = `✓ Especialista asignada: <strong>${esc(priteFormState.responsable)}</strong>`;
               }
             }
 

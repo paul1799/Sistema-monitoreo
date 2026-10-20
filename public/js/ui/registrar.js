@@ -28,6 +28,8 @@ import {
   setRegSelectedTypeId,
   getRegSelectedColegioId,
   setRegSelectedColegioId,
+  getRegTargetVisita,
+  setRegTargetVisita,
   getRegBuiltFor,
   setRegBuiltFor
 } from './state.js';
@@ -126,11 +128,22 @@ function syncEditingState() {
   if (stateSelected) {
     regSelectedTypeId = stateSelected;
   } else if (!editingSubmissionId) {
-    regSelectedTypeId = null;
+    try {
+      const storedFt = sessionStorage.getItem('reg_prefill_ftid');
+      if (storedFt) regSelectedTypeId = storedFt;
+      else regSelectedTypeId = null;
+    } catch (_) {
+      regSelectedTypeId = null;
+    }
   }
   const stateCol = getRegSelectedColegioId();
   if (stateCol) {
     regSelectedColegioId = stateCol;
+  } else {
+    try {
+      const storedCol = sessionStorage.getItem('reg_prefill_colegioid');
+      if (storedCol) regSelectedColegioId = storedCol;
+    } catch (_) {}
   }
   if (getRegBuiltFor() === null) {
     regBuiltFor = null;
@@ -179,6 +192,14 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
       currentJecVisita = getSubmissionVisitaNum(editingSubmissionData) || 2;
     }
     registrarSubTab = 'registrar';
+  } else if (!regSelectedTypeId) {
+    try {
+      const storedFt = sessionStorage.getItem('reg_prefill_ftid');
+      if (storedFt) {
+        regSelectedTypeId = storedFt;
+        registrarSubTab = 'registrar';
+      }
+    } catch (_) {}
   }
 
   // Generador de navegación por subpestañas (solo visible si es Admin)
@@ -619,13 +640,65 @@ function syncCommonJecFields(host, fromVisita, toVisita) {
 /**
  * Renderiza el formulario unificado de Modelo JEC (Permite alternar interactivamente entre 1er, 2do y 3er Monitoreo)
  */
-function renderUnifiedJecForm(host, ft, state, dbNs, currentUser, navigate, isEditing, targetVisita = null) {
+function renderUnifiedJecForm(host, ft, state, dbNs, currentUser, navigate, isEditing, targetVisita = null, targetColId = null) {
   if (targetVisita) {
     currentJecVisita = Number(targetVisita);
   } else if (editingSubmissionData) {
     currentJecVisita = getSubmissionVisitaNum(editingSubmissionData, ft) || 2;
   } else if (!currentJecVisita) {
     currentJecVisita = 1;
+  }
+
+  // Pre-cargar colegio si viene preseleccionado desde reportes y no estamos editando
+  if (!isEditing && targetColId) {
+    const col = (state && Array.isArray(state.colegios))
+      ? state.colegios.find(c => c.id === targetColId || c.codigoLocal === targetColId || c.codigoModular === targetColId)
+      : null;
+    if (col) {
+      jecFormState.colegioId = col.id || '';
+      jecFormState.institucion = col.ie || '';
+      jecFormState.codigoModular = cleanTextCode(col.codigoModular || col.codigoLocal || '');
+      jecFormState.rei = col.rei || col.red || '';
+      jecFormState.red = col.rei || col.red || '';
+
+      jec1erState.colegioId = col.id || null;
+      jec1erState.colegioNombre = col.ie || '';
+      jec1erState.codModular = cleanTextCode(col.codigoModular || col.codigoLocal || '');
+      jec1erState.red = col.rei || col.red || '';
+
+      const { director: dirActivo } = getDirectivosActivosForColegio(state, col.id, col.codigoLocal, col.codigoModular);
+      if (dirActivo) {
+        jecFormState.director = {
+          nombres: dirActivo.apellidosNombres || '',
+          dni: cleanTextCode(dirActivo.dni || ''),
+          telefono: cleanTextCode(dirActivo.telefono || ''),
+          correo: dirActivo.correo || '',
+          condicion: 'D'
+        };
+        jec1erState.director = {
+          nombres: dirActivo.apellidosNombres || '',
+          dni: cleanTextCode(dirActivo.dni || ''),
+          telefono: cleanTextCode(dirActivo.telefono || ''),
+          correo: dirActivo.correo || '',
+          condicion: 'DESIGNADO'
+        };
+      } else if (col.director) {
+        jecFormState.director = {
+          nombres: col.director.nombre || '',
+          dni: cleanTextCode(col.director.dni || ''),
+          telefono: cleanTextCode(col.director.telefono || ''),
+          correo: col.director.correo || '',
+          condicion: 'D'
+        };
+        jec1erState.director = {
+          nombres: col.director.nombre || '',
+          dni: cleanTextCode(col.director.dni || ''),
+          telefono: cleanTextCode(col.director.telefono || ''),
+          correo: col.director.correo || '',
+          condicion: 'DESIGNADO'
+        };
+      }
+    }
   }
 
   if (editingSubmissionData) {
@@ -651,7 +724,7 @@ function renderUnifiedJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
       syncCommonJecFields(host, currentJecVisita, newVis);
       currentJecVisita = newVis;
       const scrollY = window.scrollY;
-      renderUnifiedJecForm(host, ft, state, dbNs, currentUser, navigate, isEditing, newVis);
+      renderUnifiedJecForm(host, ft, state, dbNs, currentUser, navigate, isEditing, newVis, targetColId);
       window.scrollTo({ top: scrollY, behavior: 'instant' });
     };
   });
@@ -673,9 +746,21 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
   // Reconstruir si no está construido o si el contenedor quedó vacío
   regBuiltFor = regSelectedTypeId;
   setRegBuiltFor(regSelectedTypeId);
+
+  const targetVisita = (getRegTargetVisita ? Number(getRegTargetVisita()) : null) || (function() {
+    try {
+      const v = sessionStorage.getItem('reg_prefill_visita');
+      return v ? Number(v) : null;
+    } catch (_) { return null; }
+  })();
+
+  const targetColId = regSelectedColegioId || (getRegSelectedColegioId ? getRegSelectedColegioId() : null) || (function() {
+    try { return sessionStorage.getItem('reg_prefill_colegioid'); } catch (_) { return null; }
+  })();
+
   if (!editingSubmissionData) {
     regCompromisos = [];
-    regSelectedColegioId = null;
+    regSelectedColegioId = targetColId || null;
   }
 
   // Interceptar Ficha "Monitoreo y Asistencia Técnica a la Gestión Escolar - CEBE"
@@ -683,7 +768,7 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     if (editingSubmissionData) {
       preloadCebeFormState(editingSubmissionData, ft);
     }
-    renderCebeGestionForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData);
+    renderCebeGestionForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData, { visita: targetVisita, colegioId: targetColId });
     if (editingSubmissionData && editingSubmissionData.id) {
       const f = host.querySelector('#regForm');
       if (f) f.dataset.editingId = editingSubmissionData.id;
@@ -702,7 +787,7 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     if (editingSubmissionData) {
       preloadPriteFormState(editingSubmissionData, ft);
     }
-    renderPriteGestionForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData);
+    renderPriteGestionForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData, { visita: targetVisita, colegioId: targetColId });
     if (editingSubmissionData && editingSubmissionData.id) {
       const f = host.querySelector('#regForm');
       if (f) f.dataset.editingId = editingSubmissionData.id;
@@ -721,7 +806,7 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     if (editingSubmissionData) {
       preloadEbrFormState(editingSubmissionData, ft);
     }
-    renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData);
+    renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData, { visita: targetVisita, colegioId: targetColId });
     host.onsubmit = async (e) => {
       if (e.target && e.target.id === 'regForm') {
         await onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate);
@@ -732,7 +817,7 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
 
   // Interceptar Ficha Unificada "Monitoreo a la Implementación del Modelo JEC" (1er, 2do y 3er momento)
   if (isFichaJec(ft) && !isFichaCoordTutoriaJec(ft) && !isFichaCoordPedagogico(ft)) {
-    renderUnifiedJecForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData);
+    renderUnifiedJecForm(host, ft, state, dbNs, currentUser, navigate, !!editingSubmissionData, targetVisita, targetColId);
     host.onsubmit = async (e) => {
       if (e.target && e.target.id === 'regForm') {
         if (e.defaultPrevented) return;
@@ -1424,8 +1509,18 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     } else if (state.responsables && state.responsables.length) {
       let matchedResp = null;
 
+      // 0. Prioridad alta: Especialista oficial derivado según red, modalidad y asignación institucional
+      const officialResp = getResponsableForColegio(c, ft, state);
+      if (officialResp && officialResp !== '—' && officialResp !== 'Por asignar') {
+        const offNorm = normalizeText(officialResp);
+        matchedResp = state.responsables.find(r => {
+          const rNom = normalizeText(r.nombresApellidos || r.especialista || '');
+          return rNom && (rNom === offNorm || rNom.includes(offNorm) || offNorm.includes(rNom));
+        });
+      }
+
       // 1. Prioridad: Especialista asignado explícitamente a este colegio
-      if (c.responsableId) {
+      if (!matchedResp && c.responsableId) {
         matchedResp = state.responsables.find(r => r.id === c.responsableId);
       }
       if (!matchedResp && c.responsable) {
@@ -1726,6 +1821,34 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
           hint.style.display = 'block';
           hint.textContent = '✓ Datos precargados para edición.';
         }
+      }
+    }, 0);
+  } else if (targetColId || targetVisita) {
+    setTimeout(() => {
+      if (targetColId) {
+        const col = (state.colegios || []).find(c => c.id === targetColId || c.codigoLocal === targetColId || c.codigoModular === targetColId);
+        if (col) {
+          selectColegio(col);
+        }
+      }
+      if (targetVisita) {
+        const visInp = document.getElementById('f_visita');
+        if (visInp) visInp.value = targetVisita;
+        normExtras.forEach(ex => {
+          const l = (ex.label || '').toLowerCase();
+          if (l.includes('visita') || l.includes('momento')) {
+            const eInp = document.querySelector('[data-extra-id="' + ex.id + '"]');
+            if (eInp && !eInp.value) {
+              if (eInp.tagName === 'SELECT') {
+                const optMatch = Array.from(eInp.options).find(o => o.value.includes(String(targetVisita)) || o.textContent.includes(String(targetVisita)));
+                if (optMatch) eInp.value = optMatch.value;
+                else eInp.value = String(targetVisita);
+              } else {
+                eInp.value = String(targetVisita);
+              }
+            }
+          }
+        });
       }
     }, 0);
   }

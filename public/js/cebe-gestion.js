@@ -13,6 +13,8 @@
    ========================================================================= */
 
 import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, normalizeReiNumber, isEbeOrPriteResponsable } from './ui/core-utils.js?v=20261015_v1';
+import { getRegTargetVisita, getRegSelectedColegioId } from './ui/state.js?v=20261016_v1';
+import { getResponsableForColegio } from './ui/scoring.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha } from './directorio.js?v=20261013_v1';
 
 /**
@@ -264,6 +266,42 @@ export function resetCebeFormState() {
 }
 
 /**
+ * Asigna los datos generales de una Institución Educativa CEBE a cebeFormState:
+ * IE, código local, REI, Directora y Especialista asignado.
+ */
+export function applyColegioToCebeFormState(c, state, ft = null) {
+  if (!c) return;
+  cebeFormState.colegioId = c.id || null;
+  cebeFormState.institucion = c.ie || c.nombre || '';
+  cebeFormState.codigoLocal = cleanTextCode(c.codigoLocal || c.codigoModular || '');
+  cebeFormState.rei = c.rei || (c.red ? String(c.red).replace(/\D+/g, '') : '') || '';
+
+  const { director: dirActivo } = getDirectivosActivosForColegio(state, c.id, c.codigoLocal, c.codigoModular);
+  if (dirActivo) {
+    cebeFormState.director = {
+      nombres: dirActivo.apellidosNombres || '',
+      dni: cleanTextCode(dirActivo.dni || ''),
+      telefono: cleanTextCode(dirActivo.telefono || ''),
+      correo: dirActivo.correo || '',
+      condicion: dirActivo.condicion || 'Designada'
+    };
+  } else if (c.director) {
+    cebeFormState.director = {
+      nombres: c.director.nombre || c.director.nombres || '',
+      dni: cleanTextCode(c.director.dni || ''),
+      telefono: cleanTextCode(c.director.telefono || ''),
+      correo: c.director.correo || '',
+      condicion: c.director.condicion || 'Designada'
+    };
+  }
+
+  const resp = getResponsableForColegio(c, ft, state);
+  if (resp && resp !== '—' && resp !== 'Por asignar') {
+    cebeFormState.responsable = resp;
+  }
+}
+
+/**
  * Precarga datos desde una ficha registrada previamente
  */
 export function preloadCebeFormState(sub, ft) {
@@ -399,8 +437,38 @@ export function preloadCebeFormState(sub, ft) {
 /**
  * Renderiza el formulario completo de CEBE
  */
-export function renderCebeGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing = false) {
+export function renderCebeGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing = false, prefillOptions = null) {
   if (!host) return;
+
+  if (!isEditing) {
+    const targetVis = (prefillOptions && prefillOptions.visita)
+      ? Number(prefillOptions.visita)
+      : ((getRegTargetVisita ? Number(getRegTargetVisita()) : null) || (function() {
+          try {
+            const v = sessionStorage.getItem('reg_prefill_visita');
+            return v ? Number(v) : null;
+          } catch (_) { return null; }
+        })());
+
+    const targetColId = (prefillOptions && prefillOptions.colegioId)
+      ? prefillOptions.colegioId
+      : ((getRegSelectedColegioId ? getRegSelectedColegioId() : null) || (function() {
+          try { return sessionStorage.getItem('reg_prefill_colegioid'); } catch (_) { return null; }
+        })());
+
+    if (targetVis && [1, 2, 3].includes(targetVis)) {
+      cebeFormState.visita = targetVis;
+    }
+
+    if (targetColId && (!cebeFormState.colegioId || cebeFormState.colegioId !== targetColId)) {
+      const col = (state && Array.isArray(state.colegios))
+        ? state.colegios.find(c => c.id === targetColId || c.codigoLocal === targetColId || c.codigoModular === targetColId)
+        : null;
+      if (col) {
+        applyColegioToCebeFormState(col, state, ft);
+      }
+    }
+  }
 
   const vActiva = cebeFormState.visita || 1;
   const kActiva = `v${vActiva}`;

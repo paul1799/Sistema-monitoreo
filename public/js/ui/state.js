@@ -30,6 +30,7 @@ let dashboardSortAsc = true; // Por defecto: urgente (menor avance) arriba
 let _regSelectedTypeId = null;
 let _regBuiltFor = null;
 let _regSelectedColegioId = null;
+let _regTargetVisita = null;
 
 export function getRegSelectedTypeId() {
   return _regSelectedTypeId;
@@ -52,10 +53,18 @@ export function setRegSelectedColegioId(val) {
   _regSelectedColegioId = val;
 }
 
-export function selectFichaForRegistration(fichaTypeId, colegioId = null) {
+export function getRegTargetVisita() {
+  return _regTargetVisita;
+}
+export function setRegTargetVisita(val) {
+  _regTargetVisita = val;
+}
+
+export function selectFichaForRegistration(fichaTypeId, colegioId = null, targetVisita = null) {
   _regSelectedTypeId = fichaTypeId;
   _regBuiltFor = null;
   _regSelectedColegioId = colegioId;
+  _regTargetVisita = targetVisita;
 }
 
 /** Activa el modo edición de una ficha ya registrada. Llamar antes de navegar a 'registrar'. */
@@ -75,6 +84,12 @@ export function clearEditMode() {
   _regSelectedTypeId = null;
   _regBuiltFor = null;
   _regSelectedColegioId = null;
+  _regTargetVisita = null;
+  try {
+    sessionStorage.removeItem('reg_prefill_colegioid');
+    sessionStorage.removeItem('reg_prefill_visita');
+    sessionStorage.removeItem('reg_prefill_ftid');
+  } catch (_) { }
 }
 
 export function getEditingSubmissionId() {
