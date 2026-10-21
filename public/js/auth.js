@@ -77,8 +77,8 @@ export function setupAuthListeners(auth, firestoreDb, { onLogin, onLogout }) {
     btn.disabled = true;
     btn.textContent = 'Ingresando...';
     try {
-      if (!email.toLowerCase().endsWith('@ugel03.gob.pe')) {
-        throw { code: 'auth/invalid-domain' };
+      if (!email || !email.includes('@') || !email.includes('.')) {
+        throw { code: 'auth/invalid-email' };
       }
       await signInWithEmailAndPassword(auth, email, password);
     } catch (e) {

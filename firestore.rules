@@ -23,13 +23,16 @@ service cloud.firestore {
     // --- Roles de cada usuario ---
     match /roles/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      // Un usuario puede crear su propio documento de rol como "general" en
-      // cualquier momento, o como "admin" SOLO si el bootstrap aún no fue
-      // reclamado (ver resolveRole() en el frontend).
-      allow create: if signedIn() && request.auth.uid == uid && (
-        request.resource.data.role == 'general' ||
-        (request.resource.data.role == 'admin'
-          && get(/databases/$(database)/documents/meta/bootstrap).data.claimed == false)
+      // Un admin puede registrar roles para cualquier usuario.
+      // Un usuario nuevo puede crear su propio rol como "general",
+      // o como "admin" SOLO si el bootstrap aún no fue reclamado.
+      allow create: if signedIn() && (
+        isAdmin() ||
+        (request.auth.uid == uid && (
+          request.resource.data.role == 'general' ||
+          (request.resource.data.role == 'admin'
+            && get(/databases/$(database)/documents/meta/bootstrap).data.claimed == false)
+        ))
       );
       // Cambiar el rol de alguien (promover/degradar) es solo para admins.
       allow update: if isAdmin();

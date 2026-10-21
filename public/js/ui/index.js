@@ -24,7 +24,7 @@ export * from './dashboard.js';
 export * from './alertas.js';
 
 // Administración de usuarios y roles
-export * from './usuarios.js';
+export * from './usuarios.js?v=20261020_v1';
 
 // Directorio y gestión de directivos / responsables
 export * from './responsables-tab.js';

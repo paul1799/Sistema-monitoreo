@@ -29,7 +29,7 @@ import {
   getConcursoSubTab,
   setConcursoSubTab,
   getDeletedFichaTypeIds,
-} from './ui.js?v=20261019_v3';
+} from './ui.js?v=20261020_v1';
 
 import { renderPortalView } from './portal.js?v=20261014_v1';
 import { renderDirectorioTab } from './directorio.js?v=20261015_v1';
