@@ -1,11 +1,6 @@
-/**
- * public/js/calc/index.js
- * Barril / Bridge de exportaciones del motor de cálculo de monitoreo
- * UGEL 03 · AGEBRE
- */
+/* =========================================================================
+   calc/index.js — Puente de retrocompatibilidad hacia domain/fichas/index.js
+   UGEL 03 · AGEBRE · Fase 1 Reorganización
+   ========================================================================= */
 
-export * from './escalas.js?v=20261030_v1';
-export * from './reglas.js?v=20261030_v1';
-export * from './detectors.js?v=20261030_v1';
-export * from './evaluador.js?v=20261030_v1';
-export * from './score-engine.js?v=20261030_v1';
+export * from '../domain/fichas/index.js?v=20261030_v1';

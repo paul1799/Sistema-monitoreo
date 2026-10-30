@@ -4,8 +4,8 @@
 Write-Host "=== TEST: VERIFICACION DE DEDUPLICACION Y PERSISTENCIA DE PLANTILLAS ===" -ForegroundColor Cyan
 
 $appJs = Get-Content -Raw "public\js\app.js"
-$plantillasJs = Get-Content -Raw "public\js\ui\plantillas.js"
-$catalogoJs = Get-Content -Raw "public\js\catalogo-plantillas-base.js"
+$plantillasJs = if (Test-Path "public\js\features\plantillas\index.js") { (Get-Content -Raw "public\js\ui\plantillas.js", "public\js\features\plantillas\payload.js", "public\js\features\plantillas\list.js", "public\js\features\plantillas\editor.js", "public\js\features\plantillas\index.js") -join "`n" } else { Get-Content -Raw "public\js\ui\plantillas.js" }
+$catalogoJs = if (Test-Path "public\js\domain\fichas\catalogo-base.js") { Get-Content -Raw "public\js\domain\fichas\catalogo-base.js" } else { Get-Content -Raw "public\js\catalogo-plantillas-base.js" }
 $uiJs = Get-Content -Raw "public\js\ui.js"
 
 $totalTests = 0

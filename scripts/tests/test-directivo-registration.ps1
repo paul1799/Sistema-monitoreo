@@ -34,7 +34,7 @@ Write-Host "`n=== INICIANDO VALIDACION DE LA FICHA DIRECTIVO Y FLUJO COMPLETO ==
 # -----------------------------------------------------------------------------
 Write-Host "`n1. Verificando correccion de 'state is not defined' y arquitectura de estado..." -ForegroundColor Yellow
 $uiJs = Get-Content $uiJsPath -Raw
-$uiSubFiles = Get-ChildItem -Path (Join-Path $root "public\js\ui") -Filter "*.js" -ErrorAction SilentlyContinue
+$uiSubFiles = Get-ChildItem -Path (Join-Path $root "public\js\ui"), (Join-Path $root "public\js\core\state"), (Join-Path $root "public\js\features\registrar") -Filter "*.js" -Recurse -ErrorAction SilentlyContinue
 if ($uiSubFiles) {
     $uiJs += "`n" + (($uiSubFiles | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }) -join "`n")
 }
