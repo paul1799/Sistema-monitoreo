@@ -23,8 +23,8 @@ import {
   getReglaNivelEbrGestion,
   getNivelEbrGestion,
   getMomentoVisitaEbr
-} from '../calcEngine.js';
-import * as RepDatos from '../reportes-datos.js';
+} from '../calcEngine.js?v=20261030_v1';
+import * as RepDatos from '../reportes-datos.js?v=20261030_v1';
 import { getEbrSeccionesForVisita } from '../ebr-gestion.js';
 import { isFichaJec, JEC_SECCIONES } from '../jec-monitoreo.js';
 import { JEC_1ER_SECCIONES } from '../catalogo-plantillas-base.js';
@@ -102,9 +102,23 @@ export function scoreValue(tipo, v) {
 export function statusFromPct(pct, fichaType, conteo_si, puntaje, visita) {
   let regla = (fichaType && fichaType.regla_nivel) ? fichaType.regla_nivel : null;
   const isJec = isFichaJec(fichaType) || isFichaCoordTutoriaJec(fichaType) || isFichaCoordPedagogico(fichaType) || isFichaEspecialistaJec(fichaType);
+  const escalaRaw = String(fichaType?.escala || '').toUpperCase();
+  const tipoRespRaw = String(fichaType?.tipoRespuesta || '').toLowerCase();
+  const isSiNo = (tipoRespRaw === 'si_no' || escalaRaw === 'SI_NO' || escalaRaw === 'SI_NO_NA' || tipoRespRaw.includes('si_no') || escalaRaw.includes('SI_NO'));
   if (isFichaEbrGestionEscolar(fichaType)) {
     const v = visita || getMomentoVisitaEbr(fichaType);
     regla = getReglaNivelEbrGestion(v);
+  } else if (isSiNo) {
+    if (!regla || regla === 'porcentaje') {
+      regla = {
+        tipo: 'porcentaje',
+        umbrales: [
+          { min: 67, nivel: 'Logrado', estado_panel: 'Logrado' },
+          { min: 34, max: 66, nivel: 'En proceso', estado_panel: 'En proceso' },
+          { min: 0, max: 33, nivel: 'Inicio', estado_panel: 'Inicio' }
+        ]
+      };
+    }
   } else if (!isJec && (isFichaEbrEbePrite(fichaType) || isFichaCebeGestion(fichaType) || isFichaPriteGestion(fichaType) || fichaType?.escala === 'IPL' || fichaType?.tipoRespuesta === 'ips')) {
     const totalItems = (fichaType?.secciones || []).reduce((acc, s) => acc + (s.items || []).length, 0) || 25;
     regla = getReglaNivelComunEbrEbePrite(totalItems);
@@ -129,7 +143,10 @@ export function statusFromPct(pct, fichaType, conteo_si, puntaje, visita) {
 export function colorForPct(pct, fichaType = null) {
   if (pct === null || pct === undefined) return 'var(--neutral)';
   const isJec = isFichaJec(fichaType) || isFichaCoordTutoriaJec(fichaType) || isFichaCoordPedagogico(fichaType) || isFichaEspecialistaJec(fichaType);
-  if (!isJec && (isFichaEbrGestionEscolar(fichaType) || isFichaEbrEbePrite(fichaType) || isFichaCebeGestion(fichaType) || isFichaPriteGestion(fichaType) || !fichaType)) {
+  const escalaRaw = String(fichaType?.escala || '').toUpperCase();
+  const tipoRespRaw = String(fichaType?.tipoRespuesta || '').toLowerCase();
+  const isSiNo = (tipoRespRaw === 'si_no' || escalaRaw === 'SI_NO' || escalaRaw === 'SI_NO_NA' || tipoRespRaw.includes('si_no') || escalaRaw.includes('SI_NO'));
+  if (isSiNo || (!isJec && (isFichaEbrGestionEscolar(fichaType) || isFichaEbrEbePrite(fichaType) || isFichaCebeGestion(fichaType) || isFichaPriteGestion(fichaType) || !fichaType))) {
     if (pct >= 67) return 'var(--ok)';
     if (pct >= 34) return 'var(--warn)';
     return 'var(--danger)';
@@ -417,7 +434,10 @@ export function bar(pct, customClsOrStatus, fichaType = null) {
     else cls = customClsOrStatus;
   } else if (pct !== null && pct !== undefined) {
     const isJec = isFichaJec(targetFt) || isFichaCoordTutoriaJec(targetFt) || isFichaCoordPedagogico(targetFt) || isFichaEspecialistaJec(targetFt);
-    if (!isJec && (isFichaEbrGestionEscolar(targetFt) || isFichaEbrEbePrite(targetFt) || isFichaCebeGestion(targetFt) || isFichaPriteGestion(targetFt) || !targetFt)) {
+    const escalaRaw = String(targetFt?.escala || '').toUpperCase();
+    const tipoRespRaw = String(targetFt?.tipoRespuesta || '').toLowerCase();
+    const isSiNo = (tipoRespRaw === 'si_no' || escalaRaw === 'SI_NO' || escalaRaw === 'SI_NO_NA' || tipoRespRaw.includes('si_no') || escalaRaw.includes('SI_NO'));
+    if (isSiNo || (!isJec && (isFichaEbrGestionEscolar(targetFt) || isFichaEbrEbePrite(targetFt) || isFichaCebeGestion(targetFt) || isFichaPriteGestion(targetFt) || !targetFt))) {
       cls = pct >= 67 ? 'ok' : (pct >= 34 ? 'warn' : 'danger');
     } else {
       cls = pct >= 85 ? 'ok' : (pct >= 70 ? 'warn' : 'danger');
@@ -469,7 +489,8 @@ export function stackedBar(counts, total, tipoRespuesta) {
   const segs = opts.map(o => {
     const c = counts[o.v] || 0;
     if (!c) return '';
-    return '<div style="width:' + (c / total * 100) + '%;background:' + colors[o.v] + '" title="' + o.l + ': ' + c + '"></div>';
+    const pct = total ? Math.round((c / total) * 100) : 0;
+    return '<div style="width:' + (c / total * 100) + '%;background:' + colors[o.v] + '" title="' + o.l + ': ' + c + ' (' + pct + '%)"></div>';
   }).join('');
   return '<div class="segbar" style="height:12px">' + segs + '</div>';
 }
@@ -542,7 +563,18 @@ export function computeStats(sub, ft) {
 
   // Para la ficha EBR Gestion Escolar, JEC o Coordinador de Tutoría JEC, usar las secciones y reglas especializadas
   let ftForCalc = ft;
-  const isEbr = isFichaEbrGestionEscolar(ft || sub);
+  const escalaRaw = String(ft?.escala || sub?.escala || '').toUpperCase();
+  const tipoRespRaw = String(ft?.tipoRespuesta || sub?.tipoRespuesta || '').toLowerCase();
+  const hasSiNoResponses = Array.isArray(respuestasArray) && respuestasArray.some(r => {
+    const v = String(r?.valor || '').trim().toLowerCase();
+    return v === 'si' || v === 'sí' || v === 'no';
+  }) && !respuestasArray.some(r => {
+    const v = String(r?.valor || '').trim().toLowerCase();
+    return v === 'logrado' || v === 'proceso' || v === 'inicio' || (Number(v) >= 2 && Number(v) <= 4);
+  });
+  const isSiNo = (tipoRespRaw === 'si_no' || escalaRaw === 'SI_NO' || escalaRaw === 'SI_NO_NA' ||
+    tipoRespRaw.includes('si_no') || escalaRaw.includes('SI_NO') || hasSiNoResponses);
+  const isEbr = !isSiNo && isFichaEbrGestionEscolar(ft || sub);
   if (isEbr && respuestasArray && (Array.isArray(respuestasArray) ? respuestasArray.length > 0 : true)) {
     const visita = getMomentoVisitaEbr(sub);
     const seccionesEbr = getEbrSeccionesForVisita(visita, ft);
@@ -576,10 +608,10 @@ export function computeStats(sub, ft) {
         regla_nivel: ft?.regla_nivel || REGLA_NIVEL_JEC
       };
     }
-  } else if (isFichaCebeGestion(ft || sub) && respuestasArray && respuestasArray.length > 0) {
+  } else if (!isSiNo && isFichaCebeGestion(ft || sub) && respuestasArray && respuestasArray.length > 0) {
     const isOfficialCebe = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 34);
     ftForCalc = { ...ft, secciones: isOfficialCebe ? ft.secciones : CEBE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
-  } else if (isFichaPriteGestion(ft || sub) && respuestasArray && respuestasArray.length > 0) {
+  } else if (!isSiNo && isFichaPriteGestion(ft || sub) && respuestasArray && respuestasArray.length > 0) {
     const isOfficialPrite = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 32);
     ftForCalc = { ...ft, secciones: isOfficialPrite ? ft.secciones : PRITE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
   }
@@ -602,7 +634,7 @@ export function computeStats(sub, ft) {
     finalEstado.cls = nivelEbr.cls;
     finalEstado.descripcion = nivelEbr.descripcion || '';
     result.pct = nivelEbr.pct; // Alinear el porcentaje general al puntaje
-  } else if ((ftForCalc.escala === 'IPL' || ftForCalc.tipoRespuesta === 'ips' || isFichaEbrEbePrite(ftForCalc)) && result.pct !== null) {
+  } else if (!isSiNo && (ftForCalc.escala === 'IPL' || ftForCalc.tipoRespuesta === 'ips' || isFichaEbrEbePrite(ftForCalc)) && result.pct !== null) {
     if (result.pct >= 67) {
       finalEstado.label = 'Logrado';
       finalEstado.estado_panel = 'Logrado';
@@ -637,11 +669,13 @@ export function computeItemAgg(subs, ft) {
 
 export function renderItemReportHtml(itemAgg, tipoRespuesta, ft = null) {
   const isJec = isFichaJec(ft) || isFichaCoordTutoriaJec(ft) || isFichaCoordPedagogico(ft) || isFichaEspecialistaJec(ft);
-  const isEbr = !isJec && (isFichaEbrGestionEscolar(ft) || isFichaEbrEbePrite(ft) || isFichaCebeGestion(ft) || isFichaPriteGestion(ft));
-  const logCut = isEbr ? 67 : 85;
-  const procCut = isEbr ? 34 : 70;
+  const isSiNo = (tipoRespuesta === 'si_no' || ft?.tipoRespuesta === 'si_no' || ft?.escala === 'SI_NO' || ft?.escala === 'SI_NO_NA' || String(ft?.tipoRespuesta || '').includes('si_no') || String(ft?.escala || '').toUpperCase().includes('SI_NO'));
+  const effectiveTipoResp = isSiNo ? 'si_no' : (tipoRespuesta || 'ips');
+  const isEbr = !isJec && !isSiNo && (isFichaEbrGestionEscolar(ft) || isFichaEbrEbePrite(ft) || isFichaCebeGestion(ft) || isFichaPriteGestion(ft));
+  const logCut = (isEbr || isSiNo) ? 67 : 85;
+  const procCut = (isEbr || isSiNo) ? 34 : 70;
 
-  const legendMap = tipoRespuesta === 'nivel_1_4' ? {
+  const legendMap = effectiveTipoResp === 'nivel_1_4' ? {
     '1': 'I = No evidencia cumplimiento mínimo (25%)',
     '2': 'II = Cumplimiento parcial (50%)',
     '3': 'III = Cumplimiento de la mayoría (75%)',
@@ -659,13 +693,13 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta, ft = null) {
     'logrado': 'Logrado = Cumplido'
   };
 
-  const activeOpts = tipoRespuesta === 'nivel_1_4'
+  const activeOpts = effectiveTipoResp === 'nivel_1_4'
     ? (RESPONSE_OPTIONS.nivel_1_4 || []).filter(o => o.v !== 'na')
-    : (RESPONSE_OPTIONS[tipoRespuesta] || []);
+    : (RESPONSE_OPTIONS[effectiveTipoResp] || []);
 
   const legend = activeOpts.map(o => {
     const text = legendMap[o.v] || o.l;
-    const col = (OPTION_COLORS[tipoRespuesta] && OPTION_COLORS[tipoRespuesta][o.v]) || 'var(--neutral)';
+    const col = (OPTION_COLORS[effectiveTipoResp] && OPTION_COLORS[effectiveTipoResp][o.v]) || 'var(--neutral)';
     return '<span><span class="dot" style="background:' + col + '"></span>' + esc(text) + '</span>';
   }).join('');
 
@@ -678,18 +712,48 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta, ft = null) {
 
     const tableRows = sec.items.map((it, idx) => {
       const itStatus = statusFromPct(it.pct, ft);
-      const respPills = (RESPONSE_OPTIONS[tipoRespuesta] || []).map(o => {
+
+      // Calcular porcentajes por nivel asegurando que la sumatoria alcance exactamente el 100%
+      const activeOptions = (RESPONSE_OPTIONS[effectiveTipoResp] || []).filter(o => (it.counts[o.v] || 0) > 0);
+      const totalItem = it.total || 0;
+      const pctMap = {};
+      if (totalItem > 0) {
+        let sumFloor = 0;
+        const remainders = activeOptions.map(o => {
+          const c = it.counts[o.v] || 0;
+          const exact = (c / totalItem) * 100;
+          const floorVal = Math.floor(exact);
+          sumFloor += floorVal;
+          return { key: o.v, floorVal, rem: exact - floorVal };
+        });
+        remainders.sort((a, b) => b.rem - a.rem);
+        let diff = Math.round(100 - sumFloor);
+        remainders.forEach(r => {
+          pctMap[r.key] = r.floorVal + (diff > 0 ? 1 : 0);
+          if (diff > 0) diff--;
+        });
+      }
+
+      const respPills = (RESPONSE_OPTIONS[effectiveTipoResp] || []).map(o => {
         const cnt = it.counts[o.v] || 0;
-        if (!cnt) return '';
-        const col = (OPTION_COLORS[tipoRespuesta] && OPTION_COLORS[tipoRespuesta][o.v]) || 'var(--neutral)';
-        return '<span style="display:inline-flex;align-items:center;gap:3px;margin-right:6px;font-size:11px"><span class="dot" style="width:8px;height:8px;background:' + col + '"></span>' + esc(o.l) + ': <strong>' + cnt + '</strong></span>';
+        // Para plantillas de Sí / No, mostrar siempre Sí y No (incluso con 0%) para máxima claridad
+        if (!cnt) {
+          if (isSiNo && (o.v === 'si' || o.v === 'no')) {
+            // Permitir mostrar conteo 0
+          } else {
+            return '';
+          }
+        }
+        const pct = pctMap[o.v] !== undefined ? pctMap[o.v] : (totalItem > 0 ? Math.round((cnt / totalItem) * 100) : 0);
+        const col = (OPTION_COLORS[effectiveTipoResp] && OPTION_COLORS[effectiveTipoResp][o.v]) || 'var(--neutral)';
+        return '<span style="display:inline-flex;align-items:center;gap:3px;margin-right:6px;font-size:11px"><span class="dot" style="width:8px;height:8px;background:' + col + '"></span>' + esc(o.l) + ': <strong>' + cnt + ' (' + pct + '%)</strong></span>';
       }).join('');
 
       return '<tr>' +
         '<td style="text-align:center;font-weight:700;color:var(--primary)">' + (idx + 1) + '</td>' +
         '<td><strong>' + esc(it.texto) + '</strong></td>' +
         '<td style="text-align:center"><span class="badge ' + itStatus.cls + '">' + itStatus.label + '</span></td>' +
-        '<td><div style="margin-bottom:3px">' + stackedBar(it.counts, it.total, tipoRespuesta) + '</div>' + respPills + '</td>' +
+        '<td><div style="margin-bottom:3px">' + stackedBar(it.counts, it.total, effectiveTipoResp) + '</div>' + respPills + '</td>' +
         '<td style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums">' + (it.pct === null ? '—' : it.pct + '%') + '</td>' +
         '</tr>';
     }).join('');
@@ -725,7 +789,7 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta, ft = null) {
       '<th style="width:40px;text-align:center">N.°</th>' +
       '<th>Indicador / Ítem</th>' +
       '<th style="width:110px;text-align:center">Resultado</th>' +
-      '<th style="min-width:180px">Distribución (n=' + (sec.items[0] ? sec.items[0].total : 0) + ')</th>' +
+      '<th style="min-width:200px">Distribución (n=' + (sec.items[0] ? sec.items[0].total : 0) + ')</th>' +
       '<th style="width:60px;text-align:right">%</th>' +
       '</tr></thead><tbody>' + tableRows + '</tbody></table></div>' +
       '</div>' +

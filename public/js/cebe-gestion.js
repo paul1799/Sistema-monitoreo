@@ -34,7 +34,7 @@ export function isFichaCebeGestion(ft) {
   // Si tiene escala Sí/No, nivel 1-4 o escala 1-3, es una ficha estándar/dinámica, NO la de Gestión Escolar CEBE
   if (typeof ft === 'object' && ft !== null) {
     const escala = String(ft.tipoRespuesta || ft.escala || '').toLowerCase();
-    if (escala === 'si_no' || escala === 'escala_1_3' || escala === 'nivel_1_4') return false;
+    if (escala.includes('si_no') || escala === 'si_no' || escala === 'si_no_na' || escala === 'escala_1_3' || escala === 'nivel_1_4') return false;
   }
 
   // Si incluye PRITE en el nombre o id y no es puramente CEBE, descartar

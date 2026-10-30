@@ -402,59 +402,102 @@ export const PLANTILLAS_BASE_OFICIALES = {
     color: '#0284C7',
     modalidad: 'Tutoría',
     tipoRespuesta: 'escala_1_3',
-    regla_nivel: 'sumatoria',
+    regla_nivel: {
+      tipo: 'puntaje',
+      escala: 'escala_1_3',
+      maxPuntaje: 63,
+      minPuntaje: 21,
+      nota: 'Regla oficial Coordinador(a) de Tutoría JEC: Cumple (53–63), Cumple parcialmente (42–52), No cumple (21–41)',
+      rangos: [
+        {
+          nivel: 'Cumple',
+          min: 53,
+          max: 63,
+          estado_panel: 'Logrado',
+          descripcion: 'El/la coordinador(a) de tutoría cumple con la función de manera oportuna, pertinente y sostenida.'
+        },
+        {
+          nivel: 'Cumple parcialmente',
+          min: 42,
+          max: 52,
+          estado_panel: 'En proceso',
+          descripcion: 'El/la coordinador(a) de tutoría cumple parcialmente con la función o se encuentra en proceso de consolidación.'
+        },
+        {
+          nivel: 'No cumple',
+          min: 21,
+          max: 41,
+          estado_panel: 'Inicio',
+          descripcion: 'El/la coordinador(a) de tutoría no cumple o cumple de forma mínima, sin responder al propósito pedagógico esperado.'
+        }
+      ]
+    },
     tieneVisitas: true,
     tipoVisitas: 'mismos_items',
     visitas: ['2do Momento (V2)', '3er Momento (V3)'],
     extras: [
       { id: 'ex_coord', label: 'Coordinador(a) de tutoría', tipo: 'texto', required: true },
-      { id: 'ex_cant_tut', label: 'N° de docentes tutores a cargo', tipo: 'numero', required: false }
+      { id: 'ex_coord_esp', label: 'Especialidad del coordinador(a)', tipo: 'texto', required: false },
+      { id: 'ex_coord_condicion', label: 'Condición del coordinador(a)', tipo: 'seleccion', opciones: ['Nombrado(a)', 'Contratado(a)'], required: false },
+      { id: 'ex_coord_dni', label: 'DNI del coordinador(a)', tipo: 'texto', required: false },
+      { id: 'ex_coord_correo', label: 'Correo del coordinador(a)', tipo: 'texto', required: false },
+      { id: 'ex_dir_nombre', label: 'Director(a) de la IE', tipo: 'texto', required: false },
+      { id: 'ex_dir_condicion', label: 'Condición del director(a)', tipo: 'seleccion', opciones: ['Encargado(a)', 'Designado(a)'], required: false },
+      { id: 'ex_dir_dni', label: 'DNI del director(a)', tipo: 'texto', required: false },
+      { id: 'ex_dir_correo', label: 'Correo del director(a)', tipo: 'texto', required: false },
+      { id: 'ex_cant_tut', label: 'N° de docentes tutores a cargo', tipo: 'numero', required: false },
+      { id: 'ex_horas_visita', label: 'Horas pedagógicas / de acompañamiento', tipo: 'texto', required: false }
     ],
     secciones: [
       {
         nombre: 'Planificación de la tutoría grupal',
         items: [
-          { id: 'ct_1', texto: 'Orienta a los docentes tutores en la planificación colegiada de la tutoría grupal' },
-          { id: 'ct_2', texto: 'Analiza las planificaciones de las sesiones de tutoría grupal con el fin de orientar su mejora' },
-          { id: 'ct_3', texto: 'Brinda retroalimentación reflexiva, logrando compromisos de mejora con el docente tutor' }
+          { id: 'ct_1', num: 1, texto: 'Orienta a los docentes tutores en la planificación colegiada de la tutoría grupal', evidencia: 'Acta con orientaciones para la tutoría grupal según necesidades estudiantiles' },
+          { id: 'ct_2', num: 2, texto: 'Analiza las planificaciones de las sesiones de tutoría grupal con el fin de orientar su mejora', evidencia: 'Planificación de tutoría grupal revisada, con anotaciones y sugerencias escritas' },
+          { id: 'ct_3', num: 3, texto: 'Brinda retroalimentación reflexiva, logrando compromisos de mejora con el docente tutor', evidencia: 'Registro de retroalimentación con compromisos acordados.' }
         ]
       },
       {
         nombre: 'Visita al aula',
         items: [
-          { id: 'ct_4', texto: 'Elabora un cronograma y comunica oportunamente a los docentes tutores a su cargo' },
-          { id: 'ct_5', texto: 'Realiza visitas de acompañamiento al docente tutor de forma planificada, conforme a cronograma' },
-          { id: 'ct_6', texto: 'Registra información utilizando el cuaderno de campo u otro instrumento de observación' },
-          { id: 'ct_7', texto: 'Prepara preguntas reflexivas para brindar la retroalimentación al docente tutor' },
-          { id: 'ct_8', texto: 'Brinda retroalimentación mediante un diálogo reflexivo con el docente tutor visitado' },
-          { id: 'ct_9', texto: 'Planifica reuniones colegiadas orientadas al acompañamiento tutorial de los docentes' },
-          { id: 'ct_10', texto: 'Conduce reuniones semanales de trabajo colegiado según lo planificado' },
-          { id: 'ct_11', texto: 'Registra los acuerdos asumidos en las actas de las reuniones colegiadas' }
+          { id: 'ct_4', num: 4, texto: 'Elabora un cronograma y comunica oportunamente a los docentes tutores a su cargo', evidencia: 'Cronograma de visita y evidencia de comunicados.' },
+          { id: 'ct_5', num: 5, texto: 'Realiza visitas de acompañamiento al docente tutor de forma planificada, conforme a cronograma', evidencia: 'Registro de visitas de acompañamiento realizadas según cronograma establecido.' },
+          { id: 'ct_6', num: 6, texto: 'Registra información utilizando el cuaderno de campo u otro instrumento de observación', evidencia: 'Cuaderno de campo u otro instrumento' },
+          { id: 'ct_7', num: 7, texto: 'Prepara preguntas reflexivas para brindar la retroalimentación al docente tutor', evidencia: 'Cuaderno de campo u otro instrumento con preguntas elaboradas' },
+          { id: 'ct_8', num: 8, texto: 'Brinda retroalimentación mediante un diálogo reflexivo con el docente tutor visitado', evidencia: 'Registro de retroalimentación (cuaderno de campo u otro instrumento).' }
+        ]
+      },
+      {
+        nombre: 'Reuniones colegiadas',
+        items: [
+          { id: 'ct_9', num: 9, texto: 'Planifica reuniones colegiadas orientadas al acompañamiento tutorial de los docentes', evidencia: 'Ficha de planificación de la reunión colegiada con propósito pedagógico, estrategias y recursos definidos.' },
+          { id: 'ct_10', num: 10, texto: 'Conduce reuniones semanales de trabajo colegiado según lo planificado', evidencia: 'Acta de reunión colegiada' },
+          { id: 'ct_11', num: 11, texto: 'Registra los acuerdos asumidos en las actas de las reuniones colegiadas', evidencia: 'Archivo organizado de actas de reuniones colegiadas.' }
         ]
       },
       {
         nombre: 'Tutoría individual y trabajo con las familias',
         items: [
-          { id: 'ct_12', texto: 'Asegura que los docentes realicen tutorías individuales según las necesidades de los estudiantes, incluyendo casos priorizados' },
-          { id: 'ct_13', texto: 'Coordina acciones con el psicólogo para identificar, atender y derivar casos priorizados' },
-          { id: 'ct_14', texto: 'Coordina con el psicólogo espacios de orientación y encuentro con las familias' },
-          { id: 'ct_15', texto: 'Gestiona junto al psicólogo las redes de apoyo de instituciones y redes comunitarias para familias vulnerables' }
+          { id: 'ct_12', num: 12, texto: 'Asegura que los docentes realicen tutorías individuales según las necesidades de los estudiantes, incluyendo casos priorizados', evidencia: 'Registro de tutorías individuales realizadas por los docentes' },
+          { id: 'ct_13', num: 13, texto: 'Coordina acciones con el psicólogo para identificar, atender y derivar casos priorizados', evidencia: 'Registro de coordinación con el psicólogo, que incluye acciones realizadas e identificación de casos priorizados.' },
+          { id: 'ct_14', num: 14, texto: 'Coordina con el psicólogo espacios de orientación y encuentro con las familias', evidencia: 'Agenda o acta de reuniones con el psicólogo' },
+          { id: 'ct_15', num: 15, texto: 'Gestiona junto al psicólogo las redes de apoyo de instituciones y redes comunitarias para familias vulnerables', evidencia: 'Registro de coordinación o acta de coordinación' }
         ]
       },
       {
         nombre: 'Participación estudiantil y orientación educativa permanente',
         items: [
-          { id: 'ct_16', texto: 'Realiza el seguimiento a los espacios de participación estudiantil' },
-          { id: 'ct_17', texto: 'Planifica actividades específicas que promuevan la participación activa e inclusiva de los estudiantes' },
-          { id: 'ct_18', texto: 'Gestiona y articula con docentes tutores y no tutores la implementación de la orientación educativa' }
+          { id: 'ct_16', num: 16, texto: 'Realiza el seguimiento a los espacios de participación estudiantil', evidencia: 'Registro de seguimiento a las actividades de participación estudiantil (actas, informes o cronogramas).' },
+          { id: 'ct_17', num: 17, texto: 'Planifica actividades específicas que promuevan la participación activa e inclusiva de los estudiantes', evidencia: 'Plan de Tutoría y Orientación Educativa (PTOE) actualizado en proceso de implementación o implementado.' },
+          { id: 'ct_18', num: 18, texto: 'Gestiona y articula con docentes tutores y no tutores la implementación de la orientación educativa', evidencia: 'Plan de Tutoría y Orientación Educativa (PTOE) actualizado en proceso de implementación o implementado.' }
         ]
       },
       {
-        nombre: 'Reuniones de trabajo con el equipo directivo',
+        nombre: 'Reuniones de trabajo con el equipo directivo de la institución educativa',
         items: [
-          { id: 'ct_19', texto: 'Participa activamente en las reuniones de trabajo colegiado con los directivos de la IE' },
-          { id: 'ct_20', texto: 'Presenta a la dirección un informe sobre los hallazgos del proceso de acompañamiento a los docentes tutores' },
-          { id: 'ct_21', texto: 'Socializa los resultados del acompañamiento a la acción tutorial, proponiendo alternativas de mejora' }
+          { id: 'ct_19', num: 19, texto: 'Participa activamente en las reuniones de trabajo colegiado con los directivos de la IE', evidencia: 'Actas de reuniones colegiadas con participación del Coordinador(a) de Tutoría' },
+          { id: 'ct_20', num: 20, texto: 'Presenta a la dirección un informe sobre los hallazgos del proceso de acompañamiento a los docentes tutores', evidencia: 'Informe sobre los hallazgos del proceso de acompañamiento a los docentes tutores.' },
+          { id: 'ct_21', num: 21, texto: 'Socializa los resultados del acompañamiento a la acción tutorial, proponiendo alternativas de mejora', evidencia: 'Informe sobre los hallazgos del proceso de acompañamiento a los docentes tutores.' }
         ]
       }
     ],
@@ -556,4 +599,5 @@ export const ALIAS_A_PLANTILLA_BASE = {
   ft_jec: 'ft_msejec_2do',
   ft_msejec_1er: 'ft_msejec_2do',
   ft_msejec_3er: 'ft_msejec_2do',
+  ft_coord_tutoria: 'ft_coord_tutoria_jec',
 };

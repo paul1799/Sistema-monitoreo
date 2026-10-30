@@ -1,4 +1,4 @@
-import { esc, fmtDate, showToast } from './ui/core-utils.js?v=20261015_v1';
+import { esc, fmtDate, showToast, isFichaActiva } from './ui/core-utils.js?v=20261015_v1';
 
 let alertFilters = { fichaTypeId: '', ugel: '' };
 
@@ -72,7 +72,7 @@ export function renderAlertasTab(container, state, getFichaType, dbNs, currentUs
       '</tr>';
   }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--ink-soft);padding:26px">Sin ítems críticos.</td></tr>';
 
-  const ftOpts = state.fichaTypes.map(ft => '<option value="' + ft.id + '"' + (ft.id === alertFilters.fichaTypeId ? ' selected' : '') + '>' + esc(ft.nombre) + '</option>').join('');
+  const ftOpts = (state.fichaTypes || []).filter(isFichaActiva).map(ft => '<option value="' + ft.id + '"' + (ft.id === alertFilters.fichaTypeId ? ' selected' : '') + '>' + esc(ft.nombre) + '</option>').join('');
 
   const activeEl = document.activeElement;
   const activeId = activeEl ? activeEl.id : null;
@@ -165,7 +165,7 @@ function computeCriticos(state, getFichaType) {
   const alerts = [];
   Object.values(groups).forEach(list => {
     const ft = getFichaType(list[0].fichaTypeId);
-    if (!ft) return;
+    if (!ft || !isFichaActiva(ft)) return;
     list.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '') || (b.createdAt || 0) - (a.createdAt || 0));
     const latest = list[0], prev = list[1] || null;
     const latestMap = {}; (latest.respuestas || []).forEach(r => latestMap[r.id] = r.valor);

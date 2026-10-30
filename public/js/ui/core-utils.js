@@ -279,3 +279,12 @@ export function isEbeOrPriteResponsable(r) {
 
   return false;
 }
+
+/**
+ * Determina si un tipo de ficha se encuentra activo para monitoreo.
+ * Por defecto es true (retrocompatible), salvo que se desactive explícitamente con activo === false.
+ */
+export function isFichaActiva(ft) {
+  if (!ft) return false;
+  return ft.activo !== false;
+}

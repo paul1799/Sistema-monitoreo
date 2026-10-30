@@ -15,7 +15,8 @@ import {
   normalizeReiNumber,
   FICHA_PALETTE,
   getFichaColor,
-  getFichaModalidad
+  getFichaModalidad,
+  isFichaActiva
 } from './core-utils.js';
 import {
   setAppState,
@@ -64,7 +65,7 @@ import {
   ESPECIALISTA_JEC_OFICIAL,
   getNivelCoordTutoriaJec,
   getNivelCoordPedagogicoJec
-} from '../calcEngine.js';
+} from '../calcEngine.js?v=20261030_v1';
 import {
   renderEbrGestionForm,
   collectEbrGestionFormData,
@@ -307,8 +308,8 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
     return;
   }
 
-  // CASO 3.B: Ninguna ficha seleccionada -> Mostrar Lista Visual de Fichas (reemplazo del select)
-  const allTypes = state.fichaTypes || [];
+  // CASO 3.B: Ninguna ficha seleccionada -> Mostrar Lista Visual de Fichas (solo fichas activas)
+  const allTypes = (state.fichaTypes || []).filter(isFichaActiva);
 
   if (allTypes.length === 0) {
     container.innerHTML = `
@@ -1061,28 +1062,30 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
 
   const seccionesHtml = ft.secciones.map((sec, sIdx) => {
     const items = sec.items.map((it, iIdx) => {
+      // Clave única garantizada en el DOM para evitar que radio buttons colisionen entre secciones
+      const itemDomKey = `s${sIdx + 1}_i${iIdx + 1}_${it.id || iIdx}`;
       const optsHtml = activeOptions.map(o => {
         const descTooltip = (ft.tipoRespuesta === 'nivel_1_4' && DESCRIPTORES_NIVEL_1_4[o.v])
           ? `title="Nivel ${o.l}: ${esc(DESCRIPTORES_NIVEL_1_4[o.v].descripcion)}"`
           : '';
-        return '<label class="optBtn" ' + descTooltip + '><input type="radio" name="item_' + it.id + '" value="' + o.v + '"><span>' + o.l + '</span></label>';
+        return '<label class="optBtn" ' + descTooltip + '><input type="radio" name="item_' + itemDomKey + '" value="' + o.v + '"><span>' + o.l + '</span></label>';
       }).join('');
 
       const itemNumDisplay = (it.num !== undefined && it.num !== null && it.num !== '') ? (it.num + '.') : ((iIdx + 1) + '.');
       const obsPlaceholder = it.evidencia ? esc(it.evidencia) : 'Describa aquí los hallazgos u observaciones identificados en este indicador...';
       const cleanTexto = (it.texto || '').replace(/^\s*\d+[\.\)\-]\s*/, '');
       const evidenciaHtml = `
-        <div class="itemObsWrap itemEvidenciaWrap itemEvidencia" id="evid_wrap_${it.id}" style="display:none;margin-top:6px">
-          <textarea class="evidenciaInput" name="evidencia_${it.id}" id="evid_${it.id}" rows="2" placeholder="${obsPlaceholder}" aria-label="Observaciones para indicador ${itemNumDisplay}" style="width:100%;font-size:12px;padding:6px 10px;border:1.5px solid #CBD5E1;border-radius:6px;min-height:44px;box-sizing:border-box"></textarea>
+        <div class="itemObsWrap itemEvidenciaWrap itemEvidencia" id="evid_wrap_${itemDomKey}" style="display:none;margin-top:6px">
+          <textarea class="evidenciaInput" name="evidencia_${itemDomKey}" id="evid_${itemDomKey}" rows="2" placeholder="${obsPlaceholder}" aria-label="Observaciones para indicador ${itemNumDisplay}" style="width:100%;font-size:12px;padding:6px 10px;border:1.5px solid #CBD5E1;border-radius:6px;min-height:44px;box-sizing:border-box"></textarea>
         </div>
       `;
 
-      return '<div class="itemRow" data-item-id="' + it.id + '">' +
+      return '<div class="itemRow" data-item-id="' + it.id + '" data-item-key="' + itemDomKey + '">' +
         '<div class="itxt" style="flex:1;min-width:240px">' +
           '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">' +
             '<span class="itemNum">' + itemNumDisplay + '</span> ' +
             '<span style="flex:1;min-width:200px">' + esc(cleanTexto) + '</span>' +
-            '<button type="button" class="btnToggleObs btnToggleEvidencia" data-target-obs="evid_wrap_' + it.id + '" data-target-evid="evid_wrap_' + it.id + '" title="Describir observaciones o hallazgos">' +
+            '<button type="button" class="btnToggleObs btnToggleEvidencia" data-target-obs="evid_wrap_' + itemDomKey + '" data-target-evid="evid_wrap_' + itemDomKey + '" title="Describir observaciones o hallazgos">' +
               '💬 Observación' +
             '</button>' +
           '</div>' +
@@ -1190,6 +1193,51 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
 
   const submitLabel = editingSubmissionId ? 'Actualizar ficha' : 'Guardar ficha';
 
+  // Tablas cuantitativas especializadas si la ficha las tiene configuradas
+  const tablasHtml = (Array.isArray(ft.tablas) && ft.tablas.length > 0) ? (
+    '<div class="panel">' +
+    '<div class="sectionHeaderTitle">TABLAS CUANTITATIVAS ESPECIALIZADAS</div>' +
+    ft.tablas.map((tbl, ti) => {
+      const omitirCategoria = tbl.tipo === 'vacia' || tbl.sinColumnaCategoria === true || (tbl.id && String(tbl.id).startsWith('tbl_custom_') && tbl.sinColumnaCategoria !== false);
+      const rows = (tbl.filas && tbl.filas.length > 0) ? tbl.filas : [{ etiqueta: 'Fila 1' }, { etiqueta: 'Fila 2' }];
+      return '<div class="customTableContainer" style="margin-bottom:18px">' +
+        '<div style="font-weight:700;font-size:13px;color:var(--navy-900);margin-bottom:4px">' + esc(tbl.titulo || 'Tabla') + '</div>' +
+        (tbl.descripcion ? '<div style="font-size:11.5px;color:var(--text-600);margin-bottom:8px">' + esc(tbl.descripcion) + '</div>' : '') +
+        '<div style="overflow-x:auto">' +
+        '<table class="previewCustomTable" style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px">' +
+        '<thead><tr>' +
+        (!omitirCategoria ? '<th style="border:1px solid #1E293B;padding:7px 10px;background:#0B192C;color:#FFFFFF;text-align:left;font-weight:700;font-size:12px">' + esc(tbl.nombreColumnaCategoria || 'Fila / Categoría') + '</th>' : '') +
+        (tbl.columnas || []).map(col => '<th style="border:1px solid #1E293B;padding:7px 10px;background:#0B192C;color:#FFFFFF;text-align:center;font-weight:700;font-size:12px">' + esc(col.nombre) + '</th>').join('') +
+        '</tr></thead>' +
+        '<tbody>' +
+        rows.map((r, ri) => {
+          const fId = r.id || ('f_' + ri);
+          return '<tr>' +
+            (!omitirCategoria ? '<td style="border:1px solid var(--line);padding:6px 8px;font-weight:600;color:var(--text-700)">' + esc(r.etiqueta) + '</td>' : '') +
+            (tbl.columnas || []).map((col, ci) => {
+              const cId = col.id || ('c_' + ci);
+              const inpName = `tbl_${tbl.id || ti}_${fId}_${cId}`;
+              const isFirstCol = ci === 0 && omitirCategoria;
+              const defaultVal = isFirstCol ? (r.etiqueta || '') : '';
+              return '<td style="border:1px solid var(--line);padding:4px;text-align:center">' +
+                '<input type="' + (col.tipo === 'numero' ? 'number' : 'text') + '" ' +
+                'name="' + inpName + '" ' +
+                'value="' + esc(defaultVal) + '" ' +
+                'data-tabla-id="' + (tbl.id || ti) + '" data-fila-id="' + fId + '" data-col-id="' + cId + '" ' +
+                'placeholder="' + (col.tipo === 'numero' ? '0' : 'Escribir...') + '" ' +
+                'style="width:100%;border:1px solid var(--line);border-radius:4px;padding:4px 6px;font-size:12px;text-align:' + (col.tipo === 'numero' ? 'center' : 'left') + ';font-weight:' + (isFirstCol ? '600' : 'normal') + '">' +
+                '</td>';
+            }).join('') +
+            '</tr>';
+        }).join('') +
+        '</tbody>' +
+        '</table>' +
+        '</div>' +
+        '</div>';
+    }).join('') +
+    '</div>'
+  ) : '';
+
   host.innerHTML = '' +
     '<form id="regForm" autocomplete="off">' +
     uploadPanel +
@@ -1212,6 +1260,7 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
     '<datalist id="dl_ugel">' + seedSuggestions('ugel', state.submissions).map(v => '<option value="' + esc(v) + '">').join('') + '</datalist>' +
     '<datalist id="dl_red">' + seedSuggestions('red', state.submissions).map(v => '<option value="' + esc(v) + '">').join('') + '</datalist>' +
     '</div>' +
+    tablasHtml +
     '<div class="panel">' +
     '<div class="sectionHeaderTitle">ASPECTOS A MONITOREAR <small style="font-weight:400;color:var(--text-600);text-transform:none;margin-left:8px">' + RESPONSE_LABELS[ft.tipoRespuesta] + '</small></div>' +
     rubricaPanelHtml +
@@ -1736,22 +1785,54 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
         regSelectedColegioId = d.colegioId || null;
         renderCompList();
 
-        // Precargar respuestas y evidencias
-        (d.respuestas || []).forEach(r => {
-          const radio = document.querySelector('input[name="item_' + r.id + '"][value="' + r.valor + '"]');
-          if (radio) radio.checked = true;
-          const evidInp = document.getElementById('evid_' + r.id) || document.querySelector('input[name="evidencia_' + r.id + '"]') || document.querySelector('textarea[name="evidencia_' + r.id + '"]');
-          if (evidInp && r.evidencia) {
-            evidInp.value = r.evidencia;
-            const wrap = document.getElementById('evid_wrap_' + r.id);
-            if (wrap) wrap.style.display = 'block';
-            const btn = document.querySelector(`[data-target-evid="evid_wrap_${r.id}"], [data-target-obs="evid_wrap_${r.id}"]`);
-            if (btn) {
-              btn.classList.add('has-content');
-              btn.textContent = '💬 Observación ✓';
-            }
-          }
-        });
+        // Precargar respuestas y evidencias con matching robusto por ID, sección, número o texto
+        const loadedAnswers = Array.isArray(d.respuestas) ? d.respuestas : [];
+        if (Array.isArray(ft.secciones)) {
+          ft.secciones.forEach((sec, sIdx) => {
+            (sec.items || []).forEach((it, iIdx) => {
+              const itemDomKey = `s${sIdx + 1}_i${iIdx + 1}_${it.id || iIdx}`;
+              const itNum = Number(it.num || (it.id ? String(it.id).replace(/\D+/g, '') : (iIdx + 1)));
+              const r = loadedAnswers.find(ans => {
+                if (ans.domKey === itemDomKey) return true;
+                if (ans.seccion === sec.nombre) {
+                  if (ans.itemIdx !== undefined && ans.itemIdx === iIdx) return true;
+                  if (ans.id === it.id) return true;
+                  if (ans.num && (Number(ans.num) === itNum || Number(ans.num) === (iIdx + 1))) return true;
+                  if (ans.texto && it.texto && normalizeText(ans.texto) === normalizeText(it.texto)) return true;
+                }
+                if (ans.id === itemDomKey) return true;
+                if (ans.id === it.id && !loadedAnswers.some(other => other !== ans && other.id === it.id)) return true;
+                if (ans.texto && it.texto && normalizeText(ans.texto) === normalizeText(it.texto)) return true;
+                return false;
+              });
+
+              if (r) {
+                if (r.valor !== undefined && r.valor !== null && r.valor !== '') {
+                  const radio = document.querySelector('input[name="item_' + itemDomKey + '"][value="' + r.valor + '"]') ||
+                                document.querySelector('input[name="item_' + it.id + '"][value="' + r.valor + '"]');
+                  if (radio) radio.checked = true;
+                }
+                if (r.evidencia) {
+                  const evidInp = document.getElementById('evid_' + itemDomKey) || 
+                                  document.getElementById('evid_' + it.id) || 
+                                  document.querySelector('textarea[name="evidencia_' + itemDomKey + '"]') ||
+                                  document.querySelector('textarea[name="evidencia_' + it.id + '"]');
+                  if (evidInp) {
+                    evidInp.value = r.evidencia;
+                    const wrap = document.getElementById('evid_wrap_' + itemDomKey) || document.getElementById('evid_wrap_' + it.id);
+                    if (wrap) wrap.style.display = 'block';
+                    const btn = document.querySelector(`[data-target-evid="evid_wrap_${itemDomKey}"], [data-target-obs="evid_wrap_${itemDomKey}"]`);
+                    if (btn) {
+                      btn.classList.add('has-content');
+                      btn.textContent = '💬 Observación ✓';
+                    }
+                  }
+                }
+              }
+            });
+          });
+        }
+
 
         // Precargar síntesis por dimensión
         if (d.sintesis && d.sintesis.length) {
@@ -1774,11 +1855,21 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
           } else {
             // Compatibilidad con campos raíz de fichas guardadas anteriormente
             const l = (ex.label || '').toLowerCase();
+            const xid = (ex.id || '').toLowerCase();
             if (l.includes('ugel') && d.ugel) val = d.ugel;
             else if ((l.includes('red') || l.includes('rei')) && d.red) val = d.red;
             else if ((l.includes('código') || l.includes('codigo')) && d.codigoModular) val = d.codigoModular;
-            else if (l.includes('director') && (l.includes('nombre') || !l.includes('dni')) && d.director) val = d.director;
-            else if (l.includes('director') && l.includes('dni') && d.directorDni) val = d.directorDni;
+            else if ((xid === 'ex_dir_nombre' || (l.includes('director') && (l.includes('nombre') || !l.includes('dni')) && !l.includes('condici') && !l.includes('correo'))) && d.director) val = d.director;
+            else if ((xid === 'ex_dir_dni' || (l.includes('director') && l.includes('dni'))) && (d.directorDni || d.dirDni)) val = d.directorDni || d.dirDni;
+            else if ((xid === 'ex_dir_condicion' || (l.includes('director') && l.includes('condici'))) && (d.directorCondicion || d.dirCondicion || d.condicion)) val = d.directorCondicion || d.dirCondicion || d.condicion;
+            else if ((xid === 'ex_dir_correo' || (l.includes('director') && (l.includes('correo') || l.includes('email')))) && (d.directorCorreo || d.dirCorreo)) val = d.directorCorreo || d.dirCorreo;
+            else if ((xid === 'ex_coord' || (l.includes('coordinador') && l.includes('tutor') && !l.includes('dni') && !l.includes('esp') && !l.includes('cond') && !l.includes('corr'))) && (d.coordinadorTutoria || d.coordTutoriaNombre)) val = d.coordinadorTutoria || d.coordTutoriaNombre;
+            else if ((xid === 'ex_coord_dni' || (l.includes('coordinador') && l.includes('dni'))) && (d.coordTutoriaDni || d.coordinadorTutoriaDni)) val = d.coordTutoriaDni || d.coordinadorTutoriaDni;
+            else if ((xid === 'ex_coord_esp' || l.includes('especialidad')) && (d.coordTutoriaEspecialidad || d.especialidad)) val = d.coordTutoriaEspecialidad || d.especialidad;
+            else if ((xid === 'ex_coord_condicion' || (l.includes('coordinador') && l.includes('condici'))) && (d.coordTutoriaCondicion || d.coordinadorTutoriaCondicion)) val = d.coordTutoriaCondicion || d.coordinadorTutoriaCondicion;
+            else if ((xid === 'ex_coord_correo' || (l.includes('coordinador') && (l.includes('correo') || l.includes('email')))) && (d.coordTutoriaCorreo || d.coordinadorTutoriaCorreo)) val = d.coordTutoriaCorreo || d.coordinadorTutoriaCorreo;
+            else if ((xid === 'ex_cant_tut' || l.includes('tutores')) && (d.docentesTutores !== undefined || d.docentesTutoresACargo !== undefined)) val = d.docentesTutores !== undefined ? d.docentesTutores : d.docentesTutoresACargo;
+            else if ((xid === 'ex_horas_visita' || l.includes('horas')) && (d.horasVisita || d.horas)) val = d.horasVisita || d.horas;
             else if (l.includes('condici') && d.condicion) val = d.condicion;
             else if (l.includes('nivel') && d.nivelAtencion) val = d.nivelAtencion;
             else if (l.includes('turno') && l.includes('atenci') && d.turnoAtencion) val = d.turnoAtencion;
@@ -1815,6 +1906,26 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
             }
           }
         });
+
+        // Precargar respuestas de tablas cuantitativas especializadas
+        if (d.tablasRespuestas && typeof d.tablasRespuestas === 'object') {
+          Object.keys(d.tablasRespuestas).forEach(tblId => {
+            const tblData = d.tablasRespuestas[tblId];
+            if (tblData && typeof tblData === 'object') {
+              Object.keys(tblData).forEach(fId => {
+                const rowData = tblData[fId];
+                if (rowData && typeof rowData === 'object') {
+                  Object.keys(rowData).forEach(cId => {
+                    const inp = host.querySelector(`[name="tbl_${tblId}_${fId}_${cId}"]`);
+                    if (inp && rowData[cId] !== undefined) {
+                      inp.value = rowData[cId];
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
 
         updateProgressBadge();
         if (hint && d.institucion) {
@@ -2234,17 +2345,22 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
     let totalItems = 0;
     let firstUnansweredEl = null;
 
-    ft.secciones.forEach(sec => {
-      sec.items.forEach(it => {
+    ft.secciones.forEach((sec, sIdx) => {
+      sec.items.forEach((it, iIdx) => {
         totalItems++;
-        const chk = document.querySelector('input[name="item_' + it.id + '"]:checked');
-        const evidInp = document.getElementById('evid_' + it.id) || document.querySelector('input[name="evidencia_' + it.id + '"]');
+        const itemDomKey = `s${sIdx + 1}_i${iIdx + 1}_${it.id || iIdx}`;
+        const chk = document.querySelector('input[name="item_' + itemDomKey + '"]:checked') || document.querySelector('input[name="item_' + it.id + '"]:checked');
+        const evidInp = document.getElementById('evid_' + itemDomKey) || document.getElementById('evid_' + it.id) || document.querySelector('textarea[name="evidencia_' + itemDomKey + '"]');
         const evidencia = evidInp ? evidInp.value.trim() : '';
 
         if (chk) {
           answeredCount++;
           respuestas.push({
             id: it.id,
+            domKey: itemDomKey,
+            seccionIdx: sIdx,
+            itemIdx: iIdx,
+            num: it.num || Number(String(it.id).replace(/\D+/g, '')) || totalItems,
             texto: it.texto,
             seccion: sec.nombre,
             valor: chk.value,
@@ -2252,11 +2368,15 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
           });
         } else {
           if (!firstUnansweredEl) {
-            firstUnansweredEl = document.querySelector('input[name="item_' + it.id + '"]') || evidInp;
+            firstUnansweredEl = document.querySelector('input[name="item_' + itemDomKey + '"]') || document.querySelector('input[name="item_' + it.id + '"]') || evidInp;
           }
           if (evidencia) {
             respuestas.push({
               id: it.id,
+              domKey: itemDomKey,
+              seccionIdx: sIdx,
+              itemIdx: iIdx,
+              num: it.num || Number(String(it.id).replace(/\D+/g, '')) || totalItems,
               texto: it.texto,
               seccion: sec.nombre,
               valor: null,
@@ -2290,15 +2410,26 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
 
     // Extracción de datos para compatibilidad de tablas y reportes
     let ugelVal = '', redVal = '', codigoVal = '', responsableVal = '', directorVal = '';
-    let directorDniVal = '', condicionVal = '', nivelAtencionVal = '', turnoAtencionVal = '', turnoVisitadoVal = '', monitorDniVal = '';
+    let directorDniVal = '', directorCondicionVal = '', directorCorreoVal = '', condicionVal = '', nivelAtencionVal = '', turnoAtencionVal = '', turnoVisitadoVal = '', monitorDniVal = '';
+    let coordTutoriaVal = '', coordTutoriaDniVal = '', coordTutoriaCondicionVal = '', coordTutoriaEspVal = '', coordTutoriaCorreoVal = '', docentesTutoresVal = '', horasVisitaVal = '';
 
     extrasCollected.forEach(ex => {
       const l = (ex.label || '').toLowerCase();
+      const xid = (ex.id || '').toLowerCase();
       if (l.includes('ugel') && !ugelVal) ugelVal = ex.value;
       if ((l.includes('red') || l.includes('rei')) && !redVal) redVal = ex.value;
       if ((l.includes('código') || l.includes('codigo')) && !codigoVal) codigoVal = ex.value;
-      if (l.includes('director') && (l.includes('nombre') || !l.includes('dni')) && !directorVal) directorVal = ex.value;
-      if (l.includes('director') && l.includes('dni') && !directorDniVal) directorDniVal = ex.value;
+      if ((xid === 'ex_dir_nombre' || (l.includes('director') && (l.includes('nombre') || !l.includes('dni')) && !l.includes('cond') && !l.includes('corr'))) && !directorVal) directorVal = ex.value;
+      if ((xid === 'ex_dir_dni' || (l.includes('director') && l.includes('dni'))) && !directorDniVal) directorDniVal = ex.value;
+      if ((xid === 'ex_dir_condicion' || (l.includes('director') && l.includes('condici'))) && !directorCondicionVal) directorCondicionVal = ex.value;
+      if ((xid === 'ex_dir_correo' || (l.includes('director') && (l.includes('correo') || l.includes('email')))) && !directorCorreoVal) directorCorreoVal = ex.value;
+      if ((xid === 'ex_coord' || (l.includes('coordinador') && l.includes('tutor') && !l.includes('dni') && !l.includes('esp') && !l.includes('cond') && !l.includes('corr'))) && !coordTutoriaVal) coordTutoriaVal = ex.value;
+      if ((xid === 'ex_coord_dni' || (l.includes('coordinador') && l.includes('dni'))) && !coordTutoriaDniVal) coordTutoriaDniVal = ex.value;
+      if ((xid === 'ex_coord_condicion' || (l.includes('coordinador') && l.includes('condici'))) && !coordTutoriaCondicionVal) coordTutoriaCondicionVal = ex.value;
+      if ((xid === 'ex_coord_esp' || l.includes('especialidad')) && !coordTutoriaEspVal) coordTutoriaEspVal = ex.value;
+      if ((xid === 'ex_coord_correo' || (l.includes('coordinador') && (l.includes('correo') || l.includes('email')))) && !coordTutoriaCorreoVal) coordTutoriaCorreoVal = ex.value;
+      if ((xid === 'ex_cant_tut' || l.includes('tutores')) && !docentesTutoresVal) docentesTutoresVal = ex.value;
+      if ((xid === 'ex_horas_visita' || l.includes('horas')) && !horasVisitaVal) horasVisitaVal = ex.value;
       if (l.includes('condici') && !condicionVal) condicionVal = ex.value;
       if (l.includes('nivel') && !nivelAtencionVal) nivelAtencionVal = ex.value;
       if (l.includes('turno') && l.includes('atenci') && !turnoAtencionVal) turnoAtencionVal = ex.value;
@@ -2441,12 +2572,33 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       };
     }
 
+    // Recolectar datos de tablas cuantitativas especializadas si existen
+    const tablasRespuestas = {};
+    if (Array.isArray(ft.tablas)) {
+      ft.tablas.forEach((tbl, ti) => {
+        const tblId = tbl.id || ti;
+        tablasRespuestas[tblId] = {};
+        const rows = (tbl.filas && tbl.filas.length > 0) ? tbl.filas : [{ etiqueta: 'Fila 1' }, { etiqueta: 'Fila 2' }];
+        rows.forEach((r, ri) => {
+          const fId = r.id || ('f_' + ri);
+          tablasRespuestas[tblId][fId] = {};
+          (tbl.columnas || []).forEach((col, ci) => {
+            const cId = col.id || ('c_' + ci);
+            const inp = form.querySelector(`[name="tbl_${tblId}_${fId}_${cId}"]`);
+            if (inp) {
+              tablasRespuestas[tblId][fId][cId] = inp.value.trim();
+            }
+          });
+        });
+      });
+    }
+
     const docData = {
       fichaTypeId: ft.id || '',
       fichaTypeNombre: ft.nombre || '',
       tipoRespuesta: ft.tipoRespuesta || '',
       institucion: instVal || '',
-      colegioId: (matchedCol && matchedCol.id) || regSelectedColegioId || null,
+      colegioId: (matchedCol && matchedCol.id) || regSelectedColegioId || (isEdit && editingSubmissionData && editingSubmissionData.colegioId) || null,
       fecha: fechaVal || '',
       visita: Number(visitaVal) || 1,
       ugel: ugelVal || 'UGEL 03',
@@ -2457,7 +2609,20 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       monitorJec: isFichaEspecialistaJec(ft) ? ESPECIALISTA_JEC_OFICIAL.nombresApellidos : '',
       director: directorVal || '',
       directorDni: directorDniVal || '',
-      condicion: condicionVal || '',
+      directorCondicion: directorCondicionVal || condicionVal || '',
+      dirCondicion: directorCondicionVal || condicionVal || '',
+      directorCorreo: directorCorreoVal || '',
+      dirCorreo: directorCorreoVal || '',
+      coordinadorTutoria: coordTutoriaVal || '',
+      coordTutoria: coordTutoriaVal || '',
+      coordTutoriaNombre: coordTutoriaVal || '',
+      coordTutoriaDni: coordTutoriaDniVal || '',
+      coordTutoriaCondicion: coordTutoriaCondicionVal || '',
+      coordTutoriaEspecialidad: coordTutoriaEspVal || '',
+      coordTutoriaCorreo: coordTutoriaCorreoVal || '',
+      docentesTutores: docentesTutoresVal || '',
+      horasVisita: horasVisitaVal || '',
+      condicion: condicionVal || directorCondicionVal || '',
       nivelAtencion: nivelAtencionVal || '',
       turnoAtencion: turnoAtencionVal || '',
       turnoVisitado: turnoVisitadoVal || '',
@@ -2470,6 +2635,7 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
       compromisoDirector: compDirectorVal || '',
       compromisoMonitor: compMonitorVal || '',
       observaciones: document.getElementById('f_observaciones') ? document.getElementById('f_observaciones').value.trim() : '',
+      tablasRespuestas: tablasRespuestas || {},
       compromisos: allCompromisos || [],
       esBorrador: esBorrador || false,
       ...tutoriaExtraData,
@@ -2481,7 +2647,7 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
     const targetId = isEdit ? editingSubmissionId : submissionToken;
     const cleanedDocData = cleanForFirestore(docData);
     const batch = dbNs.batch();
-    batch.set(dbNs.collection('submissions').doc(targetId), cleanedDocData);
+    batch.set(dbNs.collection('submissions').doc(targetId), cleanedDocData, { merge: true });
 
     allCompromisos.forEach((comp, idx) => {
       if (comp.plazo && comp.plazo.match(/^\d{4}-\d{2}-\d{2}$/)) {

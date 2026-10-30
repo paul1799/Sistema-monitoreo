@@ -4,8 +4,8 @@
  * UGEL 03 · AGEBRE
  */
 
-export * from './escalas.js';
-export * from './reglas.js';
-export * from './detectors.js';
-export * from './evaluador.js';
-export * from './score-engine.js';
+export * from './escalas.js?v=20261030_v1';
+export * from './reglas.js?v=20261030_v1';
+export * from './detectors.js?v=20261030_v1';
+export * from './evaluador.js?v=20261030_v1';
+export * from './score-engine.js?v=20261030_v1';

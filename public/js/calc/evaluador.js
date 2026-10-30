@@ -204,10 +204,16 @@ export function estadoPorRegla(resultado, regla_nivel) {
 
     // ── Tipo C: umbrales sobre el porcentaje calculado ────────────────
     const pct = resultado.pct;
-    if (pct === null) {
+    if (pct === null || pct === undefined) {
       return { nivel: 'Sin datos', estado_panel: 'Sin datos', cls: 'st-none' };
     }
-    const umbrales = regla_nivel.umbrales || [];
+    const umbrales = (Array.isArray(regla_nivel?.umbrales) && regla_nivel.umbrales.length > 0)
+      ? regla_nivel.umbrales
+      : [
+          { min: 67, nivel: 'Logrado', estado_panel: 'Logrado' },
+          { min: 34, max: 66, nivel: 'En proceso', estado_panel: 'En proceso' },
+          { min: 0, max: 33, nivel: 'Inicio', estado_panel: 'Inicio' }
+        ];
     for (const u of umbrales) {
       if (pct >= u.min && (pct <= u.max || u.max === undefined)) {
         return {
@@ -221,12 +227,12 @@ export function estadoPorRegla(resultado, regla_nivel) {
 
   // ── Sin regla declarada: umbrales genéricos por defecto ──────────────
   const pct = resultado.pct;
-  if (pct === null) {
+  if (pct === null || pct === undefined) {
     return { nivel: 'Sin datos', estado_panel: 'Sin datos', cls: 'st-none' };
   }
-  if (pct >= 85) return { nivel: 'Logrado',     estado_panel: 'Logrado',    cls: 'st-logrado' };
-  if (pct >= 70) return { nivel: 'En proceso',  estado_panel: 'En proceso', cls: 'st-proceso' };
-  return               { nivel: 'Por mejorar', estado_panel: 'Inicio',     cls: 'st-inicio'  };
+  if (pct >= 67) return { nivel: 'Logrado',    estado_panel: 'Logrado',    cls: 'st-logrado' };
+  if (pct >= 34) return { nivel: 'En proceso', estado_panel: 'En proceso', cls: 'st-proceso' };
+  return               { nivel: 'Inicio',     estado_panel: 'Inicio',     cls: 'st-inicio'  };
 }
 
 /**

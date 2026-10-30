@@ -11,4 +11,4 @@
      - ./calc/score-engine.js : Motor de puntuación calcScore
    ========================================================================= */
 
-export * from './calc/index.js';
+export * from './calc/index.js?v=20261030_v1';

@@ -59,6 +59,11 @@ export const PALETA_MATRIZ = {
       puntaje: 'C496DE'
     },
     {
+      header1: 'F8A5C2',
+      header23: 'FDD7E4',
+      puntaje: 'F8A5C2'
+    },
+    {
       header1: 'F8CBAD',
       header23: 'FBE5D6',
       puntaje: 'F8CBAD'

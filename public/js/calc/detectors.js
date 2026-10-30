@@ -153,7 +153,7 @@ export function isFichaEbrGestionEscolar(ft) {
   // Si tiene escala Sí/No, nivel 1-4 o escala 1-3, es una ficha estándar/dinámica, no la de Gestión Escolar EBR
   if (typeof ft === 'object' && ft !== null) {
     const escala = String(ft.tipoRespuesta || ft.escala || '').toLowerCase();
-    if (escala === 'si_no' || escala === 'escala_1_3' || escala === 'nivel_1_4') return false;
+    if (escala.includes('si_no') || escala === 'si_no' || escala === 'si_no_na' || escala === 'escala_1_3' || escala === 'nivel_1_4') return false;
   }
 
   if (id === 'ft_gestion_ugel03_ebr' || id === 'ft_ebr_gestion_1er' || id === 'ft_ebr_gestion' || id === 'ft_ebr_gestion_2do' || id === 'ft_ebr_gestion_3er') return true;
@@ -177,6 +177,11 @@ export function isFichaEbrEbePrite(ft) {
   // Regla de oro: NO modificar la lógica de las fichas de JEC
   if (isFichaJec(ft) || isFichaCoordTutoriaJec(ft) || isFichaCoordPedagogico(ft) || isFichaEspecialistaJec(ft)) {
     return false;
+  }
+  // Excluir fichas con escala Sí / No (evaluación porcentual binaria)
+  if (typeof ft === 'object' && ft !== null) {
+    const escala = String(ft.tipoRespuesta || ft.escala || '').toLowerCase();
+    if (escala.includes('si_no') || escala === 'si_no' || escala === 'si_no_na') return false;
   }
   const id = String(ft.id || ft.fichaTypeId || '').toLowerCase();
   const n = String(ft.nombre || ft.fichaTypeNombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();

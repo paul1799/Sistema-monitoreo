@@ -14,7 +14,8 @@ import {
   cleanForFirestore,
   lockBodyScroll,
   unlockBodyScroll,
-  forceResetBodyScroll
+  forceResetBodyScroll,
+  isFichaActiva
 } from './core-utils.js';
 import {
   RESPONSE_OPTIONS,
@@ -85,6 +86,7 @@ export function normalizeExtras(extras) {
 }
 
 let plantillasSearchQuery = '';
+let plantillasFilterStatus = 'all'; // 'all' | 'active' | 'inactive'
 let builderMode = 'visual'; // 'visual' | 'json'
 let builderJsonUnlocked = false; // Requiere autenticación con contraseña de admin
 let builderPreviewMode = 'formulario'; // 'formulario' | 'documento'
@@ -160,6 +162,7 @@ function blankBuilder() {
     grupo: 'EBR',
     orden: 99,
     tipoRespuesta: 'si_no',
+    activo: true,
     regla_nivel: 'porcentaje',
     regla_nivel_config: {
       inicio: { min: 0, max: 11, label: 'Incipiente' },
@@ -247,6 +250,8 @@ function syncBuilderFromDom(container, bs) {
   if (reglaEl) bs.regla_nivel = reglaEl.value;
   const verEl = document.getElementById('b_version');
   if (verEl) bs.version = verEl.value;
+  const actEl = document.getElementById('b_activo');
+  if (actEl) bs.activo = actEl.checked;
 
   const tvEl = document.getElementById('b_tiene_visitas');
   if (tvEl) bs.tieneVisitas = tvEl.checked;
@@ -379,6 +384,10 @@ function syncBuilderFromDom(container, bs) {
     const tIdx = +inp.dataset.tblDesc;
     if (bs.tablas && bs.tablas[tIdx]) bs.tablas[tIdx].descripcion = inp.value;
   });
+  container.querySelectorAll('[data-tbl-sincat]').forEach(chk => {
+    const tIdx = +chk.dataset.tblSincat;
+    if (bs.tablas && bs.tablas[tIdx]) bs.tablas[tIdx].sinColumnaCategoria = chk.checked;
+  });
 
   builderIsDirty = true;
 }
@@ -407,6 +416,7 @@ export async function duplicateFichaType(ft, dbNs, state, onDone) {
       modalidad: newModalidad,
       secciones: clonedSecciones,
       extras: clonedExtras,
+      activo: true,
       createdAt: Date.now()
     };
     await dbNs.collection('fichaTypes').add(payload);
@@ -506,7 +516,13 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
   }
 
   const allTypes = state.fichaTypes || [];
+  const activeCount = allTypes.filter(isFichaActiva).length;
+  const inactiveCount = allTypes.filter(ft => !isFichaActiva(ft)).length;
+
   const filtered = allTypes.filter(ft => {
+    const isActivo = isFichaActiva(ft);
+    if (plantillasFilterStatus === 'active' && !isActivo) return false;
+    if (plantillasFilterStatus === 'inactive' && isActivo) return false;
     if (plantillasSearchQuery) {
       const q = normalizeText(plantillasSearchQuery);
       const name = normalizeText(ft.nombre || '');
@@ -524,7 +540,7 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
       <p style="max-width:540px;margin:0 auto 16px;color:var(--text-600)">
         ${allTypes.length === 0
       ? 'Puedes inicializar las 8 plantillas oficiales del sistema (EBR con Visitas 1, 2 y 3, JEC, CEBE, PRITE, Directivos, etc.) con sus preguntas canónicas y conexiones intactas.'
-      : `No hay resultados para "${esc(plantillasSearchQuery)}".`}
+      : (plantillasFilterStatus !== 'all' ? `No hay plantillas con estado "${plantillasFilterStatus === 'active' ? 'Activas' : 'Desactivadas'}".` : `No hay resultados para "${esc(plantillasSearchQuery)}".`)}
       </p>
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
         ${allTypes.length === 0 ? '<button type="button" class="btn" id="btnSyncPlantillasEmpty" style="font-weight:700">⚡ Cargar 8 Plantillas Base Oficiales</button>' : ''}
@@ -532,6 +548,7 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
       </div>
     </div>
   ` : filtered.map((ft, idx) => {
+        const isActivo = isFichaActiva(ft);
         const color = getFichaColor(ft, idx);
         const mod = getFichaModalidad(ft);
         const count = deduplicateTwinSubmissions((state.submissions || []).filter(s => s.fichaTypeId === ft.id)).length;
@@ -543,8 +560,22 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
         let displayDesc = descText || 'Sin descripción adicional.';
         if (isLongDesc && !isExpanded) displayDesc = descText.slice(0, 130) + '…';
 
+        const statusBadge = isActivo
+          ? `<span class="fichaBadge" style="background:#DCFCE7;color:#15803D;border:1px solid #BBF7D0;font-weight:700">● Activa</span>`
+          : `<span class="fichaBadge" style="background:#FEE2E2;color:#B91C1C;border:1px solid #FECACA;font-weight:700">⏸️ Desactivada</span>`;
+
+        const toggleBtn = isActivo ? `
+          <button type="button" class="btn secondary small" data-toggle-active-ft="${esc(ft.id)}" data-current-active="true" title="Desactivar ficha (ocultar de Registro, Resumen y Reportes)" style="color:#B45309;background:#FFFBEB;border-color:#FDE68A;font-weight:600">
+            ⏸️ Desactivar
+          </button>
+        ` : `
+          <button type="button" class="btn small" data-toggle-active-ft="${esc(ft.id)}" data-current-active="false" title="Activar ficha (mostrar en Registro, Resumen y Reportes)" style="color:#15803D;background:#F0FDF4;border-color:#BBF7D0;font-weight:700">
+            ▶️ Activar
+          </button>
+        `;
+
         return `
-      <div class="fichaCard" style="cursor:default">
+      <div class="fichaCard" style="cursor:default;${!isActivo ? 'opacity:0.85;background:#FAFAFA;border:1.5px dashed #CBD5E1;' : ''}">
         <div class="fichaCardColorStripe" style="background:${color.hex};"></div>
         <div class="fichaCardMain">
           <div class="fichaCardIconWrap" style="background:${color.bg};color:${color.hex};">
@@ -557,6 +588,7 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
               ${isLongDesc ? `<span class="fichaCardDescMore" data-toggle-desc="${esc(ft.id)}">${isExpanded ? 'ver menos' : 'ver más'}</span>` : ''}
             </p>
             <div class="fichaCardBadges">
+              ${statusBadge}
               <span class="fichaBadge" style="background:#F1F5F9;color:#334155;border:1px solid #CBD5E1;font-weight:600">📁 Grupo: ${esc(ft.grupo || 'Sin grupo')}</span>
               <span class="fichaBadge fichaBadgeModalidad">${esc(mod)}</span>
               <span class="fichaBadge fichaBadgeItems">📑 ${totalSecs} ${totalSecs === 1 ? 'sección' : 'secciones'}</span>
@@ -567,6 +599,7 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
           </div>
         </div>
         <div class="fichaCardActs" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          ${toggleBtn}
           <button type="button" class="btn secondary small" data-edit-ft="${esc(ft.id)}" title="Editar estructura de la ficha">
             ✏️ Editar
           </button>
@@ -588,9 +621,16 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
     </div>
     ${subNavHtml}
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">
-      <div class="fichaSearchWrap" style="max-width:380px">
-        <span class="fichaSearchIcon">🔍</span>
-        <input type="text" class="fichaSearchInput" id="plantillasSearchInp" placeholder="Filtrar plantillas..." value="${esc(plantillasSearchQuery)}">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex:1;min-width:280px">
+        <div class="fichaSearchWrap" style="max-width:320px;flex:1">
+          <span class="fichaSearchIcon">🔍</span>
+          <input type="text" class="fichaSearchInput" id="plantillasSearchInp" placeholder="Filtrar plantillas..." value="${esc(plantillasSearchQuery)}">
+        </div>
+        <div style="display:inline-flex;gap:4px;background:#F1F5F9;padding:3px;border-radius:8px;border:1px solid #CBD5E1">
+          <button type="button" class="btn small ${plantillasFilterStatus === 'all' ? '' : 'secondary'}" data-plantillas-status="all" style="padding:4px 10px;font-size:12px;font-weight:${plantillasFilterStatus === 'all' ? '700' : '500'}">Todas (${allTypes.length})</button>
+          <button type="button" class="btn small ${plantillasFilterStatus === 'active' ? '' : 'secondary'}" data-plantillas-status="active" style="padding:4px 10px;font-size:12px;font-weight:${plantillasFilterStatus === 'active' ? '700' : '500'};color:${plantillasFilterStatus === 'active' ? '#fff' : '#15803D'}">● Activas (${activeCount})</button>
+          <button type="button" class="btn small ${plantillasFilterStatus === 'inactive' ? '' : 'secondary'}" data-plantillas-status="inactive" style="padding:4px 10px;font-size:12px;font-weight:${plantillasFilterStatus === 'inactive' ? '700' : '500'};color:${plantillasFilterStatus === 'inactive' ? '#fff' : '#B91C1C'}">⏸️ Desactivadas (${inactiveCount})</button>
+        </div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button type="button" class="btn secondary" id="btnSyncPlantillasBase" title="Sincroniza o restaura las 8 plantillas oficiales en Firestore manteniendo conexiones con visitas existentes">
@@ -854,13 +894,48 @@ export function renderPlantillasManagementView(container, state, getFichaType, d
     };
   });
 
-  // Eliminar
-  container.querySelectorAll('[data-del-ft]').forEach(btn => {
+  // Filtrado por estado (Todas / Activas / Desactivadas)
+  container.querySelectorAll('[data-plantillas-status]').forEach(btn => {
     btn.onclick = () => {
-      const ft = getFichaType(btn.dataset.delFt);
-      if (ft) confirmDeleteFichaType(ft, state, dbNs, () => {
+      plantillasFilterStatus = btn.dataset.plantillasStatus || 'all';
+      renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+    };
+  });
+
+  // Activar / Desactivar ficha
+  container.querySelectorAll('[data-toggle-active-ft]').forEach(btn => {
+    btn.onclick = async () => {
+      const ftId = btn.dataset.toggleActiveFt;
+      const currentActive = btn.dataset.currentActive === 'true';
+      const ft = getFichaType(ftId);
+      if (!ft || !dbNs) return;
+      const newStatus = !currentActive;
+      try {
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+        await dbNs.collection('fichaTypes').doc(ftId).set({
+          ...ft,
+          activo: newStatus,
+          updatedAt: Date.now()
+        }, { merge: true });
+
+        ft.activo = newStatus;
+        if (state && Array.isArray(state.fichaTypes)) {
+          const item = state.fichaTypes.find(f => f.id === ftId);
+          if (item) item.activo = newStatus;
+        }
+        if (typeof window !== 'undefined' && window.state && Array.isArray(window.state.fichaTypes)) {
+          const item = window.state.fichaTypes.find(f => f.id === ftId);
+          if (item) item.activo = newStatus;
+        }
+
+        showToast(newStatus ? `✓ Ficha "${ft.nombre}" activada correctamente.` : `Ficha "${ft.nombre}" desactivada (oculta en Registro, Resumen y Reportes).`);
         renderPlantillasManagementView(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
-      });
+      } catch (err) {
+        console.error('Error toggling ficha active state:', err);
+        showToast('Error al cambiar estado de la ficha: ' + err.message);
+        btn.disabled = false;
+      }
     };
   });
 }
@@ -1671,6 +1746,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
 
   // Helper para generar el HTML de Tablas Cuantitativas Especializadas
   const tablasHtml = (bs.tablas || []).map((tbl, ti) => {
+    const omitirCategoria = tbl.tipo === 'vacia' || tbl.sinColumnaCategoria === true || (tbl.id && String(tbl.id).startsWith('tbl_custom_') && tbl.sinColumnaCategoria !== false);
     const colsHtml = (tbl.columnas || []).map((col, ci) => `
       <span class="builderColChip">
         <strong>${esc(col.nombre)}</strong>
@@ -1707,6 +1783,16 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
           </div>
         </div>
 
+        <div style="margin-bottom:12px;background:var(--surface-alt);border:1px solid var(--line);border-radius:6px;padding:8px 10px">
+          <label style="font-size:11.5px;color:var(--navy-900);display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:600">
+            <input type="checkbox" data-tbl-sincat="${ti}" ${omitirCategoria ? 'checked' : ''}>
+            <span>Tabla libre / sin columna fija de categoría (toda la tabla es editable)</span>
+          </label>
+          <div style="font-size:10.5px;color:var(--text-500);margin-top:2px;margin-left:20px">
+            Si está marcado, no saldrá la primera columna "Fila / Categoría" y se mostrarán únicamente tus columnas con celdas 100% editables.
+          </div>
+        </div>
+
         <!-- Columnas -->
         <div class="builderTableColRowBox">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -1728,9 +1814,9 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         <!-- Filas Predeterminadas -->
         <div class="builderTableColRowBox" style="margin-top:8px;margin-bottom:0">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-            <span style="font-size:12px;font-weight:700;color:var(--navy-900)">Filas base predeterminadas (${(tbl.filas || []).length}):</span>
+            <span style="font-size:12px;font-weight:700;color:var(--navy-900)">${omitirCategoria ? 'Filas a registrar' : 'Filas base predeterminadas'} (${(tbl.filas || []).length}):</span>
             <div style="display:flex;gap:4px;align-items:center">
-              <input type="text" placeholder="Nueva fila (ej: Directivo, Docente)..." id="newRowEtiq_${ti}" style="width:190px;font-size:11.5px;padding:3px 6px">
+              <input type="text" placeholder="${omitirCategoria ? 'Nueva fila (ej: Fila 3)...' : 'Nueva fila (ej: Directivo, Docente)...'}" id="newRowEtiq_${ti}" style="width:190px;font-size:11.5px;padding:3px 6px">
               <button type="button" class="btn secondary small" data-addtblrow="${ti}" style="padding:2px 8px;font-size:11px">＋ Fila</button>
             </div>
           </div>
@@ -1861,6 +1947,14 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
             <div class="field" style="max-width:160px">
               <label for="b_version">Versión / Año</label>
               <input type="text" id="b_version" value="${esc(bs.version || '2026.1')}" placeholder="2026.1">
+            </div>
+          </div>
+
+          <div class="field" style="display:flex;align-items:center;gap:10px;margin-top:12px;background:#F8FAFC;padding:10px 14px;border-radius:8px;border:1px solid #E2E8F0">
+            <input type="checkbox" id="b_activo" ${(bs.activo !== false) ? 'checked' : ''} style="width:18px;height:18px;cursor:pointer">
+            <div>
+              <label for="b_activo" style="margin:0;font-weight:700;cursor:pointer;color:var(--navy-900)">Ficha activa para monitoreo</label>
+              <div style="font-size:11.5px;color:#64748b">Si está desactivada, no se mostrará para nuevos registros ni en los filtros de reportes y dashboard.</div>
             </div>
           </div>
 
@@ -2239,10 +2333,10 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       let currentScore = 0;
       let maxScore = 0;
 
-      previewSections.forEach(sec => {
-        (sec.items || []).forEach(it => {
-          const ansKey = `${builderActiveVisitPreview}_${it.id}`;
-          const ans = builderTestAnswers[ansKey] || builderTestAnswers[it.id];
+      previewSections.forEach((sec, si) => {
+        (sec.items || []).forEach((it, ii) => {
+          const ansKey = `${builderActiveVisitPreview}_s${si}_i${ii}_${it.id || ii}`;
+          const ans = builderTestAnswers[ansKey] || builderTestAnswers[`${builderActiveVisitPreview}_${it.id}`] || builderTestAnswers[it.id];
           if (ans !== undefined && ans !== null && ans !== '') {
             answeredCount++;
             if (bs.tipoRespuesta === 'si_no') {
@@ -2276,30 +2370,45 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       ` : '';
 
       // Tablas especializadas en preview
-      const previewTablasHtml = (bs.tablas || []).map(tbl => `
+      const previewTablasHtml = (bs.tablas || []).map(tbl => {
+        const omitirCategoria = tbl.tipo === 'vacia' || tbl.sinColumnaCategoria === true || (tbl.id && String(tbl.id).startsWith('tbl_custom_') && tbl.sinColumnaCategoria !== false);
+        const filas = (tbl.filas && tbl.filas.length > 0 ? tbl.filas : [{ etiqueta: 'Fila 1' }, { etiqueta: 'Fila 2' }]);
+        return `
         <div style="margin-bottom:14px">
           <div style="font-size:12px;font-weight:700;color:var(--navy-900);margin-bottom:4px">${esc(tbl.titulo)}</div>
           ${tbl.descripcion ? `<div style="font-size:11px;color:var(--text-500);margin-bottom:6px">${esc(tbl.descripcion)}</div>` : ''}
           <div style="overflow-x:auto">
-            <table class="previewCustomTable">
+            <table class="previewCustomTable" style="width:100%;border-collapse:collapse;font-size:12px">
               <thead>
                 <tr>
-                  <th style="min-width:140px">Fila / Categoría</th>
-                  ${(tbl.columnas || []).map(col => `<th style="text-align:center">${esc(col.nombre)}</th>`).join('')}
+                  ${!omitirCategoria ? `<th style="min-width:140px;background:#0B192C;color:#FFFFFF;border:1px solid #1E293B;padding:7px 10px;text-align:left;font-weight:700">Fila / Categoría</th>` : ''}
+                  ${(tbl.columnas || []).map(col => `<th style="background:#0B192C;color:#FFFFFF;border:1px solid #1E293B;padding:7px 10px;text-align:center;font-weight:700">${esc(col.nombre)}</th>`).join('')}
                 </tr>
               </thead>
               <tbody>
-                ${(tbl.filas && tbl.filas.length > 0 ? tbl.filas : [{ etiqueta: 'Fila 1' }, { etiqueta: 'Fila 2' }]).map(r => `
+                ${filas.map((r, ri) => `
                   <tr>
-                    <td style="font-weight:600;color:var(--text-700)">${esc(r.etiqueta)}</td>
-                    ${(tbl.columnas || []).map(() => `<td style="text-align:center;color:var(--text-400)">[ 0 ]</td>`).join('')}
+                    ${!omitirCategoria ? `<td style="font-weight:600;color:var(--text-700)">${esc(r.etiqueta)}</td>` : ''}
+                    ${(tbl.columnas || []).map((col, ci) => {
+                      const isFirstCol = ci === 0 && omitirCategoria;
+                      const cellVal = isFirstCol ? (r.etiqueta || '') : '';
+                      return `
+                        <td style="text-align:center;padding:4px">
+                          <input type="${col.tipo === 'numero' ? 'number' : 'text'}" 
+                                 value="${esc(cellVal)}"
+                                 style="width:100%;border:1px solid #D1D5DB;border-radius:4px;padding:3px 6px;text-align:${col.tipo === 'numero' ? 'center' : 'left'};font-size:11px;font-weight:${isFirstCol ? '600' : 'normal'};color:${isFirstCol ? 'var(--navy-900)' : 'inherit'}" 
+                                 placeholder="${col.tipo === 'numero' ? '[ 0 ]' : '[ texto ]'}" />
+                        </td>
+                      `;
+                    }).join('')}
                   </tr>
                 `).join('')}
               </tbody>
             </table>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
 
       // Compromisos en preview
       const previewCompromisosHtml = (bs.compromisos && bs.compromisos.habilitado) ? `
@@ -2369,8 +2478,8 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
               <div style="padding:8px 12px">
                 ${(sec.items || []).map((it, ii) => {
         const itCode = it.id || ((si + 1) + '.' + (ii + 1));
-        const ansKey = `${builderActiveVisitPreview}_${it.id}`;
-        const ans = builderTestAnswers[ansKey] || builderTestAnswers[it.id] || '';
+        const ansKey = `${builderActiveVisitPreview}_s${si}_i${ii}_${it.id || ii}`;
+        const ans = builderTestAnswers[ansKey] || builderTestAnswers[`${builderActiveVisitPreview}_${it.id}`] || builderTestAnswers[it.id] || '';
         return `
                     <div style="padding:8px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px">
                       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
@@ -2390,7 +2499,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
                         <textarea rows="2" placeholder="${it.evidencia ? esc(it.evidencia) : 'Describa aquí los hallazgos u observaciones identificados en este indicador...'}" style="width:100%;font-size:11.5px;padding:4px 8px;border:1.5px solid #CBD5E1;border-radius:6px;box-sizing:border-box" disabled></textarea>
                       </div>
                       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11.5px">
-                        ${renderItemResponseInputs(it, bs.tipoRespuesta, ans)}
+                        ${renderItemResponseInputs(it, bs.tipoRespuesta, ans, ansKey)}
                       </div>
                     </div>
                   `;
@@ -2440,27 +2549,38 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
           </table>
 
           <!-- Tablas Especializadas en Documento -->
-          ${(bs.tablas || []).map(tbl => `
+          ${(bs.tablas || []).map(tbl => {
+            const omitirCategoria = tbl.tipo === 'vacia' || tbl.sinColumnaCategoria === true || (tbl.id && String(tbl.id).startsWith('tbl_custom_') && tbl.sinColumnaCategoria !== false);
+            const filas = (tbl.filas && tbl.filas.length > 0 ? tbl.filas : [{ etiqueta: 'Fila 1' }, { etiqueta: 'Fila 2' }]);
+            return `
             <div style="margin-bottom:14px">
               <div style="font-size:11px;font-weight:700;color:#1E3A8A;margin-bottom:4px">${esc(tbl.titulo)}</div>
               <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:6px">
                 <thead>
                   <tr style="background:#F3F4F6">
-                    <th style="border:1px solid #D1D5DB;padding:4px 6px;text-align:left">Fila / Categoría</th>
+                    ${!omitirCategoria ? `<th style="border:1px solid #D1D5DB;padding:4px 6px;text-align:left">Fila / Categoría</th>` : ''}
                     ${(tbl.columnas || []).map(col => `<th style="border:1px solid #D1D5DB;padding:4px 6px;text-align:center">${esc(col.nombre)}</th>`).join('')}
                   </tr>
                 </thead>
                 <tbody>
-                  ${(tbl.filas && tbl.filas.length > 0 ? tbl.filas : [{ etiqueta: 'Fila 1' }, { etiqueta: 'Fila 2' }]).map(r => `
+                  ${filas.map((r, ri) => `
                     <tr>
-                      <td style="border:1px solid #D1D5DB;padding:3px 6px">${esc(r.etiqueta)}</td>
-                      ${(tbl.columnas || []).map(() => `<td style="border:1px solid #D1D5DB;padding:3px 6px;text-align:center">____</td>`).join('')}
+                      ${!omitirCategoria ? `<td style="border:1px solid #D1D5DB;padding:3px 6px;font-weight:600">${esc(r.etiqueta)}</td>` : ''}
+                      ${(tbl.columnas || []).map((col, ci) => {
+                        const isFirstCol = ci === 0 && omitirCategoria;
+                        return `
+                          <td style="border:1px solid #D1D5DB;padding:3px 6px;text-align:${col.tipo === 'numero' ? 'center' : 'left'};font-weight:${isFirstCol ? '600' : 'normal'}">
+                            ${isFirstCol ? esc(r.etiqueta || '') : '____'}
+                          </td>
+                        `;
+                      }).join('')}
                     </tr>
                   `).join('')}
                 </tbody>
               </table>
             </div>
-          `).join('')}
+          `;
+          }).join('')}
 
           <!-- Tabla de Dimensiones e Indicadores -->
           <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:10.5px">
@@ -2526,8 +2646,8 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
   }
 
   // Helper para generar opciones de respuesta interactivas en modo prueba
-  function renderItemResponseInputs(it, tipoRespuesta, curVal) {
-    const itKey = `${builderActiveVisitPreview}_${it.id}`;
+  function renderItemResponseInputs(it, tipoRespuesta, curVal, customKey) {
+    const itKey = customKey || `${builderActiveVisitPreview}_${it.id}`;
     if (tipoRespuesta === 'si_no') {
       return `
         <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="test_${itKey}" value="si" ${curVal === 'si' ? 'checked' : ''} data-test-item="${itKey}"> Sí</label>
@@ -3198,6 +3318,8 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         id: 'tbl_custom_' + Date.now(),
         titulo: 'Nueva Tabla de Monitoreo',
         descripcion: '',
+        tipo: 'vacia',
+        sinColumnaCategoria: true,
         columnas: [
           { id: 'c_item', nombre: 'Aspecto', tipo: 'texto' },
           { id: 'c_cant', nombre: 'Cantidad', tipo: 'numero' }
@@ -3278,6 +3400,10 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
 
   container.querySelectorAll('[data-tbl-titulo]').forEach(inp => inp.addEventListener('input', onLiveInput));
   container.querySelectorAll('[data-tbl-desc]').forEach(inp => inp.addEventListener('input', onLiveInput));
+  container.querySelectorAll('[data-tbl-sincat]').forEach(chk => chk.addEventListener('change', () => {
+    syncBuilderFromDom(container, bs);
+    renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
+  }));
 
   // Listeners de Secciones e Indicadores
   container.querySelectorAll('[data-secname]').forEach(inp => inp.addEventListener('input', onLiveInput));
@@ -3500,6 +3626,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         extras: bs.extras,
         tablas: Array.isArray(bs.tablas) ? bs.tablas : [],
         compromisos: bs.compromisos || { habilitado: true, director: true, especialista: true, filasPorVisita: 3 },
+        activo: bs.activo !== false,
         esBorrador: true,
         updatedAt: Date.now()
       };
@@ -3574,30 +3701,48 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       let validSeccionesPorVisita = {};
       if (isDiferenciada && bs.seccionesPorVisita) {
         Object.keys(bs.seccionesPorVisita).forEach(k => {
+          const seenVisitaIds = new Set();
           validSeccionesPorVisita[k] = (bs.seccionesPorVisita[k] || [])
             .filter(s => s.nombre.trim() || (s.items && s.items.some(i => i.texto && i.texto.trim())))
-            .map(s => ({
+            .map((s, sIdx) => ({
               nombre: s.nombre.trim() || 'Sección',
-              items: (s.items || []).filter(i => i.texto && i.texto.trim()).map(i => ({
-                id: i.id || genId(),
-                texto: i.texto.trim(),
-                evidencia: (i.evidencia || '').trim()
-              }))
+              items: (s.items || []).filter(i => i.texto && i.texto.trim()).map((i, iIdx) => {
+                const rawId = (i.id || '').trim();
+                const uniqueId = (!rawId || seenVisitaIds.has(rawId) || /^\d+$/.test(rawId)) 
+                  ? `v${k}_s${sIdx + 1}_it${iIdx + 1}_${genId()}` 
+                  : rawId;
+                seenVisitaIds.add(uniqueId);
+                return {
+                  id: uniqueId,
+                  num: (i.num || (/^\d+$/.test(rawId) ? Number(rawId) : (iIdx + 1))),
+                  texto: i.texto.trim(),
+                  evidencia: (i.evidencia || '').trim()
+                };
+              })
             }));
         });
       }
 
+      const seenTemplateIds = new Set();
       const validSections = (isDiferenciada && validSeccionesPorVisita[0] && validSeccionesPorVisita[0].length > 0)
         ? validSeccionesPorVisita[0]
         : (bs.secciones || [])
           .filter(s => s.nombre.trim() || s.items.some(i => i.texto.trim()))
-          .map(s => ({
+          .map((s, sIdx) => ({
             nombre: s.nombre.trim() || 'Sección',
-            items: (s.items || []).filter(i => i.texto.trim()).map(i => ({
-              id: i.id || genId(),
-              texto: i.texto.trim(),
-              evidencia: (i.evidencia || '').trim()
-            }))
+            items: (s.items || []).filter(i => i.texto.trim()).map((i, iIdx) => {
+              const rawId = (i.id || '').trim();
+              const uniqueId = (!rawId || seenTemplateIds.has(rawId) || /^\d+$/.test(rawId)) 
+                ? `sec${sIdx + 1}_it${iIdx + 1}_${genId()}` 
+                : rawId;
+              seenTemplateIds.add(uniqueId);
+              return {
+                id: uniqueId,
+                num: (i.num || (/^\d+$/.test(rawId) ? Number(rawId) : (iIdx + 1))),
+                texto: i.texto.trim(),
+                evidencia: (i.evidencia || '').trim()
+              };
+            })
           }));
 
       const totalValidItems = validSections.reduce((acc, s) => acc + s.items.length, 0);
@@ -3644,6 +3789,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         extras: (bs.extras || []).filter(e => e.label && e.label.trim()),
         tablas: Array.isArray(bs.tablas) ? bs.tablas : [],
         compromisos: bs.compromisos || { habilitado: true, director: true, especialista: true, filasPorVisita: 3 },
+        activo: bs.activo !== false,
         esBorrador: false,
         updatedAt: Date.now()
       };

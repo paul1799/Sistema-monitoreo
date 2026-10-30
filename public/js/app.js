@@ -5,8 +5,8 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { FIREBASE_CONFIG } from './firebase-config.js?v=20260918_v11';
-import { getFirestore, initFirestore, makeDbAdapter } from './firestore.js?v=20261002_v1';
-import { getAuth, signOut, setupAuthListeners } from './auth.js?v=20260918_v11';
+import { getFirestore, initFirestore, makeDbAdapter } from './firestore.js?v=20261028_v2';
+import { getAuth, signOut, setupAuthListeners } from './auth.js?v=20261023_v1';
 import {
   esc,
   showToast,
@@ -29,14 +29,15 @@ import {
   getConcursoSubTab,
   setConcursoSubTab,
   getDeletedFichaTypeIds,
-} from './ui.js?v=20261020_v1';
+} from './ui.js?v=20261030_v1';
 
 import { renderPortalView } from './portal.js?v=20261014_v1';
 import { renderDirectorioTab } from './directorio.js?v=20261015_v1';
-import { renderAlertasTab, getAlertCount } from './alertas.js?v=20261015_v1';
-import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261016_v2';
+import { renderAlertasTab, getAlertCount } from './alertas.js?v=20261023_v3';
+import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261030_v1';
 import { PLANTILLAS_BASE_OFICIALES, ALIAS_A_PLANTILLA_BASE } from './catalogo-plantillas-base.js?v=20261016_v4';
-import { isFichaEbrGestionEscolar } from './calc/detectors.js';
+import { isFichaEbrGestionEscolar, isFichaCoordTutoriaJec } from './calc/detectors.js?v=20261030_v1';
+import { cleanForFirestore } from './ui/core-utils.js?v=20261030_v1';
 
 /* ============================= MANEJADORES GLOBALES DE ERROR ============================= */
 if (typeof window !== 'undefined') {
@@ -284,7 +285,20 @@ function navigate(tab) {
 }
 
 /* ============================= RENDER DISPATCH ============================= */
+let _renderRaf = null;
+function renderDebounced() {
+  if (_renderRaf) return;
+  _renderRaf = requestAnimationFrame(() => {
+    _renderRaf = null;
+    render();
+  });
+}
+
 function render() {
+  if (_renderRaf) {
+    cancelAnimationFrame(_renderRaf);
+    _renderRaf = null;
+  }
   setAppState(state);
   const c = document.getElementById('tabContent');
 
@@ -380,6 +394,45 @@ function stopListeners() {
   activeUnsubscribers = [];
   startListeners._started = false;
 }
+
+function healCoordTutoriaSubmissions(subs, dbNs) {
+  if (!Array.isArray(subs)) return subs;
+
+  subs.forEach(s => {
+    const isCoordTut = s.fichaTypeId === 'ft_coord_tutoria_jec' || 
+                       s.fichaTypeId === 'ft_coord_tutoria' || 
+                       (s.fichaTypeNombre || '').toLowerCase().includes('coordinador(a) de tutoría') ||
+                       (s.fichaTypeNombre || '').toLowerCase().includes('coordinador de tutoria');
+    if (!isCoordTut) return;
+
+    s.fichaTypeId = 'ft_coord_tutoria_jec';
+
+    // Normalizar respuestas sólo si falta la propiedad de sección
+    if (Array.isArray(s.respuestas)) {
+      s.respuestas.forEach(r => {
+        if (!r.seccion) {
+          const num = Number(r.num || (r.id ? String(r.id).replace(/\D+/g, '') : 0));
+          if (num >= 9 && num <= 11) {
+            r.seccion = 'Reuniones colegiadas';
+          } else if (num >= 4 && num <= 8) {
+            r.seccion = 'Visita al aula';
+          } else if (num >= 1 && num <= 3) {
+            r.seccion = 'Planificación de la tutoría grupal';
+          } else if (num >= 12 && num <= 15) {
+            r.seccion = 'Tutoría individual y trabajo con las familias';
+          } else if (num >= 16 && num <= 18) {
+            r.seccion = 'Participación estudiantil y orientación educativa permanente';
+          } else if (num >= 19 && num <= 21) {
+            r.seccion = 'Reuniones de trabajo con el equipo directivo de la institución educativa';
+          }
+        }
+      });
+    }
+  });
+
+  return subs;
+}
+
 
 function startListeners() {
   if (startListeners._started) return;
@@ -512,6 +565,28 @@ function startListeners() {
         matCebeDoc.grupo = 'CEBE / PRITE';
       }
 
+      // Sanitizar Monitoreo a las Funciones del Coordinador(a) de Tutoría (JEC) (6 aspectos oficiales)
+      const coordTutDoc = activeRaw.find(x => x.id === 'ft_coord_tutoria_jec' || x.id === 'ft_coord_tutoria');
+      if (coordTutDoc && PLANTILLAS_BASE_OFICIALES.ft_coord_tutoria_jec) {
+        const needsRepair = !Array.isArray(coordTutDoc.secciones) || 
+                            coordTutDoc.secciones.length < 6 || 
+                            coordTutDoc.secciones.some(s => s.nombre?.toLowerCase().includes('visita al aula') && s.items?.length > 5);
+        if (needsRepair) {
+          coordTutDoc.secciones = JSON.parse(JSON.stringify(PLANTILLAS_BASE_OFICIALES.ft_coord_tutoria_jec.secciones));
+          coordTutDoc.extras = JSON.parse(JSON.stringify(PLANTILLAS_BASE_OFICIALES.ft_coord_tutoria_jec.extras));
+          coordTutDoc.regla_nivel = PLANTILLAS_BASE_OFICIALES.ft_coord_tutoria_jec.regla_nivel;
+          coordTutDoc.escala = 'ESCALA_1_3';
+          if (dbNs && currentUser) {
+            dbNs.collection('fichaTypes').doc('ft_coord_tutoria_jec').set({
+              secciones: coordTutDoc.secciones,
+              extras: coordTutDoc.extras,
+              regla_nivel: coordTutDoc.regla_nivel,
+              escala: coordTutDoc.escala
+            }, { merge: true }).catch(() => {});
+          }
+        }
+      }
+
       // 7. Filtrar la lista final deduplicando EBR, JEC y Directivos
       const loaded = [];
       let ebrAdded = false;
@@ -595,16 +670,19 @@ function startListeners() {
 
       state.fichaTypes = loaded;
       state.fichaTypes.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
-      render();
+      renderDebounced();
     }, err => handleSnapErr('fichaTypes', err, true))
   );
 
   activeUnsubscribers.push(
-    dbNs.collection('submissions').orderBy('createdAt', 'desc').limit(1000).onSnapshot(snap => {
-      state.submissions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    dbNs.collection('submissions').limit(1000).onSnapshot(snap => {
+      let subs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      subs.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+      subs = healCoordTutoriaSubmissions(subs, dbNs);
+      state.submissions = subs;
       // No destruir el formulario si el usuario está en la pestaña registrar
       if (state.activeTab !== 'registrar') {
-        render();
+        renderDebounced();
       }
     }, err => handleSnapErr('submissions', err, true))
   );
@@ -614,7 +692,7 @@ function startListeners() {
       state.colegios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       state.colegios.sort((a, b) => (a.ie || '').localeCompare(b.ie || ''));
       if (state.activeTab !== 'registrar') {
-        render();
+        renderDebounced();
       }
     }, err => handleSnapErr('colegios', err, true))
   );
@@ -623,7 +701,7 @@ function startListeners() {
     dbNs.collection('directivos').onSnapshot(snap => {
       state.directivos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       if (state.activeTab === 'directorio' || state.activeTab === 'colegios') {
-        render();
+        renderDebounced();
       }
     }, err => handleSnapErr('directivos', err, true))
   );
@@ -649,7 +727,7 @@ function startListeners() {
       }
       state.responsables.sort((a, b) => (a.nombresApellidos || a.especialista || '').localeCompare(b.nombresApellidos || b.especialista || ''));
       if (state.activeTab !== 'registrar') {
-        render();
+        renderDebounced();
       }
     }, err => handleSnapErr('responsables', err, false))
   );
@@ -660,7 +738,7 @@ function startListeners() {
       state.tiposConcurso = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       state.tiposConcurso.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
       if (state.activeTab === 'concursos') {
-        render();
+        renderDebounced();
       }
     }, err => handleSnapErr('tiposConcurso', err, false))
   );
@@ -670,7 +748,7 @@ function startListeners() {
     dbNs.collection('concursoRegistros').orderBy('createdAt', 'desc').limit(2000).onSnapshot(snap => {
       state.concursoRegistros = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       if (state.activeTab === 'concursos') {
-        render();
+        renderDebounced();
       }
     }, err => handleSnapErr('concursoRegistros', err, false))
   );
@@ -680,7 +758,7 @@ function startListeners() {
     dbNs.collection('concursoCuerpoTecnico').onSnapshot(snap => {
       state.concursoCuerpoTecnico = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       if (state.activeTab === 'concursos') {
-        render();
+        renderDebounced();
       }
     }, err => handleSnapErr('concursoCuerpoTecnico', err, false))
   );
@@ -691,7 +769,7 @@ function startListeners() {
       state.areasFirma = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       state.areasFirma.sort((a, b) => (a.orden || 99) - (b.orden || 99));
       if (state.activeTab === 'tipos' || state.activeTab === 'registrar') {
-        render();
+        renderDebounced();
       }
     }, err => handleSnapErr('areasFirma', err, false))
   );
@@ -702,7 +780,7 @@ function startListeners() {
       state.plantillasFirmantes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       state.plantillasFirmantes.sort((a, b) => (a.orden || 99) - (b.orden || 99));
       if (state.activeTab === 'tipos' || state.activeTab === 'registrar') {
-        render();
+        renderDebounced();
       }
     }, err => handleSnapErr('plantillasFirmantes', err, false))
   );
@@ -712,7 +790,7 @@ function startListeners() {
     dbNs.collection('compromisos').onSnapshot(snap => {
       state.compromisos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       if (state.activeTab === 'alertas' || state.activeTab === 'registrar' || state.activeTab === 'dashboard') {
-        render();
+        renderDebounced();
       }
     }, err => handleSnapErr('compromisos', err, false))
   );
@@ -722,12 +800,12 @@ function startListeners() {
       dbNs.collection('roles').onSnapshot(snap => {
         state.roles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         state.roles.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
-        render();
+        renderDebounced();
       }, err => handleSnapErr('roles', err, false))
     );
   }
 
-  render();
+  renderDebounced();
 }
 
 /* ============================= ESTADO DE CONEXIÓN ============================= */
@@ -863,6 +941,7 @@ function onLogout() {
   state.modulo = 'portal';
   try {
     sessionStorage.removeItem('agebre_active_modulo');
+    if (currentUser?.uid) sessionStorage.removeItem('agebre_role_' + currentUser.uid);
   } catch (_) { }
 
   document.getElementById('loginScreen').style.display = 'flex';

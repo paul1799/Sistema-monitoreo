@@ -55,9 +55,10 @@ export async function exportConsolidadoReportPdfV1(statsList, fichaType, filters
   const introParagraph = `El presente documento consolida la información de las visitas de monitoreo registradas en el Sistema de Gestión Institucional UGEL 03 para el año lectivo 2026. Se reporta un total de ${plural(totalFichas, 'ficha', 'fichas')} de monitoreo aplicada(s) en ${plural(instCount, 'institución educativa', 'instituciones educativas')}, con un nivel de cumplimiento promedio general del ${avgPct}%. ${filterSubtitle}.`;
 
   const isJec = isFichaJec(fichaType) || isFichaCoordTutoriaJec(fichaType) || isFichaCoordPedagogico(fichaType) || isFichaEspecialistaJec(fichaType);
-  const isEbr = !isJec && (isFichaEbrGestionEscolar(fichaType) || isFichaEbrEbePrite(fichaType) || isFichaCebeGestion(fichaType) || isFichaPriteGestion(fichaType) || (fichaType?.escala === 'IPL') || (fichaType?.tipoRespuesta === 'ips'));
-  const logCut = isEbr ? 67 : 85;
-  const procCut = isEbr ? 34 : 70;
+  const isSiNo = (fichaType?.tipoRespuesta === 'si_no' || fichaType?.escala === 'SI_NO' || fichaType?.escala === 'SI_NO_NA' || String(fichaType?.tipoRespuesta || '').includes('si_no'));
+  const isEbr = !isJec && !isSiNo && (isFichaEbrGestionEscolar(fichaType) || isFichaEbrEbePrite(fichaType) || isFichaCebeGestion(fichaType) || isFichaPriteGestion(fichaType) || (fichaType?.escala === 'IPL') || (fichaType?.tipoRespuesta === 'ips'));
+  const logCut = (isEbr || isSiNo) ? 67 : 85;
+  const procCut = (isEbr || isSiNo) ? 34 : 70;
 
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
   statsList.forEach(x => {

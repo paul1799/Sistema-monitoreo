@@ -2,7 +2,7 @@
    ui/dashboard.js — Panel de control y métricas resumidas globales
    ========================================================================= */
 
-import { esc, fmtDate } from './core-utils.js';
+import { esc, fmtDate, isFichaActiva } from './core-utils.js';
 import { statusFromPct, bar, stackedBar, computeStats, donutChart } from './scoring.js';
 import { getDashboardSortAsc, setDashboardSortAsc } from './state.js';
 import { deduplicateTwinSubmissions } from './consolidado.js';
@@ -10,15 +10,21 @@ import { isFichaEbrGestionEscolar } from '../calcEngine.js';
 
 /* ============================= DASHBOARD (RESUMEN GENERAL) ============================= */
 export function viewDashboard(state, getFichaType, renderFn) {
-  const totalTipos = state.fichaTypes.length;
-  const cleanSubs = deduplicateTwinSubmissions(state.submissions || []);
+  const activeFichaTypes = (state.fichaTypes || []).filter(isFichaActiva);
+  const totalTipos = activeFichaTypes.length;
+
+  // Filtrar envíos para considerar únicamente aquellos de fichas activas
+  const cleanSubs = deduplicateTwinSubmissions(state.submissions || []).filter(s => {
+    const ft = getFichaType(s.fichaTypeId);
+    return isFichaActiva(ft);
+  });
   const totalFichas = cleanSubs.length;
   const instSet = new Set(cleanSubs.map(s => (s.institucion || '') + '|' + (s.ugel || '')));
 
   let sumPct = 0, cntPct = 0;
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
   const perTipo = {};
-  state.fichaTypes.forEach(ft => perTipo[ft.id] = { ft, count: 0, sum: 0, cnt: 0, last: null });
+  activeFichaTypes.forEach(ft => perTipo[ft.id] = { ft, count: 0, sum: 0, cnt: 0, last: null });
 
   cleanSubs.forEach(s => {
     const ft = getFichaType(s.fichaTypeId);

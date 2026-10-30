@@ -72,36 +72,38 @@ export const ITEMS_COORD_TUTORIA_JEC = [
     tipo: 'escala_1_3',
     texto: 'Brinda retroalimentación mediante un diálogo reflexivo con el docente tutor visitado'
   },
+
+  // 3. Reuniones colegiadas (ct_9 .. ct_11)
   {
     id: 'ct_9',
     num: '09',
-    aspectoIndex: 1,
-    aspectoNombre: 'Visita al aula',
+    aspectoIndex: 2,
+    aspectoNombre: 'Reuniones colegiadas',
     tipo: 'escala_1_3',
     texto: 'Planifica reuniones colegiadas orientadas al acompañamiento tutorial de los docentes'
   },
   {
     id: 'ct_10',
     num: '10',
-    aspectoIndex: 1,
-    aspectoNombre: 'Visita al aula',
+    aspectoIndex: 2,
+    aspectoNombre: 'Reuniones colegiadas',
     tipo: 'escala_1_3',
     texto: 'Conduce reuniones semanales de trabajo colegiado según lo planificado'
   },
   {
     id: 'ct_11',
     num: '11',
-    aspectoIndex: 1,
-    aspectoNombre: 'Visita al aula',
+    aspectoIndex: 2,
+    aspectoNombre: 'Reuniones colegiadas',
     tipo: 'escala_1_3',
     texto: 'Registra los acuerdos asumidos en las actas de las reuniones colegiadas'
   },
 
-  // 3. Tutoría individual y trabajo con las familias (ct_12 .. ct_15)
+  // 4. Tutoría individual y trabajo con las familias (ct_12 .. ct_15)
   {
     id: 'ct_12',
     num: '12',
-    aspectoIndex: 2,
+    aspectoIndex: 3,
     aspectoNombre: 'Tutoría individual y trabajo con las familias',
     tipo: 'escala_1_3',
     texto: 'Asegura que los docentes realicen tutorías individuales según las necesidades de los estudiantes, incluyendo casos priorizados'
@@ -109,7 +111,7 @@ export const ITEMS_COORD_TUTORIA_JEC = [
   {
     id: 'ct_13',
     num: '13',
-    aspectoIndex: 2,
+    aspectoIndex: 3,
     aspectoNombre: 'Tutoría individual y trabajo con las familias',
     tipo: 'escala_1_3',
     texto: 'Coordina acciones con el psicólogo para identificar, atender y derivar casos priorizados'
@@ -117,7 +119,7 @@ export const ITEMS_COORD_TUTORIA_JEC = [
   {
     id: 'ct_14',
     num: '14',
-    aspectoIndex: 2,
+    aspectoIndex: 3,
     aspectoNombre: 'Tutoría individual y trabajo con las familias',
     tipo: 'escala_1_3',
     texto: 'Coordina con el psicólogo espacios de orientación y encuentro con las familias'
@@ -125,17 +127,17 @@ export const ITEMS_COORD_TUTORIA_JEC = [
   {
     id: 'ct_15',
     num: '15',
-    aspectoIndex: 2,
+    aspectoIndex: 3,
     aspectoNombre: 'Tutoría individual y trabajo con las familias',
     tipo: 'escala_1_3',
     texto: 'Gestiona junto al psicólogo las redes de apoyo de instituciones y redes comunitarias para familias vulnerables'
   },
 
-  // 4. Participación estudiantil y orientación educativa permanente (ct_16 .. ct_18)
+  // 5. Participación estudiantil y orientación educativa permanente (ct_16 .. ct_18)
   {
     id: 'ct_16',
     num: '16',
-    aspectoIndex: 3,
+    aspectoIndex: 4,
     aspectoNombre: 'Participación estudiantil y orientación educativa permanente',
     tipo: 'escala_1_3',
     texto: 'Realiza el seguimiento a los espacios de participación estudiantil'
@@ -143,7 +145,7 @@ export const ITEMS_COORD_TUTORIA_JEC = [
   {
     id: 'ct_17',
     num: '17',
-    aspectoIndex: 3,
+    aspectoIndex: 4,
     aspectoNombre: 'Participación estudiantil y orientación educativa permanente',
     tipo: 'escala_1_3',
     texto: 'Planifica actividades específicas que promuevan la participación activa e inclusiva de los estudiantes'
@@ -151,34 +153,34 @@ export const ITEMS_COORD_TUTORIA_JEC = [
   {
     id: 'ct_18',
     num: '18',
-    aspectoIndex: 3,
+    aspectoIndex: 4,
     aspectoNombre: 'Participación estudiantil y orientación educativa permanente',
     tipo: 'escala_1_3',
     texto: 'Gestiona y articula con docentes tutores y no tutores la implementación de la orientación educativa'
   },
 
-  // 5. Reuniones de trabajo con el equipo directivo (ct_19 .. ct_21)
+  // 6. Reuniones de trabajo con el equipo directivo de la IE (ct_19 .. ct_21)
   {
     id: 'ct_19',
     num: '19',
-    aspectoIndex: 4,
-    aspectoNombre: 'Reuniones de trabajo con el equipo directivo',
+    aspectoIndex: 5,
+    aspectoNombre: 'Reuniones de trabajo con el equipo directivo de la institución educativa',
     tipo: 'escala_1_3',
     texto: 'Participa activamente en las reuniones de trabajo colegiado con los directivos de la IE'
   },
   {
     id: 'ct_20',
     num: '20',
-    aspectoIndex: 4,
-    aspectoNombre: 'Reuniones de trabajo con el equipo directivo',
+    aspectoIndex: 5,
+    aspectoNombre: 'Reuniones de trabajo con el equipo directivo de la institución educativa',
     tipo: 'escala_1_3',
     texto: 'Presenta a la dirección un informe sobre los hallazgos del proceso de acompañamiento a los docentes tutores'
   },
   {
     id: 'ct_21',
     num: '21',
-    aspectoIndex: 4,
-    aspectoNombre: 'Reuniones de trabajo con el equipo directivo',
+    aspectoIndex: 5,
+    aspectoNombre: 'Reuniones de trabajo con el equipo directivo de la institución educativa',
     tipo: 'escala_1_3',
     texto: 'Socializa los resultados del acompañamiento a la acción tutorial, proponiendo alternativas de mejora'
   }

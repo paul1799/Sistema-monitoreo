@@ -28,9 +28,27 @@ export { getAuth, signOut };
  * @returns {Promise<'admin'|'general'>}
  */
 export async function resolveRole(user, firestoreDb) {
+  // 1. Si ya se resolvió en esta sesión, responder inmediatamente (0ms)
+  try {
+    const cachedRole = sessionStorage.getItem('agebre_role_' + user.uid);
+    if (cachedRole === 'admin' || cachedRole === 'general') {
+      // Revalidar en segundo plano sin congelar el arranque
+      getDoc(doc(firestoreDb, 'roles', user.uid)).then(snap => {
+        if (snap.exists() && snap.data().role && snap.data().role !== cachedRole) {
+          sessionStorage.setItem('agebre_role_' + user.uid, snap.data().role);
+        }
+      }).catch(() => {});
+      return cachedRole;
+    }
+  } catch (_) {}
+
   const roleRef = doc(firestoreDb, 'roles', user.uid);
   const existing = await getDoc(roleRef);
-  if (existing.exists()) return existing.data().role || 'general';
+  if (existing.exists()) {
+    const role = existing.data().role || 'general';
+    try { sessionStorage.setItem('agebre_role_' + user.uid, role); } catch (_) {}
+    return role;
+  }
 
   const bootstrapRef = doc(firestoreDb, 'meta', 'bootstrap');
   const bootstrapSnap = await getDoc(bootstrapRef).catch(() => null);
@@ -40,6 +58,7 @@ export async function resolveRole(user, firestoreDb) {
     try {
       await setDoc(roleRef, { email: user.email || '', role: 'admin', createdAt: Date.now() });
       await setDoc(bootstrapRef, { claimed: true }, { merge: true });
+      try { sessionStorage.setItem('agebre_role_' + user.uid, 'admin'); } catch (_) {}
       return 'admin';
     } catch (e) {
       console.error('No se pudo reclamar el rol de administrador, se asigna general', e);
@@ -47,6 +66,7 @@ export async function resolveRole(user, firestoreDb) {
   }
 
   await setDoc(roleRef, { email: user.email || '', role: 'general', createdAt: Date.now() });
+  try { sessionStorage.setItem('agebre_role_' + user.uid, 'general'); } catch (_) {}
   return 'general';
 }
 

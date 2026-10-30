@@ -73,17 +73,18 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
     ? `El presente documento consolida la información de las visitas de monitoreo registradas en el ${SISTEMA_NOMBRE_OFICIAL} para el año lectivo 2026. Se reporta un total de ${fichaTxt} en ${instTxt}, con un nivel de cumplimiento promedio general del ${avgPct === '—' ? '—' : avgPct + '%'}.`
     : `El presente documento consolida la información de las visitas de monitoreo registradas en el ${SISTEMA_NOMBRE_OFICIAL} para el año lectivo 2026. No se registran visitas de monitoreo para los filtros seleccionados (${filterSubtitle}).`;
 
-  // Escala oficial unificada (EBR Gestión Escolar / IPL / EBE / PRITE: Logrado >= 67%, Proceso >= 34%, Inicio < 34%)
+  // Escala oficial unificada (EBR Gestión Escolar / IPL / EBE / PRITE / Sí-No: Logrado >= 67%, Proceso >= 34%, Inicio < 34%)
   const isJec = isFichaJec(fichaType) || isFichaCoordTutoriaJec(fichaType) || isFichaCoordPedagogico(fichaType) || isFichaEspecialistaJec(fichaType);
-  const isEbr = !isJec && (isFichaEbrGestionEscolar(fichaType)
+  const isSiNo = (fichaType?.tipoRespuesta === 'si_no' || fichaType?.escala === 'SI_NO' || fichaType?.escala === 'SI_NO_NA' || String(fichaType?.tipoRespuesta || '').includes('si_no'));
+  const isEbr = !isJec && !isSiNo && (isFichaEbrGestionEscolar(fichaType)
     || isFichaEbrEbePrite(fichaType)
     || isFichaCebeGestion(fichaType)
     || isFichaPriteGestion(fichaType)
     || (fichaType?.escala === 'IPL')
     || (fichaType?.tipoRespuesta === 'ips')
     || (!fichaType && statsList.some(x => isFichaEbrGestionEscolar(x.s) || isFichaCebeGestion(x.s) || isFichaPriteGestion(x.s))));
-  const logCut = isEbr ? 67 : 85;
-  const procCut = isEbr ? 34 : 70;
+  const logCut = (isEbr || isSiNo) ? 67 : 85;
+  const procCut = (isEbr || isSiNo) ? 34 : 70;
 
   // 1. CÁLCULO DE DISTRIBUCIÓN DE RESULTADOS (FUENTE ÚNICA)
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
@@ -599,7 +600,8 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
       }
 
       const groupIsJec = isFichaJec(groupFt) || isFichaCoordTutoriaJec(groupFt) || isFichaCoordPedagogico(groupFt) || isFichaEspecialistaJec(groupFt);
-      let groupIsEbr = !groupIsJec && (isFichaEbrGestionEscolar(groupFt)
+      const groupIsSiNo = (groupFt?.tipoRespuesta === 'si_no' || groupFt?.escala === 'SI_NO' || groupFt?.escala === 'SI_NO_NA' || String(groupFt?.tipoRespuesta || '').includes('si_no'));
+      let groupIsEbr = !groupIsJec && !groupIsSiNo && (isFichaEbrGestionEscolar(groupFt)
         || isFichaEbrEbePrite(groupFt)
         || isFichaCebeGestion(groupFt)
         || isFichaPriteGestion(groupFt)
@@ -610,7 +612,7 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
       let seccionesParaAgg = (groupFt?.secciones && groupFt.secciones.length > 0)
         ? groupFt.secciones
         : [];
-      if (isFichaCebeGestion(groupFt)) {
+      if (!groupIsSiNo && isFichaCebeGestion(groupFt)) {
         const isOfficialCebe = (groupFt.secciones?.length === 7 && groupFt.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 34);
         seccionesParaAgg = isOfficialCebe ? groupFt.secciones : CEBE_SECCIONES;
       } else if (isFichaPriteGestion(groupFt)) {
@@ -804,20 +806,48 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
             else { itemStatus = isEbr ? 'Inicio' : 'Por mejorar'; itemBg = [254, 226, 226]; itemCol = [185, 28, 28]; }
           }
 
-          // R4: Distribución: conteo por nivel con su color. Omitir los niveles con 0.
+          // R4: Distribución: conteo y porcentaje por nivel (suma exacta al 100%)
+          const totalResp = it.totalResp || it.total || 0;
+          const pctMap = {};
+          if (totalResp > 0) {
+            const activeKeys = [];
+            if (it.counts.logrado) activeKeys.push({ k: 'logrado', c: it.counts.logrado });
+            if (it.counts.proceso) activeKeys.push({ k: 'proceso', c: it.counts.proceso });
+            if (it.counts.inicio) activeKeys.push({ k: 'inicio', c: it.counts.inicio });
+            const naCnt = (it.counts.na || 0) + (it.counts.nc || 0);
+            if (naCnt) activeKeys.push({ k: 'na_comb', c: naCnt });
+            if (it.counts.si) activeKeys.push({ k: 'si', c: it.counts.si });
+            if (it.counts.no) activeKeys.push({ k: 'no', c: it.counts.no });
+
+            let sumFl = 0;
+            const itemsWithRem = activeKeys.map(x => {
+              const exact = (x.c / totalResp) * 100;
+              const fl = Math.floor(exact);
+              sumFl += fl;
+              return { k: x.k, fl, rem: exact - fl };
+            });
+            itemsWithRem.sort((a, b) => b.rem - a.rem);
+            let d = Math.round(100 - sumFl);
+            itemsWithRem.forEach(r => {
+              pctMap[r.k] = r.fl + (d > 0 ? 1 : 0);
+              if (d > 0) d--;
+            });
+          }
+
           const distParts = [];
-          if (it.counts.logrado) distParts.push(`Logrado: ${it.counts.logrado}`);
-          if (it.counts.proceso) distParts.push(`Proceso: ${it.counts.proceso}`);
-          if (it.counts.inicio) distParts.push(`Inicio: ${it.counts.inicio}`);
-          if (it.counts.na || it.counts.nc) distParts.push(`N/A: ${(it.counts.na || 0) + (it.counts.nc || 0)}`);
-          if (it.counts.si) distParts.push(`Sí: ${it.counts.si}`);
-          if (it.counts.no) distParts.push(`No: ${it.counts.no}`);
+          if (it.counts.logrado) distParts.push(`Logrado: ${it.counts.logrado}${pctMap.logrado !== undefined ? ` (${pctMap.logrado}%)` : ''}`);
+          if (it.counts.proceso) distParts.push(`Proceso: ${it.counts.proceso}${pctMap.proceso !== undefined ? ` (${pctMap.proceso}%)` : ''}`);
+          if (it.counts.inicio) distParts.push(`Inicio: ${it.counts.inicio}${pctMap.inicio !== undefined ? ` (${pctMap.inicio}%)` : ''}`);
+          const naCnt = (it.counts.na || 0) + (it.counts.nc || 0);
+          if (naCnt) distParts.push(`N/A: ${naCnt}${pctMap.na_comb !== undefined ? ` (${pctMap.na_comb}%)` : ''}`);
+          if (it.counts.si) distParts.push(`Sí: ${it.counts.si}${pctMap.si !== undefined ? ` (${pctMap.si}%)` : ''}`);
+          if (it.counts.no) distParts.push(`No: ${it.counts.no}${pctMap.no !== undefined ? ` (${pctMap.no}%)` : ''}`);
 
           const desc = it.texto || it.id || `Ítem ${iIdx + 1}`;
           return [
             String(it.num || (iIdx + 1)),
             desc,
-            String(it.totalResp || 0),
+            String(totalResp || 0),
             it.pct !== null ? `${it.pct}%` : '—',
             { content: '', pct: it.pct, raw: { pct: it.pct } },
             distParts.join('  ·  ') || 'Sin respuestas'

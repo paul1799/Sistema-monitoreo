@@ -1,4 +1,4 @@
-import { calcScore, puntajeItem, estadoPorRegla } from './calcEngine.js?v=20260929_v15';
+import { calcScore, puntajeItem, estadoPorRegla } from './calcEngine.js?v=20261030_v1';
 import {
   isFichaEbrGestionEscolar,
   EBR_GESTION_VISITA_1_SECCIONES,
@@ -380,8 +380,11 @@ export function getHallazgosClave(statsList, ft, isEbr) {
  * Fuente única de cálculo compartida entre la vista web y la Sección IV del PDF Oficial.
  */
 export function computeItemAgg(subs, ft) {
+  const escalaRaw = String(ft?.escala || '').toUpperCase();
+  const tipoRespRaw = String(ft?.tipoRespuesta || '').toLowerCase();
+  const isSiNo = (tipoRespRaw === 'si_no' || escalaRaw === 'SI_NO' || escalaRaw === 'SI_NO_NA' || tipoRespRaw.includes('si_no') || escalaRaw.includes('SI_NO'));
   let activeFt = ft;
-  if (isFichaEbrGestionEscolar(ft)) {
+  if (!isSiNo && isFichaEbrGestionEscolar(ft)) {
     const hasV3 = (subs || []).some(s => Number(s.visita) === 3);
     const hasV2 = (subs || []).some(s => Number(s.visita) === 2);
     const vTarget = hasV3 ? 3 : (hasV2 ? 2 : 1);
@@ -389,35 +392,54 @@ export function computeItemAgg(subs, ft) {
     activeFt = { ...ft, secciones: seccionesEbr, tipoRespuesta: 'ips' };
   } else if (isFichaJec(ft)) {
     activeFt = { ...ft, secciones: (ft?.secciones?.length ? ft.secciones : JEC_SECCIONES), tipoRespuesta: 'si_no' };
-  } else if (isFichaCebeGestion(ft)) {
+  } else if (!isSiNo && isFichaCebeGestion(ft)) {
     const isOfficialCebe = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 34);
     activeFt = { ...ft, secciones: isOfficialCebe ? ft.secciones : CEBE_SECCIONES, tipoRespuesta: 'ips' };
-  } else if (isFichaPriteGestion(ft)) {
+  } else if (!isSiNo && isFichaPriteGestion(ft)) {
     const isOfficialPrite = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 32);
     activeFt = { ...ft, secciones: isOfficialPrite ? ft.secciones : PRITE_SECCIONES, tipoRespuesta: 'ips' };
   }
-  const tipoResp = activeFt?.tipoRespuesta || 'ips';
-  const escala = activeFt?.escala || (tipoResp === 'ips' ? 'IPL' : (tipoResp === 'si_no' ? 'SI_NO_NA' : (tipoResp === 'nivel_1_4' ? 'NIVEL_1_4' : 'IPL')));
+  const tipoResp = isSiNo ? 'si_no' : (activeFt?.tipoRespuesta || 'ips');
+  const escala = isSiNo ? 'SI_NO_NA' : (activeFt?.escala || (tipoResp === 'ips' ? 'IPL' : (tipoResp === 'si_no' ? 'SI_NO_NA' : (tipoResp === 'nivel_1_4' ? 'NIVEL_1_4' : 'IPL'))));
 
-  return (activeFt?.secciones || []).map(sec => {
-    const items = (sec.items || []).map(it => {
+  return (activeFt?.secciones || []).map((sec, sIdx) => {
+    const items = (sec.items || []).map((it, iIdx) => {
       const counts = {};
       let scoreSum = 0, scoreCnt = 0, total = 0;
       (subs || []).forEach(s => {
         const r = (s.respuestas || []).find(x => {
           if (!x) return false;
-          if (x.id === it.id) return true;
-          const normX = String(x.id || '').replace(/^ge\d*_/, 'ge_');
-          const normIt = String(it.id || '').replace(/^ge\d*_/, 'ge_');
-          if (normX && normIt && normX === normIt) return true;
+          // 1. Por ID directo (solo cuando ambos tienen ID no vacío)
+          if (x.id && it.id && String(x.id).trim() !== '' && String(x.id).trim() === String(it.id).trim()) return true;
+          // 2. Por texto idéntico normalizado (lo más confiable en fichas personalizadas)
+          if (x.texto && it.texto && _normStr(x.texto) === _normStr(it.texto)) {
+            if (x.seccion && sec.nombre) {
+              if (_normStr(x.seccion) === _normStr(sec.nombre)) return true;
+            } else {
+              return true;
+            }
+          }
+          // 3. Por posición exacta de sección e ítem
+          if (x.seccionIdx !== undefined && x.seccionIdx !== '' && x.itemIdx !== undefined && x.itemIdx !== '' &&
+              Number(x.seccionIdx) === sIdx && Number(x.itemIdx) === iIdx) return true;
+          // 4. Por domKey generado
+          const itemDomKey = `s${sIdx + 1}_i${iIdx + 1}_${it.id || iIdx}`;
+          if (x.domKey && (x.domKey === itemDomKey || (it.domKey && x.domKey === it.domKey))) return true;
+          // 5. Por sección normalizada y número de ítem
           if (x.num && it.num && Number(x.num) === Number(it.num)) {
             if (x.seccion && sec.nombre && _normStr(x.seccion) === _normStr(sec.nombre)) return true;
           }
+          // 6. Por prefijo normalizado de EBR oficial
+          const normX = String(x.id || '').replace(/^ge\d*_/, 'ge_');
+          const normIt = String(it.id || '').replace(/^ge\d*_/, 'ge_');
+          if (normX && normIt && normX !== 'ge_' && normX === normIt) return true;
+          // 7. Respaldo por texto idéntico sin importar sección
           if (x.texto && it.texto && _normStr(x.texto) === _normStr(it.texto)) return true;
           return false;
         });
         if (r) {
-          const vClean = String(r.valor || '').trim().toLowerCase();
+          let vClean = String(r.valor || '').trim().toLowerCase();
+          if (vClean === 'sí') vClean = 'si';
           if (vClean) {
             counts[vClean] = (counts[vClean] || 0) + 1;
             total++;

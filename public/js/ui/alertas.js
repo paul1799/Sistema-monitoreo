@@ -2,7 +2,7 @@
    ui/alertas.js — Monitoreo de alertas tempranas y variaciones de desempeño
    ========================================================================= */
 
-import { esc, fmtDate } from './core-utils.js';
+import { esc, fmtDate, isFichaActiva } from './core-utils.js';
 import { statusFromPct, scoreValue } from './scoring.js';
 
 let alertFilters = { fichaTypeId: '', ugel: '' };
@@ -15,7 +15,7 @@ export function renderAlertasTab(container, state, getFichaType) {
 
   const instConAlerta = new Set(alerts.map(a => a.institucion + '|' + a.ugel)).size;
   const retrocesos = alerts.filter(a => a.trend === 'retroceso').length;
-  const ftOpts = state.fichaTypes.map(ft => '<option value="' + ft.id + '"' + (ft.id === alertFilters.fichaTypeId ? ' selected' : '') + '>' + esc(ft.nombre) + '</option>').join('');
+  const ftOpts = (state.fichaTypes || []).filter(isFichaActiva).map(ft => '<option value="' + ft.id + '"' + (ft.id === alertFilters.fichaTypeId ? ' selected' : '') + '>' + esc(ft.nombre) + '</option>').join('');
 
   const rows = alerts.map(a => {
     const st = statusFromPct(a.pct);
@@ -56,7 +56,7 @@ function computeAlerts(state, getFichaType) {
   const alerts = [];
   Object.values(groups).forEach(list => {
     const ft = getFichaType(list[0].fichaTypeId);
-    if (!ft) return;
+    if (!ft || !isFichaActiva(ft)) return;
     list.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '') || (b.createdAt || 0) - (a.createdAt || 0));
     const latest = list[0], prev = list[1] || null;
     const latestMap = {}; (latest.respuestas || []).forEach(r => latestMap[r.id] = r.valor);

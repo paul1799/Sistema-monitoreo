@@ -126,9 +126,10 @@
 
         // Test 3: Configuración Ficha B (COORD. TUTORIA JEC)
         const configTutoria = getMatrizConfig({ id: 'ft_coord_tutoria_jec', nombre: 'Monitoreo a las Funciones del Coordinador(a) de Tutoría (JEC)' });
-        assert('Config Ficha B tiene 21 ítems oficiales en 5 aspectos',
-          configTutoria.items.length === 21,
-          `Total ítems: ${configTutoria.items.length} en 5 aspectos`
+        const distinctAspectsTutoria = new Set((configTutoria.items || []).map(it => it.aspectoNombre));
+        assert('Config Ficha B tiene 21 ítems oficiales en 6 aspectos',
+          configTutoria.items.length === 21 && distinctAspectsTutoria.size === 6,
+          `Total ítems: ${configTutoria.items.length} en ${distinctAspectsTutoria.size} aspectos`
         );
 
         assert('Config Ficha B límites de nivel configurados',

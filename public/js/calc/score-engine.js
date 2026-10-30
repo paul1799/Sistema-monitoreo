@@ -66,13 +66,25 @@ export function calcScore(respuestas, fichaType) {
   }
   respuestas = respuestasArray;
 
-  // Resolver escala: preferir el campo 'escala' (v2) o traducir 'tipoRespuesta' (legacy)
-  const escala = fichaType.escala
-    || LEGADO_A_ESCALA[fichaType.tipoRespuesta]
-    || ((isFichaCoordPedagogico(fichaType) || isFichaCoordTutoriaJec(fichaType)) ? 'ESCALA_1_3' : 'SI_NO_NA');
+  const escalaRaw = String(fichaType.escala || '').toUpperCase();
+  const tipoRespRaw = String(fichaType.tipoRespuesta || '').toLowerCase();
+  const hasSiNoResponses = Array.isArray(respuestasArray) && respuestasArray.some(r => {
+    const v = String(r?.valor || '').trim().toLowerCase();
+    return v === 'si' || v === 'sí' || v === 'no';
+  }) && !respuestasArray.some(r => {
+    const v = String(r?.valor || '').trim().toLowerCase();
+    return v === 'logrado' || v === 'proceso' || v === 'inicio' || (Number(v) >= 2 && Number(v) <= 4);
+  });
 
+  const isSiNo = (tipoRespRaw === 'si_no' || escalaRaw === 'SI_NO' || escalaRaw === 'SI_NO_NA' ||
+    tipoRespRaw.includes('si_no') || escalaRaw.includes('SI_NO') || hasSiNoResponses);
+
+  // Resolver escala: preferir el campo 'escala' (v2) o traducir 'tipoRespuesta' (legacy)
+  const escala = isSiNo ? 'SI_NO_NA' : (fichaType.escala
+    || LEGADO_A_ESCALA[fichaType.tipoRespuesta]
+    || ((isFichaCoordPedagogico(fichaType) || isFichaCoordTutoriaJec(fichaType)) ? 'ESCALA_1_3' : 'SI_NO_NA'));
   const isJec = isFichaJec(fichaType) || isFichaCoordTutoriaJec(fichaType) || isFichaCoordPedagogico(fichaType) || isFichaEspecialistaJec(fichaType);
-  const isEbr = isFichaEbrGestionEscolar(fichaType);
+  const isEbr = !isSiNo && isFichaEbrGestionEscolar(fichaType);
   let regla_nivel = fichaType.regla_nivel || null;
   if (fichaType.regla_nivel === 'conteo_rangos' || fichaType.regla_nivel_config) {
     const cfg = fichaType.regla_nivel_config || {};
@@ -88,6 +100,17 @@ export function calcScore(respuestas, fichaType) {
   } else if (isEbr) {
     const v = getMomentoVisitaEbr(fichaType);
     regla_nivel = getReglaNivelEbrGestion(v);
+  } else if (isSiNo) {
+    // Si la ficha usa escala Sí / No y no tiene conteo por rangos, regla de porcentaje oficial
+    regla_nivel = {
+      tipo: 'porcentaje',
+      escala: 'SI_NO_NA',
+      umbrales: [
+        { min: 67, nivel: 'Logrado', estado_panel: 'Logrado' },
+        { min: 34, max: 66, nivel: 'En proceso', estado_panel: 'En proceso' },
+        { min: 0, max: 33, nivel: 'Inicio', estado_panel: 'Inicio' }
+      ]
+    };
   } else if (!isJec && (isFichaEbrEbePrite(fichaType) || fichaType?.escala === 'IPL' || fichaType?.tipoRespuesta === 'ips' || fichaType?.tipoRespuesta === 'escala1_3')) {
     const totalItems = (fichaType.secciones || []).reduce((acc, s) => acc + (s.items || []).length, 0) || 25;
     regla_nivel = getReglaNivelComunEbrEbePrite(totalItems);
@@ -122,25 +145,58 @@ export function calcScore(respuestas, fichaType) {
     }
   }
 
-  // Mapa rápido id → valor, con normalización para EBR (ge1_x / ge2_x / ge_x / num_x) y JEC (it_01 / it_1 / jec1_1 / jec_1)
+  const _cleanStr = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+
+  // Mapa rápido id → valor, con normalización multi-criterio y aislamiento estricto por sección
   const valMap = Object.create(null);
   for (const r of respuestas) {
     if (!r) continue;
-    valMap[r.id] = r.valor;
-    const norm = String(r.id || '').replace(/^ge\d*_/, 'ge_');
-    if (norm && valMap[norm] === undefined) valMap[norm] = r.valor;
-    const jecNumMatch = String(r.id || '').match(/^(?:it_|jec1?_)?0*(\d+)$/i);
-    if (jecNumMatch) {
-      const n = parseInt(jecNumMatch[1], 10);
-      const pad = String(n).padStart(2, '0');
-      if (valMap['it_' + pad] === undefined) valMap['it_' + pad] = r.valor;
-      if (valMap['it_' + n] === undefined) valMap['it_' + n] = r.valor;
-      if (valMap['jec1_' + n] === undefined) valMap['jec1_' + n] = r.valor;
-      if (valMap['jec_' + n] === undefined) valMap['jec_' + n] = r.valor;
-      if (valMap['num_' + n] === undefined) valMap['num_' + n] = r.valor;
+    const v = r.valor;
+    const cleanT = r.texto ? _cleanStr(r.texto) : '';
+    const cleanS = r.seccion ? _cleanStr(r.seccion) : '';
+
+    if (r.id !== undefined && r.id !== null && String(r.id).trim() !== '') {
+      valMap[String(r.id)] = v;
+      const norm = String(r.id).replace(/^ge\d*_/, 'ge_');
+      if (norm && norm !== 'ge_' && valMap[norm] === undefined) valMap[norm] = v;
     }
-    if (r.num !== undefined && r.num !== null && valMap['num_' + r.num] === undefined) {
-      valMap['num_' + r.num] = r.valor;
+    if (r.domKey && valMap[String(r.domKey)] === undefined) {
+      valMap[String(r.domKey)] = v;
+    }
+    if (cleanT) {
+      if (cleanS && valMap[`sec_${cleanS}_txt_${cleanT}`] === undefined) {
+        valMap[`sec_${cleanS}_txt_${cleanT}`] = v;
+      }
+      if (valMap['txt_' + cleanT] === undefined) {
+        valMap['txt_' + cleanT] = v;
+      }
+    }
+    if (cleanS && (r.num !== undefined && r.num !== null)) {
+      if (valMap[`sec_${cleanS}_${r.num}`] === undefined) {
+        valMap[`sec_${cleanS}_${r.num}`] = v;
+      }
+    }
+    if (r.seccionIdx !== undefined && r.seccionIdx !== '' && r.itemIdx !== undefined && r.itemIdx !== '') {
+      const sKey = `idx_${r.seccionIdx}_${r.itemIdx}`;
+      if (valMap[sKey] === undefined) {
+        valMap[sKey] = v;
+      }
+    }
+    // Solo para fichas oficiales JEC donde los ítems tienen numeración correlativa global (1..31)
+    if (isJec) {
+      const jecNumMatch = String(r.id || '').match(/^(?:it_|jec1?_)?0*(\d+)$/i);
+      if (jecNumMatch) {
+        const n = parseInt(jecNumMatch[1], 10);
+        const pad = String(n).padStart(2, '0');
+        if (valMap['it_' + pad] === undefined) valMap['it_' + pad] = v;
+        if (valMap['it_' + n] === undefined) valMap['it_' + n] = v;
+        if (valMap['jec1_' + n] === undefined) valMap['jec1_' + n] = v;
+        if (valMap['jec_' + n] === undefined) valMap['jec_' + n] = v;
+        if (valMap['num_' + n] === undefined) valMap['num_' + n] = v;
+      }
+      if (r.num !== undefined && r.num !== null && valMap['num_' + r.num] === undefined) {
+        valMap['num_' + r.num] = v;
+      }
     }
   }
 
@@ -149,21 +205,54 @@ export function calcScore(respuestas, fichaType) {
   let conteo_si_global = 0;
   let puntaje_total_raw = 0;
 
-  const secciones = (activeSections || []).map(sec => {
+  const secciones = (activeSections || []).map((sec, sIdx) => {
     let secScore = 0;
     let secCount = 0;
     let secSi    = 0;
     let secPuntos = 0;
 
-    for (const it of (sec.items || [])) {
-      const v = valMap[it.id]
-        ?? valMap[String(it.id).replace(/^ge\d*_/, 'ge_')]
-        ?? (it.num ? valMap['num_' + it.num] : undefined)
-        ?? (it.num ? valMap['it_' + String(it.num).padStart(2, '0')] : undefined)
-        ?? (it.num ? valMap['it_' + it.num] : undefined)
-        ?? (it.num ? valMap['jec1_' + it.num] : undefined)
-        ?? (it.num ? valMap['jec_' + it.num] : undefined);
-      const secEscala = sec.escala || (sec.tipo ? (LEGADO_A_ESCALA[sec.tipo] || sec.tipo) : null) || escala;
+    const cleanSec = sec.nombre ? _cleanStr(sec.nombre) : '';
+
+    for (let iIdx = 0; iIdx < (sec.items || []).length; iIdx++) {
+      const it = sec.items[iIdx];
+      const cleanTxt = it.texto ? _cleanStr(it.texto) : '';
+      const itNum = it.num || (iIdx + 1);
+      const hasValidId = it.id !== undefined && it.id !== null && String(it.id).trim() !== '';
+
+      let v = hasValidId ? valMap[it.id] : undefined;
+      if (v === undefined && cleanTxt) {
+        if (cleanSec && valMap[`sec_${cleanSec}_txt_${cleanTxt}`] !== undefined) {
+          v = valMap[`sec_${cleanSec}_txt_${cleanTxt}`];
+        } else if (valMap['txt_' + cleanTxt] !== undefined) {
+          v = valMap['txt_' + cleanTxt];
+        }
+      }
+      if (v === undefined && valMap[`idx_${sIdx}_${iIdx}`] !== undefined) {
+        v = valMap[`idx_${sIdx}_${iIdx}`];
+      }
+      if (v === undefined && cleanSec && valMap[`sec_${cleanSec}_${itNum}`] !== undefined) {
+        v = valMap[`sec_${cleanSec}_${itNum}`];
+      }
+      if (v === undefined && it.domKey && valMap[it.domKey] !== undefined) {
+        v = valMap[it.domKey];
+      }
+      const itemDomKey = `s${sIdx + 1}_i${iIdx + 1}_${it.id || iIdx}`;
+      if (v === undefined && valMap[itemDomKey] !== undefined) {
+        v = valMap[itemDomKey];
+      }
+      if (v === undefined && hasValidId) {
+        const norm = String(it.id).replace(/^ge\d*_/, 'ge_');
+        if (norm && norm !== 'ge_') v = valMap[norm];
+      }
+      if (v === undefined && isJec && it.num) {
+        v = valMap['num_' + it.num]
+          ?? valMap['it_' + String(it.num).padStart(2, '0')]
+          ?? valMap['it_' + it.num]
+          ?? valMap['jec1_' + it.num]
+          ?? valMap['jec_' + it.num];
+      }
+
+      const secEscala = isSiNo ? 'SI_NO_NA' : (sec.escala || (sec.tipo ? (LEGADO_A_ESCALA[sec.tipo] || sec.tipo) : null) || escala);
       const sc = puntajeItem(secEscala, v);
       if (sc !== null) {
         secScore += sc;
@@ -206,13 +295,13 @@ export function calcScore(respuestas, fichaType) {
       answered:  secCount,
       total:     (sec.items || []).length,
       conteo_si: secSi,
-      puntaje:   secPuntos,
+      puntaje:   isSiNo ? secSi : secPuntos,
     };
   });
 
   const maxPuntajeOficial = isEbr
     ? (regla_nivel?.maxPuntaje || (Number(fichaType.visita) === 2 ? 69 : 57))
-    : (regla_nivel?.maxPuntaje || (totalCount * 3));
+    : (isSiNo ? (regla_nivel?.maxConteo || totalCount) : (regla_nivel?.maxPuntaje || (totalCount * 3)));
 
   const pct = isEbr
     ? ((maxPuntajeOficial > 0 && puntaje_total_raw > 0) ? Math.round((puntaje_total_raw / maxPuntajeOficial) * 100) : (totalCount > 0 ? Math.round((totalScore / totalCount) * 100) : null))
@@ -221,13 +310,13 @@ export function calcScore(respuestas, fichaType) {
   const resultado = {
     pct,
     conteo_si: conteo_si_global,
-    puntaje: puntaje_total_raw,
+    puntaje: isSiNo ? conteo_si_global : puntaje_total_raw,
     puntaje_max: maxPuntajeOficial
   };
 
   return {
     pct,
-    puntaje: puntaje_total_raw,
+    puntaje: isSiNo ? conteo_si_global : puntaje_total_raw,
     puntaje_max: maxPuntajeOficial,
     total_items: totalCount,
     conteo_si: conteo_si_global,
