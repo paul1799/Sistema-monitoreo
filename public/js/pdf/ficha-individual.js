@@ -42,7 +42,61 @@ import {
   getNivelCoordPedagogicoJec
 } from '../calc/evaluador.js';
 
-import { calcScore } from '../calc/score-engine.js';
+import { calcScore, buildResponseValMap, resolveItemValue } from '../calcEngine.js?v=20261030_v1';
+
+/**
+ * Formatea el valor individual de un ítem para su presentación en el PDF individual
+ * según la escala y tipo de respuesta de la ficha.
+ * @param {any} val
+ * @param {Object} ft
+ * @returns {string}
+ */
+function formatIndividualItemVal(val, ft) {
+  if (val === undefined || val === null || String(val).trim() === '' || val === 'Sin datos') {
+    return 'Sin datos';
+  }
+  const raw = String(val).trim();
+  const vLower = raw.toLowerCase();
+  const tipoResp = String(ft?.tipoRespuesta || '').toLowerCase();
+  const escala = String(ft?.escala || '').toUpperCase();
+  const isSiNo = tipoResp === 'si_no' || escala === 'SI_NO' || escala === 'SI_NO_NA' || tipoResp.includes('si_no') || escala.includes('SI_NO');
+
+  if (isSiNo) {
+    if (vLower === 'si' || vLower === 'sí') return 'Sí';
+    if (vLower === 'no') return 'No';
+    if (vLower === 'na' || vLower === 'n/a') return 'N/A';
+    return raw;
+  }
+  if (tipoResp === 'nivel_1_4' || escala === 'NIVEL_1_4') {
+    if (vLower === '4') return 'IV';
+    if (vLower === '3') return 'III';
+    if (vLower === '2') return 'II';
+    if (vLower === '1') return 'I';
+    if (vLower === 'na' || vLower === 'n/a') return 'N/A';
+    return raw;
+  }
+  if (tipoResp === 'escala_1_3' || escala === 'ESCALA_1_3' || isFichaCoordTutoriaJec(ft) || isFichaCoordPedagogico(ft)) {
+    if (vLower === '3') return '3 (Logrado)';
+    if (vLower === '2') return '2 (En proceso)';
+    if (vLower === '1') return '1 (Inicio)';
+    if (vLower === 'na' || vLower === 'n/a') return 'N/A';
+    return raw;
+  }
+  if (tipoResp === 'ips' || escala === 'IPL') {
+    if (vLower === 'logrado') return 'Logrado';
+    if (vLower === 'proceso') return 'Proceso';
+    if (vLower === 'inicio') return 'Inicio';
+    if (vLower === 'na' || vLower === 'n/a') return 'N/A';
+    return raw;
+  }
+  if (vLower === 'si' || vLower === 'sí') return 'Sí';
+  if (vLower === 'no') return 'No';
+  if (vLower === 'na' || vLower === 'n/a') return 'N/A';
+  if (vLower === 'logrado') return 'Logrado';
+  if (vLower === 'proceso') return 'Proceso';
+  if (vLower === 'inicio') return 'Inicio';
+  return raw;
+}
 
 /**
  * Exporta una Ficha de Monitoreo Individual a PDF en orientación VERTICAL (Portrait)
@@ -729,12 +783,14 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
       : ['N.°', 'Sección / Indicador de Evaluación', 'Resultado'];
     let itemCounter = 1;
 
+    const isJec = isFichaJec(fichaType) || isCoordTutoria || isCoordPedagogico || isFichaEspecialistaJec(fichaType);
+    const valMap = buildResponseValMap(respuestas, isJec);
+
     if (fichaType.secciones && fichaType.secciones.length > 0) {
-      fichaType.secciones.forEach(sec => {
-        (sec.items || []).forEach(it => {
-          const resp = respuestas.find(r => r.id === it.id);
-          const val = resp ? resp.valor : 'Sin datos';
-          const valText = ((isCoordTutoria || isCoordPedagogico) && val && val !== 'Sin datos') ? `${val} pts` : val;
+      fichaType.secciones.forEach((sec, sIdx) => {
+        (sec.items || []).forEach((it, iIdx) => {
+          const val = resolveItemValue(valMap, it, sec, sIdx, iIdx, isJec);
+          const valText = formatIndividualItemVal(val, fichaType);
           tableRows.push([
             String(itemCounter++),
             `${sec.nombre}\n${it.texto}`,
@@ -744,7 +800,7 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
       });
     } else {
       respuestas.forEach(r => {
-        const valText = ((isCoordTutoria || isCoordPedagogico) && r.valor && r.valor !== '—') ? `${r.valor} pts` : (r.valor || '—');
+        const valText = formatIndividualItemVal(r.valor, fichaType);
         tableRows.push([
           String(itemCounter++),
           `${r.seccion || 'General'}\n${r.texto || 'Indicador'}`,

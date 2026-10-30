@@ -30,6 +30,24 @@ import { getEbrSeccionesForVisita } from '../ebr-gestion.js';
 import { JEC_SECCIONES } from '../jec-monitoreo.js';
 import { computeItemAgg } from '../reportes-datos.js';
 
+function getCoordinatorCell(s, ft) {
+  const extras = Array.isArray(s?.extras) ? s.extras : [];
+  const extraVal = (regs) => {
+    const norm = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const e = extras.find(x => regs.every(re => re.test(norm(x?.label || x?.campo || x?.nombre))));
+    return e ? String(e.value || e.valor || '').trim() : '';
+  };
+  if (isFichaCoordPedagogico(ft)) {
+    return String(s?.coordPedagNombre || s?.coordinadorPedagogico || s?.coordPedag
+      || extraVal([/coordinador/, /pedagog/]) || '—').trim() || '—';
+  }
+  if (isFichaCoordTutoriaJec(ft)) {
+    return String(s?.coordTutoriaNombre || s?.coordinadorTutoria || s?.coordTutoria
+      || extraVal([/coordinador/, /tutor/]) || '—').trim() || '—';
+  }
+  return formatRei(s?.red);
+}
+
 /**
  * Exporta el Reporte Consolidado Oficial de Monitoreo (V2 - AGEBRE Oficial)
  * Estructura:
@@ -647,7 +665,13 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
         const isSingleVisitFilter = Boolean(filters.visita) && (String(filters.visita) === '1' || String(filters.visita) === '2');
         const showVisitaCol = !isSingleVisitFilter && uniqueVisitas.size > 1;
 
-        const matrizHeaders = ['N.°', 'Institución Educativa', 'REI', ...(showVisitaCol ? ['Visita'] : []), ...secHeaders, 'Global', 'Estado'];
+        const isCoordPedagGroup = isFichaCoordPedagogico(groupFt);
+        const isCoordTutoriaGroup = isFichaCoordTutoriaJec(groupFt);
+        const isCoordGroup = isCoordPedagGroup || isCoordTutoriaGroup;
+        const coordColLabel = isCoordPedagGroup ? 'Coordinador(a) Pedagógico'
+          : (isCoordTutoriaGroup ? 'Coordinador(a) de Tutoría' : 'REI');
+
+        const matrizHeaders = ['N.°', 'Institución Educativa', (isCoordGroup ? coordColLabel : 'REI'), ...(showVisitaCol ? ['Visita'] : []), ...secHeaders, 'Global', 'Estado'];
 
         // R3: Ordenar de menor a mayor cumplimiento global; desempate alfabético por I.E.
         const sortedStats = [...statsList].sort((a, b) => {
@@ -691,7 +715,7 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
           return [
             String(idx + 1),
             s.institucion || '—',
-            formatRei(s.red),
+            isCoordGroup ? getCoordinatorCell(s, groupFt) : formatRei(s.red),
             ...(showVisitaCol ? [s.visita ? `V${s.visita}` : '—'] : []),
             ...secCells,
             { content: globPct, styles: { halign: 'center', fontStyle: 'bold', textColor: statusCol } },
@@ -708,7 +732,12 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
         const colStyles = {
           0: { halign: 'center', cellWidth: isLandscape ? 24 : 18 },
           1: { halign: 'left', valign: 'middle' },
-          2: { halign: 'center', cellWidth: isLandscape ? 48 : 36, fontStyle: 'bold' },
+          2: {
+            halign: isCoordGroup ? 'left' : 'center',
+            cellWidth: isCoordGroup ? (isLandscape ? 92 : 74) : (isLandscape ? 48 : 36),
+            fontSize: isCoordGroup ? 6.4 : undefined,
+            fontStyle: isCoordGroup ? 'normal' : 'bold'
+          },
         };
         let cOffset = 3;
         if (showVisitaCol) {
@@ -807,41 +836,45 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
           }
 
           // R4: Distribución: conteo y porcentaje por nivel (suma exacta al 100%)
+          const ftEscalaRaw = String(fichaType?.escala || fichaType?.tipoRespuesta || '').toLowerCase();
+          const esEscala13 = ftEscalaRaw.includes('escala_1_3') || ftEscalaRaw.includes('escala1_3') || isFichaCoordPedagogico(fichaType) || isFichaCoordTutoriaJec(fichaType);
+          const esNivel14 = ftEscalaRaw.includes('nivel_1_4');
           const totalResp = it.totalResp || it.total || 0;
+          const naCnt = (it.counts.na || 0) + (it.counts.nc || 0);
+          const distDefs = [];
+          if (esEscala13) {
+            if (it.counts['3']) distDefs.push({ k: '3', label: 'Logrado (3)' });
+            if (it.counts['2']) distDefs.push({ k: '2', label: 'En proceso (2)' });
+            if (it.counts['1']) distDefs.push({ k: '1', label: 'Inicio (1)' });
+          } else if (esNivel14) {
+            const etiq = { '4': 'IV', '3': 'III', '2': 'II', '1': 'I' };
+            ['4', '3', '2', '1'].forEach(v => { if (it.counts[v]) distDefs.push({ k: v, label: etiq[v] }); });
+          } else {
+            if (it.counts.logrado) distDefs.push({ k: 'logrado', label: 'Logrado' });
+            if (it.counts.proceso) distDefs.push({ k: 'proceso', label: 'Proceso' });
+            if (it.counts.inicio) distDefs.push({ k: 'inicio', label: 'Inicio' });
+            if (it.counts.si) distDefs.push({ k: 'si', label: 'Sí' });
+            if (it.counts.no) distDefs.push({ k: 'no', label: 'No' });
+          }
+          if (naCnt) distDefs.push({ k: 'na', label: 'N/A' });
           const pctMap = {};
-          if (totalResp > 0) {
-            const activeKeys = [];
-            if (it.counts.logrado) activeKeys.push({ k: 'logrado', c: it.counts.logrado });
-            if (it.counts.proceso) activeKeys.push({ k: 'proceso', c: it.counts.proceso });
-            if (it.counts.inicio) activeKeys.push({ k: 'inicio', c: it.counts.inicio });
-            const naCnt = (it.counts.na || 0) + (it.counts.nc || 0);
-            if (naCnt) activeKeys.push({ k: 'na_comb', c: naCnt });
-            if (it.counts.si) activeKeys.push({ k: 'si', c: it.counts.si });
-            if (it.counts.no) activeKeys.push({ k: 'no', c: it.counts.no });
-
+          if (totalResp > 0 && distDefs.length > 0) {
             let sumFl = 0;
-            const itemsWithRem = activeKeys.map(x => {
-              const exact = (x.c / totalResp) * 100;
+            const withRem = distDefs.map(x => {
+              const c = x.k === 'na' ? naCnt : (it.counts[x.k] || 0);
+              const exact = (c / totalResp) * 100;
               const fl = Math.floor(exact);
               sumFl += fl;
               return { k: x.k, fl, rem: exact - fl };
             });
-            itemsWithRem.sort((a, b) => b.rem - a.rem);
+            withRem.sort((a, b) => b.rem - a.rem);
             let d = Math.round(100 - sumFl);
-            itemsWithRem.forEach(r => {
-              pctMap[r.k] = r.fl + (d > 0 ? 1 : 0);
-              if (d > 0) d--;
-            });
+            withRem.forEach(r => { pctMap[r.k] = r.fl + (d > 0 ? 1 : 0); if (d > 0) d--; });
           }
-
-          const distParts = [];
-          if (it.counts.logrado) distParts.push(`Logrado: ${it.counts.logrado}${pctMap.logrado !== undefined ? ` (${pctMap.logrado}%)` : ''}`);
-          if (it.counts.proceso) distParts.push(`Proceso: ${it.counts.proceso}${pctMap.proceso !== undefined ? ` (${pctMap.proceso}%)` : ''}`);
-          if (it.counts.inicio) distParts.push(`Inicio: ${it.counts.inicio}${pctMap.inicio !== undefined ? ` (${pctMap.inicio}%)` : ''}`);
-          const naCnt = (it.counts.na || 0) + (it.counts.nc || 0);
-          if (naCnt) distParts.push(`N/A: ${naCnt}${pctMap.na_comb !== undefined ? ` (${pctMap.na_comb}%)` : ''}`);
-          if (it.counts.si) distParts.push(`Sí: ${it.counts.si}${pctMap.si !== undefined ? ` (${pctMap.si}%)` : ''}`);
-          if (it.counts.no) distParts.push(`No: ${it.counts.no}${pctMap.no !== undefined ? ` (${pctMap.no}%)` : ''}`);
+          const distParts = distDefs.map(x => {
+            const c = x.k === 'na' ? naCnt : (it.counts[x.k] || 0);
+            return `${x.label}: ${c}${pctMap[x.k] !== undefined ? ` (${pctMap[x.k]}%)` : ''}`;
+          });
 
           const desc = it.texto || it.id || `Ítem ${iIdx + 1}`;
           return [

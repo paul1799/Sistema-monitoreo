@@ -52,6 +52,9 @@ import {
 } from './colegios-tab.js';
 import {
   calcScore,
+  buildResponseValMap,
+  resolveItemValue,
+  isFichaJec,
   isFichaJec1erMomento,
   isFichaEbrGestionEscolar,
   isFichaEbrEbePrite,
@@ -1785,47 +1788,37 @@ function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
         regSelectedColegioId = d.colegioId || null;
         renderCompList();
 
-        // Precargar respuestas y evidencias con matching robusto por ID, sección, número o texto
+        // Precargar respuestas y evidencias con matching unificado oficial
         const loadedAnswers = Array.isArray(d.respuestas) ? d.respuestas : [];
+        const isJec = isFichaJec(ft) || isFichaCoordTutoriaJec(ft) || isFichaCoordPedagogico(ft) || isFichaEspecialistaJec(ft);
+        const valMap = buildResponseValMap(loadedAnswers, isJec);
+        const evidMap = buildResponseValMap(loadedAnswers.map(ans => ({ ...ans, valor: ans.evidencia })), isJec);
+
         if (Array.isArray(ft.secciones)) {
           ft.secciones.forEach((sec, sIdx) => {
             (sec.items || []).forEach((it, iIdx) => {
               const itemDomKey = `s${sIdx + 1}_i${iIdx + 1}_${it.id || iIdx}`;
-              const itNum = Number(it.num || (it.id ? String(it.id).replace(/\D+/g, '') : (iIdx + 1)));
-              const r = loadedAnswers.find(ans => {
-                if (ans.domKey === itemDomKey) return true;
-                if (ans.seccion === sec.nombre) {
-                  if (ans.itemIdx !== undefined && ans.itemIdx === iIdx) return true;
-                  if (ans.id === it.id) return true;
-                  if (ans.num && (Number(ans.num) === itNum || Number(ans.num) === (iIdx + 1))) return true;
-                  if (ans.texto && it.texto && normalizeText(ans.texto) === normalizeText(it.texto)) return true;
-                }
-                if (ans.id === itemDomKey) return true;
-                if (ans.id === it.id && !loadedAnswers.some(other => other !== ans && other.id === it.id)) return true;
-                if (ans.texto && it.texto && normalizeText(ans.texto) === normalizeText(it.texto)) return true;
-                return false;
-              });
+              const valor = resolveItemValue(valMap, it, sec, sIdx, iIdx, isJec);
+              const evidencia = resolveItemValue(evidMap, it, sec, sIdx, iIdx, isJec);
 
-              if (r) {
-                if (r.valor !== undefined && r.valor !== null && r.valor !== '') {
-                  const radio = document.querySelector('input[name="item_' + itemDomKey + '"][value="' + r.valor + '"]') ||
-                                document.querySelector('input[name="item_' + it.id + '"][value="' + r.valor + '"]');
-                  if (radio) radio.checked = true;
-                }
-                if (r.evidencia) {
-                  const evidInp = document.getElementById('evid_' + itemDomKey) || 
-                                  document.getElementById('evid_' + it.id) || 
-                                  document.querySelector('textarea[name="evidencia_' + itemDomKey + '"]') ||
-                                  document.querySelector('textarea[name="evidencia_' + it.id + '"]');
-                  if (evidInp) {
-                    evidInp.value = r.evidencia;
-                    const wrap = document.getElementById('evid_wrap_' + itemDomKey) || document.getElementById('evid_wrap_' + it.id);
-                    if (wrap) wrap.style.display = 'block';
-                    const btn = document.querySelector(`[data-target-evid="evid_wrap_${itemDomKey}"], [data-target-obs="evid_wrap_${itemDomKey}"]`);
-                    if (btn) {
-                      btn.classList.add('has-content');
-                      btn.textContent = '💬 Observación ✓';
-                    }
+              if (valor !== undefined && valor !== null && valor !== '') {
+                const radio = document.querySelector('input[name="item_' + itemDomKey + '"][value="' + valor + '"]') ||
+                              document.querySelector('input[name="item_' + it.id + '"][value="' + valor + '"]');
+                if (radio) radio.checked = true;
+              }
+              if (evidencia) {
+                const evidInp = document.getElementById('evid_' + itemDomKey) || 
+                                document.getElementById('evid_' + it.id) || 
+                                document.querySelector('textarea[name="evidencia_' + itemDomKey + '"]') ||
+                                document.querySelector('textarea[name="evidencia_' + it.id + '"]');
+                if (evidInp) {
+                  evidInp.value = evidencia;
+                  const wrap = document.getElementById('evid_wrap_' + itemDomKey) || document.getElementById('evid_wrap_' + it.id);
+                  if (wrap) wrap.style.display = 'block';
+                  const btn = document.querySelector(`[data-target-evid="evid_wrap_${itemDomKey}"], [data-target-obs="evid_wrap_${itemDomKey}"]`);
+                  if (btn) {
+                    btn.classList.add('has-content');
+                    btn.textContent = '💬 Observación ✓';
                   }
                 }
               }

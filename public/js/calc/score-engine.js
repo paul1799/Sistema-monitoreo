@@ -27,6 +27,132 @@ import {
   getReglaNivelEbrGestion
 } from './evaluador.js';
 
+export const _cleanStr = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+
+/**
+ * Construye el mapa de respuestas indexado multi-criterio.
+ * Fuente única de verdad para la resolución de respuestas en todo el sistema.
+ *
+ * @param {Array<{id: string, valor: string, texto?: string, seccion?: string, num?: number, domKey?: string, seccionIdx?: number, itemIdx?: number}>} respuestas
+ * @param {boolean} isJec
+ * @returns {Object} valMap
+ */
+export function buildResponseValMap(respuestas = [], isJec = false) {
+  const valMap = Object.create(null);
+  for (const r of (respuestas || [])) {
+    if (!r) continue;
+    const v = r.valor;
+    const cleanT = r.texto ? _cleanStr(r.texto) : '';
+    const cleanS = r.seccion ? _cleanStr(r.seccion) : '';
+
+    if (r.id !== undefined && r.id !== null && String(r.id).trim() !== '') {
+      valMap[String(r.id)] = v;
+      const norm = String(r.id).replace(/^ge\d*_/, 'ge_');
+      if (norm && norm !== 'ge_' && valMap[norm] === undefined) valMap[norm] = v;
+    }
+    if (r.domKey && valMap[String(r.domKey)] === undefined) {
+      valMap[String(r.domKey)] = v;
+    }
+    if (cleanT) {
+      if (cleanS && valMap[`sec_${cleanS}_txt_${cleanT}`] === undefined) {
+        valMap[`sec_${cleanS}_txt_${cleanT}`] = v;
+      }
+      if (valMap['txt_' + cleanT] === undefined) {
+        valMap['txt_' + cleanT] = v;
+      }
+    }
+    if (cleanS && (r.num !== undefined && r.num !== null)) {
+      if (valMap[`sec_${cleanS}_${r.num}`] === undefined) {
+        valMap[`sec_${cleanS}_${r.num}`] = v;
+      }
+    }
+    if (r.seccionIdx !== undefined && r.seccionIdx !== '' && r.itemIdx !== undefined && r.itemIdx !== '') {
+      const sKey = `idx_${r.seccionIdx}_${r.itemIdx}`;
+      if (valMap[sKey] === undefined) {
+        valMap[sKey] = v;
+      }
+    }
+    // Solo para fichas oficiales JEC donde los ítems tienen numeración correlativa global (1..31)
+    if (isJec) {
+      const jecNumMatch = String(r.id || '').match(/^(?:it_|jec1?_)?0*(\d+)$/i);
+      if (jecNumMatch) {
+        const n = parseInt(jecNumMatch[1], 10);
+        const pad = String(n).padStart(2, '0');
+        if (valMap['it_' + pad] === undefined) valMap['it_' + pad] = v;
+        if (valMap['it_' + n] === undefined) valMap['it_' + n] = v;
+        if (valMap['jec1_' + n] === undefined) valMap['jec1_' + n] = v;
+        if (valMap['jec_' + n] === undefined) valMap['jec_' + n] = v;
+        if (valMap['num_' + n] === undefined) valMap['num_' + n] = v;
+      }
+      if (r.num !== undefined && r.num !== null && valMap['num_' + r.num] === undefined) {
+        valMap['num_' + r.num] = v;
+      }
+    }
+  }
+  return valMap;
+}
+
+/**
+ * Resuelve el valor de un ítem a partir del valMap con la prioridad estricta:
+ * 1. ID exacto
+ * 2. Texto normalizado con sección, o texto normalizado solo
+ * 3. Índice numérico de sección e ítem (idx_sIdx_iIdx)
+ * 4. Sección y número de ítem (sec_cleanSec_num)
+ * 5. domKey del ítem
+ * 6. itemDomKey sintético (`s${sIdx + 1}_i${iIdx + 1}_${it.id || iIdx}`)
+ * 7. Prefijo normalizado ge_
+ * 8. Patrones de numeración JEC (num_, it_, jec1_, jec_)
+ *
+ * @param {Object} valMap
+ * @param {Object} it
+ * @param {Object} sec
+ * @param {number} sIdx
+ * @param {number} iIdx
+ * @param {boolean} isJec
+ * @returns {any} valor resuelto
+ */
+export function resolveItemValue(valMap, it, sec = null, sIdx = 0, iIdx = 0, isJec = false) {
+  if (!valMap || !it) return undefined;
+  const cleanTxt = it.texto ? _cleanStr(it.texto) : '';
+  const cleanSec = sec && sec.nombre ? _cleanStr(sec.nombre) : '';
+  const itNum = it.num || (iIdx + 1);
+  const hasValidId = it.id !== undefined && it.id !== null && String(it.id).trim() !== '';
+
+  let v = hasValidId ? valMap[it.id] : undefined;
+  if (v === undefined && cleanTxt) {
+    if (cleanSec && valMap[`sec_${cleanSec}_txt_${cleanTxt}`] !== undefined) {
+      v = valMap[`sec_${cleanSec}_txt_${cleanTxt}`];
+    } else if (valMap['txt_' + cleanTxt] !== undefined) {
+      v = valMap['txt_' + cleanTxt];
+    }
+  }
+  if (v === undefined && valMap[`idx_${sIdx}_${iIdx}`] !== undefined) {
+    v = valMap[`idx_${sIdx}_${iIdx}`];
+  }
+  if (v === undefined && cleanSec && valMap[`sec_${cleanSec}_${itNum}`] !== undefined) {
+    v = valMap[`sec_${cleanSec}_${itNum}`];
+  }
+  if (v === undefined && it.domKey && valMap[it.domKey] !== undefined) {
+    v = valMap[it.domKey];
+  }
+  const itemDomKey = `s${sIdx + 1}_i${iIdx + 1}_${it.id || iIdx}`;
+  if (v === undefined && valMap[itemDomKey] !== undefined) {
+    v = valMap[itemDomKey];
+  }
+  if (v === undefined && hasValidId) {
+    const norm = String(it.id).replace(/^ge\d*_/, 'ge_');
+    if (norm && norm !== 'ge_') v = valMap[norm];
+  }
+  if (v === undefined && isJec && it.num) {
+    v = valMap['num_' + it.num]
+      ?? valMap['it_' + String(it.num).padStart(2, '0')]
+      ?? valMap['it_' + it.num]
+      ?? valMap['jec1_' + it.num]
+      ?? valMap['jec_' + it.num];
+  }
+  return v;
+}
+
 /**
  * Calcula el puntaje, porcentajes por sección y estado panel de una ficha.
  * Función pura: no toca el DOM ni variables globales.
@@ -145,60 +271,7 @@ export function calcScore(respuestas, fichaType) {
     }
   }
 
-  const _cleanStr = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-
-  // Mapa rápido id → valor, con normalización multi-criterio y aislamiento estricto por sección
-  const valMap = Object.create(null);
-  for (const r of respuestas) {
-    if (!r) continue;
-    const v = r.valor;
-    const cleanT = r.texto ? _cleanStr(r.texto) : '';
-    const cleanS = r.seccion ? _cleanStr(r.seccion) : '';
-
-    if (r.id !== undefined && r.id !== null && String(r.id).trim() !== '') {
-      valMap[String(r.id)] = v;
-      const norm = String(r.id).replace(/^ge\d*_/, 'ge_');
-      if (norm && norm !== 'ge_' && valMap[norm] === undefined) valMap[norm] = v;
-    }
-    if (r.domKey && valMap[String(r.domKey)] === undefined) {
-      valMap[String(r.domKey)] = v;
-    }
-    if (cleanT) {
-      if (cleanS && valMap[`sec_${cleanS}_txt_${cleanT}`] === undefined) {
-        valMap[`sec_${cleanS}_txt_${cleanT}`] = v;
-      }
-      if (valMap['txt_' + cleanT] === undefined) {
-        valMap['txt_' + cleanT] = v;
-      }
-    }
-    if (cleanS && (r.num !== undefined && r.num !== null)) {
-      if (valMap[`sec_${cleanS}_${r.num}`] === undefined) {
-        valMap[`sec_${cleanS}_${r.num}`] = v;
-      }
-    }
-    if (r.seccionIdx !== undefined && r.seccionIdx !== '' && r.itemIdx !== undefined && r.itemIdx !== '') {
-      const sKey = `idx_${r.seccionIdx}_${r.itemIdx}`;
-      if (valMap[sKey] === undefined) {
-        valMap[sKey] = v;
-      }
-    }
-    // Solo para fichas oficiales JEC donde los ítems tienen numeración correlativa global (1..31)
-    if (isJec) {
-      const jecNumMatch = String(r.id || '').match(/^(?:it_|jec1?_)?0*(\d+)$/i);
-      if (jecNumMatch) {
-        const n = parseInt(jecNumMatch[1], 10);
-        const pad = String(n).padStart(2, '0');
-        if (valMap['it_' + pad] === undefined) valMap['it_' + pad] = v;
-        if (valMap['it_' + n] === undefined) valMap['it_' + n] = v;
-        if (valMap['jec1_' + n] === undefined) valMap['jec1_' + n] = v;
-        if (valMap['jec_' + n] === undefined) valMap['jec_' + n] = v;
-        if (valMap['num_' + n] === undefined) valMap['num_' + n] = v;
-      }
-      if (r.num !== undefined && r.num !== null && valMap['num_' + r.num] === undefined) {
-        valMap['num_' + r.num] = v;
-      }
-    }
-  }
+  const valMap = buildResponseValMap(respuestas, isJec);
 
   let totalScore = 0;
   let totalCount = 0;
@@ -211,46 +284,9 @@ export function calcScore(respuestas, fichaType) {
     let secSi    = 0;
     let secPuntos = 0;
 
-    const cleanSec = sec.nombre ? _cleanStr(sec.nombre) : '';
-
     for (let iIdx = 0; iIdx < (sec.items || []).length; iIdx++) {
       const it = sec.items[iIdx];
-      const cleanTxt = it.texto ? _cleanStr(it.texto) : '';
-      const itNum = it.num || (iIdx + 1);
-      const hasValidId = it.id !== undefined && it.id !== null && String(it.id).trim() !== '';
-
-      let v = hasValidId ? valMap[it.id] : undefined;
-      if (v === undefined && cleanTxt) {
-        if (cleanSec && valMap[`sec_${cleanSec}_txt_${cleanTxt}`] !== undefined) {
-          v = valMap[`sec_${cleanSec}_txt_${cleanTxt}`];
-        } else if (valMap['txt_' + cleanTxt] !== undefined) {
-          v = valMap['txt_' + cleanTxt];
-        }
-      }
-      if (v === undefined && valMap[`idx_${sIdx}_${iIdx}`] !== undefined) {
-        v = valMap[`idx_${sIdx}_${iIdx}`];
-      }
-      if (v === undefined && cleanSec && valMap[`sec_${cleanSec}_${itNum}`] !== undefined) {
-        v = valMap[`sec_${cleanSec}_${itNum}`];
-      }
-      if (v === undefined && it.domKey && valMap[it.domKey] !== undefined) {
-        v = valMap[it.domKey];
-      }
-      const itemDomKey = `s${sIdx + 1}_i${iIdx + 1}_${it.id || iIdx}`;
-      if (v === undefined && valMap[itemDomKey] !== undefined) {
-        v = valMap[itemDomKey];
-      }
-      if (v === undefined && hasValidId) {
-        const norm = String(it.id).replace(/^ge\d*_/, 'ge_');
-        if (norm && norm !== 'ge_') v = valMap[norm];
-      }
-      if (v === undefined && isJec && it.num) {
-        v = valMap['num_' + it.num]
-          ?? valMap['it_' + String(it.num).padStart(2, '0')]
-          ?? valMap['it_' + it.num]
-          ?? valMap['jec1_' + it.num]
-          ?? valMap['jec_' + it.num];
-      }
+      const v = resolveItemValue(valMap, it, sec, sIdx, iIdx, isJec);
 
       const secEscala = isSiNo ? 'SI_NO_NA' : (sec.escala || (sec.tipo ? (LEGADO_A_ESCALA[sec.tipo] || sec.tipo) : null) || escala);
       const sc = puntajeItem(secEscala, v);

@@ -1901,22 +1901,24 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
       const k = normSec(sec.nombre);
       secAgg[k] = { sum: 0, cnt: 0 };
     });
-    statsList.forEach(x => (x.st.secciones || []).forEach(sc => {
+    statsList.forEach(x => (x.st.secciones || []).forEach((sc, sIdx) => {
       const k = normSec(sc.nombre);
-      if (sc.pct !== null && secAgg[k]) {
+      if (sc.pct !== null) {
+        if (!secAgg[k]) secAgg[k] = { sum: 0, cnt: 0 };
         secAgg[k].sum += sc.pct;
         secAgg[k].cnt++;
+        if (!secAgg[`idx_${sIdx}`]) secAgg[`idx_${sIdx}`] = { sum: 0, cnt: 0 };
+        secAgg[`idx_${sIdx}`].sum += sc.pct;
+        secAgg[`idx_${sIdx}`].cnt++;
       }
     }));
 
     const itemAgg = computeItemAgg(statsList.map(x => x.s), ft);
-    itemAgg.forEach(sec => {
+    itemAgg.forEach((sec, sIdx) => {
       const k = normSec(sec.nombre);
-      const a = secAgg[k];
-      if (sec.avg === null || sec.avg === undefined || isNaN(sec.avg)) {
-        if (a && a.cnt) {
-          sec.avg = Math.round(a.sum / a.cnt);
-        }
+      const a = secAgg[k] || secAgg[`idx_${sIdx}`];
+      if (a && a.cnt) {
+        sec.avg = Math.round(a.sum / a.cnt);
       }
     });
     itemReportHtml = renderItemReportHtml(itemAgg, ft.tipoRespuesta, ft);
