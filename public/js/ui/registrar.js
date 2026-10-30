@@ -54,7 +54,6 @@ import {
   calcScore,
   buildResponseValMap,
   resolveItemValue,
-  isFichaJec,
   isFichaJec1erMomento,
   isFichaEbrGestionEscolar,
   isFichaEbrEbePrite,
@@ -2351,9 +2350,10 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
           respuestas.push({
             id: it.id,
             domKey: itemDomKey,
+            globalIdx: totalItems - 1,
             seccionIdx: sIdx,
             itemIdx: iIdx,
-            num: it.num || Number(String(it.id).replace(/\D+/g, '')) || totalItems,
+            num: it.num || totalItems,
             texto: it.texto,
             seccion: sec.nombre,
             valor: chk.value,
@@ -2361,15 +2361,16 @@ async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate) {
           });
         } else {
           if (!firstUnansweredEl) {
-            firstUnansweredEl = document.querySelector('input[name="item_' + itemDomKey + '"]') || document.querySelector('input[name="item_' + it.id + '"]') || evidInp;
+            firstUnansweredEl = document.querySelector('input[name="item_' + itemDomKey + '"]') || evidInp;
           }
           if (evidencia) {
             respuestas.push({
               id: it.id,
               domKey: itemDomKey,
+              globalIdx: totalItems - 1,
               seccionIdx: sIdx,
               itemIdx: iIdx,
-              num: it.num || Number(String(it.id).replace(/\D+/g, '')) || totalItems,
+              num: it.num || totalItems,
               texto: it.texto,
               seccion: sec.nombre,
               valor: null,

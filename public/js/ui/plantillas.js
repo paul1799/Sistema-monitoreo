@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    ui/plantillas.js — Gestor y diseñador visual de tipos de ficha y plantillas
    ========================================================================= */
 
@@ -3701,6 +3701,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       let validSeccionesPorVisita = {};
       if (isDiferenciada && bs.seccionesPorVisita) {
         Object.keys(bs.seccionesPorVisita).forEach(k => {
+          let globalVisitaNum = 0;
           const seenVisitaIds = new Set();
           validSeccionesPorVisita[k] = (bs.seccionesPorVisita[k] || [])
             .filter(s => s.nombre.trim() || (s.items && s.items.some(i => i.texto && i.texto.trim())))
@@ -3712,9 +3713,12 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
                   ? `v${k}_s${sIdx + 1}_it${iIdx + 1}_${genId()}` 
                   : rawId;
                 seenVisitaIds.add(uniqueId);
+                globalVisitaNum++;
                 return {
                   id: uniqueId,
-                  num: (i.num || (/^\d+$/.test(rawId) ? Number(rawId) : (iIdx + 1))),
+                  num: globalVisitaNum,
+                  seccionIdx: sIdx,
+                  itemIdx: iIdx,
                   texto: i.texto.trim(),
                   evidencia: (i.evidencia || '').trim()
                 };
@@ -3723,6 +3727,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         });
       }
 
+      let globalNum = 0;
       const seenTemplateIds = new Set();
       const validSections = (isDiferenciada && validSeccionesPorVisita[0] && validSeccionesPorVisita[0].length > 0)
         ? validSeccionesPorVisita[0]
@@ -3736,9 +3741,12 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
                 ? `sec${sIdx + 1}_it${iIdx + 1}_${genId()}` 
                 : rawId;
               seenTemplateIds.add(uniqueId);
+              globalNum++;
               return {
                 id: uniqueId,
-                num: (i.num || (/^\d+$/.test(rawId) ? Number(rawId) : (iIdx + 1))),
+                num: globalNum,
+                seccionIdx: sIdx,
+                itemIdx: iIdx,
                 texto: i.texto.trim(),
                 evidencia: (i.evidencia || '').trim()
               };
