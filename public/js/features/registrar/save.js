@@ -42,7 +42,10 @@ import {
   regSelectedColegioId,
   regCompromisos,
   setRegCompromisos,
-  resetRegBuiltFor
+  resetRegBuiltFor,
+  resetRegistrationSessionState,
+  currentJecVisita,
+  setCurrentJecVisita
 } from './state.js';
 
 
@@ -76,6 +79,8 @@ export async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate
     if (isFichaCebeGestion(ft)) {
       const targetForm = (form && form.id === 'regForm') ? form : (document.getElementById('regForm') || document.getElementById('regFormHost')?.querySelector('#regForm'));
       await guardarFormularioCebe(targetForm, ft, activeState, dbNs, currentUser, navigate, isEdit);
+      clearEditMode();
+      resetRegistrationSessionState();
       return;
     }
 
@@ -83,6 +88,8 @@ export async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate
     if (isFichaPriteGestion(ft)) {
       const targetForm = (form && form.id === 'regForm') ? form : (document.getElementById('regForm') || document.getElementById('regFormHost')?.querySelector('#regForm'));
       await guardarFormularioPrite(targetForm, ft, activeState, dbNs, currentUser, navigate, isEdit);
+      clearEditMode();
+      resetRegistrationSessionState();
       return;
     }
 
@@ -247,7 +254,7 @@ export async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate
       clearEditMode();
       resetJec1erFormState();
       resetJecFormState();
-      currentJecVisita = 1;
+      setCurrentJecVisita(1);
       resetRegistrationSessionState();
 
       if (navigate) {
@@ -343,7 +350,7 @@ export async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate
     let totalItems = 0;
     let firstUnansweredEl = null;
 
-    ft.secciones.forEach((sec, sIdx) => {
+    (ft.secciones || []).forEach((sec, sIdx) => {
       sec.items.forEach((it, iIdx) => {
         totalItems++;
         const itemDomKey = `s${sIdx + 1}_i${iIdx + 1}_${it.id || iIdx}`;
@@ -640,7 +647,7 @@ export async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate
       esBorrador: esBorrador || false,
       ...tutoriaExtraData,
       createdBy: isEdit ? (editingSubmissionData?.createdBy || currentUser.uid) : currentUser.uid,
-      createdAt: isEdit ? (editingSubmissionData.createdAt || Date.now()) : Date.now(),
+      createdAt: isEdit ? (editingSubmissionData?.createdAt || Date.now()) : Date.now(),
       updatedAt: Date.now()
     };
 

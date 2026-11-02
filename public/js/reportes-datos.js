@@ -5,19 +5,19 @@ import {
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES,
   getEbrSeccionesForVisita
-} from './ebr-gestion.js?v=20261012_v5';
+} from './ebr-gestion.js';
 import {
   isFichaJec,
   JEC_SECCIONES
-} from './jec-monitoreo.js?v=20261012_v5';
+} from './jec-monitoreo.js';
 import {
   isFichaCebeGestion,
   CEBE_SECCIONES
-} from './cebe-gestion.js?v=20261013_v7';
+} from './cebe-gestion.js';
 import {
   isFichaPriteGestion,
   PRITE_SECCIONES
-} from './prite-gestion.js?v=20261014_v1';
+} from './prite-gestion.js';
 
 function _normStr(str) {
   return String(str || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');

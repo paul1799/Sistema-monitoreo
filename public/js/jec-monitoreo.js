@@ -17,7 +17,7 @@
 
 import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui/core-utils.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20261013_v1';
-import { RUBRICAS_OBSERVACION_AULA } from './ebr-gestion.js?v=20260928_v12';
+import { RUBRICAS_OBSERVACION_AULA } from './ebr-gestion.js';
 import { isFichaJec, REGLA_NIVEL_JEC, estadoPorRegla, ESPECIALISTA_JEC_OFICIAL, isFichaEspecialistaJec } from './calcEngine.js?v=20260928_v12';
 
 export { isFichaJec, REGLA_NIVEL_JEC, ESPECIALISTA_JEC_OFICIAL, isFichaEspecialistaJec };
@@ -1689,6 +1689,14 @@ function syncJecStateFromDom(host) {
     jecFormState.hallazgos[ta.dataset.item] = ta.value.trim();
   });
 
+  // Respuestas de ítems
+  host.querySelectorAll('input[type="radio"][name^="item_"]:checked').forEach(r => {
+    const id = r.name.replace(/^item_/, '');
+    if (id && r.value) {
+      jecFormState.respuestas[id] = r.value.toLowerCase();
+    }
+  });
+
   // Compromisos
   jecFormState.compromisoDirector = (host.querySelector('#jec_comp_director')?.value || '').trim();
   jecFormState.compromisoMonitor = (host.querySelector('#jec_comp_monitor')?.value || '').trim();
@@ -1721,7 +1729,8 @@ export function collectJecFormData(host, ft, isEdit = false, activeVisita = null
   let conteoTotal = 0;
 
   const respuestas = activeItems.map(it => {
-    const val = (jecFormState.respuestas[it.id] || '').toLowerCase();
+    const radio = host?.querySelector?.(`input[name="item_${it.id}"]:checked`);
+    const val = (radio ? radio.value : (jecFormState.respuestas[it.id] || '')).toLowerCase();
     const hallazgo = jecFormState.hallazgos[it.id] || '';
 
     if (val === 'si') conteoSi++;

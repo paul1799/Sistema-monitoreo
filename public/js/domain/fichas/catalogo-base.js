@@ -7,15 +7,15 @@
    para que no se pierda la conexión con ninguna visita histórica ni reporte.
    ========================================================================= */
 
-import { CEBE_SECCIONES } from '../../cebe-gestion.js?v=20261015_v1';
-import { PRITE_SECCIONES } from '../../prite-gestion.js?v=20261015_v1';
+import { CEBE_SECCIONES } from '../../cebe-gestion.js';
+import { PRITE_SECCIONES } from '../../prite-gestion.js';
 import {
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES,
   EBR_GESTION_VISITA_3_SECCIONES
-} from '../../ebr-gestion.js?v=20261015_v1';
-import { JEC_SECCIONES } from '../../jec-monitoreo.js?v=20261015_v1';
-import { JEC_1ER_SECCIONES } from '../../jec-1er-monitoreo.js?v=20261016_v4';
+} from '../../ebr-gestion.js';
+import { JEC_SECCIONES } from '../../jec-monitoreo.js';
+import { JEC_1ER_SECCIONES } from '../../jec-1er-monitoreo.js';
 
 export { EBR_GESTION_VISITA_3_SECCIONES, JEC_1ER_SECCIONES };
 

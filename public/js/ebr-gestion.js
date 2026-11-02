@@ -1764,6 +1764,16 @@ function attachVisitaSelectorEvents(host, ft, state, dbNs, currentUser, navigate
 export function syncAllEbrFormDataFromDom(host) {
   if (!host) return;
 
+  const vEl = host.querySelector('#f_visita');
+  if (vEl && Number(vEl.value)) {
+    ebrFormState.visita = Number(vEl.value);
+  } else {
+    const activeCard = host.querySelector('.ebrVisitaCard.active');
+    if (activeCard && Number(activeCard.dataset.ebrVisita)) {
+      ebrFormState.visita = Number(activeCard.dataset.ebrVisita);
+    }
+  }
+
   // 1. Datos generales de la IE
   const instEl = host.querySelector('#f_institucion');
   if (instEl) ebrFormState.institucion = instEl.value.trim();
@@ -2914,7 +2924,30 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
 
   const institucion = instEl ? instEl.value.trim() : '';
   const fecha = fechaEl ? fechaEl.value : todayStr();
-  const visita = ebrFormState.visita || 1;
+  const vEl = host.querySelector('#f_visita') || (document.getElementById('regForm') && document.getElementById('regForm').querySelector('#f_visita'));
+  const activeCard = host.querySelector('.ebrVisitaCard.active') || (document.getElementById('regForm') && document.getElementById('regForm').querySelector('.ebrVisitaCard.active'));
+  let domDetectedVisita = null;
+  if (host.querySelector('input[name^="item_ge2_"]') || (document.getElementById('regForm') && document.getElementById('regForm').querySelector('input[name^="item_ge2_"]'))) {
+    domDetectedVisita = 2;
+  } else if (host.querySelector('input[name^="item_ge3_"]') || (document.getElementById('regForm') && document.getElementById('regForm').querySelector('input[name^="item_ge3_"]'))) {
+    domDetectedVisita = 3;
+  } else if (host.querySelector('input[name^="item_ge1_"]') || (document.getElementById('regForm') && document.getElementById('regForm').querySelector('input[name^="item_ge1_"]'))) {
+    domDetectedVisita = 1;
+  }
+
+  const rawVisita = Number(vEl?.value) ||
+                    Number(activeCard?.dataset?.ebrVisita) ||
+                    domDetectedVisita ||
+                    Number(ebrFormState.visita) ||
+                    (function() {
+                      try {
+                        const sv = sessionStorage.getItem('reg_prefill_visita');
+                        return sv ? Number(sv) : null;
+                      } catch (_) { return null; }
+                    })() ||
+                    1;
+  const visita = [1, 2, 3].includes(rawVisita) ? rawVisita : 1;
+  ebrFormState.visita = visita;
 
   if (!institucion) throw new Error('Debes indicar la institución educativa.');
   if (!ebrFormState.director.nombres) throw new Error('Debes ingresar los apellidos y nombres del director(a).');
@@ -2994,9 +3027,16 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
   seccionesActuales.forEach(sec => {
     (sec.items || []).forEach(it => {
       totalItems++;
-      const radio = host.querySelector(`input[name="item_${it.id}"]:checked`);
-      const val = radio ? radio.value : null;
-      const obs = (host.querySelector(`[data-item-obs="${it.id}"]`) || {}).value || '';
+      const radio = host.querySelector(`input[name="item_${it.id}"]:checked`) ||
+                    (document.getElementById('regForm') && document.getElementById('regForm').querySelector(`input[name="item_${it.id}"]:checked`));
+      let val = radio ? radio.value : (ebrFormState.respuestas[it.id] || null);
+      if (val) {
+        val = String(val).toLowerCase();
+        ebrFormState.respuestas[it.id] = val;
+      }
+      const obsInp = host.querySelector(`[data-item-obs="${it.id}"]`) ||
+                     (document.getElementById('regForm') && document.getElementById('regForm').querySelector(`[data-item-obs="${it.id}"]`));
+      const obs = (obsInp ? obsInp.value : (ebrFormState.observacionesItems[it.id] || '')) || '';
       if (val) answeredCount++;
 
       respuestas.push({
@@ -3056,7 +3096,7 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
     fichaTypeNombre: ft.nombre,
     tipoRespuesta: 'ips',
     visita: Number(visita),
-    visitaTipo: visita === 1 ? 'Visita 1 · Primer momento' : 'Visita 2 · Segundo momento',
+    visitaTipo: visita === 1 ? 'Visita 1 · Primer momento' : (visita === 2 ? 'Visita 2 · Segundo momento' : 'Visita 3 · Tercer momento (Salida)'),
     institucion,
     colegioId: ebrFormState.colegioId || null,
     responsable: responsableVal,

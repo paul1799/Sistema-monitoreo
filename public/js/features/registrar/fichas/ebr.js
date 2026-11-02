@@ -4,5 +4,5 @@
  * UGEL 03 · AGEBRE · Fase 4 Reorganización
  */
 
-export * from '../../../ebr-gestion.js?v=20261030_v1';
+export * from '../../../ebr-gestion.js';
 
