@@ -98,6 +98,7 @@ export {
   setRegistrarSubTab,
   getRegistrarSubTab,
   resetRegBuiltFor,
+  setRegBuiltFor,
   syncEditingState,
   renderCompList,
   onSubmitRegistro,

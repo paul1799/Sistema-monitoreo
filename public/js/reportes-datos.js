@@ -1,5 +1,6 @@
 import { calcScore, puntajeItem, estadoPorRegla, LEGADO_A_ESCALA, buildResponseValMap, resolveItemValue } from './calcEngine.js?v=20261030_v1';
-import { isFichaCoordPedagogico, isFichaCoordTutoriaJec } from './calc/detectors.js?v=20261030_v1';
+/*  */import { isFichaCoordPedagogico, isFichaCoordTutoriaJec, isFichaMaterialesCebe } from './calc/detectors.js?v=20261030_v1';
+import { MATERIALES_CEBE_SECCIONES } from './domain/fichas/catalogo-base.js';
 import {
   isFichaEbrGestionEscolar,
   EBR_GESTION_VISITA_1_SECCIONES,
@@ -33,7 +34,7 @@ function _normRei(val) {
 
 export function applyFilters(subs, filters, state, colegioIdx, getFichaType, normalizeText, matchColegio) {
   let filtered = subs.slice();
-  
+
   if (filters.institucion) filtered = filtered.filter(s => (s.institucion || '').toLowerCase().includes(filters.institucion.toLowerCase()));
   if (filters.ugel) filtered = filtered.filter(s => (s.ugel || '').toLowerCase().includes(filters.ugel.toLowerCase()));
   if (filters.red && String(filters.red).trim()) {
@@ -57,12 +58,12 @@ export function applyFilters(subs, filters, state, colegioIdx, getFichaType, nor
   }
   if (filters.desde) filtered = filtered.filter(s => s.fecha >= filters.desde);
   if (filters.hasta) filtered = filtered.filter(s => s.fecha <= filters.hasta);
-  
+
   if (filters.distrito) filtered = filtered.filter(s => normalizeText((matchColegio(s, colegioIdx) || {}).distrito).includes(normalizeText(filters.distrito)));
   if (filters.tipoGestion) filtered = filtered.filter(s => (matchColegio(s, colegioIdx) || {}).tipoGestion === filters.tipoGestion);
-  
+
   filtered.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '') || (b.createdAt || 0) - (a.createdAt || 0));
-  
+
   return filtered;
 }
 
@@ -75,26 +76,26 @@ export function buildStatsList(subs, isAllMode, selectedFt, getFichaType) {
 
 export function getDonaEstadosDataset(statsList) {
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
-  statsList.forEach(x => { 
+  statsList.forEach(x => {
     const isJec = isFichaJec(x.s) || String(x.s?.fichaTypeId || '').includes('jec') || String(x.s?.fichaTypeNombre || '').toLowerCase().includes('jec');
     if (isJec) {
-      const l = x.st?.estado ? (x.st.estado.estado_panel || x.st.estado.nivel || x.st.estado.label) : 'Sin datos'; 
+      const l = x.st?.estado ? (x.st.estado.estado_panel || x.st.estado.nivel || x.st.estado.label) : 'Sin datos';
       const lLower = String(l || '').toLowerCase();
-      if (lLower.includes('lograd') || lLower.includes('cumple')) dist.logrado++; 
-      else if (lLower.includes('proces') || lLower.includes('parcial')) dist.proceso++; 
-      else if (lLower.includes('inici') || lLower.includes('mejorar')) dist.inicio++; 
-      else dist.none++; 
+      if (lLower.includes('lograd') || lLower.includes('cumple')) dist.logrado++;
+      else if (lLower.includes('proces') || lLower.includes('parcial')) dist.proceso++;
+      else if (lLower.includes('inici') || lLower.includes('mejorar')) dist.inicio++;
+      else dist.none++;
     } else if (x.st && x.st.pct !== null) {
       if (x.st.pct >= 67) dist.logrado++;
       else if (x.st.pct >= 34) dist.proceso++;
       else dist.inicio++;
     } else {
-      const l = x.st?.estado ? (x.st.estado.estado_panel || x.st.estado.nivel || x.st.estado.label) : 'Sin datos'; 
+      const l = x.st?.estado ? (x.st.estado.estado_panel || x.st.estado.nivel || x.st.estado.label) : 'Sin datos';
       const lLower = String(l || '').toLowerCase();
-      if (lLower.includes('lograd') || lLower.includes('cumple')) dist.logrado++; 
-      else if (lLower.includes('proces') || lLower.includes('parcial')) dist.proceso++; 
-      else if (lLower.includes('inici') || lLower.includes('mejorar')) dist.inicio++; 
-      else dist.none++; 
+      if (lLower.includes('lograd') || lLower.includes('cumple')) dist.logrado++;
+      else if (lLower.includes('proces') || lLower.includes('parcial')) dist.proceso++;
+      else if (lLower.includes('inici') || lLower.includes('mejorar')) dist.inicio++;
+      else dist.none++;
     }
   });
   return dist;
@@ -125,9 +126,9 @@ export function getAvancePorTipoFichaDataset(statsList, getFichaType) {
 export function getApiladasSeccionDataset(statsList, ft) {
   if (!ft) return [];
   const secAgg = {};
-  ft.secciones.forEach(sec => secAgg[sec.nombre] = { sum: 0, cnt: 0, answers: { logrado:0, proceso:0, inicio:0, none:0 }, totalItems: 0 });
+  ft.secciones.forEach(sec => secAgg[sec.nombre] = { sum: 0, cnt: 0, answers: { logrado: 0, proceso: 0, inicio: 0, none: 0 }, totalItems: 0 });
   statsList.forEach(x => {
-    x.st.secciones.forEach(sc => { 
+    x.st.secciones.forEach(sc => {
       if (secAgg[sc.nombre]) {
         if (sc.pct !== null) { secAgg[sc.nombre].sum += sc.pct; secAgg[sc.nombre].cnt++; }
         // Aproximación de distribución de respuestas por sección mapeando el porcentaje o conteos directos si están disponibles
@@ -180,10 +181,10 @@ export function getMapaCalorDataset(statsList, ft) {
 
 export function getEvolucionVisitasDataset(statsList) {
   const visAgg = {};
-  statsList.forEach(x => { 
-    const v = Number(x.s.visita) || 1; 
-    if (!visAgg[v]) visAgg[v] = { sum: 0, cnt: 0, sumPts: 0, cntPts: 0 }; 
-    if (x.st.pct !== null && x.st.pct !== undefined) { visAgg[v].sum += x.st.pct; visAgg[v].cnt++; } 
+  statsList.forEach(x => {
+    const v = Number(x.s.visita) || 1;
+    if (!visAgg[v]) visAgg[v] = { sum: 0, cnt: 0, sumPts: 0, cntPts: 0 };
+    if (x.st.pct !== null && x.st.pct !== undefined) { visAgg[v].sum += x.st.pct; visAgg[v].cnt++; }
     if (x.st.puntaje !== null && x.st.puntaje !== undefined) { visAgg[v].sumPts += x.st.puntaje; visAgg[v].cntPts++; }
   });
   return Object.keys(visAgg).sort((a, b) => Number(a) - Number(b)).map(v => ({
@@ -197,7 +198,7 @@ export function getRubricasNivelDataset(statsList, ft) {
   if (!ft || ft.tipoRespuesta !== 'nivel_1_4') return [];
   const rubricas = ['R1', 'R2', 'R3', 'R4', 'R5'];
   const agg = { 1: {}, 2: {} }; // Visitas 1 y 2
-  
+
   [1, 2].forEach(v => {
     rubricas.forEach(r => agg[v][r] = { I: 0, II: 0, III: 0, IV: 0, total: 0 });
   });
@@ -248,7 +249,7 @@ export function getCompromisosDataset(statsList) {
 
 export function getSugerencias(statsList, ft, rankingCriticos) {
   const sugerencias = [];
-  
+
   if (rankingCriticos && rankingCriticos.length > 0) {
     const top = rankingCriticos[0];
     if (top.pctCritico >= 40) {
@@ -258,7 +259,7 @@ export function getSugerencias(statsList, ft, rankingCriticos) {
       });
     }
   }
-  
+
   // Sugerencia de Asistencia técnica
   const incipientes = statsList.filter(x => x.st.estado && (x.st.estado.nivel === 'Inicio' || x.st.estado.nivel === 'Incipiente')).length;
   if (incipientes > 0) {
@@ -399,6 +400,9 @@ export function computeItemAgg(subs, ft) {
   } else if (!isSiNo && isFichaPriteGestion(ft)) {
     const isOfficialPrite = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 32);
     activeFt = { ...ft, secciones: isOfficialPrite ? ft.secciones : PRITE_SECCIONES, tipoRespuesta: 'ips' };
+  } else if (isFichaMaterialesCebe(ft)) {
+    const isOfficialMat = (ft?.secciones?.length === 5 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 14);
+    activeFt = { ...ft, secciones: isOfficialMat ? ft.secciones : MATERIALES_CEBE_SECCIONES, tipoRespuesta: 'si_no', escala: 'SI_NO_NA' };
   }
   const tipoResp = isSiNo ? 'si_no' : (activeFt?.tipoRespuesta || 'ips');
   const escala = isSiNo
@@ -410,10 +414,25 @@ export function computeItemAgg(subs, ft) {
   const isJec = isFichaJec(ft) || isFichaCoordTutoriaJec(ft) || isFichaCoordPedagogico(ft);
 
   // Pre-computar valMap una sola vez por cada submission para máxima eficiencia
-  const subsWithMaps = (subs || []).map(s => ({
-    s,
-    valMap: buildResponseValMap(s.respuestas || [], isJec)
-  }));
+  const subsWithMaps = (subs || []).map(s => {
+    let resp = s.respuestas;
+    if (!resp && s.items) resp = s.items;
+    if (!resp && s.respuestasObj) resp = s.respuestasObj;
+    if (!resp && s.respuestasArray) resp = s.respuestasArray;
+    if (typeof resp === 'string') {
+      try { resp = JSON.parse(resp); } catch (_) { resp = []; }
+    }
+    if (resp && typeof resp === 'object' && !Array.isArray(resp)) {
+      resp = Object.entries(resp).map(([id, val]) => ({
+        id,
+        valor: (val && typeof val === 'object' && val.valor !== undefined) ? val.valor : (val && typeof val === 'object' && val.value !== undefined ? val.value : val)
+      }));
+    }
+    return {
+      s,
+      valMap: buildResponseValMap(resp || [], isJec)
+    };
+  });
 
   return (activeFt?.secciones || []).map((sec, sIdx) => {
     const items = (sec.items || []).map((it, iIdx) => {

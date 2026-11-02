@@ -282,3 +282,17 @@ export function getSubmissionVisitaNum(subOrFt, targetFt = null) {
   // 5. Fallback con getMomentoVisitaEbr para detección de textos y códigos
   return getMomentoVisitaEbr(subOrFt) || 1;
 }
+
+/**
+ * Detecta si una plantilla o ficha corresponde a Materiales Educativos CEBE/PRITE
+ * @param {Object|string} ft - Plantilla o ficha
+ * @returns {boolean}
+ */
+export function isFichaMaterialesCebe(ft) {
+  if (!ft) return false;
+  const id = (typeof ft === 'string' ? ft : (ft.id || ft.fichaTypeId || ft.tipo || '')).toLowerCase();
+  if (id === 'ft_materiales_cebe') return true;
+  const n = String(typeof ft === 'string' ? ft : (ft.nombre || ft.fichaTypeNombre || ft.tipo || id || ''))
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  return n.includes('material') && (n.includes('cebe') || n.includes('prite'));
+}

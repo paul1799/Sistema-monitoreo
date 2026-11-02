@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    pdf/ficha-individual.js — Generador oficial de PDF para Fichas Individuales
    de Monitoreo (Directivo, Coordinador de Tutoría JEC, Coordinador Pedagógico, etc.)
    UGEL 03 · AGEBRE
@@ -115,7 +115,8 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
   }
 
   const rawTypeName = (fichaType.nombre || 'EVALUACIÓN').trim();
-  const isNivel14 = fichaType.tipoRespuesta === 'nivel_1_4' || (fichaType.id || '').includes('directivo') || rawTypeName.toLowerCase().includes('directivo');
+  const isDirectivoFicha = (fichaType.id || '').includes('directivo') || rawTypeName.toLowerCase().includes('directivo');
+  const isNivel14 = fichaType.tipoRespuesta === 'nivel_1_4' || isDirectivoFicha;
 
   // F5: Título limpio sin duplicaciones
   const title = /^ficha\s+de\s+monitoreo/i.test(rawTypeName)
@@ -464,7 +465,7 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
         }
 
         // F7: Garantizar redacción oficial verbatim del ítem
-        const itemOfficialText = OFFICIAL_DIRECTIVO_ITEMS[itemNum] || it.texto;
+        const itemOfficialText = (isDirectivoFicha && OFFICIAL_DIRECTIVO_ITEMS[itemNum]) || it.texto;
 
         // F3: Celda de nivel con fondo suave y marca vectorial
         const makeLevelCell = (lvl) => {
@@ -524,7 +525,7 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
       ]);
 
       // Dimensión con título oficial
-      const dimTitleOfficial = OFFICIAL_DIRECTIVO_DIMENSIONS[sIdx] ? OFFICIAL_DIRECTIVO_DIMENSIONS[sIdx].nombre : (sec.nombre || 'DIMENSIÓN').toUpperCase();
+      const dimTitleOfficial = (isDirectivoFicha && OFFICIAL_DIRECTIVO_DIMENSIONS[sIdx]) ? OFFICIAL_DIRECTIVO_DIMENSIONS[sIdx].nombre : (sec.nombre || 'DIMENSIÓN').toUpperCase();
 
       customTables.push({
         title: dimTitleOfficial,
@@ -712,6 +713,38 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
         }
       }
     });
+      // Renderizar tablas especializadas (ej. Datos informativos, Observaciones y Retroalimentación)
+    if (Array.isArray(fichaType.tablas) && fichaType.tablas.length > 0) {
+      const tResp = sub.tablasRespuestas || {};
+      fichaType.tablas.forEach((tbl, ti) => {
+        const omitirCat = tbl.tipo === 'vacia' || tbl.sinColumnaCategoria === true || (tbl.id && String(tbl.id).startsWith('tbl_custom_') && tbl.sinColumnaCategoria !== false);
+        const headers = [];
+        if (!omitirCat) headers.push(tbl.nombreColumnaCategoria || 'Fila / Categoría');
+        (tbl.columnas || []).forEach(c => headers.push(c.nombre));
+
+        const rows = (tbl.filas || []).map((r, ri) => {
+          const rowVals = [];
+          if (!omitirCat) rowVals.push(r.etiqueta || Fila );
+          const fId = r.id || ('f_' + ri);
+          (tbl.columnas || []).forEach((c, ci) => {
+            const cId = c.id || ('c_' + ci);
+            const val = (tResp[tbl.id] && tResp[tbl.id][fId] && tResp[tbl.id][fId][cId]) || '';
+            rowVals.push(val);
+          });
+          return rowVals;
+        });
+
+        customTables.push({
+          title: (tbl.titulo || 'TABLA ADICIONAL').toUpperCase(),
+          subtitle: tbl.descripcion || '',
+          minHeight: 70,
+          tableHeaders: headers,
+          tableRows: rows,
+          styles: { minCellHeight: 25, fontSize: 7.5 }
+        });
+      });
+    }
+
   } else {
     // =========================================================================
     // Modo tradicional para los otros tipos de ficha

@@ -5,13 +5,14 @@
 
 import { esc, fmtDate, resolveDirectorName } from '../../core/utils/index.js';
 import { getAppState } from '../../core/state/app-state.js';
-import { RESPONSE_LABELS, OPTION_COLORS } from '../../ui/scoring.js';
+import { RESPONSE_OPTIONS, RESPONSE_LABELS, OPTION_COLORS } from '../../ui/scoring.js';
 import {
   isFichaEbrGestionEscolar,
   getMomentoVisitaEbr,
   getNivelEbrGestion,
   isFichaCoordTutoriaJec,
   isFichaCoordPedagogico,
+  isFichaMaterialesCebe,
   getNivelCoordTutoriaJec,
   getNivelCoordPedagogicoJec
 } from '../../domain/fichas/index.js';
@@ -205,6 +206,41 @@ export function buildDetail(s) {
             </tbody>
           </table>
         </div>
+      </div>
+    `;
+  }
+
+  let coordPedagogicoBanner = '';
+  const isCoordPed = isFichaCoordPedagogico(s) || (s.fichaTypeNombre || '').toLowerCase().includes('pedagógic') || (s.fichaTypeNombre || '').toLowerCase().includes('pedagogic');
+  if (isCoordPed) {
+    let puntaje = s.puntaje;
+    if (puntaje === undefined || puntaje === null) {
+      puntaje = (s.respuestas || []).reduce((acc, r) => {
+        const v = Number(r.valor);
+        return !isNaN(v) && v >= 1 && v <= 3 ? acc + v : acc;
+      }, 0);
+    }
+    const nivelInfo = getNivelCoordPedagogicoJec(puntaje);
+    const nivelLabel = s.nivel_cumplimiento || nivelInfo.nivel;
+    const nivelDesc = s.descripcion_cumplimiento || nivelInfo.descripcion;
+    const nivelCls = nivelInfo.cls;
+    const pct = Math.round((puntaje / 51) * 100);
+
+    coordPedagogicoBanner = `
+      <div style="margin-bottom:14px;padding:14px 18px;border-radius:8px;background:var(--surface-card,#ffffff);border:1px solid var(--border-soft,#e2e8f0);box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+          <div>
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted,#64748b);text-transform:uppercase;letter-spacing:0.5px">Nivel de Cumplimiento Oficial (Funciones del Coordinador(a) Pedagógico JEC)</span>
+            <div style="font-size:18px;font-weight:800;color:var(--text-main,#0f172a);margin-top:2px">${esc(nivelLabel)}</div>
+          </div>
+          <div style="text-align:right">
+            <span class="badge ${esc(nivelCls)}" style="font-size:13px;padding:5px 14px;font-weight:700">${esc(nivelLabel)}</span>
+            <div style="font-size:12px;color:var(--text-muted,#64748b);margin-top:3px;font-weight:700">${puntaje} de 51 puntos (${pct}%)</div>
+          </div>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-800,#1e293b);background:var(--surface-sunken,#f8fafc);padding:8px 12px;border-radius:6px;margin:0 0 10px 0;border-left:3px solid var(--primary,#2563eb)">
+          <strong>Criterio oficial:</strong> ${esc(nivelDesc)}
+        </p>
       </div>
     `;
   }
@@ -437,11 +473,48 @@ export function buildDetail(s) {
     `;
   }
 
+  let matCebeBanner = '';
+  const isMatCebe = isFichaMaterialesCebe(s);
+  if (isMatCebe) {
+    let conteoSi = s.conteo_si;
+    if (conteoSi === undefined || conteoSi === null) {
+      conteoSi = (s.respuestas || []).filter(r => {
+        const v = String(r?.valor || '').toLowerCase();
+        return v === 'si' || v === 'sí';
+      }).length;
+    }
+    const totalItems = (s.respuestas || []).length || 14;
+    const pct = (s.pct !== undefined && s.pct !== null) ? Number(s.pct) : (s.porcentaje !== undefined && s.porcentaje !== null ? Number(s.porcentaje) : Math.round((conteoSi / totalItems) * 100));
+    const estado = pct >= 67 ? 'Logrado' : (pct >= 34 ? 'En proceso' : 'Inicio');
+    const estadoCls = pct >= 67 ? 'st-logrado' : (pct >= 34 ? 'st-proceso' : 'st-inicio');
+    const estadoColor = pct >= 67 ? '#16a34a' : (pct >= 34 ? '#d97706' : '#dc2626');
+
+    matCebeBanner = `
+      <div style="margin-bottom:14px;padding:14px 18px;border-radius:8px;background:var(--surface-card,#ffffff);border:1px solid var(--border-soft,#e2e8f0);box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted,#64748b);text-transform:uppercase;letter-spacing:0.5px">Materiales Educativos en CEBE y PRITE · Monitoreo y Uso Pedagógico</span>
+            <div style="font-size:17px;font-weight:800;color:var(--text-main,#0f172a);margin-top:2px">${esc(estado)} (${conteoSi} / ${totalItems} ítems Sí · ${pct}%)</div>
+          </div>
+          <div>
+            <span class="badge ${esc(estadoCls)}" style="font-size:13px;padding:5px 14px;font-weight:700;background:${estadoColor};color:#ffffff">${esc(estado)}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   const items = (s.respuestas || []).map(r => {
-    const opt = (RESPONSE_OPTIONS[s.tipoRespuesta] || []).find(o => o.v === r.valor);
+    let opt = ((RESPONSE_OPTIONS && RESPONSE_OPTIONS[s.tipoRespuesta]) || []).find(o => o.v === r.valor);
+    if (!opt && RESPONSE_OPTIONS) {
+      for (const list of Object.values(RESPONSE_OPTIONS)) {
+        opt = list.find(o => o.v === r.valor);
+        if (opt) break;
+      }
+    }
     const evidText = r.evidencia || r.hallazgo;
     const hallazgoHtml = evidText ? `<div style="margin-top:6px;font-size:11.5px;color:var(--text-800,#1e293b);background:var(--surface-sunken,#f8fafc);padding:5px 10px;border-radius:4px;border-left:3px solid var(--primary,#2563eb)"><strong>${r.evidencia ? '📕 Evidencia:' : 'Hallazgo:'}</strong> ${esc(evidText)}</div>` : '';
-    return '<div class="itemRow"><div class="itxt"><strong style="font-weight:600;color:var(--ink-soft);font-size:11.5px">' + esc(r.seccion) + '</strong><br>' + esc(r.texto) + hallazgoHtml + '</div><div class="optGroup"><span class="badge st-none" style="color:var(--ink)">' + esc(opt ? opt.l : r.valor) + '</span></div></div>';
+    return '<div class="itemRow"><div class="itxt"><strong style="font-weight:600;color:var(--ink-soft);font-size:11.5px">' + esc(r.seccion || '') + '</strong><br>' + esc(r.texto || '') + hallazgoHtml + '</div><div class="optGroup"><span class="badge st-none" style="color:var(--ink)">' + esc(opt ? opt.l : (r.valor || '—')) + '</span></div></div>';
   }).join('') || '<p class="helpText">Sin respuestas registradas.</p>';
 
   let docentesTableHtml = '';
@@ -513,6 +586,7 @@ export function buildDetail(s) {
     jecNivelBanner +
     cebeBanner +
     priteBanner +
+    matCebeBanner +
     (extras ? '<div class="sectionTitle" style="margin-top:0">Datos generales de la ficha</div>' + extras : '') +
     legacyHtml +
     docentesTableHtml +

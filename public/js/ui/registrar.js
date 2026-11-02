@@ -11,6 +11,7 @@ export {
   setRegistrarSubTab,
   getRegistrarSubTab,
   resetRegBuiltFor,
+  setRegBuiltFor,
   syncEditingState,
   renderRegistrarTab,
   buildRegForm,

@@ -24,6 +24,8 @@ import {
   RESPONSE_LABELS,
   OPTION_COLORS
 } from '../../ui/scoring.js';
+import { setRegBuiltFor } from '../../core/state/app-state.js';
+import { resetRegBuiltFor } from '../registrar/index.js';
 import {
   cleanBuilderStateForExport,
   buildFichaTypePayload,
@@ -722,7 +724,7 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
               <input type="text" placeholder="Nueva columna..." id="newColNom_${ti}" style="width:140px;font-size:11.5px;padding:3px 6px">
               <select id="newColTipo_${ti}" style="font-size:11.5px;padding:3px 4px">
                 <option value="numero">Número</option>
-                <option value="texto">Texto</option>
+                <option value="texto">Texto</option>`r`n                <option value="area">Texto largo / Área</option>
               </select>
               <button type="button" class="btn secondary small" data-addtblcol="${ti}" style="padding:2px 8px;font-size:11px">＋ Col</button>
             </div>
@@ -2084,8 +2086,9 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         }
 
         // Invalidar caché de formulario de registro para reflejar los cambios de inmediato
-        setRegBuiltFor(null);
-        resetRegBuiltFor();
+        if (typeof setRegBuiltFor === 'function') setRegBuiltFor(null);
+        if (typeof resetRegBuiltFor === 'function') resetRegBuiltFor();
+        if (typeof window !== 'undefined' && typeof window.resetRegBuiltFor === 'function') { window.resetRegBuiltFor(); }
 
         builderIsDirty = false;
         const di = document.getElementById('dirtyIndicator');
@@ -2257,8 +2260,9 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         }
 
         // Invalidar caché del formulario de registro para reflejar los cambios de inmediato
-        setRegBuiltFor(null);
-        resetRegBuiltFor();
+        if (typeof setRegBuiltFor === 'function') setRegBuiltFor(null);
+        if (typeof resetRegBuiltFor === 'function') resetRegBuiltFor();
+        if (typeof window !== 'undefined' && typeof window.resetRegBuiltFor === 'function') { window.resetRegBuiltFor(); }
 
         builderIsDirty = false;
         builderJsonUnlocked = false;

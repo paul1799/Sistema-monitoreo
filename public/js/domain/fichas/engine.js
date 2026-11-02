@@ -19,8 +19,10 @@ import {
   isFichaEspecialistaJec,
   isFichaEbrGestionEscolar,
   isFichaEbrEbePrite,
+  isFichaMaterialesCebe,
   getMomentoVisitaEbr
 } from './detector.js';
+import { MATERIALES_CEBE_SECCIONES } from './catalogo-base.js';
 import {
   estadoPorRegla,
   getReglaNivelComunEbrEbePrite,
@@ -64,8 +66,14 @@ export function calcScore(respuestas, fichaType) {
   };
 
   let respuestasArray = respuestas;
+  if (typeof respuestasArray === 'string') {
+    try { respuestasArray = JSON.parse(respuestasArray); } catch (_) { respuestasArray = []; }
+  }
   if (respuestasArray && typeof respuestasArray === 'object' && !Array.isArray(respuestasArray)) {
-    respuestasArray = Object.entries(respuestasArray).map(([id, valor]) => ({ id, valor }));
+    respuestasArray = Object.entries(respuestasArray).map(([id, val]) => ({
+      id,
+      valor: (val && typeof val === 'object' && val.valor !== undefined) ? val.valor : (val && typeof val === 'object' && val.value !== undefined ? val.value : val)
+    }));
   }
 
   if (!fichaType || !Array.isArray(respuestasArray) || respuestasArray.length === 0) {
@@ -76,10 +84,10 @@ export function calcScore(respuestas, fichaType) {
   const escalaRaw = String(fichaType.escala || '').toUpperCase();
   const tipoRespRaw = String(fichaType.tipoRespuesta || '').toLowerCase();
   const hasSiNoResponses = Array.isArray(respuestasArray) && respuestasArray.some(r => {
-    const v = String(r?.valor || '').trim().toLowerCase();
+    const v = String(r?.valor ?? r?.value ?? '').trim().toLowerCase();
     return v === 'si' || v === 'sí' || v === 'no';
   }) && !respuestasArray.some(r => {
-    const v = String(r?.valor || '').trim().toLowerCase();
+    const v = String(r?.valor ?? r?.value ?? '').trim().toLowerCase();
     return v === 'logrado' || v === 'proceso' || v === 'inicio' || (Number(v) >= 2 && Number(v) <= 4);
   });
 
@@ -138,6 +146,9 @@ export function calcScore(respuestas, fichaType) {
 
   // Resolver secciones activas considerando multi-visita con indicadores diferenciados
   let activeSections = fichaType.secciones || [];
+  if (isFichaMaterialesCebe(fichaType) && (!activeSections || activeSections.length < 5 || activeSections.reduce((acc, s) => acc + (s.items?.length || 0), 0) < 14)) {
+    activeSections = MATERIALES_CEBE_SECCIONES;
+  }
   if (fichaType.tieneVisitas && fichaType.tipoVisitas === 'items_por_visita' && fichaType.seccionesPorVisita) {
     let vIdx = 0;
     if (fichaType.visita !== undefined && fichaType.visita !== null) {

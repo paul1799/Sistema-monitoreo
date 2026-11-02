@@ -79,17 +79,30 @@ Assert-Check "fichas/ebr.js importa ebr-gestion.js sin query string ?v=" `
     ($ebrBridge -match "export \* from '\.\./\.\./\.\./ebr-gestion\.js';")
 
 $catBase = Get-Content -Path (Join-Path $root "public/js/domain/fichas/catalogo-base.js") -Raw -Encoding utf8
-Assert-Check "catalogo-base.js importa ebr-gestion.js sin query string ?v=" `
-    ($catBase -match "from '\.\./\.\./ebr-gestion\.js';")
+Assert-Check "catalogo-base.js importa ebr-gestion.js con query version para desacoplar ciclo TDZ" `
+    ($catBase -match "from '\.\./\.\./ebr-gestion\.js\?v=")
 
-Assert-Check "catalogo-base.js importa jec-monitoreo.js sin query string ?v=" `
-    ($catBase -match "from '\.\./\.\./jec-monitoreo\.js';")
+Assert-Check "catalogo-base.js importa jec-monitoreo.js con query version para desacoplar ciclo TDZ" `
+    ($catBase -match "from '\.\./\.\./jec-monitoreo\.js\?v=")
 
-Assert-Check "catalogo-base.js importa cebe-gestion.js sin query string ?v=" `
-    ($catBase -match "from '\.\./\.\./cebe-gestion\.js';")
+Assert-Check "catalogo-base.js importa cebe-gestion.js con query version para desacoplar ciclo TDZ" `
+    ($catBase -match "from '\.\./\.\./cebe-gestion\.js\?v=")
 
-Assert-Check "catalogo-base.js importa prite-gestion.js sin query string ?v=" `
-    ($catBase -match "from '\.\./\.\./prite-gestion\.js';")
+Assert-Check "catalogo-base.js importa prite-gestion.js con query version para desacoplar ciclo TDZ" `
+    ($catBase -match "from '\.\./\.\./prite-gestion\.js\?v=")
+
+# 5. Verificación de desacoplamiento de dependencias circulares y TDZ
+$scoringJs = Get-Content -Path (Join-Path $root "public/js/ui/scoring.js") -Raw -Encoding utf8
+Assert-Check "scoring.js importa JEC_1ER_SECCIONES desde jec-1er-monitoreo.js y no catalogo-plantillas-base" `
+    ($scoringJs -match "import\s+\{\s*JEC_1ER_SECCIONES\s*\}\s+from\s+'\.\./jec-1er-monitoreo\.js';")
+
+$fichasIndex = Get-Content -Path (Join-Path $root "public/js/domain/fichas/index.js") -Raw -Encoding utf8
+Assert-Check "domain/fichas/index.js no re-exporta catalogo-base.js para evitar ciclo con calcEngine" `
+    (-not ($fichasIndex -match "catalogo-base\.js"))
+
+$ebrGestion = Get-Content -Path (Join-Path $root "public/js/ebr-gestion.js") -Raw -Encoding utf8
+Assert-Check "ebr-gestion.js no tiene importaciones duplicadas desde rules.js" `
+    (-not ($ebrGestion -match "getReglaNivelEbrGestion[^\n]+from '\./domain/fichas/rules\.js'"))
 
 Write-Host "======================================================="
 Write-Host "RESULTADOS: $($ctx.passed) de $($ctx.tests) pruebas pasadas con exito."

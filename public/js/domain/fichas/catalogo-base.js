@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    catalogo-plantillas-base.js — Catálogo Oficial de Plantillas de Fichas
    UGEL 03 · AGEBRE · Monitoreo y Acompañamiento 2026
 
@@ -7,17 +7,63 @@
    para que no se pierda la conexión con ninguna visita histórica ni reporte.
    ========================================================================= */
 
-import { CEBE_SECCIONES } from '../../cebe-gestion.js';
-import { PRITE_SECCIONES } from '../../prite-gestion.js';
+import { CEBE_SECCIONES } from '../../cebe-gestion.js?v=20261015_v1';
+import { PRITE_SECCIONES } from '../../prite-gestion.js?v=20261015_v1';
 import {
   EBR_GESTION_VISITA_1_SECCIONES,
   EBR_GESTION_VISITA_2_SECCIONES,
   EBR_GESTION_VISITA_3_SECCIONES
-} from '../../ebr-gestion.js';
-import { JEC_SECCIONES } from '../../jec-monitoreo.js';
-import { JEC_1ER_SECCIONES } from '../../jec-1er-monitoreo.js';
+} from '../../ebr-gestion.js?v=20261015_v1';
+import { JEC_SECCIONES } from '../../jec-monitoreo.js?v=20261015_v1';
+import { JEC_1ER_SECCIONES } from '../../jec-1er-monitoreo.js?v=20261016_v4';
 
 export { EBR_GESTION_VISITA_3_SECCIONES, JEC_1ER_SECCIONES };
+
+/**
+ * 8. Secciones oficiales de Monitoreo de Materiales Educativos (CEBE/PRITE)
+ * 14 indicadores oficiales organizados en 5 aspectos pedagógicos
+ */
+export const MATERIALES_CEBE_SECCIONES = [
+  {
+    nombre: 'Recepción',
+    items: [
+      { id: 'mc_1', num: 1, texto: 'La institución educativa recibió materiales educativos fungibles' },
+      { id: 'mc_2', num: 2, texto: 'La institución educativa recibió materiales educativos no fungibles' },
+      { id: 'mc_3', num: 3, texto: 'Los materiales no fungibles recibidos están registrados en el inventario institucional' }
+    ]
+  },
+  {
+    nombre: 'Distribución',
+    items: [
+      { id: 'mc_4', num: 4, texto: 'Se realizó la distribución de materiales fungibles a los docentes' },
+      { id: 'mc_5', num: 5, texto: 'Se realizó la distribución de materiales no fungibles a los docentes' }
+    ]
+  },
+  {
+    nombre: 'Uso pedagógico',
+    items: [
+      { id: 'mc_6', num: 6, texto: 'Los docentes incorporan los materiales educativos en su planificación curricular' },
+      { id: 'mc_7', num: 7, texto: 'Se evidencia el uso de los materiales durante las actividades de aprendizaje' },
+      { id: 'mc_8', num: 8, texto: 'Los materiales utilizados guardan relación con los propósitos de aprendizaje planteados' },
+      { id: 'mc_9', num: 9, texto: 'Los materiales cuentan con adaptaciones acordes a las características y necesidades de los estudiantes' }
+    ]
+  },
+  {
+    nombre: 'Seguimiento',
+    items: [
+      { id: 'mc_10', num: 10, texto: 'La dirección realiza monitoreo del uso de los materiales distribuidos a docentes/tutores' },
+      { id: 'mc_11', num: 11, texto: 'La dirección brinda orientaciones a los docentes sobre el uso pertinente de los materiales durante el monitoreo pedagógico' }
+    ]
+  },
+  {
+    nombre: 'Conservación y control',
+    items: [
+      { id: 'mc_12', num: 12, texto: 'Los materiales fungibles se encuentran en espacios con condiciones adecuadas de conservación y seguridad' },
+      { id: 'mc_13', num: 13, texto: 'Los materiales no fungibles entregados mantienen condiciones adecuadas para su uso' },
+      { id: 'mc_14', num: 14, texto: 'La institución cuenta con un mecanismo de control de ingreso, salida y préstamo de materiales no fungibles' }
+    ]
+  }
+];
 
 /**
  * Catálogo completo de las 8 plantillas oficiales del sistema
@@ -351,42 +397,158 @@ export const PLANTILLAS_BASE_OFICIALES = {
   // 6. RÚBRICAS DE OBSERVACIÓN DE AULA
   ft_rubricas_aula: {
     id: 'ft_rubricas_aula',
-    nombre: 'Monitoreo Pedagógico a Docentes - Rúbricas de Observación de Aula',
-    nombreCorto: 'Rúbricas de observación de aula',
-    descripcion: 'Registra el nivel de logro del desempeño docente observado en el aula, según las 5 rúbricas oficiales de observación de MINEDU.',
-    icono: 'ðŸ‘©â€🏫',
+    nombre: 'CUADERNILLO DEL MONITOREO PEDAGÓGICO A DOCENTES DE LIMA METROPOLITANA EBR-EBA 2026',
+    nombreCorto: 'Monitoreo a Docentes (EBR-EBA)',
+    descripcion: 'Cuadernillo oficial de monitoreo pedagógico a docentes de Lima Metropolitana EBR-EBA 2026. Comprende dos instrumentos: (1) Rúbricas de observación de aula MINEDU y (2) Ficha de monitoreo a la planificación curricular docente DRELM con retroalimentación.',
+    icono: '👩‍🏫',
     color: '#0D9488',
     modalidad: 'Docentes',
+    grupo: 'Docentes',
+    orden: 22,
     tipoRespuesta: 'nivel_1_4',
     regla_nivel: 'porcentaje',
     tieneVisitas: false,
     tipoVisitas: 'mismos_items',
     visitas: [],
     extras: [
+      { id: 'ex_rei', label: 'REI (Red Educativa Institucional)', tipo: 'texto', required: false },
       { id: 'ex_docente', label: 'Docente observado', tipo: 'texto', required: true },
       { id: 'ex_dni', label: 'DNI del docente', tipo: 'texto', required: false },
       { id: 'ex_nivel', label: 'Nivel educativo', tipo: 'texto', required: true },
-      { id: 'ex_grado_sec', label: 'Grado y sección', tipo: 'texto', required: true },
-      { id: 'ex_area', label: 'Área curricular observada', tipo: 'texto', required: true }
+      { id: 'ex_grado', label: 'Grado', tipo: 'texto', required: false },
+      { id: 'ex_seccion', label: 'Sección', tipo: 'texto', required: false },
+      { id: 'ex_area', label: 'Área curricular observada', tipo: 'texto', required: true },
+      { id: 'ex_est_matriculados', label: 'N° de estudiantes matriculados', tipo: 'numero', required: false },
+      { id: 'ex_est_asistentes', label: 'N° de estudiantes asistentes', tipo: 'numero', required: false },
+      { id: 'ex_est_discapacidad', label: 'N° de estudiantes con discapacidad o condición con diagnóstico', tipo: 'numero', required: false },
+      { id: 'ex_hora_inicio', label: 'Hora de inicio de la observación', tipo: 'hora', required: false },
+      { id: 'ex_hora_fin', label: 'Hora de fin de la observación', tipo: 'hora', required: false },
+      { id: 'ex_monitor', label: 'Nombre del observador/monitor', tipo: 'responsable', required: false }
     ],
     secciones: [
       {
-        nombre: 'Rúbricas de observación de aula (MINEDU)',
+        num: 'I',
+        nombre: 'INSTRUMENTO 1: RÚBRICAS DE OBSERVACIÓN DE AULA (MINEDU)',
         items: [
-          { id: 'ra_1', texto: 'Rúbrica 1: Involucra activamente a los estudiantes en el proceso de aprendizaje' },
-          { id: 'ra_2', texto: 'Rúbrica 2: Promueve el razonamiento, la creatividad y/o el pensamiento crítico' },
-          { id: 'ra_3', texto: 'Rúbrica 3: Evalúa el progreso de los aprendizajes para retroalimentar a los estudiantes y adecuar su enseñanza' },
-          { id: 'ra_4', texto: 'Rúbrica 4: Propicia un ambiente de respeto y proximidad' },
-          { id: 'ra_5', texto: 'Rúbrica 5: Regula positivamente el comportamiento de los estudiantes' }
+          {
+            id: 'ra_1',
+            num: 1,
+            texto: 'Rúbrica 1: Involucra activamente a los estudiantes en el proceso de aprendizaje',
+            evidencia: 'Acciones del docente para promover el interés de los estudiantes en las actividades de aprendizaje. Proporción de estudiantes involucrados en la sesión. Acciones del docente para favorecer la comprensión del sentido, importancia o utilidad de lo que se aprende.'
+          },
+          {
+            id: 'ra_2',
+            num: 2,
+            texto: 'Rúbrica 2: Promueve el razonamiento, la creatividad y/o el pensamiento crítico',
+            evidencia: 'Actividades e interacciones (sea entre docente y estudiantes, o entre estudiantes) que promueven efectivamente el razonamiento, la creatividad y/o el pensamiento crítico.'
+          },
+          {
+            id: 'ra_3',
+            num: 3,
+            texto: 'Rúbrica 3: Evalúa el progreso de los aprendizajes para retroalimentar a los estudiantes y adecuar su enseñanza',
+            evidencia: 'Monitoreo que realiza el docente del trabajo de los estudiantes y de sus avances durante la sesión. Calidad de la retroalimentación que el docente brinda y/o la adaptación de las actividades que realiza en la sesión a partir de las necesidades de aprendizaje identificadas.'
+          },
+          {
+            id: 'ra_4',
+            num: 4,
+            texto: 'Rúbrica 4: Propicia un ambiente de respeto y proximidad',
+            evidencia: 'Trato respetuoso y consideración hacia la perspectiva de los estudiantes. Cordialidad o calidez que transmite el docente. Comprensión y empatía del docente ante las necesidades afectivas o físicas de los estudiantes.'
+          },
+          {
+            id: 'ra_5',
+            num: 5,
+            texto: 'Rúbrica 5: Regula positivamente el comportamiento de los estudiantes',
+            evidencia: 'Tipos de mecanismos que emplea el docente para regular el comportamiento y promover el respeto de las normas de convivencia en el aula: formativos, de control externo, de maltrato. Eficacia con que el docente implementa los mecanismos para regular el comportamiento.'
+          }
+        ]
+      },
+      {
+        num: 'II',
+        nombre: 'INSTRUMENTO 2 - PARTE III: PLANIFICACIÓN CURRICULAR DOCENTE (DRELM)',
+        items: [
+          {
+            id: 'pc_1',
+            num: 1,
+            texto: '1. La planificación anual se sustenta en el diagnóstico de los estudiantes y organiza, de manera secuenciada, las unidades didácticas, competencias y enfoques transversales, en atención a las necesidades e intereses, identificados.',
+            evidencia: 'Solicita al docente la información diagnóstica de los aprendizajes de los estudiantes del aula a cargo, respetando el formato utilizado por cada IE.'
+          },
+          {
+            id: 'pc_2',
+            num: 2,
+            texto: '2. El proyecto o unidad de aprendizaje parte de una situación significativa, pertinente y desafiante, que plantea retos a los estudiantes y se desarrolla de manera articulada a lo largo de las sesiones y actividades de aprendizaje.',
+            evidencia: 'Verifica la coherencia entre situación significativa, propósitos de aprendizaje, retos y secuencia de actividades.'
+          },
+          {
+            id: 'pc_3',
+            num: 3,
+            texto: '3. Las sesiones/actividades de aprendizaje planificadas en la unidad didáctica incorporan una secuencia metodológica estructurada en la que se incluye los componentes clave, atendiendo a la diversidad de estudiantes.',
+            evidencia: 'Componentes clave: inicio, desarrollo, cierre, criterios de evaluación, adecuaciones o adaptaciones para la diversidad.'
+          },
+          {
+            id: 'pc_4',
+            num: 4,
+            texto: '4. Las sesiones/actividades de aprendizaje planificadas a lo largo de la unidad o proyecto, consideran una propuesta de metodología activa con estrategias retadoras que promueven la reflexión y el pensamiento crítico y creativo de los estudiantes.',
+            evidencia: 'Estrategias retadoras, preguntas orientadoras, metodología activa y desarrollo del pensamiento reflexivo.'
+          },
+          {
+            id: 'pc_5',
+            num: 5,
+            texto: '5. Las sesiones/actividades de aprendizaje planificadas a lo largo de la unidad o proyecto, contempla el uso pedagógico de diversos recursos y/o materiales que promueven el logro de competencias y aprendizajes significativos para los estudiantes, atendiendo a la diversidad.',
+            evidencia: 'Uso pedagógico de materiales educativos, recursos del contexto, tecnológicos y adaptaciones pertinentes.'
+          }
         ]
       }
     ],
-    tablas: [],
+    tablas: [
+      {
+        id: 'tbl_datos_planificacion',
+        titulo: 'INSTRUMENTO 2 - PARTE II: DATOS INFORMATIVOS DE LA PLANIFICACIÓN CURRICULAR DOCENTE',
+        descripcion: 'Verificación de formas organizativas de planificación curricular (proyectos, unidades, talleres u otros) y ejecución de la sesión programada.',
+        nombreColumnaCategoria: 'Ítem / Verificación',
+        sinColumnaCategoria: false,
+        columnas: [
+          { id: 'c_estado', nombre: 'Alternativa seleccionada (Proyectos, Unidades, Talleres, Otros / Sí, No)', tipo: 'texto' },
+          { id: 'c_observaciones', nombre: 'Observaciones / Sustento', tipo: 'texto' }
+        ],
+        filas: [
+          { id: 'f_2_1', etiqueta: '2.1 Formas organizativas: Planifica usando proyectos, unidades de aprendizaje, talleres u otros' },
+          { id: 'f_2_2', etiqueta: '2.2 Ejecución: La sesión/actividad planificada es ejecutada el día de la observación según programación' }
+        ]
+      },
+      {
+        id: 'tbl_observaciones_docente',
+        titulo: 'IV. OBSERVACIONES',
+        descripcion: 'En caso de no contar con la carpeta de planificación curricular o presentarse incidencias pedagógicas, registre el sustento en este numeral.',
+        nombreColumnaCategoria: 'Numeral',
+        sinColumnaCategoria: false,
+        columnas: [
+          { id: 'c_detalle_obs', nombre: 'Detalle de las observaciones y sustento pedagógico', tipo: 'area' }
+        ],
+        filas: [
+          { id: 'f_obs_planif', etiqueta: 'Observaciones generales / Sustento de planificación curricular' }
+        ]
+      },
+      {
+        id: 'tbl_retroalimentacion_planificacion',
+        titulo: 'V. ASPECTOS PARA RETROALIMENTACIÓN AL DOCENTE EN RELACIÓN A LOS ÍTEMS OBSERVADAS EN LA PLANIFICACIÓN CURRICULAR',
+        descripcion: 'Cuadro de diálogo reflexivo y retroalimentación pedagógica a partir de los ítems observados en la planificación curricular.',
+        nombreColumnaCategoria: 'Aspecto',
+        sinColumnaCategoria: false,
+        columnas: [
+          { id: 'c_retroalimentacion', nombre: 'Detalle de la retroalimentación y compromisos acordados', tipo: 'area' }
+        ],
+        filas: [
+          { id: 'f_fortalezas', etiqueta: 'FORTALEZAS' },
+          { id: 'f_aspectos_mejora', etiqueta: 'ASPECTOS DE MEJORA' },
+          { id: 'f_compromisos', etiqueta: 'COMPROMISOS' }
+        ]
+      }
+    ],
     compromisos: {
       habilitado: true,
       director: true,
       especialista: true,
-      filasPorVisita: 2
+      filasPorVisita: 3
     },
     version: '2026.1',
     esBorrador: false
@@ -518,12 +680,21 @@ export const PLANTILLAS_BASE_OFICIALES = {
     nombre: 'Ficha de Monitoreo de la Gestión y Uso Pedagógico de los Materiales Educativos en los CEBE y PRITE',
     nombreCorto: 'Materiales educativos (CEBE/PRITE)',
     descripcion: 'Verifica la recepción, distribución, uso pedagógico, seguimiento y conservación de los materiales educativos en los CEBE y PRITE de la UGEL 03.',
-    icono: 'ðŸ“¦',
+    icono: '📦',
     color: '#EAB308',
     modalidad: 'CEBE / PRITE',
     grupo: 'CEBE / PRITE',
     tipoRespuesta: 'si_no',
-    regla_nivel: 'porcentaje',
+    escala: 'SI_NO_NA',
+    regla_nivel: {
+      tipo: 'porcentaje',
+      escala: 'SI_NO_NA',
+      umbrales: [
+        { nivel: 'Logrado', min: 67, estado_panel: 'Logrado' },
+        { nivel: 'En proceso', min: 34, max: 66, estado_panel: 'En proceso' },
+        { nivel: 'Inicio', min: 0, max: 33, estado_panel: 'Inicio' }
+      ]
+    },
     tieneVisitas: false,
     tipoVisitas: 'mismos_items',
     visitas: [],
@@ -537,47 +708,7 @@ export const PLANTILLAS_BASE_OFICIALES = {
       { id: 'ex_correo', label: 'Correo Electrónico', tipo: 'texto', required: false },
       { id: 'ex_responsable', label: 'Responsable Del Monitoreo', tipo: 'texto', required: false }
     ],
-    secciones: [
-      {
-        nombre: 'Recepción',
-        items: [
-          { id: 'mc_1', texto: 'La institución educativa recibió materiales educativos fungibles' },
-          { id: 'mc_2', texto: 'La institución educativa recibió materiales educativos no fungibles' },
-          { id: 'mc_3', texto: 'Los materiales no fungibles recibidos están registrados en el inventario institucional' }
-        ]
-      },
-      {
-        nombre: 'Distribución',
-        items: [
-          { id: 'mc_4', texto: 'Se realizó la distribución de materiales fungibles a los docentes' },
-          { id: 'mc_5', texto: 'Se realizó la distribución de materiales no fungibles a los docentes' }
-        ]
-      },
-      {
-        nombre: 'Uso pedagógico',
-        items: [
-          { id: 'mc_6', texto: 'Los docentes incorporan los materiales educativos en su planificación curricular' },
-          { id: 'mc_7', texto: 'Se evidencia el uso de los materiales durante las actividades de aprendizaje' },
-          { id: 'mc_8', texto: 'Los materiales utilizados guardan relación con los propósitos de aprendizaje planteados' },
-          { id: 'mc_9', texto: 'Los materiales cuentan con adaptaciones acordes a las características y necesidades de los estudiantes' }
-        ]
-      },
-      {
-        nombre: 'Seguimiento',
-        items: [
-          { id: 'mc_10', texto: 'La dirección realiza monitoreo del uso de los materiales distribuidos a docentes/tutores' },
-          { id: 'mc_11', texto: 'La dirección brinda orientaciones a los docentes sobre el uso pertinente de los materiales durante el monitoreo pedagógico' }
-        ]
-      },
-      {
-        nombre: 'Conservación y control',
-        items: [
-          { id: 'mc_12', texto: 'Los materiales fungibles se encuentran en espacios con condiciones adecuadas de conservación y seguridad' },
-          { id: 'mc_13', texto: 'Los materiales no fungibles entregados mantienen condiciones adecuadas para su uso' },
-          { id: 'mc_14', texto: 'La institución cuenta con un mecanismo de control de ingreso, salida y préstamo de materiales no fungibles' }
-        ]
-      }
-    ],
+    secciones: MATERIALES_CEBE_SECCIONES,
     tablas: [],
     compromisos: {
       habilitado: true,

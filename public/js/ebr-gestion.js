@@ -12,11 +12,15 @@ import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha,
 import {
   REGLA_NIVEL_EBR_GESTION_M1,
   REGLA_NIVEL_EBR_GESTION_M2,
-  REGLA_NIVEL_EBR_GESTION_M3,
+  REGLA_NIVEL_EBR_GESTION_M3
+} from './domain/fichas/rules.js';
+import {
   getReglaNivelEbrGestion,
-  getNivelEbrGestion,
+  getNivelEbrGestion
+} from './domain/fichas/evaluador.js';
+import {
   getMomentoVisitaEbr
-} from './calcEngine.js?v=20261013_v2';
+} from './domain/fichas/detector.js';
 import {
   INSTRUMENTO_EBR,
   calcularResultadoEbrDesdeRespuestas,

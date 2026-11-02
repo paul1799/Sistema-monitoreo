@@ -114,7 +114,7 @@ export const DEFAULT_FICHA_TYPES_METADATA = {
   'ft_gestion_ugel03_ebr': { grupo: 'EBR', nombreCorto: 'Gestión Escolar EBR', orden: 20, tieneVisitas: true },
   'ft_ebr_gestion_1er': { grupo: 'EBR', nombreCorto: 'Gestión Escolar EBR', orden: 20, tieneVisitas: true },
   'ft_directivo': { grupo: 'EBR', nombreCorto: 'Directivo de IE', orden: 21, tieneVisitas: false },
-  'ft_rubricas_aula': { grupo: 'EBR', nombreCorto: 'Rúbricas de observación de aula', orden: 22, tieneVisitas: false },
+  'ft_rubricas_aula': { grupo: 'Docentes', nombreCorto: 'Monitoreo a Docentes (EBR-EBA)', orden: 22, tieneVisitas: false },
   'ft_gestion_cebe': { grupo: 'CEBE / PRITE', nombreCorto: 'Gestión Escolar CEBE', orden: 30, tieneVisitas: true },
   'ft_prite_gestion': { grupo: 'CEBE / PRITE', nombreCorto: 'Gestión Escolar PRITE', orden: 31, tieneVisitas: true },
   'ft_materiales_cebe': { grupo: 'CEBE / PRITE', nombreCorto: 'Materiales educativos (CEBE/PRITE)', orden: 32, tieneVisitas: false },
@@ -183,7 +183,7 @@ export function getEnrichedFichaType(ft) {
     // 5. Rúbricas de observación de aula
     else if (nNorm.includes('rubrica') || idNorm.includes('rubrica') || (nNorm.includes('aula') && nNorm.includes('docente'))) {
       autoGrupo = 'EBR';
-      if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Rúbricas de observación de aula';
+      if (!autoNombreCorto || autoNombreCorto === ft.nombre) autoNombreCorto = 'Monitoreo a Docentes (EBR-EBA)';
       if (autoOrden === null) autoOrden = 22;
       if (autoTieneVisitas === null) autoTieneVisitas = false;
     }

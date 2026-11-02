@@ -10,6 +10,5 @@ export * from './detector.js';
 export * from './evaluador.js';
 export * from './engine-helpers.js';
 export * from './engine.js';
-export * from './catalogo-base.js';
 export * from './item-identity.js';
 

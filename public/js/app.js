@@ -563,6 +563,33 @@ function startListeners() {
         matCebeDoc.nombre = PLANTILLAS_BASE_OFICIALES.ft_materiales_cebe.nombre;
         matCebeDoc.modalidad = 'CEBE / PRITE';
         matCebeDoc.grupo = 'CEBE / PRITE';
+        matCebeDoc.tipoRespuesta = 'si_no';
+        matCebeDoc.escala = 'SI_NO_NA';
+        matCebeDoc.regla_nivel = PLANTILLAS_BASE_OFICIALES.ft_materiales_cebe.regla_nivel;
+
+        const needsCebeMatRepair = !Array.isArray(matCebeDoc.secciones) ||
+          matCebeDoc.secciones.length < 5 ||
+          matCebeDoc.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) < 14;
+        if (needsCebeMatRepair) {
+          matCebeDoc.secciones = JSON.parse(JSON.stringify(PLANTILLAS_BASE_OFICIALES.ft_materiales_cebe.secciones));
+        } else {
+          // Asegurar que las secciones existentes tengan números correlativos y textos limpios sin Mojibake
+          const canonSecs = PLANTILLAS_BASE_OFICIALES.ft_materiales_cebe.secciones;
+          matCebeDoc.secciones.forEach((sec, sIdx) => {
+            const cSec = canonSecs[sIdx];
+            if (cSec && (!sec.nombre || sec.nombre.includes('Ã') || sec.nombre.includes('ǟ') || sec.nombre.includes(''))) {
+              sec.nombre = cSec.nombre;
+            }
+            (sec.items || []).forEach((it, iIdx) => {
+              const cIt = cSec && cSec.items ? cSec.items[iIdx] : null;
+              if (cIt) {
+                if (!it.num) it.num = cIt.num;
+                if (!it.id) it.id = cIt.id;
+                if (!it.texto || it.texto.includes('Ã') || it.texto.includes('ǟ') || it.texto.includes('')) it.texto = cIt.texto;
+              }
+            });
+          });
+        }
       }
 
       // Sanitizar Monitoreo a las Funciones del Coordinador(a) de Tutoría (JEC) (6 aspectos oficiales)
@@ -582,6 +609,50 @@ function startListeners() {
               extras: coordTutDoc.extras,
               regla_nivel: coordTutDoc.regla_nivel,
               escala: coordTutDoc.escala
+            }, { merge: true }).catch(() => {});
+          }
+        }
+      }
+
+      // Sanitizar Monitoreo Pedagógico a Docentes (EBR-EBA 2026) (Rúbricas de aula + Planificación Curricular + Observaciones + Retroalimentación)
+      const rubricasDoc = activeRaw.find(x => x.id === 'ft_rubricas_aula' || (x.nombre || '').toLowerCase().includes('rúbricas de observación') || (x.nombre || '').toLowerCase().includes('monitoreo pedagógico a docente'));
+      if (rubricasDoc && PLANTILLAS_BASE_OFICIALES.ft_rubricas_aula) {
+        const canon = PLANTILLAS_BASE_OFICIALES.ft_rubricas_aula;
+        const needsUpdate = !Array.isArray(rubricasDoc.secciones) || 
+                            rubricasDoc.secciones.length < 2 || 
+                            !Array.isArray(rubricasDoc.tablas) || 
+                            rubricasDoc.tablas.length < 2 ||
+                            !rubricasDoc.tablas.some(t => t.id === 'tbl_retroalimentacion_planificacion');
+        if (needsUpdate) {
+          rubricasDoc.nombre = canon.nombre;
+          rubricasDoc.nombreCorto = canon.nombreCorto;
+          rubricasDoc.descripcion = canon.descripcion;
+          rubricasDoc.icono = canon.icono;
+          rubricasDoc.color = canon.color;
+          rubricasDoc.modalidad = canon.modalidad;
+          rubricasDoc.grupo = canon.grupo;
+          rubricasDoc.tipoRespuesta = canon.tipoRespuesta;
+          rubricasDoc.secciones = JSON.parse(JSON.stringify(canon.secciones));
+          rubricasDoc.extras = JSON.parse(JSON.stringify(canon.extras));
+          rubricasDoc.tablas = JSON.parse(JSON.stringify(canon.tablas));
+          rubricasDoc.compromisos = JSON.parse(JSON.stringify(canon.compromisos));
+          rubricasDoc.regla_nivel = canon.regla_nivel;
+          if (dbNs && currentUser) {
+            dbNs.collection('fichaTypes').doc('ft_rubricas_aula').set({
+              nombre: canon.nombre,
+              nombreCorto: canon.nombreCorto,
+              descripcion: canon.descripcion,
+              icono: canon.icono,
+              color: canon.color,
+              modalidad: canon.modalidad,
+              grupo: canon.grupo,
+              tipoRespuesta: canon.tipoRespuesta,
+              secciones: rubricasDoc.secciones,
+              extras: rubricasDoc.extras,
+              tablas: rubricasDoc.tablas,
+              compromisos: rubricasDoc.compromisos,
+              regla_nivel: canon.regla_nivel,
+              updatedAt: Date.now()
             }, { merge: true }).catch(() => {});
           }
         }

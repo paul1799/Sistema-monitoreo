@@ -947,14 +947,19 @@ export function renderDynamicForm({
               const inpName = `tbl_${tbl.id || ti}_${fId}_${cId}`;
               const isFirstCol = ci === 0 && omitirCategoria;
               const defaultVal = isFirstCol ? (r.etiqueta || '') : '';
-              return '<td style="border:1px solid var(--line);padding:4px;text-align:center">' +
-                '<input type="' + (col.tipo === 'numero' ? 'number' : 'text') + '" ' +
-                'name="' + inpName + '" ' +
-                'value="' + esc(defaultVal) + '" ' +
-                'data-tabla-id="' + (tbl.id || ti) + '" data-fila-id="' + fId + '" data-col-id="' + cId + '" ' +
-                'placeholder="' + (col.tipo === 'numero' ? '0' : 'Escribir...') + '" ' +
-                'style="width:100%;border:1px solid var(--line);border-radius:4px;padding:4px 6px;font-size:12px;text-align:' + (col.tipo === 'numero' ? 'center' : 'left') + ';font-weight:' + (isFirstCol ? '600' : 'normal') + '">' +
-                '</td>';
+              const isArea = col.tipo === 'area' || col.tipo === 'textarea' || col.tipo === 'texto_largo';
+              const inputHtml = isArea
+                ? '<textarea name="' + inpName + '" ' +
+                  'data-tabla-id="' + (tbl.id || ti) + '" data-fila-id="' + fId + '" data-col-id="' + cId + '" ' +
+                  'placeholder="Escribir detalle..." rows="3" ' +
+                  'style="width:100%;border:1px solid var(--line);border-radius:4px;padding:6px 8px;font-size:12px;font-family:inherit;min-height:56px;box-sizing:border-box;resize:vertical">' + esc(defaultVal) + '</textarea>'
+                : '<input type="' + (col.tipo === 'numero' ? 'number' : 'text') + '" ' +
+                  'name="' + inpName + '" ' +
+                  'value="' + esc(defaultVal) + '" ' +
+                  'data-tabla-id="' + (tbl.id || ti) + '" data-fila-id="' + fId + '" data-col-id="' + cId + '" ' +
+                  'placeholder="' + (col.tipo === 'numero' ? '0' : 'Escribir...') + '" ' +
+                  'style="width:100%;border:1px solid var(--line);border-radius:4px;padding:4px 6px;font-size:12px;text-align:' + (col.tipo === 'numero' ? 'center' : 'left') + ';font-weight:' + (isFirstCol ? '600' : 'normal') + '">';
+              return '<td style="border:1px solid var(--line);padding:4px;text-align:center">' + inputHtml + '</td>';
             }).join('') +
             '</tr>';
         }).join('') +

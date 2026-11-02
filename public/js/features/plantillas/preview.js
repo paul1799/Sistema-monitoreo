@@ -1,7 +1,7 @@
 /**
  * features/plantillas/preview.js
- * Generación de vista previa en vivo (Formulario y Documento) y simulación de prueba
- * UGEL 03 · AGEBRE · Fase 3 Reorganización
+ * GeneraciÃ³n de vista previa en vivo (Formulario y Documento) y simulaciÃ³n de prueba
+ * UGEL 03 Â· AGEBRE Â· Fase 3 ReorganizaciÃ³n
  */
 
 import { esc, FICHA_PALETTE } from '../../core/utils/index.js';
@@ -11,7 +11,7 @@ export function renderItemResponseInputs(it, tipoRespuesta, curVal, customKey) {
   const itKey = customKey || it.id;
   if (tipoRespuesta === 'si_no') {
     return `
-      <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="test_${itKey}" value="si" ${curVal === 'si' ? 'checked' : ''} data-test-item="${itKey}"> Sí</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="test_${itKey}" value="si" ${curVal === 'si' ? 'checked' : ''} data-test-item="${itKey}"> SÃ­</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="test_${itKey}" value="no" ${curVal === 'no' ? 'checked' : ''} data-test-item="${itKey}"> No</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--text-400)"><input type="radio" name="test_${itKey}" value="na" ${curVal === 'na' ? 'checked' : ''} data-test-item="${itKey}"> N/A</label>
     `;
@@ -57,24 +57,24 @@ export function buildPreviewInnerHtml(options) {
   const totalSecs = previewSections.length;
   const totalItems = previewSections.reduce((acc, s) => acc + (s.items || []).length, 0);
 
-  // Validación de campos
+  // ValidaciÃ³n de campos
   const errors = [];
   if (!bs.nombre || !bs.nombre.trim()) {
     errors.push({ msg: 'Falta ingresar el nombre de la ficha', target: '#b_nombre' });
   }
   if (previewSections.length === 0) {
-    errors.push({ msg: 'Debes agregar al menos una sección', target: '#addSecBtn' });
+    errors.push({ msg: 'Debes agregar al menos una secciÃ³n', target: '#addSecBtn' });
   } else {
     previewSections.forEach((sec, si) => {
       if (!sec.nombre || !sec.nombre.trim()) {
-        errors.push({ msg: `La sección #${si + 1} no tiene título`, target: `[data-secname="${si}"]` });
+        errors.push({ msg: `La secciÃ³n #${si + 1} no tiene tÃ­tulo`, target: `[data-secname="${si}"]` });
       }
       if (!sec.items || sec.items.length === 0) {
-        errors.push({ msg: `La sección #${si + 1} ("${sec.nombre || 'Sin nombre'}") no tiene indicadores`, target: `[data-additem="${si}"]` });
+        errors.push({ msg: `La secciÃ³n #${si + 1} ("${sec.nombre || 'Sin nombre'}") no tiene indicadores`, target: `[data-additem="${si}"]` });
       } else {
         sec.items.forEach((it, ii) => {
           if (!it.texto || !it.texto.trim()) {
-            errors.push({ msg: `El ítem #${ii + 1} en la sección #${si + 1} está vacío`, target: `[data-sec="${si}"][data-item="${ii}"]` });
+            errors.push({ msg: `El Ã­tem #${ii + 1} en la secciÃ³n #${si + 1} estÃ¡ vacÃ­o`, target: `[data-sec="${si}"][data-item="${ii}"]` });
           }
         });
       }
@@ -86,34 +86,34 @@ export function buildPreviewInnerHtml(options) {
   const curPal = FICHA_PALETTE.find(p => p.hex.toLowerCase() === curColor.toLowerCase()) || { hex: curColor, bg: curColor + '18' };
 
   const miniCardHtml = `
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-400);margin-bottom:6px">Así se verá en la lista de fichas:</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-400);margin-bottom:6px">AsÃ­ se verÃ¡ en la lista de fichas:</div>
     <div class="fichaCard previewMiniCard" style="margin-bottom:14px;box-shadow:none;border:1px solid var(--line);cursor:default">
       <div class="fichaCardColorStripe" style="background:${curPal.hex};"></div>
       <div class="fichaCardMain" style="padding:10px 14px">
         <div class="fichaCardIconWrap" style="background:${curPal.bg};color:${curPal.hex};width:38px;height:38px;font-size:20px">
-          ${esc(bs.icono || '📋')}
+          ${esc(bs.icono || 'ðŸ“‹')}
         </div>
         <div class="fichaCardContent">
           <h4 class="fichaCardTitle" style="font-size:14px">${esc(bs.nombre || 'Nombre de la ficha')}</h4>
-          <p class="fichaCardDesc" style="font-size:12px">${esc(bs.descripcion || 'Sin descripción.')}</p>
+          <p class="fichaCardDesc" style="font-size:12px">${esc(bs.descripcion || 'Sin descripciÃ³n.')}</p>
           <div class="fichaCardBadges" style="margin-top:6px">
-            <span class="fichaBadge" style="background:#F1F5F9;color:#334155;border:1px solid #CBD5E1;font-weight:600">📁 Grupo: ${esc(bs.grupo || 'Sin grupo')}</span>
+            <span class="fichaBadge" style="background:#F1F5F9;color:#334155;border:1px solid #CBD5E1;font-weight:600">ðŸ“ Grupo: ${esc(bs.grupo || 'Sin grupo')}</span>
             <span class="fichaBadge fichaBadgeModalidad">${esc(bs.modalidad || 'General')}</span>
-            <span class="fichaBadge fichaBadgeItems">📑 ${totalSecs} ${totalSecs === 1 ? 'sección' : 'secciones'}</span>
-            <span class="fichaBadge fichaBadgeItems">🔢 ${totalItems} ítems</span>
-            <span class="fichaBadge fichaBadgeEscala">⚖️ ${esc(RESPONSE_LABELS[bs.tipoRespuesta] || bs.tipoRespuesta)}</span>
-            ${bs.tieneVisitas ? `<span class="fichaBadge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE">🕒 ${(bs.visitas || []).length} visitas</span>` : ''}
-            ${(bs.tablas && bs.tablas.length > 0) ? `<span class="fichaBadge" style="background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0">📊 ${bs.tablas.length} tablas</span>` : ''}
+            <span class="fichaBadge fichaBadgeItems">ðŸ“‘ ${totalSecs} ${totalSecs === 1 ? 'secciÃ³n' : 'secciones'}</span>
+            <span class="fichaBadge fichaBadgeItems">ðŸ”¢ ${totalItems} Ã­tems</span>
+            <span class="fichaBadge fichaBadgeEscala">âš–ï¸ ${esc(RESPONSE_LABELS[bs.tipoRespuesta] || bs.tipoRespuesta)}</span>
+            ${bs.tieneVisitas ? `<span class="fichaBadge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE">ðŸ•’ ${(bs.visitas || []).length} visitas</span>` : ''}
+            ${(bs.tablas && bs.tablas.length > 0) ? `<span class="fichaBadge" style="background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0">ðŸ“Š ${bs.tablas.length} tablas</span>` : ''}
           </div>
         </div>
       </div>
     </div>
   `;
 
-  // Avisos de validación
+  // Avisos de validaciÃ³n
   const validationBoxHtml = errors.length > 0 ? `
     <div class="previewValidationBox" style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:10px 14px;margin-bottom:14px">
-      <div style="font-weight:700;font-size:12px;color:#92400E;margin-bottom:6px">⚠️ Campos incompletos (${errors.length}) - Haz clic para corregir:</div>
+      <div style="font-weight:700;font-size:12px;color:#92400E;margin-bottom:6px">âš ï¸ Campos incompletos (${errors.length}) - Haz clic para corregir:</div>
       <ul style="margin:0;padding-left:18px;font-size:12px;color:#B45309">
         ${errors.map(err => `
           <li style="margin-bottom:3px">
@@ -126,26 +126,26 @@ export function buildPreviewInnerHtml(options) {
     </div>
   ` : `
     <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:#065F46;display:flex;align-items:center;gap:6px">
-      <span>✓</span> <strong>Estructura completa y consistente.</strong> Lista para registrar visitas oficiales.
+      <span>âœ“</span> <strong>Estructura completa y consistente.</strong> Lista para registrar visitas oficiales.
     </div>
   `;
 
   const statsBarHtml = `
     <div style="display:flex;gap:10px;font-size:11.5px;color:var(--text-600);margin-bottom:12px;padding:6px 10px;background:var(--surface-2);border-radius:6px;border:1px solid var(--line);flex-wrap:wrap">
-      <span>📑 <strong>${totalSecs}</strong> secciones</span>
-      <span>🔢 <strong>${totalItems}</strong> indicadores</span>
-      <span>⚖️ <strong>${esc(RESPONSE_LABELS[bs.tipoRespuesta] || bs.tipoRespuesta)}</strong></span>
-      <span>📐 Regla: <strong>${esc(bs.regla_nivel || 'porcentaje')}</strong></span>
+      <span>ðŸ“‘ <strong>${totalSecs}</strong> secciones</span>
+      <span>ðŸ”¢ <strong>${totalItems}</strong> indicadores</span>
+      <span>âš–ï¸ <strong>${esc(RESPONSE_LABELS[bs.tipoRespuesta] || bs.tipoRespuesta)}</strong></span>
+      <span>ðŸ“ Regla: <strong>${esc(bs.regla_nivel || 'porcentaje')}</strong></span>
     </div>
   `;
 
   const impactAlertHtml = (existingCount > 0) ? `
     <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:#1E40AF;line-height:1.4">
-      ℹ️ <strong>Historial:</strong> Esta plantilla tiene <strong>${existingCount}</strong> visita(s) registradas. Las modificaciones se aplicarán a nuevos registros.
+      â„¹ï¸ <strong>Historial:</strong> Esta plantilla tiene <strong>${existingCount}</strong> visita(s) registradas. Las modificaciones se aplicarÃ¡n a nuevos registros.
     </div>
   ` : '';
 
-  // Barra de Pestañas de Visitas en Preview
+  // Barra de PestaÃ±as de Visitas en Preview
   const visitasTabsHtml = bs.tieneVisitas && (bs.visitas || []).length > 0 ? `
     <div class="previewVisitasTabsBar">
       ${(bs.visitas || []).map((vNom, vi) => `
@@ -193,7 +193,7 @@ export function buildPreviewInnerHtml(options) {
     const testScoreBar = `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--surface);border:1px solid var(--line);border-radius:6px;margin-bottom:14px">
         <div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-600)">Simulación de Calificación en vivo:</div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-600)">SimulaciÃ³n de CalificaciÃ³n en vivo:</div>
           <div style="font-size:11px;color:var(--text-500)">Respondidos: ${answeredCount} de ${totalItems} | Puntaje: ${currentScore} / ${maxScore}</div>
         </div>
         <div style="font-size:18px;font-weight:800;color:${pct >= 70 ? 'var(--green-700)' : pct >= 40 ? 'var(--amber-700)' : 'var(--navy-900)'}">
@@ -227,9 +227,15 @@ export function buildPreviewInnerHtml(options) {
                   ${!omitirCategoria ? `<td style="padding:6px 10px;font-weight:600;color:var(--text-800)">${esc(r.etiqueta)}</td>` : ''}
                   ${cols.map((c, ci) => {
                     const isFirstCol = ci === 0 && omitirCategoria;
+                    const isArea = c.tipo === 'area' || c.tipo === 'textarea' || c.tipo === 'texto_largo';
+                    const cellHtml = isFirstCol
+                      ? esc(r.etiqueta || '')
+                      : (isArea
+                          ? '<textarea class="input small" style="width:100%;padding:4px 6px;font-size:11px;min-height:42px;resize:none" placeholder="Área de texto..." disabled></textarea>'
+                          : '<input type="' + (c.tipo === 'numero' ? 'number' : 'text') + '" class="input small" style="width:100%;padding:3px 6px;font-size:11px;text-align:' + (c.tipo === 'numero' ? 'center' : 'left') + '" placeholder="' + (c.tipo === 'numero' ? '0' : 'texto') + '" disabled>');
                     return `
                       <td style="padding:4px 8px;text-align:${c.tipo === 'numero' ? 'center' : 'left'}">
-                        ${isFirstCol ? esc(r.etiqueta || '') : `<input type="${c.tipo === 'numero' ? 'number' : 'text'}" class="input small" style="width:100%;padding:3px 6px;font-size:11px;text-align:${c.tipo === 'numero' ? 'center' : 'left'}" placeholder="${c.tipo === 'numero' ? '0' : 'texto'}" disabled>`}
+                        ${cellHtml}
                       </td>
                     `;
                   }).join('')}
@@ -245,7 +251,7 @@ export function buildPreviewInnerHtml(options) {
     // Compromisos en preview
     const previewCompromisosHtml = (bs.compromisos && bs.compromisos.habilitado) ? `
       <div class="previewCompromisosWrap">
-        <div style="font-size:12.5px;font-weight:700;color:var(--navy-900);margin-bottom:6px">Sección V: Compromisos de Mejora y Acuerdos</div>
+        <div style="font-size:12.5px;font-weight:700;color:var(--navy-900);margin-bottom:6px">SecciÃ³n V: Compromisos de Mejora y Acuerdos</div>
         ${bs.compromisos.director !== false ? `
           <div style="margin-bottom:8px">
             <span style="font-size:11.5px;font-weight:600;color:var(--text-700)">Compromisos del Director(a) / Equipo Directivo:</span>
@@ -258,7 +264,7 @@ export function buildPreviewInnerHtml(options) {
           <div>
             <span style="font-size:11.5px;font-weight:600;color:var(--text-700)">Compromisos del Especialista / Monitor UGEL:</span>
             <div style="font-size:11px;color:var(--text-400);font-style:italic;margin-top:2px">
-              ${Array.from({ length: bs.compromisos.filasPorVisita || 3 }).map((_, idx) => `<div>${idx + 1}. [Espacio para compromiso y asistencia técnica...]</div>`).join('')}
+              ${Array.from({ length: bs.compromisos.filasPorVisita || 3 }).map((_, idx) => `<div>${idx + 1}. [Espacio para compromiso y asistencia tÃ©cnica...]</div>`).join('')}
             </div>
           </div>
         ` : ''}
@@ -270,22 +276,22 @@ export function buildPreviewInnerHtml(options) {
         ${visitasTabsHtml}
 
         <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface-2);border:1px dashed var(--line);border-radius:6px;padding:8px 12px;margin-bottom:14px">
-          <div style="font-size:12px;color:var(--text-600)">🧪 <strong>Modo prueba:</strong> Marca respuestas para simular el cálculo de puntaje en vivo.</div>
+          <div style="font-size:12px;color:var(--text-600)">ðŸ§ª <strong>Modo prueba:</strong> Marca respuestas para simular el cÃ¡lculo de puntaje en vivo.</div>
           <button type="button" class="btn secondary small" id="btnResetTest" style="padding:2px 8px;font-size:11px">Limpiar prueba</button>
         </div>
 
         ${testScoreBar}
 
-        <!-- Simulación de cabecera -->
+        <!-- SimulaciÃ³n de cabecera -->
         <div style="background:var(--surface-2);border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:12px">
-          <div style="font-weight:700;color:var(--text-700);margin-bottom:6px">Datos de la Visita (Simulación):</div>
+          <div style="font-weight:700;color:var(--text-700);margin-bottom:6px">Datos de la Visita (SimulaciÃ³n):</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div><strong>I.E.:</strong> <span style="color:var(--text-500)">I.E. 1153 Alfonso Ugarte</span></div>
             <div><strong>Fecha:</strong> <span style="color:var(--text-500)">2026-10-14</span></div>
             <div><strong>Momento / Visita:</strong> <span style="color:var(--primary);font-weight:700">${esc(bs.tieneVisitas && bs.visitas && bs.visitas[builderActiveVisitPreview] ? bs.visitas[builderActiveVisitPreview] : 'Visita 1')}</span></div>
             ${(bs.extras || []).map(ex => {
               if (ex.tipo === 'select') {
-                const opts = (ex.opciones || 'Opción 1, Opción 2').split(',').map(o => o.trim()).filter(Boolean);
+                const opts = (ex.opciones || 'OpciÃ³n 1, OpciÃ³n 2').split(',').map(o => o.trim()).filter(Boolean);
                 return `<div><strong>${esc(ex.label)}:</strong> <span style="color:var(--text-600)">[${esc(opts[0] || 'Selector')}]</span></div>`;
               }
               return `<div><strong>${esc(ex.label)}:</strong> <span style="color:var(--text-400)">[${esc(ex.tipo)}]</span></div>`;
@@ -300,7 +306,7 @@ export function buildPreviewInnerHtml(options) {
         ${previewSections.map((sec, si) => `
           <div style="border:1px solid var(--line);border-radius:6px;margin-bottom:12px;overflow:hidden">
             <div style="background:var(--navy-900);color:#FFFFFF;padding:8px 12px;font-weight:700;font-size:12.5px">
-              ${esc(sec.nombre || `Sección ${si + 1}`)}
+              ${esc(sec.nombre || `SecciÃ³n ${si + 1}`)}
             </div>
             <div style="padding:10px 12px">
               ${(sec.items || []).map((it, ii) => {
@@ -312,13 +318,13 @@ export function buildPreviewInnerHtml(options) {
                       <span style="font-weight:700;color:var(--text-500);font-size:12px">${it.id ? esc(it.id) : (si + 1) + '.' + (ii + 1)}</span>
                       <span style="font-size:12.5px;color:var(--text-800);flex:1">${esc(it.texto || 'Sin texto')}</span>
                     </div>
-                    ${it.evidencia ? `<div style="font-size:11px;color:var(--text-500);padding-left:24px">📎 Evidencia: ${esc(it.evidencia)}</div>` : ''}
+                    ${it.evidencia ? `<div style="font-size:11px;color:var(--text-500);padding-left:24px">ðŸ“Ž Evidencia: ${esc(it.evidencia)}</div>` : ''}
                     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11.5px">
                       ${renderItemResponseInputs(it, bs.tipoRespuesta, ans, ansKey)}
                     </div>
                   </div>
                 `;
-              }).join('') || '<p style="font-size:11.5px;color:var(--text-400);margin:4px 0">Sin indicadores en esta sección.</p>'}
+              }).join('') || '<p style="font-size:11.5px;color:var(--text-400);margin:4px 0">Sin indicadores en esta secciÃ³n.</p>'}
             </div>
           </div>
         `).join('') || '<p style="font-size:12px;color:var(--text-400)">Sin secciones agregadas.</p>'}
@@ -332,28 +338,28 @@ export function buildPreviewInnerHtml(options) {
     modeContentHtml = `
       <div class="previewDocSheet" style="background:#FFFFFF;border:1px solid var(--line-strong);border-radius:6px;padding:20px;font-family:var(--sans);color:#1F2937">
         <div style="text-align:center;border-bottom:2px solid #1E3A8A;padding-bottom:10px;margin-bottom:14px">
-          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#4B5563;text-transform:uppercase">Ministerio de Educación – DRE Lima Metropolitana</div>
-          <div style="font-size:13px;font-weight:800;letter-spacing:0.5px;color:#1E3A8A;margin:2px 0">UNIDAD DE GESTIÓN EDUCATIVA LOCAL N° 03</div>
-          <div style="font-size:10.5px;color:#6B7280">Panel de Monitoreo y Asistencia Técnica 2026</div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#4B5563;text-transform:uppercase">Ministerio de EducaciÃ³n â€“ DRE Lima Metropolitana</div>
+          <div style="font-size:13px;font-weight:800;letter-spacing:0.5px;color:#1E3A8A;margin:2px 0">UNIDAD DE GESTIÃ“N EDUCATIVA LOCAL NÂ° 03</div>
+          <div style="font-size:10.5px;color:#6B7280">Panel de Monitoreo y Asistencia TÃ©cnica 2026</div>
           <h3 style="font-size:15px;font-weight:800;margin:10px 0 4px;color:#1E40AF;text-transform:uppercase">${esc(bs.nombre || 'NOMBRE DE LA FICHA')}</h3>
           <div style="font-size:11px;font-weight:600;color:#4B5563">
-            Modalidad: ${esc(bs.modalidad || 'General')} – Versión: ${esc(bs.version || '2026.1')} – Escala: ${esc(RESPONSE_LABELS[bs.tipoRespuesta] || bs.tipoRespuesta)}
+            Modalidad: ${esc(bs.modalidad || 'General')} â€“ VersiÃ³n: ${esc(bs.version || '2026.1')} â€“ Escala: ${esc(RESPONSE_LABELS[bs.tipoRespuesta] || bs.tipoRespuesta)}
           </div>
         </div>
 
         <!-- Metadatos de Cabecera Oficial -->
         <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:11px">
           <tr>
-            <td style="border:1px solid #D1D5DB;padding:4px 8px;background:#F3F4F6;font-weight:700;width:25%">Institución Educativa:</td>
+            <td style="border:1px solid #D1D5DB;padding:4px 8px;background:#F3F4F6;font-weight:700;width:25%">InstituciÃ³n Educativa:</td>
             <td style="border:1px solid #D1D5DB;padding:4px 8px;width:40%">[Nombre de la I.E.]</td>
-            <td style="border:1px solid #D1D5DB;padding:4px 8px;background:#F3F4F6;font-weight:700;width:15%">Cód. Modular:</td>
+            <td style="border:1px solid #D1D5DB;padding:4px 8px;background:#F3F4F6;font-weight:700;width:15%">CÃ³d. Modular:</td>
             <td style="border:1px solid #D1D5DB;padding:4px 8px">[0123456]</td>
           </tr>
           <tr>
             <td style="border:1px solid #D1D5DB;padding:4px 8px;background:#F3F4F6;font-weight:700">Red Educativa:</td>
             <td style="border:1px solid #D1D5DB;padding:4px 8px">[REI 01]</td>
-            <td style="border:1px solid #D1D5DB;padding:4px 8px;background:#F3F4F6;font-weight:700">Fecha / N° Visita:</td>
-            <td style="border:1px solid #D1D5DB;padding:4px 8px">[DD/MM/AAAA – ${esc(bs.tieneVisitas && bs.visitas && bs.visitas[builderActiveVisitPreview] ? bs.visitas[builderActiveVisitPreview] : 'Visita 1')}]</td>
+            <td style="border:1px solid #D1D5DB;padding:4px 8px;background:#F3F4F6;font-weight:700">Fecha / NÂ° Visita:</td>
+            <td style="border:1px solid #D1D5DB;padding:4px 8px">[DD/MM/AAAA â€“ ${esc(bs.tieneVisitas && bs.visitas && bs.visitas[builderActiveVisitPreview] ? bs.visitas[builderActiveVisitPreview] : 'Visita 1')}]</td>
           </tr>
           ${(bs.extras || []).map(ex => `
             <tr>
@@ -373,7 +379,7 @@ export function buildPreviewInnerHtml(options) {
             <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:6px">
               <thead>
                 <tr style="background:#F3F4F6">
-                  ${!omitirCategoria ? `<th style="border:1px solid #D1D5DB;padding:4px 6px;text-align:left">Fila / Categoría</th>` : ''}
+                  ${!omitirCategoria ? `<th style="border:1px solid #D1D5DB;padding:4px 6px;text-align:left">Fila / CategorÃ­a</th>` : ''}
                   ${(tbl.columnas || []).map(col => `<th style="border:1px solid #D1D5DB;padding:4px 6px;text-align:center">${esc(col.nombre)}</th>`).join('')}
                 </tr>
               </thead>
@@ -401,17 +407,17 @@ export function buildPreviewInnerHtml(options) {
         <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:10.5px">
           <thead>
             <tr style="background:#1E3A8A;color:#FFFFFF">
-              <th style="border:1px solid #1E3A8A;padding:5px;width:36px;text-align:center">N°</th>
-              <th style="border:1px solid #1E3A8A;padding:5px;text-align:left">Dimensión / Criterio / Indicador</th>
+              <th style="border:1px solid #1E3A8A;padding:5px;width:36px;text-align:center">NÂ°</th>
+              <th style="border:1px solid #1E3A8A;padding:5px;text-align:left">DimensiÃ³n / Criterio / Indicador</th>
               <th style="border:1px solid #1E3A8A;padding:5px;width:140px;text-align:left">Evidencia sugerida</th>
-              <th style="border:1px solid #1E3A8A;padding:5px;width:80px;text-align:center">Valoración</th>
+              <th style="border:1px solid #1E3A8A;padding:5px;width:80px;text-align:center">ValoraciÃ³n</th>
             </tr>
           </thead>
           <tbody>
             ${previewSections.map((sec, si) => `
               <tr style="background:#F9FAFB;font-weight:700">
                 <td style="border:1px solid #E5E7EB;padding:4px;text-align:center;color:#1E3A8A">#${si + 1}</td>
-                <td colspan="3" style="border:1px solid #E5E7EB;padding:4px;text-transform:uppercase;color:#111827">${esc(sec.nombre || 'Sección sin título')}</td>
+                <td colspan="3" style="border:1px solid #E5E7EB;padding:4px;text-transform:uppercase;color:#111827">${esc(sec.nombre || 'SecciÃ³n sin tÃ­tulo')}</td>
               </tr>
               ${(sec.items || []).map((it, ii) => {
                 const itCode = it.id || ((si + 1) + '.' + (ii + 1));
@@ -431,7 +437,7 @@ export function buildPreviewInnerHtml(options) {
         <!-- Compromisos en Documento -->
         ${(bs.compromisos && bs.compromisos.habilitado) ? `
           <div style="margin-bottom:20px;border:1px solid #D1D5DB;padding:10px;border-radius:4px">
-            <div style="font-weight:700;font-size:11px;color:#1E3A8A;margin-bottom:6px">SECCIÓN V: COMPROMISOS Y ACUERDOS INSTITUCIONALES</div>
+            <div style="font-weight:700;font-size:11px;color:#1E3A8A;margin-bottom:6px">SECCIÃ“N V: COMPROMISOS Y ACUERDOS INSTITUCIONALES</div>
             <div style="font-size:10px;color:#4B5563">
               ${Array.from({ length: bs.compromisos.filasPorVisita || 3 }).map((_, idx) => `
                 <div style="border-bottom:1px dotted #9CA3AF;padding:4px 0">${idx + 1}. ____________________________________________________________________________________</div>
@@ -445,12 +451,12 @@ export function buildPreviewInnerHtml(options) {
           <div style="flex:1;text-align:center">
             <div style="border-top:1px dashed #4B5563;width:75%;margin:0 auto 4px"></div>
             <div style="font-size:10.5px;font-weight:700;color:#111827">Firma y Sello del Director(a)</div>
-            <div style="font-size:9.5px;color:#6B7280">Institución Educativa</div>
+            <div style="font-size:9.5px;color:#6B7280">InstituciÃ³n Educativa</div>
           </div>
           <div style="flex:1;text-align:center">
             <div style="border-top:1px dashed #4B5563;width:75%;margin:0 auto 4px"></div>
             <div style="font-size:10.5px;font-weight:700;color:#111827">Firma y Sello del Especialista</div>
-            <div style="font-size:9.5px;color:#6B7280">UGEL 03 – DRELM</div>
+            <div style="font-size:9.5px;color:#6B7280">UGEL 03 â€“ DRELM</div>
           </div>
         </div>
       </div>
@@ -479,7 +485,7 @@ export function attachPreviewEvents(previewBox, options) {
     };
   });
 
-  // Clic en avisos o enlaces de edición para saltar al campo del editor
+  // Clic en avisos o enlaces de ediciÃ³n para saltar al campo del editor
   previewBox.querySelectorAll('.previewValItem').forEach(link => {
     link.onclick = (e) => {
       e.preventDefault();
@@ -518,4 +524,3 @@ export function attachPreviewEvents(previewBox, options) {
     };
   }
 }
-

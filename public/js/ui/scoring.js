@@ -18,6 +18,7 @@ import {
   isFichaEbrGestionEscolar,
   isFichaEbrEbePrite,
   isFichaJec1erMomento,
+  isFichaMaterialesCebe,
   getMomentoFichaJec,
   getReglaNivelComunEbrEbePrite,
   getReglaNivelEbrGestion,
@@ -27,9 +28,10 @@ import {
 import * as RepDatos from '../reportes-datos.js?v=20261030_v1';
 import { getEbrSeccionesForVisita } from '../ebr-gestion.js';
 import { isFichaJec, JEC_SECCIONES } from '../jec-monitoreo.js';
-import { JEC_1ER_SECCIONES } from '../catalogo-plantillas-base.js';
+import { JEC_1ER_SECCIONES } from '../jec-1er-monitoreo.js';
 import { isFichaCebeGestion, CEBE_SECCIONES } from '../cebe-gestion.js';
 import { isFichaPriteGestion, PRITE_SECCIONES } from '../prite-gestion.js';
+import { MATERIALES_CEBE_SECCIONES } from '../domain/fichas/catalogo-base.js';
 
 /* ============================= CONSTANTES COMPARTIDAS ============================= */
 export const RESPONSE_OPTIONS = {
@@ -517,15 +519,21 @@ export function computeStats(sub, ft) {
     };
   }
 
-  let respuestasArray = sub.respuestas || sub.respuestasArray;
+  let respuestasArray = sub.respuestas || sub.respuestasArray || sub.items;
+  if (typeof respuestasArray === 'string') {
+    try { respuestasArray = JSON.parse(respuestasArray); } catch (_) { respuestasArray = null; }
+  }
   if (!respuestasArray && sub.respuestasObj && typeof sub.respuestasObj === 'object') {
     respuestasArray = Object.entries(sub.respuestasObj).map(([id, val]) => ({
       id,
-      valor: (val && typeof val === 'object' && val.valor !== undefined) ? val.valor : val
+      valor: (val && typeof val === 'object' && val.valor !== undefined) ? val.valor : (val && typeof val === 'object' && val.value !== undefined ? val.value : val)
     }));
   }
   if (respuestasArray && typeof respuestasArray === 'object' && !Array.isArray(respuestasArray)) {
-    respuestasArray = Object.entries(respuestasArray).map(([id, valor]) => ({ id, valor }));
+    respuestasArray = Object.entries(respuestasArray).map(([id, val]) => ({
+      id,
+      valor: (val && typeof val === 'object' && val.valor !== undefined) ? val.valor : (val && typeof val === 'object' && val.value !== undefined ? val.value : val)
+    }));
   }
 
   // Fallback si la ficha no trae respuestas desagregadas pero tiene métricas oficiales guardadas
@@ -614,6 +622,23 @@ export function computeStats(sub, ft) {
   } else if (!isSiNo && isFichaPriteGestion(ft || sub) && respuestasArray && respuestasArray.length > 0) {
     const isOfficialPrite = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 32);
     ftForCalc = { ...ft, secciones: isOfficialPrite ? ft.secciones : PRITE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
+  } else if (isFichaMaterialesCebe(ft || sub) && respuestasArray && respuestasArray.length > 0) {
+    const isOfficialMat = (ft?.secciones?.length === 5 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 14);
+    ftForCalc = {
+      ...ft,
+      secciones: isOfficialMat ? ft.secciones : MATERIALES_CEBE_SECCIONES,
+      tipoRespuesta: 'si_no',
+      escala: 'SI_NO_NA',
+      regla_nivel: ft?.regla_nivel || {
+        tipo: 'porcentaje',
+        escala: 'SI_NO_NA',
+        umbrales: [
+          { min: 67, nivel: 'Logrado', estado_panel: 'Logrado' },
+          { min: 34, max: 66, nivel: 'En proceso', estado_panel: 'En proceso' },
+          { min: 0, max: 33, nivel: 'Inicio', estado_panel: 'Inicio' }
+        ]
+      }
+    };
   }
   const result = calcScore(respuestasArray, ftForCalc);
   let finalEstado = {
