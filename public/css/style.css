@@ -35,6 +35,6 @@
 @import './prite-gestion.css';
 @import './directorio.css';
 @import './jec-monitoreo.css';
-@import './reportes.css';
+@import './reportes.css?v=20261103_v9';
 @import './portal-modulos.css';
 @import './responsive.css?v=20261016_v7';

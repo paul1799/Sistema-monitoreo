@@ -34,7 +34,7 @@ import {
   buildResponseValMap,
   resolveItemValue,
   getSubmissionVisitaNum
-} from '../../calcEngine.js?v=20261030_v1';
+} from '../../calcEngine.js?v=20261103_v8';
 import {
   renderJecForm,
   preloadJecFormState,
@@ -556,13 +556,29 @@ export function renderDynamicForm({
   targetVisita,
   targetColId
 }) {
-  const isDirectivo = (ft.tipoRespuesta === 'nivel_1_4') || (ft.id === 'ft_directivo') || (ft.nombre || '').toLowerCase().includes('directivo');
+  const isRubricasAula = ft.id === 'ft_rubricas_aula' || (ft.nombre || '').toLowerCase().includes('rúbricas de observación') || (ft.nombre || '').toLowerCase().includes('monitoreo pedagógico a docente');
+  const isDirectivo = !isRubricasAula && ((ft.tipoRespuesta === 'nivel_1_4') || (ft.id === 'ft_directivo') || (ft.nombre || '').toLowerCase().includes('directivo'));
   const normExtras = normalizeExtras(ft.extras);
 
   const extrasHtml = normExtras.map((ex, i) => {
     const reqAttr = ex.required ? ' required' : '';
     const lower = (ex.label || '').toLowerCase();
-    const dListAttr = lower.includes('ugel') ? ' list="dl_ugel"' : ((lower.includes('red') || lower.includes('rei')) ? ' list="dl_red"' : '');
+    const xid = (ex.id || '').toLowerCase();
+
+    // El campo RED se ubica de forma universal en DATOS DE LA VISITA (#f_red), evitando duplicidad
+    if (xid === 'ex_rei' || xid === 'ex_red' || lower === 'red' || lower === 'rei' || lower.startsWith('red ') || lower.startsWith('rei ')) {
+      return '';
+    }
+
+    // Las horas de inicio y término se ubican de forma estructurada en DATOS DE LA VISITA (#f_hora_inicio, #f_hora_termino), evitando duplicidad
+    if (isDirectivo || isRubricasAula) {
+      if (xid === 'ex_hora_inicio' || xid === 'ex_hora_fin' || xid === 'ex_hora_termino' ||
+          lower.includes('hora de inicio') || lower.includes('hora de término') || lower.includes('hora de termino') || lower.includes('hora de fin') || lower.includes('hora')) {
+        return '';
+      }
+    }
+
+    const dListAttr = lower.includes('ugel') ? ' list="dl_ugel"' : '';
     const inputId = 'extra_inp_' + ex.id;
 
     if (ex.tipo === 'numero') {
@@ -788,7 +804,171 @@ export function renderDynamicForm({
     ? (RESPONSE_OPTIONS.nivel_1_4 || []).filter(o => o.v !== 'na')
     : RESPONSE_OPTIONS[ft.tipoRespuesta];
 
-  const seccionesHtml = ft.secciones.map((sec, sIdx) => {
+  const inst1CompromisosHtml = isRubricasAula ? `
+    <div class="panel" style="margin-top:20px;border:1.5px solid #0D9488;border-radius:8px;padding:16px 20px;background:#F8FAFC">
+      <div style="background:#0F766E;color:#FFFFFF;padding:8px 12px;border-radius:6px;font-weight:700;font-size:13.5px;letter-spacing:0.2px;margin-bottom:8px">
+        III. COMPROMISOS DE MEJORA:
+      </div>
+      <div style="font-size:12px;color:#334155;line-height:1.45;margin-bottom:12px">
+        A partir de las conductas observables registradas por cada uno de los desempeños y del diálogo reflexivo y haciendo uso de preguntas orientadoras (ver protocolo) anote en la primera columna el o los desempeños que el docente requiere mejorar. En la segunda columna, registre los compromisos de mejora relacionados con cada uno de los desempeños.
+      </div>
+
+      <table style="width:100%;border-collapse:collapse;font-size:12px;background:#FFFFFF;border:1px solid #CBD5E1;border-radius:6px;overflow:hidden">
+        <thead>
+          <tr style="background:#042F2E;color:#FFFFFF">
+            <th style="padding:9px 12px;text-align:left;width:38%;border-right:1px solid #0F766E;font-size:12px;font-weight:700">Desempeño por mejorar</th>
+            <th style="padding:9px 12px;text-align:left;font-size:12px;font-weight:700">Compromisos de mejora</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:10px 12px;vertical-align:top;border-right:1px solid #E2E8F0;width:38%">
+              <textarea name="tbl_tbl_compromisos_rubricas_aula_f_comp_1_c_desempeno" data-tabla-id="tbl_compromisos_rubricas_aula" data-fila-id="f_comp_1" data-col-id="c_desempeno" placeholder="Desempeño / Rúbrica por mejorar..." rows="4" style="width:100%;min-height:90px;padding:8px 10px;font-size:12.5px;border:1px solid var(--line);border-radius:4px;box-sizing:border-box;resize:vertical;line-height:1.4"></textarea>
+            </td>
+            <td style="padding:10px 12px;vertical-align:top">
+              <textarea name="tbl_tbl_compromisos_rubricas_aula_f_comp_1_c_compromiso" data-tabla-id="tbl_compromisos_rubricas_aula" data-fila-id="f_comp_1" data-col-id="c_compromiso" placeholder="Compromiso asumido en relación al desempeño..." rows="4" style="width:100%;min-height:90px;padding:8px 10px;font-size:12.5px;border:1px solid var(--line);border-radius:4px;box-sizing:border-box;resize:vertical;line-height:1.4"></textarea>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  ` : '';
+
+  const inst2Parte2Html = isRubricasAula ? `
+    <div class="panel" style="margin-top:20px;border:1.5px solid #0284C7;border-radius:8px;padding:16px 20px;background:#F8FAFC">
+      <div style="background:#0369A1;color:#FFFFFF;padding:10px 14px;border-radius:6px;font-weight:700;font-size:13.5px;letter-spacing:0.3px;margin-bottom:12px">
+        INSTRUMENTO 2: FICHA DE MONITOREO A LA PLANIFICACIÓN CURRICULAR DOCENTE EN EBR-EBA 2026 (DRELM)
+      </div>
+      
+      <div style="margin-bottom:12px;background:#FFFFFF;border:1px solid #E2E8F0;border-left:4px solid #0369A1;padding:10px 12px;border-radius:4px">
+        <div style="font-weight:700;font-size:12.5px;color:#0F172A;margin-bottom:4px">I. INSTRUCCIONES:</div>
+        <div style="font-size:12px;color:#334155;line-height:1.45">
+          Estimado monitor, para el desarrollo del recojo de información de la planificación curricular docente, solicite la carpeta pedagógica al inicio de la jornada escolar o en la visita al aula.
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px;background:#FFFFFF;border:1px solid #E2E8F0;border-left:4px solid #0D9488;padding:10px 12px;border-radius:4px">
+        <div style="font-weight:700;font-size:12.5px;color:#0F172A;margin-bottom:4px">II. DATOS INFORMATIVOS DE LA PLANIFICACIÓN CURRICULAR DOCENTE:</div>
+        <div style="font-size:12px;color:#334155;line-height:1.45">
+          La información recogida en este ítem describe las formas organizativas de la planificación y la ejecución de la sesión/actividad planificada.
+        </div>
+      </div>
+
+      <!-- 2.1 Formas organizativas -->
+      <div style="background:#FFFFFF;border:1px solid #CBD5E1;border-radius:6px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-weight:700;font-size:12.5px;color:#0F172A;margin-bottom:4px">
+          2.1 Formas organizativas de la planificación
+        </div>
+        <div style="font-size:11.5px;color:#64748B;margin-bottom:10px">
+          El docente planifica sus sesiones de clase haciendo uso de proyectos, unidades de aprendizaje, talleres, u otros.
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:18px;align-items:center;padding:10px 14px;background:#F1F5F9;border-radius:6px">
+          <label style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#1E293B;cursor:pointer">
+            <input type="checkbox" name="tbl_tbl_datos_planif_2_1_f_2_1_c_proyectos" data-tabla-id="tbl_datos_planif_2_1" data-fila-id="f_2_1" data-col-id="c_proyectos" value="1" style="width:16px;height:16px;cursor:pointer">
+            PROYECTOS
+          </label>
+          <label style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#1E293B;cursor:pointer">
+            <input type="checkbox" name="tbl_tbl_datos_planif_2_1_f_2_1_c_unidades" data-tabla-id="tbl_datos_planif_2_1" data-fila-id="f_2_1" data-col-id="c_unidades" value="1" style="width:16px;height:16px;cursor:pointer">
+            UNIDADES DE APRENDIZAJE
+          </label>
+          <label style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#1E293B;cursor:pointer">
+            <input type="checkbox" name="tbl_tbl_datos_planif_2_1_f_2_1_c_talleres" data-tabla-id="tbl_datos_planif_2_1" data-fila-id="f_2_1" data-col-id="c_talleres" value="1" style="width:16px;height:16px;cursor:pointer">
+            TALLERES
+          </label>
+          <label style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#1E293B;cursor:pointer">
+            <input type="checkbox" name="tbl_tbl_datos_planif_2_1_f_2_1_c_otros" data-tabla-id="tbl_datos_planif_2_1" data-fila-id="f_2_1" data-col-id="c_otros" value="1" style="width:16px;height:16px;cursor:pointer">
+            OTROS
+          </label>
+        </div>
+      </div>
+
+      <!-- 2.2 Ejecución de la sesión -->
+      <div style="background:#FFFFFF;border:1px solid #CBD5E1;border-radius:6px;padding:12px 14px">
+        <div style="font-weight:700;font-size:12.5px;color:#0F172A;margin-bottom:4px">
+          2.2 Ejecución de la sesión/actividad planificada
+        </div>
+        <div style="font-size:11.5px;color:#64748B;margin-bottom:10px">
+          La sesión/actividad de aprendizaje planificada es ejecutada el día de la observación o visita al aula, según programación.
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center">
+          <div style="display:inline-flex;gap:18px;align-items:center;padding:7px 16px;background:#F1F5F9;border-radius:6px">
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#059669;cursor:pointer">
+              <input type="checkbox" class="chk-planif-ejecucion" name="tbl_tbl_datos_planif_2_2_f_2_2_c_si" data-tabla-id="tbl_datos_planif_2_2" data-fila-id="f_2_2" data-col-id="c_si" value="1" style="width:16px;height:16px;cursor:pointer">
+              SI
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#DC2626;cursor:pointer">
+              <input type="checkbox" class="chk-planif-ejecucion" name="tbl_tbl_datos_planif_2_2_f_2_2_c_no" data-tabla-id="tbl_datos_planif_2_2" data-fila-id="f_2_2" data-col-id="c_no" value="1" style="width:16px;height:16px;cursor:pointer">
+              NO
+            </label>
+          </div>
+          <div style="flex:1;min-width:260px">
+            <input type="text" name="tbl_tbl_datos_planif_2_2_f_2_2_c_observaciones" data-tabla-id="tbl_datos_planif_2_2" data-fila-id="f_2_2" data-col-id="c_observaciones" placeholder="OBSERVACIONES..." style="width:100%;font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:6px;box-sizing:border-box">
+          </div>
+        </div>
+      </div>
+    </div>
+  ` : '';
+
+  const inst2Parte4y5Html = isRubricasAula ? `
+    <div class="panel" style="margin-top:20px;border:1.5px solid #0D9488;border-radius:8px;padding:16px 20px;background:#F8FAFC">
+      <!-- IV. OBSERVACIONES -->
+      <div style="margin-bottom:18px">
+        <div style="font-weight:700;font-size:13px;color:#0F172A;margin-bottom:4px">
+          IV. OBSERVACIONES
+        </div>
+        <div style="font-size:12px;color:#475569;margin-bottom:8px">
+          En caso de no contar con la carpeta de planificación curricular o presentarse incidencias pedagógicas, registre el sustento en este numeral.
+        </div>
+        <textarea name="tbl_tbl_observaciones_docente_f_obs_planif_c_detalle_obs" data-tabla-id="tbl_observaciones_docente" data-fila-id="f_obs_planif" data-col-id="c_detalle_obs" placeholder="Detalle de observaciones y sustento pedagógico..." style="width:100%;min-height:70px;padding:8px 10px;font-size:12px;border:1px solid #CBD5E1;border-radius:6px;box-sizing:border-box;resize:vertical"></textarea>
+      </div>
+
+      <!-- V. ASPECTOS PARA RETROALIMENTACIÓN -->
+      <div>
+        <div style="background:#0F766E;color:#FFFFFF;padding:8px 12px;border-radius:6px;font-weight:700;font-size:13px;letter-spacing:0.2px;margin-bottom:8px">
+          V. ASPECTOS PARA RETROALIMENTACIÓN AL DOCENTE EN RELACIÓN A LOS ÍTEMS OBSERVADAS EN LA PLANIFICACIÓN CURRICULAR
+        </div>
+        <div style="font-size:12px;color:#475569;margin-bottom:10px">
+          Cuadro de diálogo reflexivo y retroalimentación pedagógica a partir de los ítems observados en la planificación curricular.
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;background:#FFFFFF;border:1px solid #CBD5E1;border-radius:6px;overflow:hidden">
+          <thead>
+            <tr style="background:#042F2E;color:#FFFFFF">
+              <th style="padding:8px 12px;text-align:left;width:26%;border-right:1px solid #0F766E;font-size:12px">Aspectos</th>
+              <th style="padding:8px 12px;text-align:left;font-size:12px">Detalle de la retroalimentación y compromisos acordados</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #E2E8F0">
+              <td style="padding:10px 12px;font-weight:700;color:#0F172A;background:#F8FAFC;border-right:1px solid #E2E8F0;vertical-align:top">
+                FORTALEZAS
+              </td>
+              <td style="padding:8px 10px">
+                <textarea name="tbl_tbl_retroalimentacion_planificacion_f_fortalezas_c_retroalimentacion" data-tabla-id="tbl_retroalimentacion_planificacion" data-fila-id="f_fortalezas" data-col-id="c_retroalimentacion" placeholder="Describa las principales fortalezas observadas en la planificación curricular del docente..." style="width:100%;min-height:55px;padding:6px 8px;font-size:12px;border:1px solid var(--line);border-radius:4px;box-sizing:border-box;resize:vertical"></textarea>
+              </td>
+            </tr>
+            <tr style="border-bottom:1px solid #E2E8F0">
+              <td style="padding:10px 12px;font-weight:700;color:#0F172A;background:#F8FAFC;border-right:1px solid #E2E8F0;vertical-align:top">
+                ASPECTOS DE MEJORA
+              </td>
+              <td style="padding:8px 10px">
+                <textarea name="tbl_tbl_retroalimentacion_planificacion_f_aspectos_mejora_c_retroalimentacion" data-tabla-id="tbl_retroalimentacion_planificacion" data-fila-id="f_aspectos_mejora" data-col-id="c_retroalimentacion" placeholder="Describa los aspectos pedagógicos a fortalecer o mejorar..." style="width:100%;min-height:55px;padding:6px 8px;font-size:12px;border:1px solid var(--line);border-radius:4px;box-sizing:border-box;resize:vertical"></textarea>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;font-weight:700;color:#0F172A;background:#F8FAFC;border-right:1px solid #E2E8F0;vertical-align:top">
+                COMPROMISOS
+              </td>
+              <td style="padding:8px 10px">
+                <textarea name="tbl_tbl_retroalimentacion_planificacion_f_compromisos_c_retroalimentacion" data-tabla-id="tbl_retroalimentacion_planificacion" data-fila-id="f_compromisos" data-col-id="c_retroalimentacion" placeholder="Acuerdos y compromisos pedagógicos asumidos por el docente..." style="width:100%;min-height:55px;padding:6px 8px;font-size:12px;border:1px solid var(--line);border-radius:4px;box-sizing:border-box;resize:vertical"></textarea>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  ` : '';
+
+    const seccionesHtml = ft.secciones.map((sec, sIdx) => {
     const items = sec.items.map((it, iIdx) => {
       // Clave única garantizada en el DOM para evitar que radio buttons colisionen entre secciones
       const itemDomKey = `s${sIdx + 1}_i${iIdx + 1}_${it.id || iIdx}`;
@@ -823,8 +1003,8 @@ export function renderDynamicForm({
         '</div>';
     }).join('');
 
-    const secBadgeDisplay = sec.num ? esc(sec.num) : ('Sección ' + (sIdx + 1));
-    return '<div class="formSecCard">' +
+    const secBadgeDisplay = sec.num ? esc(sec.num) : ('Seccin ' + (sIdx + 1));
+    const secCardHtml = '<div class="formSecCard">' +
       '<div class="formSecHeader">' +
       '<span class="formSecBadge">' + secBadgeDisplay + '</span>' +
       '<h4 class="formSecTitle">' + esc(sec.nombre) + '</h4>' +
@@ -832,6 +1012,14 @@ export function renderDynamicForm({
       '</div>' +
       '<div class="formSecBody">' + items + '</div>' +
       '</div>';
+
+    if (isRubricasAula && sIdx === 0) {
+      return secCardHtml + inst1CompromisosHtml + inst2Parte2Html;
+    }
+    if (isRubricasAula && sIdx === 1) {
+      return secCardHtml + inst2Parte4y5Html;
+    }
+    return secCardHtml;
   }).join('');
 
   // Síntesis por dimensión para ficha directivo
@@ -892,7 +1080,7 @@ export function renderDynamicForm({
       <div id="compList"></div>
       <button type="button" class="btn secondary small" id="addCompBtn" style="margin-top:10px">+ Agregar compromiso adicional</button>
     </div>
-  ` : `
+  ` : (isRubricasAula ? '' : `
     <div class="panel">
       <div class="sectionHeaderTitle">COMPROMISOS DE MEJORA</div>
       <div class="sectionTitle" style="margin-top:0">Compromisos pendientes anteriores</div>
@@ -901,15 +1089,15 @@ export function renderDynamicForm({
       <div id="compList"></div>
       <button type="button" class="btn secondary small" id="addCompBtn" style="margin-top:10px">+ Agregar compromiso</button>
     </div>
-  `;
+  `);
 
   // Campos de horas dedicados para la visita
-  const horasVisitaHtml = isDirectivo ? `
+  const horasVisitaHtml = (isDirectivo || isRubricasAula) ? `
     <div class="field"><label for="f_hora_inicio">Hora de inicio</label><input type="time" id="f_hora_inicio" value="08:00"></div>
     <div class="field"><label for="f_hora_termino">Hora de término</label><input type="time" id="f_hora_termino" value="13:00"></div>
   ` : '';
 
-  const totalItemsCount = ft.secciones.reduce((acc, s) => acc + s.items.length, 0);
+    const totalItemsCount = ft.secciones.reduce((acc, s) => acc + s.items.length, 0);
   const uploadPanel = AI_SCAN_ENDPOINT ? (
     '<div class="panel" id="uploadPanel">' +
     '<h3>Cargar ficha escaneada <small>lectura automática con IA — opcional</small></h3>' +
@@ -922,7 +1110,7 @@ export function renderDynamicForm({
   const submitLabel = editingSubmissionId ? 'Actualizar ficha' : 'Guardar ficha';
 
   // Tablas cuantitativas especializadas si la ficha las tiene configuradas
-  const tablasHtml = (Array.isArray(ft.tablas) && ft.tablas.length > 0) ? (
+  const tablasHtml = (Array.isArray(ft.tablas) && ft.tablas.length > 0 && !isRubricasAula) ? (
     '<div class="panel">' +
     '<div class="sectionHeaderTitle">TABLAS CUANTITATIVAS ESPECIALIZADAS</div>' +
     ft.tablas.map((tbl, ti) => {
@@ -975,16 +1163,17 @@ export function renderDynamicForm({
     '<form id="regForm" autocomplete="off">' +
     uploadPanel +
     '<div class="panel">' +
-    '<div class="sectionHeaderTitle">DATOS DE LA VISITA</div>' +
+        '<div class="sectionHeaderTitle">DATOS DE LA VISITA</div>' +
     '<div class="fieldGrid">' +
     '<div class="field" style="grid-column:span 2">' +
-    '<label for="f_institucion">Institución educativa / CEBE / PRITE *</label>' +
+    '<label for="f_institucion">Institucin educativa / CEBE / PRITE *</label>' +
     '<div class="ieSearchWrap" id="ieSearchWrap">' +
-    '<input type="text" id="f_institucion" autocomplete="off" placeholder="Buscar por nombre o código modular..." required>' +
+    '<input type="text" id="f_institucion" autocomplete="off" placeholder="Buscar por nombre o cdigo modular..." required>' +
     '<div class="ieDropdown" id="ieDropdown"></div>' +
     '</div>' +
     '<span id="regColegioHint" style="display:none;font-size:11.5px;color:var(--primary-dark);margin-top:4px;display:block"></span>' +
     '</div>' +
+    '<div class="field"><label for="f_red">RED</label><input type="text" id="f_red" placeholder="Ej: 15" list="dl_red"></div>' +
     '<div class="field"><label for="f_fecha">Fecha *</label><input type="date" id="f_fecha" value="' + todayStr() + '" required></div>' +
     '<div class="field"><label for="f_visita">Nº de visita *</label><input type="number" id="f_visita" min="1" value="1" required></div>' +
     horasVisitaHtml +
@@ -1001,10 +1190,13 @@ export function renderDynamicForm({
     seccionesHtml +
     '</div>' +
     sintesisPanelHtml +
-    '<div class="panel">' +
-    '<div class="sectionHeaderTitle">OBSERVACIONES GENERALES</div>' +
-    '<textarea id="f_observaciones" placeholder="Hallazgos, evidencias verificables, notas de la visita..."></textarea>' +
-    '</div>' +
+        (!isRubricasAula ? (
+      '<div class="panel">' +
+      '<div class="sectionHeaderTitle">OBSERVACIONES GENERALES</div>' +
+      '<textarea id="f_observaciones" placeholder="Hallazgos, evidencias verificables, notas de la visita..."></textarea>' +
+      '</div>'
+    ) : '') +
+    
     directivoCompromisosHtml +
     '<div class="formBottomBar">' +
     '<div class="regProgressBadge" id="regProgressBadge">Avance: <strong>0 de ' + totalItemsCount + '</strong> ítems (0%)</div>' +
@@ -1092,7 +1284,6 @@ export function renderDynamicForm({
     r.addEventListener('change', updateProgressBadge);
   });
   updateProgressBadge();
-
   // Toggle de visibilidad de observaciones / hallazgos en indicadores
   host.querySelectorAll('.btnToggleObs, .btnToggleEvidencia').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -1194,6 +1385,11 @@ export function renderDynamicForm({
   const selectColegio = (c) => {
     instInput.value = c.ie || '';
     setRegSelectedColegioIdVal(c.id);
+
+    const redInp = document.getElementById('f_red');
+    if (redInp) {
+      redInp.value = c.rei || c.red || '';
+    }
 
     const directivos = getDirectivosActivosForColegio(state, c.id, c.codigoLocal, c.codigoModular);
     const dirActivo = directivos.director;
@@ -1495,17 +1691,41 @@ export function renderDynamicForm({
     inp.addEventListener('blur', () => { setTimeout(() => { drop.style.display = 'none'; }, 200); });
   });
 
+  // Toggle mutuamente exclusivo para casillas de ejecucin en la ficha docente (SI / NO)
+  host.querySelectorAll('.chk-planif-ejecucion').forEach(chk => {
+    chk.addEventListener('change', () => {
+      if (chk.checked) {
+        host.querySelectorAll('.chk-planif-ejecucion').forEach(other => {
+          if (other !== chk) other.checked = false;
+        });
+      }
+    });
+  });
   // ---- Pre-cargar datos si estamos en modo edición ----
   if (editingSubmissionData) {
     const d = editingSubmissionData;
     setTimeout(() => {
       if (document.getElementById('f_institucion')) {
         document.getElementById('f_institucion').value = d.institucion || '';
+        if (document.getElementById('f_red')) {
+          let rVal = d.red || d.rei || '';
+          if (!rVal && Array.isArray(d.extras)) {
+            const exRed = d.extras.find(e => (e.id === 'ex_rei' || e.id === 'ex_red' || (e.label || '').toLowerCase().includes('red') || (e.label || '').toLowerCase().includes('rei')));
+            if (exRed) rVal = exRed.value || '';
+          }
+          document.getElementById('f_red').value = rVal;
+        }
         document.getElementById('f_fecha').value = d.fecha || todayStr();
         document.getElementById('f_visita').value = d.visita || 1;
         document.getElementById('f_observaciones').value = d.observaciones || '';
-        if (document.getElementById('f_hora_inicio') && d.horaInicio) document.getElementById('f_hora_inicio').value = d.horaInicio;
-        if (document.getElementById('f_hora_termino') && d.horaTermino) document.getElementById('f_hora_termino').value = d.horaTermino;
+        if (document.getElementById('f_hora_inicio')) {
+          const hi = d.horaInicio || d.docenteHoraInicio || (Array.isArray(d.extras) ? d.extras.find(x => x && x.id === 'ex_hora_inicio')?.value : '');
+          if (hi) document.getElementById('f_hora_inicio').value = hi;
+        }
+        if (document.getElementById('f_hora_termino')) {
+          const ht = d.horaTermino || d.docenteHoraFin || (Array.isArray(d.extras) ? (d.extras.find(x => x && x.id === 'ex_hora_termino')?.value || d.extras.find(x => x && x.id === 'ex_hora_fin')?.value) : '');
+          if (ht) document.getElementById('f_hora_termino').value = ht;
+        }
         if (document.getElementById('f_comp_director') && d.compromisoDirector) document.getElementById('f_comp_director').value = d.compromisoDirector;
         if (document.getElementById('f_comp_monitor') && d.compromisoMonitor) document.getElementById('f_comp_monitor').value = d.compromisoMonitor;
 
@@ -1634,13 +1854,47 @@ export function renderDynamicForm({
                   Object.keys(rowData).forEach(cId => {
                     const inp = host.querySelector(`[name="tbl_${tblId}_${fId}_${cId}"]`);
                     if (inp && rowData[cId] !== undefined) {
-                      inp.value = rowData[cId];
+                      if (inp.type === 'checkbox') {
+                        inp.checked = Boolean(rowData[cId] === '1' || rowData[cId] === true || rowData[cId] === 'true' || rowData[cId] === 'SI' || rowData[cId] === 'S');
+                      } else {
+                        inp.value = rowData[cId];
+                      }
                     }
                   });
                 }
               });
             }
           });
+        }
+
+                // Compatibilidad hacia atrás con registros anteriores de planificación curricular
+        if (d && d.tablasRespuestas && d.tablasRespuestas.tbl_datos_planificacion && !d.tablasRespuestas.tbl_datos_planif_2_1) {
+          const oldTbl = d.tablasRespuestas.tbl_datos_planificacion;
+          const fFormas = oldTbl.f_formas ? (oldTbl.f_formas.c_detalle || '') : '';
+          if (fFormas) {
+            const fLow = fFormas.toLowerCase();
+            if (fLow.includes('proyecto')) { const inp = host.querySelector('[name="tbl_tbl_datos_planif_2_1_f_2_1_c_proyectos"]'); if (inp) inp.checked = true; }
+            if (fLow.includes('unidad')) { const inp = host.querySelector('[name="tbl_tbl_datos_planif_2_1_f_2_1_c_unidades"]'); if (inp) inp.checked = true; }
+            if (fLow.includes('taller')) { const inp = host.querySelector('[name="tbl_tbl_datos_planif_2_1_f_2_1_c_talleres"]'); if (inp) inp.checked = true; }
+            if (fLow.includes('otro')) { const inp = host.querySelector('[name="tbl_tbl_datos_planif_2_1_f_2_1_c_otros"]'); if (inp) inp.checked = true; }
+          }
+          const fEjec = oldTbl.f_ejecucion ? (oldTbl.f_ejecucion.c_detalle || '') : '';
+          if (fEjec) {
+            const eLow = fEjec.toLowerCase();
+            if (eLow === 'si' || eLow === 'sí' || eLow.startsWith('si') || eLow.startsWith('sí')) {
+              const inpSi = host.querySelector('[name="tbl_tbl_datos_planif_2_2_f_2_2_c_si"]');
+              if (inpSi) inpSi.checked = true;
+            } else if (eLow === 'no' || eLow.startsWith('no')) {
+              const inpNo = host.querySelector('[name="tbl_tbl_datos_planif_2_2_f_2_2_c_no"]');
+              if (inpNo) inpNo.checked = true;
+            }
+            const inpObs = host.querySelector('[name="tbl_tbl_datos_planif_2_2_f_2_2_c_observaciones"]');
+            if (inpObs && !inpObs.value) inpObs.value = fEjec;
+          }
+        }
+        if (isRubricasAula && d && d.observaciones) {
+          const obsInp = host.querySelector('[name="tbl_tbl_observaciones_docente_f_obs_planif_c_detalle_obs"]');
+          if (obsInp && !obsInp.value) obsInp.value = d.observaciones;
         }
 
         updateProgressBadge();
@@ -1680,10 +1934,13 @@ export function renderDynamicForm({
     }, 0);
   }
 
-  document.getElementById('addCompBtn').addEventListener('click', () => {
-    regCompromisos.push({ texto: '', responsable: '', plazo: '' });
-    renderCompList();
-  });
+  const addCompBtn = document.getElementById('addCompBtn') || host.querySelector('#addCompBtn');
+  if (addCompBtn) {
+    addCompBtn.addEventListener('click', () => {
+      regCompromisos.push({ texto: '', responsable: '', plazo: '' });
+      renderCompList();
+    });
+  }
   renderCompList();
 
   // Sincronizar estado visual de los botones de observación en tiempo real

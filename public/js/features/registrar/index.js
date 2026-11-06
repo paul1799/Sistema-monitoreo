@@ -24,11 +24,11 @@ import {
   isFichaCoordPedagogico,
   isFichaEbrGestionEscolar,
   getSubmissionVisitaNum
-} from '../../calcEngine.js?v=20261030_v1';
+} from '../../calcEngine.js?v=20261103_v8';
 import {
   renderEbrGestionForm,
   preloadEbrFormState
-} from '../../ebr-gestion.js';
+} from '../../ebr-gestion.js?v=20261103_v8';
 import {
   isFichaCebeGestion,
   renderCebeGestionForm,
@@ -84,7 +84,7 @@ import {
   syncCommonJecFields,
   renderUnifiedJecForm,
   renderDynamicForm
-} from './form-render.js';
+} from './form-render.js?v=20261106_v3';
 import { onSubmitRegistro } from './save.js';
 import {
   fileToBase64,

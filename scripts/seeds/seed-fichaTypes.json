@@ -4,50 +4,50 @@
                                "nombreCorto":  "Materiales educativos (CEBE/PRITE)",
                                "orden":  32,
                                "tieneVisitas":  false,
-                               "descripcion":  "Verifica la recepción, distribución, uso pedagógico, seguimiento y conservación de los materiales educativos en CEBE y PRITE.",
+                               "descripcion":  "Verifica la recepciÃ³n, distribuciÃ³n, uso pedagÃ³gico, seguimiento y conservaciÃ³n de los materiales educativos en CEBE y PRITE.",
                                "extras":  [
                                               {
                                                   "label":  "REI"
                                               }
                                           ],
-                               "icono":  "📦",
-                               "nombre":  "Monitoreo de Gestión y Uso Pedagógico de Materiales Educativos (CEBE/PRITE)",
+                               "icono":  "ðŸ“¦",
+                               "nombre":  "Monitoreo de GestiÃ³n y Uso PedagÃ³gico de Materiales Educativos (CEBE/PRITE)",
                                "secciones":  [
                                                  {
                                                      "items":  [
                                                                    {
                                                                        "id":  "mc_1",
-                                                                       "texto":  "La institución educativa recibió materiales educativos fungibles"
+                                                                       "texto":  "La instituciÃ³n educativa recibiÃ³ materiales educativos fungibles"
                                                                    },
                                                                    {
                                                                        "id":  "mc_2",
-                                                                       "texto":  "La institución educativa recibió materiales educativos no fungibles"
+                                                                       "texto":  "La instituciÃ³n educativa recibiÃ³ materiales educativos no fungibles"
                                                                    },
                                                                    {
                                                                        "id":  "mc_3",
-                                                                       "texto":  "Los materiales no fungibles recibidos están registrados en el inventario institucional"
+                                                                       "texto":  "Los materiales no fungibles recibidos estÃ¡n registrados en el inventario institucional"
                                                                    }
                                                                ],
-                                                     "nombre":  "Recepción"
+                                                     "nombre":  "RecepciÃ³n"
                                                  },
                                                  {
                                                      "items":  [
                                                                    {
                                                                        "id":  "mc_4",
-                                                                       "texto":  "Se realizó la distribución de materiales fungibles a los docentes"
+                                                                       "texto":  "Se realizÃ³ la distribuciÃ³n de materiales fungibles a los docentes"
                                                                    },
                                                                    {
                                                                        "id":  "mc_5",
-                                                                       "texto":  "Se realizó la distribución de materiales no fungibles a los docentes"
+                                                                       "texto":  "Se realizÃ³ la distribuciÃ³n de materiales no fungibles a los docentes"
                                                                    }
                                                                ],
-                                                     "nombre":  "Distribución"
+                                                     "nombre":  "DistribuciÃ³n"
                                                  },
                                                  {
                                                      "items":  [
                                                                    {
                                                                        "id":  "mc_6",
-                                                                       "texto":  "Los docentes incorporan los materiales educativos en su planificación curricular"
+                                                                       "texto":  "Los docentes incorporan los materiales educativos en su planificaciÃ³n curricular"
                                                                    },
                                                                    {
                                                                        "id":  "mc_7",
@@ -55,24 +55,24 @@
                                                                    },
                                                                    {
                                                                        "id":  "mc_8",
-                                                                       "texto":  "Los materiales utilizados guardan relación con los propósitos de aprendizaje planteados"
+                                                                       "texto":  "Los materiales utilizados guardan relaciÃ³n con los propÃ³sitos de aprendizaje planteados"
                                                                    },
                                                                    {
                                                                        "id":  "mc_9",
-                                                                       "texto":  "Los materiales cuentan con adaptaciones acordes a las características y necesidades de los estudiantes"
+                                                                       "texto":  "Los materiales cuentan con adaptaciones acordes a las caracterÃ­sticas y necesidades de los estudiantes"
                                                                    }
                                                                ],
-                                                     "nombre":  "Uso pedagógico"
+                                                     "nombre":  "Uso pedagÃ³gico"
                                                  },
                                                  {
                                                      "items":  [
                                                                    {
                                                                        "id":  "mc_10",
-                                                                       "texto":  "La dirección realiza monitoreo del uso de los materiales distribuidos a docentes/tutores"
+                                                                       "texto":  "La direcciÃ³n realiza monitoreo del uso de los materiales distribuidos a docentes/tutores"
                                                                    },
                                                                    {
                                                                        "id":  "mc_11",
-                                                                       "texto":  "La dirección brinda orientaciones a los docentes sobre el uso pertinente de los materiales durante el monitoreo pedagógico"
+                                                                       "texto":  "La direcciÃ³n brinda orientaciones a los docentes sobre el uso pertinente de los materiales durante el monitoreo pedagÃ³gico"
                                                                    }
                                                                ],
                                                      "nombre":  "Seguimiento"
@@ -81,7 +81,7 @@
                                                      "items":  [
                                                                    {
                                                                        "id":  "mc_12",
-                                                                       "texto":  "Los materiales fungibles se encuentran en espacios con condiciones adecuadas de conservación y seguridad"
+                                                                       "texto":  "Los materiales fungibles se encuentran en espacios con condiciones adecuadas de conservaciÃ³n y seguridad"
                                                                    },
                                                                    {
                                                                        "id":  "mc_13",
@@ -89,10 +89,10 @@
                                                                    },
                                                                    {
                                                                        "id":  "mc_14",
-                                                                       "texto":  "La institución cuenta con un mecanismo de control de ingreso, salida y préstamo de materiales no fungibles"
+                                                                       "texto":  "La instituciÃ³n cuenta con un mecanismo de control de ingreso, salida y prÃ©stamo de materiales no fungibles"
                                                                    }
                                                                ],
-                                                     "nombre":  "Conservación y control"
+                                                     "nombre":  "ConservaciÃ³n y control"
                                                  }
                                              ],
                                "tipoRespuesta":  "si_no",
@@ -120,11 +120,14 @@
                                                "anio":  2026,
                                                "momento":  null,
                                                "estado":  "publicada"
-                                           }
+                                           },
+                               "id":  "ft_materiales_cebe",
+                               "escala":  "SI_NO_NA",
+                               "tipoVisitas":  "mismos_items"
                            },
     "ft_coord_tutoria_jec":  {
                                  "grupo":  "Modelo JEC",
-                                 "nombreCorto":  "Coord. de Tutoría (JEC)",
+                                 "nombreCorto":  "Coord. de TutorÃ­a (JEC)",
                                  "orden":  11,
                                  "tieneVisitas":  true,
                                  "tipoVisitas":  "mismos_items",
@@ -132,14 +135,14 @@
                                                  "2do Momento (V2)",
                                                  "3er Momento (V3)"
                                              ],
-                                 "modalidad":  "Tutoría",
+                                 "modalidad":  "TutorÃ­a",
                                  "color":  "#0284C7",
-                                 "icono":  "🧭",
-                                 "descripcion":  "Evalúa el cumplimiento de las funciones del coordinador de tutoría: planificación, visitas de aula, reuniones colegiadas, tutoría individual y trabajo con familias.",
+                                 "icono":  "ðŸ§­",
+                                 "descripcion":  "EvalÃºa el cumplimiento de las funciones del coordinador de tutorÃ­a: planificaciÃ³n, visitas de aula, reuniones colegiadas, tutorÃ­a individual y trabajo con familias.",
                                  "extras":  [
                                                 {
                                                     "id":  "ex_coord",
-                                                    "label":  "Coordinador(a) de tutoría",
+                                                    "label":  "Coordinador(a) de tutorÃ­a",
                                                     "tipo":  "texto",
                                                     "required":  true
                                                 },
@@ -151,7 +154,7 @@
                                                 },
                                                 {
                                                     "id":  "ex_coord_condicion",
-                                                    "label":  "Condición del coordinador(a)",
+                                                    "label":  "CondiciÃ³n del coordinador(a)",
                                                     "tipo":  "seleccion",
                                                     "opciones":  [
                                                                      "Nombrado(a)",
@@ -179,7 +182,7 @@
                                                 },
                                                 {
                                                     "id":  "ex_dir_condicion",
-                                                    "label":  "Condición del director(a)",
+                                                    "label":  "CondiciÃ³n del director(a)",
                                                     "tipo":  "seleccion",
                                                     "opciones":  [
                                                                      "Encargado(a)",
@@ -201,39 +204,39 @@
                                                 },
                                                 {
                                                     "id":  "ex_cant_tut",
-                                                    "label":  "N° de docentes tutores a cargo",
+                                                    "label":  "NÂ° de docentes tutores a cargo",
                                                     "tipo":  "numero",
                                                     "required":  false
                                                 },
                                                 {
                                                     "id":  "ex_horas_visita",
-                                                    "label":  "Horas pedagógicas / de acompañamiento",
+                                                    "label":  "Horas pedagÃ³gicas / de acompaÃ±amiento",
                                                     "tipo":  "texto",
                                                     "required":  false
                                                 }
                                             ],
-                                 "nombre":  "Monitoreo a las Funciones del Coordinador(a) de Tutoría (JEC)",
+                                 "nombre":  "Monitoreo a las Funciones del Coordinador(a) de TutorÃ­a (JEC)",
                                  "secciones":  [
                                                    {
-                                                       "nombre":  "Planificación de la tutoría grupal",
+                                                       "nombre":  "PlanificaciÃ³n de la tutorÃ­a grupal",
                                                        "items":  [
                                                                      {
                                                                          "id":  "ct_1",
                                                                          "num":  1,
-                                                                         "texto":  "Orienta a los docentes tutores en la planificación colegiada de la tutoría grupal",
-                                                                         "evidencia":  "Acta con orientaciones para la tutoría grupal según necesidades estudiantiles"
+                                                                         "texto":  "Orienta a los docentes tutores en la planificaciÃ³n colegiada de la tutorÃ­a grupal",
+                                                                         "evidencia":  "Acta con orientaciones para la tutorÃ­a grupal segÃºn necesidades estudiantiles"
                                                                      },
                                                                      {
                                                                          "id":  "ct_2",
                                                                          "num":  2,
-                                                                         "texto":  "Analiza las planificaciones de las sesiones de tutoría grupal con el fin de orientar su mejora",
-                                                                         "evidencia":  "Planificación de tutoría grupal revisada, con anotaciones y sugerencias escritas"
+                                                                         "texto":  "Analiza las planificaciones de las sesiones de tutorÃ­a grupal con el fin de orientar su mejora",
+                                                                         "evidencia":  "PlanificaciÃ³n de tutorÃ­a grupal revisada, con anotaciones y sugerencias escritas"
                                                                      },
                                                                      {
                                                                          "id":  "ct_3",
                                                                          "num":  3,
-                                                                         "texto":  "Brinda retroalimentación reflexiva, logrando compromisos de mejora con el docente tutor",
-                                                                         "evidencia":  "Registro de retroalimentación con compromisos acordados."
+                                                                         "texto":  "Brinda retroalimentaciÃ³n reflexiva, logrando compromisos de mejora con el docente tutor",
+                                                                         "evidencia":  "Registro de retroalimentaciÃ³n con compromisos acordados."
                                                                      }
                                                                  ]
                                                    },
@@ -249,26 +252,26 @@
                                                                      {
                                                                          "id":  "ct_5",
                                                                          "num":  5,
-                                                                         "texto":  "Realiza visitas de acompañamiento al docente tutor de forma planificada, conforme a cronograma",
-                                                                         "evidencia":  "Registro de visitas de acompañamiento realizadas según cronograma establecido."
+                                                                         "texto":  "Realiza visitas de acompaÃ±amiento al docente tutor de forma planificada, conforme a cronograma",
+                                                                         "evidencia":  "Registro de visitas de acompaÃ±amiento realizadas segÃºn cronograma establecido."
                                                                      },
                                                                      {
                                                                          "id":  "ct_6",
                                                                          "num":  6,
-                                                                         "texto":  "Registra información utilizando el cuaderno de campo u otro instrumento de observación",
+                                                                         "texto":  "Registra informaciÃ³n utilizando el cuaderno de campo u otro instrumento de observaciÃ³n",
                                                                          "evidencia":  "Cuaderno de campo u otro instrumento"
                                                                      },
                                                                      {
                                                                          "id":  "ct_7",
                                                                          "num":  7,
-                                                                         "texto":  "Prepara preguntas reflexivas para brindar la retroalimentación al docente tutor",
+                                                                         "texto":  "Prepara preguntas reflexivas para brindar la retroalimentaciÃ³n al docente tutor",
                                                                          "evidencia":  "Cuaderno de campo u otro instrumento con preguntas elaboradas"
                                                                      },
                                                                      {
                                                                          "id":  "ct_8",
                                                                          "num":  8,
-                                                                         "texto":  "Brinda retroalimentación mediante un diálogo reflexivo con el docente tutor visitado",
-                                                                         "evidencia":  "Registro de retroalimentación (cuaderno de campo u otro instrumento)."
+                                                                         "texto":  "Brinda retroalimentaciÃ³n mediante un diÃ¡logo reflexivo con el docente tutor visitado",
+                                                                         "evidencia":  "Registro de retroalimentaciÃ³n (cuaderno de campo u otro instrumento)."
                                                                      }
                                                                  ]
                                                    },
@@ -278,14 +281,14 @@
                                                                      {
                                                                          "id":  "ct_9",
                                                                          "num":  9,
-                                                                         "texto":  "Planifica reuniones colegiadas orientadas al acompañamiento tutorial de los docentes",
-                                                                         "evidencia":  "Ficha de planificación de la reunión colegiada con propósito pedagógico, estrategias y recursos definidos."
+                                                                         "texto":  "Planifica reuniones colegiadas orientadas al acompaÃ±amiento tutorial de los docentes",
+                                                                         "evidencia":  "Ficha de planificaciÃ³n de la reuniÃ³n colegiada con propÃ³sito pedagÃ³gico, estrategias y recursos definidos."
                                                                      },
                                                                      {
                                                                          "id":  "ct_10",
                                                                          "num":  10,
-                                                                         "texto":  "Conduce reuniones semanales de trabajo colegiado según lo planificado",
-                                                                         "evidencia":  "Acta de reunión colegiada"
+                                                                         "texto":  "Conduce reuniones semanales de trabajo colegiado segÃºn lo planificado",
+                                                                         "evidencia":  "Acta de reuniÃ³n colegiada"
                                                                      },
                                                                      {
                                                                          "id":  "ct_11",
@@ -296,77 +299,77 @@
                                                                  ]
                                                    },
                                                    {
-                                                       "nombre":  "Tutoría individual y trabajo con las familias",
+                                                       "nombre":  "TutorÃ­a individual y trabajo con las familias",
                                                        "items":  [
                                                                      {
                                                                          "id":  "ct_12",
                                                                          "num":  12,
-                                                                         "texto":  "Asegura que los docentes realicen tutorías individuales según las necesidades de los estudiantes, incluyendo casos priorizados",
-                                                                         "evidencia":  "Registro de tutorías individuales realizadas por los docentes"
+                                                                         "texto":  "Asegura que los docentes realicen tutorÃ­as individuales segÃºn las necesidades de los estudiantes, incluyendo casos priorizados",
+                                                                         "evidencia":  "Registro de tutorÃ­as individuales realizadas por los docentes"
                                                                      },
                                                                      {
                                                                          "id":  "ct_13",
                                                                          "num":  13,
-                                                                         "texto":  "Coordina acciones con el psicólogo para identificar, atender y derivar casos priorizados",
-                                                                         "evidencia":  "Registro de coordinación con el psicólogo, que incluye acciones realizadas e identificación de casos priorizados."
+                                                                         "texto":  "Coordina acciones con el psicÃ³logo para identificar, atender y derivar casos priorizados",
+                                                                         "evidencia":  "Registro de coordinaciÃ³n con el psicÃ³logo, que incluye acciones realizadas e identificaciÃ³n de casos priorizados."
                                                                      },
                                                                      {
                                                                          "id":  "ct_14",
                                                                          "num":  14,
-                                                                         "texto":  "Coordina con el psicólogo espacios de orientación y encuentro con las familias",
-                                                                         "evidencia":  "Agenda o acta de reuniones con el psicólogo"
+                                                                         "texto":  "Coordina con el psicÃ³logo espacios de orientaciÃ³n y encuentro con las familias",
+                                                                         "evidencia":  "Agenda o acta de reuniones con el psicÃ³logo"
                                                                      },
                                                                      {
                                                                          "id":  "ct_15",
                                                                          "num":  15,
-                                                                         "texto":  "Gestiona junto al psicólogo las redes de apoyo de instituciones y redes comunitarias para familias vulnerables",
-                                                                         "evidencia":  "Registro de coordinación o acta de coordinación"
+                                                                         "texto":  "Gestiona junto al psicÃ³logo las redes de apoyo de instituciones y redes comunitarias para familias vulnerables",
+                                                                         "evidencia":  "Registro de coordinaciÃ³n o acta de coordinaciÃ³n"
                                                                      }
                                                                  ]
                                                    },
                                                    {
-                                                       "nombre":  "Participación estudiantil y orientación educativa permanente",
+                                                       "nombre":  "ParticipaciÃ³n estudiantil y orientaciÃ³n educativa permanente",
                                                        "items":  [
                                                                      {
                                                                          "id":  "ct_16",
                                                                          "num":  16,
-                                                                         "texto":  "Realiza el seguimiento a los espacios de participación estudiantil",
-                                                                         "evidencia":  "Registro de seguimiento a las actividades de participación estudiantil (actas, informes o cronogramas)."
+                                                                         "texto":  "Realiza el seguimiento a los espacios de participaciÃ³n estudiantil",
+                                                                         "evidencia":  "Registro de seguimiento a las actividades de participaciÃ³n estudiantil (actas, informes o cronogramas)."
                                                                      },
                                                                      {
                                                                          "id":  "ct_17",
                                                                          "num":  17,
-                                                                         "texto":  "Planifica actividades específicas que promuevan la participación activa e inclusiva de los estudiantes",
-                                                                         "evidencia":  "Plan de Tutoría y Orientación Educativa (PTOE) actualizado en proceso de implementación o implementado."
+                                                                         "texto":  "Planifica actividades especÃ­ficas que promuevan la participaciÃ³n activa e inclusiva de los estudiantes",
+                                                                         "evidencia":  "Plan de TutorÃ­a y OrientaciÃ³n Educativa (PTOE) actualizado en proceso de implementaciÃ³n o implementado."
                                                                      },
                                                                      {
                                                                          "id":  "ct_18",
                                                                          "num":  18,
-                                                                         "texto":  "Gestiona y articula con docentes tutores y no tutores la implementación de la orientación educativa",
-                                                                         "evidencia":  "Plan de Tutoría y Orientación Educativa (PTOE) actualizado en proceso de implementación o implementado."
+                                                                         "texto":  "Gestiona y articula con docentes tutores y no tutores la implementaciÃ³n de la orientaciÃ³n educativa",
+                                                                         "evidencia":  "Plan de TutorÃ­a y OrientaciÃ³n Educativa (PTOE) actualizado en proceso de implementaciÃ³n o implementado."
                                                                      }
                                                                  ]
                                                    },
                                                    {
-                                                       "nombre":  "Reuniones de trabajo con el equipo directivo de la institución educativa",
+                                                       "nombre":  "Reuniones de trabajo con el equipo directivo de la instituciÃ³n educativa",
                                                        "items":  [
                                                                      {
                                                                          "id":  "ct_19",
                                                                          "num":  19,
                                                                          "texto":  "Participa activamente en las reuniones de trabajo colegiado con los directivos de la IE",
-                                                                         "evidencia":  "Actas de reuniones colegiadas con participación del Coordinador(a) de Tutoría"
+                                                                         "evidencia":  "Actas de reuniones colegiadas con participaciÃ³n del Coordinador(a) de TutorÃ­a"
                                                                      },
                                                                      {
                                                                          "id":  "ct_20",
                                                                          "num":  20,
-                                                                         "texto":  "Presenta a la dirección un informe sobre los hallazgos del proceso de acompañamiento a los docentes tutores",
-                                                                         "evidencia":  "Informe sobre los hallazgos del proceso de acompañamiento a los docentes tutores."
+                                                                         "texto":  "Presenta a la direcciÃ³n un informe sobre los hallazgos del proceso de acompaÃ±amiento a los docentes tutores",
+                                                                         "evidencia":  "Informe sobre los hallazgos del proceso de acompaÃ±amiento a los docentes tutores."
                                                                      },
                                                                      {
                                                                          "id":  "ct_21",
                                                                          "num":  21,
-                                                                         "texto":  "Socializa los resultados del acompañamiento a la acción tutorial, proponiendo alternativas de mejora",
-                                                                         "evidencia":  "Informe sobre los hallazgos del proceso de acompañamiento a los docentes tutores."
+                                                                         "texto":  "Socializa los resultados del acompaÃ±amiento a la acciÃ³n tutorial, proponiendo alternativas de mejora",
+                                                                         "evidencia":  "Informe sobre los hallazgos del proceso de acompaÃ±amiento a los docentes tutores."
                                                                      }
                                                                  ]
                                                    }
@@ -377,28 +380,28 @@
                                                      "escala":  "escala_1_3",
                                                      "maxPuntaje":  63,
                                                      "minPuntaje":  21,
-                                                     "nota":  "Regla oficial Coordinador(a) de Tutoría JEC: Cumple (53–63), Cumple parcialmente (42–52), No cumple (21–41)",
+                                                     "nota":  "Regla oficial Coordinador(a) de TutorÃ­a JEC: Cumple (53â€“63), Cumple parcialmente (42â€“52), No cumple (21â€“41)",
                                                      "rangos":  [
                                                                     {
                                                                         "nivel":  "Cumple",
                                                                         "min":  53,
                                                                         "max":  63,
                                                                         "estado_panel":  "Logrado",
-                                                                        "descripcion":  "El/la coordinador(a) de tutoría cumple con la función de manera oportuna, pertinente y sostenida."
+                                                                        "descripcion":  "El/la coordinador(a) de tutorÃ­a cumple con la funciÃ³n de manera oportuna, pertinente y sostenida."
                                                                     },
                                                                     {
                                                                         "nivel":  "Cumple parcialmente",
                                                                         "min":  42,
                                                                         "max":  52,
                                                                         "estado_panel":  "En proceso",
-                                                                        "descripcion":  "El/la coordinador(a) de tutoría cumple parcialmente con la función o se encuentra en proceso de consolidación."
+                                                                        "descripcion":  "El/la coordinador(a) de tutorÃ­a cumple parcialmente con la funciÃ³n o se encuentra en proceso de consolidaciÃ³n."
                                                                     },
                                                                     {
                                                                         "nivel":  "No cumple",
                                                                         "min":  21,
                                                                         "max":  41,
                                                                         "estado_panel":  "Inicio",
-                                                                        "descripcion":  "El/la coordinador(a) de tutoría no cumple o cumple de forma mínima, sin responder al propósito pedagógico esperado."
+                                                                        "descripcion":  "El/la coordinador(a) de tutorÃ­a no cumple o cumple de forma mÃ­nima, sin responder al propÃ³sito pedagÃ³gico esperado."
                                                                     }
                                                                 ]
                                                  },
@@ -412,22 +415,23 @@
                                                  "anio":  2026,
                                                  "momento":  null,
                                                  "estado":  "publicada"
-                                             }
+                                             },
+                                 "id":  "ft_coord_tutoria_jec"
                              },
     "ft_msejec_2do":  {
                           "grupo":  "Modelo JEC",
-                          "nombreCorto":  "Implementación del Modelo JEC",
+                          "nombreCorto":  "ImplementaciÃ³n del Modelo JEC",
                           "orden":  10,
                           "tieneVisitas":  true,
-                          "descripcion":  "Verifica la implementación de los componentes pedagógico, de gestión y de soporte del Modelo de Servicio Educativo Jornada Escolar Completa.",
+                          "descripcion":  "Verifica la implementaciÃ³n de los componentes pedagÃ³gico, de gestiÃ³n y de soporte del Modelo de Servicio Educativo Jornada Escolar Completa.",
                           "extras":  [
                                          {
-                                             "label":  "¿La IE implementa el modelo de Servicio Educativo Secundaria con Formación Técnica?",
+                                             "label":  "Â¿La IE implementa el modelo de Servicio Educativo Secundaria con FormaciÃ³n TÃ©cnica?",
                                              "tipo":  "si_no",
                                              "required":  true
                                          },
                                          {
-                                             "label":  "N° de secciones",
+                                             "label":  "NÂ° de secciones",
                                              "tipo":  "numero"
                                          },
                                          {
@@ -439,7 +443,7 @@
                                              "tipo":  "numero"
                                          },
                                          {
-                                             "label":  "Directivo que brinda la información",
+                                             "label":  "Directivo que brinda la informaciÃ³n",
                                              "tipo":  "texto"
                                          },
                                          {
@@ -447,26 +451,26 @@
                                              "tipo":  "texto"
                                          },
                                          {
-                                             "label":  "Teléfono celular",
+                                             "label":  "TelÃ©fono celular",
                                              "tipo":  "texto"
                                          },
                                          {
-                                             "label":  "Correo electrónico",
+                                             "label":  "Correo electrÃ³nico",
                                              "tipo":  "texto"
                                          }
                                      ],
-                          "icono":  "🏫",
-                          "nombre":  "Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC",
+                          "icono":  "ðŸ«",
+                          "nombre":  "Monitoreo y Asistencia TÃ©cnica a la ImplementaciÃ³n del Modelo JEC",
                           "secciones":  [
                                             {
                                                 "items":  [
                                                               {
                                                                   "id":  "jec_1",
-                                                                  "texto":  "El horario institucional evidencia la organización de la jornada escolar en 9 horas pedagógicas diarias de 45 minutos, conforme al plan de estudios MSE JEC"
+                                                                  "texto":  "El horario institucional evidencia la organizaciÃ³n de la jornada escolar en 9 horas pedagÃ³gicas diarias de 45 minutos, conforme al plan de estudios MSE JEC"
                                                               },
                                                               {
                                                                   "id":  "jec_2",
-                                                                  "texto":  "La IE cuenta con un diagnóstico de las necesidades de aprendizaje de los estudiantes que orienta la planificación pedagógica"
+                                                                  "texto":  "La IE cuenta con un diagnÃ³stico de las necesidades de aprendizaje de los estudiantes que orienta la planificaciÃ³n pedagÃ³gica"
                                                               },
                                                               {
                                                                   "id":  "jec_3",
@@ -474,117 +478,117 @@
                                                               },
                                                               {
                                                                   "id":  "jec_4",
-                                                                  "texto":  "La IE cuenta con informes, actas, registros o acuerdos que evidencian el seguimiento a la implementación del Plan TOECE"
+                                                                  "texto":  "La IE cuenta con informes, actas, registros o acuerdos que evidencian el seguimiento a la implementaciÃ³n del Plan TOECE"
                                                               },
                                                               {
                                                                   "id":  "jec_5",
-                                                                  "texto":  "La IE cuenta con sesiones de tutoría grupal que evidencian coherencia con el Plan TOECE y las necesidades socioemocionales identificadas"
+                                                                  "texto":  "La IE cuenta con sesiones de tutorÃ­a grupal que evidencian coherencia con el Plan TOECE y las necesidades socioemocionales identificadas"
                                                               },
                                                               {
                                                                   "id":  "jec_6",
-                                                                  "texto":  "La IE cuenta con registros de atención tutorial individual que evidencian seguimiento a estudiantes con necesidades específicas"
+                                                                  "texto":  "La IE cuenta con registros de atenciÃ³n tutorial individual que evidencian seguimiento a estudiantes con necesidades especÃ­ficas"
                                                               },
                                                               {
                                                                   "id":  "jec_7",
-                                                                  "texto":  "La IE cuenta con el plan de trabajo del psicólogo(a) actualizado, con actividades para estudiantes, orientación a familias y acciones formativas con docentes"
+                                                                  "texto":  "La IE cuenta con el plan de trabajo del psicÃ³logo(a) actualizado, con actividades para estudiantes, orientaciÃ³n a familias y acciones formativas con docentes"
                                                               },
                                                               {
                                                                   "id":  "jec_8",
-                                                                  "texto":  "La IE cuenta con informes, registros, actas u otros documentos que evidencian que el psicólogo(a) desarrolla acciones dirigidas a estudiantes, docentes y familias"
+                                                                  "texto":  "La IE cuenta con informes, registros, actas u otros documentos que evidencian que el psicÃ³logo(a) desarrolla acciones dirigidas a estudiantes, docentes y familias"
                                                               },
                                                               {
                                                                   "id":  "jec_9",
                                                                   "texto":  "Las sesiones de aprendizaje revisadas evidencian que responden a las necesidades de aprendizaje identificadas en los estudiantes"
                                                               }
                                                           ],
-                                                "nombre":  "Componente pedagógico (Implementación TOECE)"
+                                                "nombre":  "Componente pedagÃ³gico (ImplementaciÃ³n TOECE)"
                                             },
                                             {
                                                 "items":  [
                                                               {
                                                                   "id":  "jec_10",
-                                                                  "texto":  "La IE cuenta con un Plan Anual de Trabajo (PAT) que incorpora acciones del MSE JEC relacionadas con tutoría, acompañamiento, trabajo colegiado y CIST"
+                                                                  "texto":  "La IE cuenta con un Plan Anual de Trabajo (PAT) que incorpora acciones del MSE JEC relacionadas con tutorÃ­a, acompaÃ±amiento, trabajo colegiado y CIST"
                                                               },
                                                               {
                                                                   "id":  "jec_11",
-                                                                  "texto":  "La IE cuenta con actas, acuerdos u otros registros que evidencian la organización de la comunidad educativa para asegurar el refrigerio escolar y recreos"
+                                                                  "texto":  "La IE cuenta con actas, acuerdos u otros registros que evidencian la organizaciÃ³n de la comunidad educativa para asegurar el refrigerio escolar y recreos"
                                                               },
                                                               {
                                                                   "id":  "jec_12",
-                                                                  "texto":  "La IE cuenta con actas, comunicados, informes o registros que evidencian acciones de información y orientación a las familias"
+                                                                  "texto":  "La IE cuenta con actas, comunicados, informes o registros que evidencian acciones de informaciÃ³n y orientaciÃ³n a las familias"
                                                               },
                                                               {
                                                                   "id":  "jec_13",
-                                                                  "texto":  "La IE cuenta con actas, informes o registros que evidencian la promoción de espacios de participación estudiantil"
+                                                                  "texto":  "La IE cuenta con actas, informes o registros que evidencian la promociÃ³n de espacios de participaciÃ³n estudiantil"
                                                               },
                                                               {
                                                                   "id":  "jec_14",
-                                                                  "texto":  "La IE cuenta con fichas, actas, registros u otros documentos que evidencian acciones de acompañamiento del director y subdirector a docentes y coordinadores"
+                                                                  "texto":  "La IE cuenta con fichas, actas, registros u otros documentos que evidencian acciones de acompaÃ±amiento del director y subdirector a docentes y coordinadores"
                                                               },
                                                               {
                                                                   "id":  "jec_15",
-                                                                  "texto":  "La IE organiza las evidencias de la implementación del PEAI de acuerdo a la matriz de logros ambientales"
+                                                                  "texto":  "La IE organiza las evidencias de la implementaciÃ³n del PEAI de acuerdo a la matriz de logros ambientales"
                                                               },
                                                               {
                                                                   "id":  "jec_16",
-                                                                  "texto":  "Los directivos monitorean la ejecución de las acciones del Plan Lector para la toma de decisiones y mejoras"
+                                                                  "texto":  "Los directivos monitorean la ejecuciÃ³n de las acciones del Plan Lector para la toma de decisiones y mejoras"
                                                               },
                                                               {
                                                                   "id":  "jec_17",
-                                                                  "texto":  "Se identifican buenas prácticas/proyectos de innovación y se promueven espacios de intercambio de experiencias"
+                                                                  "texto":  "Se identifican buenas prÃ¡cticas/proyectos de innovaciÃ³n y se promueven espacios de intercambio de experiencias"
                                                               },
                                                               {
                                                                   "id":  "jec_18",
-                                                                  "texto":  "El equipo directivo realiza el monitoreo y seguimiento al uso pedagógico de textos escolares y material concreto"
+                                                                  "texto":  "El equipo directivo realiza el monitoreo y seguimiento al uso pedagÃ³gico de textos escolares y material concreto"
                                                               },
                                                               {
                                                                   "id":  "jec_19",
-                                                                  "texto":  "El directivo realiza el seguimiento a la participación de los docentes en las acciones formativas MINEDU (DIFODS-JEC)"
+                                                                  "texto":  "El directivo realiza el seguimiento a la participaciÃ³n de los docentes en las acciones formativas MINEDU (DIFODS-JEC)"
                                                               },
                                                               {
                                                                   "id":  "jec_20",
-                                                                  "texto":  "Los directivos han socializado los oficios múltiples correspondientes, asegurando su conocimiento e implementación"
+                                                                  "texto":  "Los directivos han socializado los oficios mÃºltiples correspondientes, asegurando su conocimiento e implementaciÃ³n"
                                                               }
                                                           ],
-                                                "nombre":  "Componente de gestión"
+                                                "nombre":  "Componente de gestiÃ³n"
                                             },
                                             {
                                                 "items":  [
                                                               {
                                                                   "id":  "jec_21",
-                                                                  "texto":  "La IE cuenta con actas, registros o materiales que evidencian la sensibilización realizada por los coordinadores pedagógicos (CP) a sus docentes a cargo"
+                                                                  "texto":  "La IE cuenta con actas, registros o materiales que evidencian la sensibilizaciÃ³n realizada por los coordinadores pedagÃ³gicos (CP) a sus docentes a cargo"
                                                               },
                                                               {
                                                                   "id":  "jec_22",
-                                                                  "texto":  "El CP cuenta con evidencias de la realización de la visita diagnóstica y de ejecución de los docentes a su cargo"
+                                                                  "texto":  "El CP cuenta con evidencias de la realizaciÃ³n de la visita diagnÃ³stica y de ejecuciÃ³n de los docentes a su cargo"
                                                               },
                                                               {
                                                                   "id":  "jec_23",
-                                                                  "texto":  "El CP cuenta con registros que evidencian, de manera objetiva, la práctica pedagógica observada del docente en las visitas de aula"
+                                                                  "texto":  "El CP cuenta con registros que evidencian, de manera objetiva, la prÃ¡ctica pedagÃ³gica observada del docente en las visitas de aula"
                                                               },
                                                               {
                                                                   "id":  "jec_24",
-                                                                  "texto":  "El CP cuenta con matrices, planificador semanal, fichas u otros registros que evidencian el desarrollo del diálogo reflexivo con los docentes acompañados"
+                                                                  "texto":  "El CP cuenta con matrices, planificador semanal, fichas u otros registros que evidencian el desarrollo del diÃ¡logo reflexivo con los docentes acompaÃ±ados"
                                                               },
                                                               {
                                                                   "id":  "jec_25",
-                                                                  "texto":  "El CP cuenta con actas, guías u otros registros que evidencian que las reuniones de trabajo colegiado responden a las necesidades formativas identificadas"
+                                                                  "texto":  "El CP cuenta con actas, guÃ­as u otros registros que evidencian que las reuniones de trabajo colegiado responden a las necesidades formativas identificadas"
                                                               },
                                                               {
                                                                   "id":  "jec_26",
-                                                                  "texto":  "La IE cuenta con actas, registros o materiales que evidencian la sensibilización realizada por los coordinadores de tutoría (CT) a sus docentes tutores"
+                                                                  "texto":  "La IE cuenta con actas, registros o materiales que evidencian la sensibilizaciÃ³n realizada por los coordinadores de tutorÃ­a (CT) a sus docentes tutores"
                                                               },
                                                               {
                                                                   "id":  "jec_27",
-                                                                  "texto":  "El CT cuenta con evidencias de la realización de la visita diagnóstica y de ejecución de los docentes tutores a su cargo"
+                                                                  "texto":  "El CT cuenta con evidencias de la realizaciÃ³n de la visita diagnÃ³stica y de ejecuciÃ³n de los docentes tutores a su cargo"
                                                               },
                                                               {
                                                                   "id":  "jec_28",
-                                                                  "texto":  "El CT cuenta con registros que evidencian, de manera objetiva, la práctica pedagógica observada del docente tutor posterior a la visita diagnóstica"
+                                                                  "texto":  "El CT cuenta con registros que evidencian, de manera objetiva, la prÃ¡ctica pedagÃ³gica observada del docente tutor posterior a la visita diagnÃ³stica"
                                                               },
                                                               {
                                                                   "id":  "jec_29",
-                                                                  "texto":  "El CT cuenta con matrices, fichas u otros registros que evidencian el desarrollo del diálogo reflexivo con los docentes tutores acompañados"
+                                                                  "texto":  "El CT cuenta con matrices, fichas u otros registros que evidencian el desarrollo del diÃ¡logo reflexivo con los docentes tutores acompaÃ±ados"
                                                               },
                                                               {
                                                                   "id":  "jec_30",
@@ -602,22 +606,22 @@
                           "regla_nivel":  {
                                               "tipo":  "conteo",
                                               "cuenta":  "si",
-                                              "nota":  "Regla oficial MSE JEC: 24–31 Sí = Lograda; 12–23 = Parcial; 0–11 = Incipiente",
+                                              "nota":  "Regla oficial MSE JEC: 24â€“31 SÃ­ = Lograda; 12â€“23 = Parcial; 0â€“11 = Incipiente",
                                               "rangos":  [
                                                              {
-                                                                 "nivel":  "Implementación lograda",
+                                                                 "nivel":  "ImplementaciÃ³n lograda",
                                                                  "min":  24,
                                                                  "max":  31,
                                                                  "estado_panel":  "Logrado"
                                                              },
                                                              {
-                                                                 "nivel":  "Implementación parcial",
+                                                                 "nivel":  "ImplementaciÃ³n parcial",
                                                                  "min":  12,
                                                                  "max":  23,
                                                                  "estado_panel":  "En proceso"
                                                              },
                                                              {
-                                                                 "nivel":  "Implementación incipiente",
+                                                                 "nivel":  "ImplementaciÃ³n incipiente",
                                                                  "min":  0,
                                                                  "max":  11,
                                                                  "estado_panel":  "Inicio"
@@ -628,14 +632,15 @@
                                           "anio":  2026,
                                           "momento":  "2do",
                                           "estado":  "publicada"
-                                      }
+                                      },
+                          "id":  "ft_msejec_2do"
                       },
     "ft_gestion_cebe":  {
                             "grupo":  "CEBE / PRITE",
-                            "nombreCorto":  "Gestión Escolar CEBE",
+                            "nombreCorto":  "GestiÃ³n Escolar CEBE",
                             "orden":  30,
                             "tieneVisitas":  true,
-                            "descripcion":  "Monitorea el acompañamiento a la práctica docente, fortalecimiento docente, evaluación de aprendizajes, uso de materiales, Plan Lector, enfoque ambiental e innovación educativa en los CEBE.",
+                            "descripcion":  "Monitorea el acompaÃ±amiento a la prÃ¡ctica docente, fortalecimiento docente, evaluaciÃ³n de aprendizajes, uso de materiales, Plan Lector, enfoque ambiental e innovaciÃ³n educativa en los CEBE.",
                             "extras":  [
                                            {
                                                "label":  "Niveles que atiende"
@@ -644,18 +649,18 @@
                                                "label":  "Total de estudiantes matriculados"
                                            }
                                        ],
-                            "icono":  "🎯",
-                            "nombre":  "Monitoreo y Asistencia Técnica a la Gestión Escolar - CEBE",
+                            "icono":  "ðŸŽ¯",
+                            "nombre":  "Monitoreo y Asistencia TÃ©cnica a la GestiÃ³n Escolar - CEBE",
                             "secciones":  [
                                               {
                                                   "items":  [
                                                                 {
                                                                     "id":  "gc_1",
-                                                                    "texto":  "La directora cuenta con un Plan de Monitoreo y Acompañamiento Pedagógico"
+                                                                    "texto":  "La directora cuenta con un Plan de Monitoreo y AcompaÃ±amiento PedagÃ³gico"
                                                                 },
                                                                 {
                                                                     "id":  "gc_2",
-                                                                    "texto":  "El Plan de Monitoreo incluye una matriz de identificación de necesidades formativas del personal docente y no docente"
+                                                                    "texto":  "El Plan de Monitoreo incluye una matriz de identificaciÃ³n de necesidades formativas del personal docente y no docente"
                                                                 },
                                                                 {
                                                                     "id":  "gc_3",
@@ -663,7 +668,7 @@
                                                                 },
                                                                 {
                                                                     "id":  "gc_4",
-                                                                    "texto":  "La directora realiza acciones de monitoreo a la práctica pedagógica"
+                                                                    "texto":  "La directora realiza acciones de monitoreo a la prÃ¡ctica pedagÃ³gica"
                                                                 },
                                                                 {
                                                                     "id":  "gc_5",
@@ -675,16 +680,16 @@
                                                                 },
                                                                 {
                                                                     "id":  "gc_7",
-                                                                    "texto":  "La directora socializa los resultados del monitoreo en espacios de gestión institucional"
+                                                                    "texto":  "La directora socializa los resultados del monitoreo en espacios de gestiÃ³n institucional"
                                                                 }
                                                             ],
-                                                  "nombre":  "Monitoreo y acompañamiento a la práctica docente"
+                                                  "nombre":  "Monitoreo y acompaÃ±amiento a la prÃ¡ctica docente"
                                               },
                                               {
                                                   "items":  [
                                                                 {
                                                                     "id":  "gc_8",
-                                                                    "texto":  "La directora identifica necesidades formativas del personal a partir de los resultados del monitoreo pedagógico"
+                                                                    "texto":  "La directora identifica necesidades formativas del personal a partir de los resultados del monitoreo pedagÃ³gico"
                                                                 },
                                                                 {
                                                                     "id":  "gc_9",
@@ -692,7 +697,7 @@
                                                                 },
                                                                 {
                                                                     "id":  "gc_10",
-                                                                    "texto":  "La directora implementa espacios de fortalecimiento pedagógico acordes a las necesidades identificadas"
+                                                                    "texto":  "La directora implementa espacios de fortalecimiento pedagÃ³gico acordes a las necesidades identificadas"
                                                                 },
                                                                 {
                                                                     "id":  "gc_11",
@@ -705,11 +710,11 @@
                                                   "items":  [
                                                                 {
                                                                     "id":  "gc_12",
-                                                                    "texto":  "La directora monitorea el proceso de evaluación psicopedagógica realizado por los docentes"
+                                                                    "texto":  "La directora monitorea el proceso de evaluaciÃ³n psicopedagÃ³gica realizado por los docentes"
                                                                 },
                                                                 {
                                                                     "id":  "gc_13",
-                                                                    "texto":  "Los Informes Psicopedagógicos (IPP) se encuentran elaborados de manera oportuna"
+                                                                    "texto":  "Los Informes PsicopedagÃ³gicos (IPP) se encuentran elaborados de manera oportuna"
                                                                 },
                                                                 {
                                                                     "id":  "gc_14",
@@ -717,44 +722,44 @@
                                                                 },
                                                                 {
                                                                     "id":  "gc_15",
-                                                                    "texto":  "La institución cuenta con un sistema organizado de resguardo de IPP y PEP que garantiza la confidencialidad"
+                                                                    "texto":  "La instituciÃ³n cuenta con un sistema organizado de resguardo de IPP y PEP que garantiza la confidencialidad"
                                                                 },
                                                                 {
                                                                     "id":  "gc_16",
-                                                                    "texto":  "La directora promueve el análisis y revisión semestral del PEP con el equipo docente"
+                                                                    "texto":  "La directora promueve el anÃ¡lisis y revisiÃ³n semestral del PEP con el equipo docente"
                                                                 },
                                                                 {
                                                                     "id":  "gc_17",
-                                                                    "texto":  "Los docentes elaboran informes de progreso del estudiante en función a los propósitos de aprendizaje del PEP"
+                                                                    "texto":  "Los docentes elaboran informes de progreso del estudiante en funciÃ³n a los propÃ³sitos de aprendizaje del PEP"
                                                                 },
                                                                 {
                                                                     "id":  "gc_18",
-                                                                    "texto":  "La institución asegura la entrega oportuna de los informes de progreso a la familia"
+                                                                    "texto":  "La instituciÃ³n asegura la entrega oportuna de los informes de progreso a la familia"
                                                                 },
                                                                 {
                                                                     "id":  "gc_19",
-                                                                    "texto":  "La directora garantiza que la familia reciba explicación clara y orientaciones sobre el IPP, PEP y avances del estudiante"
+                                                                    "texto":  "La directora garantiza que la familia reciba explicaciÃ³n clara y orientaciones sobre el IPP, PEP y avances del estudiante"
                                                                 }
                                                             ],
-                                                  "nombre":  "Evaluación de los aprendizajes"
+                                                  "nombre":  "EvaluaciÃ³n de los aprendizajes"
                                               },
                                               {
                                                   "items":  [
                                                                 {
                                                                     "id":  "gc_20",
-                                                                    "texto":  "La directora promueve espacios de fortalecimiento pedagógico orientados al uso de materiales educativos accesibles"
+                                                                    "texto":  "La directora promueve espacios de fortalecimiento pedagÃ³gico orientados al uso de materiales educativos accesibles"
                                                                 },
                                                                 {
                                                                     "id":  "gc_21",
-                                                                    "texto":  "La directora monitorea el uso de materiales educativos y apoyos en los espacios pedagógicos del CEBE"
+                                                                    "texto":  "La directora monitorea el uso de materiales educativos y apoyos en los espacios pedagÃ³gicos del CEBE"
                                                                 },
                                                                 {
                                                                     "id":  "gc_22",
-                                                                    "texto":  "La directora promueve el uso de espacios educativos funcionales y materiales diversos adecuados a las características de los estudiantes"
+                                                                    "texto":  "La directora promueve el uso de espacios educativos funcionales y materiales diversos adecuados a las caracterÃ­sticas de los estudiantes"
                                                                 },
                                                                 {
                                                                     "id":  "gc_23",
-                                                                    "texto":  "La directora promueve el uso de recursos tecnológicos y apoyos digitales accesibles como parte de los procesos pedagógicos"
+                                                                    "texto":  "La directora promueve el uso de recursos tecnolÃ³gicos y apoyos digitales accesibles como parte de los procesos pedagÃ³gicos"
                                                                 }
                                                             ],
                                                   "nombre":  "Uso de materiales y espacios educativos"
@@ -763,15 +768,15 @@
                                                   "items":  [
                                                                 {
                                                                     "id":  "gc_24",
-                                                                    "texto":  "La institución cuenta con un Plan Lector como estrategia institucional de acceso a la lectura y la comunicación"
+                                                                    "texto":  "La instituciÃ³n cuenta con un Plan Lector como estrategia institucional de acceso a la lectura y la comunicaciÃ³n"
                                                                 },
                                                                 {
                                                                     "id":  "gc_25",
-                                                                    "texto":  "El Plan Lector planifica la frecuencia semanal de experiencias de lectura considerando la atención educativa del CEBE"
+                                                                    "texto":  "El Plan Lector planifica la frecuencia semanal de experiencias de lectura considerando la atenciÃ³n educativa del CEBE"
                                                                 },
                                                                 {
                                                                     "id":  "gc_26",
-                                                                    "texto":  "El Plan Lector involucra a diversos mediadores de lectura en la institución y la comunidad"
+                                                                    "texto":  "El Plan Lector involucra a diversos mediadores de lectura en la instituciÃ³n y la comunidad"
                                                                 },
                                                                 {
                                                                     "id":  "gc_27",
@@ -792,31 +797,31 @@
                                                                 },
                                                                 {
                                                                     "id":  "gc_30",
-                                                                    "texto":  "La IE cuenta con Resolución Directoral de conformación de las Brigadas de Educación Ambiental y Gestión del Riesgo de Desastres"
+                                                                    "texto":  "La IE cuenta con ResoluciÃ³n Directoral de conformaciÃ³n de las Brigadas de EducaciÃ³n Ambiental y GestiÃ³n del Riesgo de Desastres"
                                                                 },
                                                                 {
                                                                     "id":  "gc_31",
                                                                     "texto":  "La directora monitorea el cumplimiento de las funciones de las brigadas y el desarrollo de las actividades previstas"
                                                                 }
                                                             ],
-                                                  "nombre":  "Implementación del enfoque ambiental"
+                                                  "nombre":  "ImplementaciÃ³n del enfoque ambiental"
                                               },
                                               {
                                                   "items":  [
                                                                 {
                                                                     "id":  "gc_32",
-                                                                    "texto":  "La directora identifica y sistematiza Buenas Prácticas pedagógicas que responden a las necesidades educativas de los estudiantes"
+                                                                    "texto":  "La directora identifica y sistematiza Buenas PrÃ¡cticas pedagÃ³gicas que responden a las necesidades educativas de los estudiantes"
                                                                 },
                                                                 {
                                                                     "id":  "gc_33",
-                                                                    "texto":  "La directora promueve y acompaña Proyectos de Innovación Educativa orientados a la mejora de los aprendizajes y la calidad de vida de los estudiantes"
+                                                                    "texto":  "La directora promueve y acompaÃ±a Proyectos de InnovaciÃ³n Educativa orientados a la mejora de los aprendizajes y la calidad de vida de los estudiantes"
                                                                 },
                                                                 {
                                                                     "id":  "gc_34",
-                                                                    "texto":  "La directora realiza seguimiento a la implementación y promueve la socialización de las Buenas Prácticas y/o Proyectos de Innovación"
+                                                                    "texto":  "La directora realiza seguimiento a la implementaciÃ³n y promueve la socializaciÃ³n de las Buenas PrÃ¡cticas y/o Proyectos de InnovaciÃ³n"
                                                                 }
                                                             ],
-                                                  "nombre":  "Innovación educativa"
+                                                  "nombre":  "InnovaciÃ³n educativa"
                                               }
                                           ],
                             "tipoRespuesta":  "ips",
@@ -844,7 +849,8 @@
                                             "anio":  2026,
                                             "momento":  null,
                                             "estado":  "publicada"
-                                        }
+                                        },
+                            "id":  "ft_gestion_cebe"
                         },
     "ft_rubricas_aula":  {
                              "extras":  [
@@ -879,45 +885,33 @@
                                                 "required":  false
                                             },
                                             {
-                                                "label":  "Sección",
+                                                "label":  "SecciÃ³n",
                                                 "tipo":  "texto",
                                                 "id":  "ex_seccion",
                                                 "required":  false
                                             },
                                             {
-                                                "label":  "Área curricular observada",
+                                                "label":  "Ãrea curricular observada",
                                                 "tipo":  "texto",
                                                 "id":  "ex_area",
                                                 "required":  true
                                             },
                                             {
-                                                "label":  "N° de estudiantes matriculados",
+                                                "label":  "NÂ° de estudiantes matriculados",
                                                 "tipo":  "numero",
                                                 "id":  "ex_est_matriculados",
                                                 "required":  false
                                             },
                                             {
-                                                "label":  "N° de estudiantes asistentes",
+                                                "label":  "NÂ° de estudiantes asistentes",
                                                 "tipo":  "numero",
                                                 "id":  "ex_est_asistentes",
                                                 "required":  false
                                             },
                                             {
-                                                "label":  "N° de estudiantes con discapacidad o condición con diagnóstico",
+                                                "label":  "NÂ° de estudiantes con discapacidad o condiciÃ³n con diagnÃ³stico",
                                                 "tipo":  "numero",
                                                 "id":  "ex_est_discapacidad",
-                                                "required":  false
-                                            },
-                                            {
-                                                "label":  "Hora de inicio de la observación",
-                                                "tipo":  "hora",
-                                                "id":  "ex_hora_inicio",
-                                                "required":  false
-                                            },
-                                            {
-                                                "label":  "Hora de fin de la observación",
-                                                "tipo":  "hora",
-                                                "id":  "ex_hora_fin",
                                                 "required":  false
                                             },
                                             {
@@ -931,8 +925,8 @@
                              "grupo":  "Docentes",
                              "tipoRespuesta":  "nivel_1_4",
                              "tipoVisitas":  "mismos_items",
-                             "nombre":  "CUADERNILLO DEL MONITOREO PEDAGÓGICO A DOCENTES DE LIMA METROPOLITANA EBR-EBA 2026",
-                             "descripcion":  "Cuadernillo oficial de monitoreo pedagógico a docentes de Lima Metropolitana EBR-EBA 2026. Comprende dos instrumentos: (1) Rúbricas de observación de aula MINEDU y (2) Ficha de monitoreo a la planificación curricular docente DRELM con retroalimentación.",
+                             "nombre":  "CUADERNILLO DEL MONITOREO PEDAGÃ“GICO A DOCENTES DE LIMA METROPOLITANA EBR-EBA 2026",
+                             "descripcion":  "Cuadernillo oficial de monitoreo pedagÃ³gico a docentes de Lima Metropolitana EBR-EBA 2026. Comprende dos instrumentos: (1) RÃºbricas de observaciÃ³n de aula MINEDU y (2) Ficha de monitoreo a la planificaciÃ³n curricular docente DRELM con retroalimentaciÃ³n.",
                              "compromisos":  {
                                                  "habilitado":  true,
                                                  "director":  true,
@@ -941,7 +935,7 @@
                                              },
                              "nombreCorto":  "Monitoreo a Docentes (EBR-EBA)",
                              "color":  "#0D9488",
-                             "icono":  "👩‍🏫",
+                             "icono":  "ðŸ‘©â€ðŸ«",
                              "version":  {
                                              "momento":  null,
                                              "anio":  2026,
@@ -949,7 +943,7 @@
                                          },
                              "orden":  22,
                              "regla_nivel":  {
-                                                 "nota":  "Rúbricas MINEDU: I=25%, II=50%, III=75%, IV=100%",
+                                                 "nota":  "RÃºbricas MINEDU: I=25%, II=50%, III=75%, IV=100%",
                                                  "tipo":  "porcentaje",
                                                  "umbrales":  [
                                                                   {
@@ -959,7 +953,7 @@
                                                                   },
                                                                   {
                                                                       "min":  70,
-                                                                      "nivel":  "Nivel III (Cumplimiento de la mayoría)",
+                                                                      "nivel":  "Nivel III (Cumplimiento de la mayorÃ­a)",
                                                                       "estado_panel":  "En proceso"
                                                                   },
                                                                   {
@@ -979,47 +973,108 @@
                                          ],
                              "tablas":  [
                                             {
-                                                "id":  "tbl_datos_planificacion",
-                                                "sinColumnaCategoria":  false,
-                                                "descripcion":  "Verificación de formas organizativas de planificación curricular (proyectos, unidades, talleres u otros) y ejecución de la sesión programada.",
+                                                "id":  "tbl_compromisos_rubricas_aula",
+                                                "sinColumnaCategoria":  true,
+                                                "nombreColumnaCategoria":  "NÂ°",
+                                                "descripcion":  "A partir de las conductas observables registradas por cada uno de los desempeÃ±os y del diÃ¡logo reflexivo y haciendo uso de preguntas orientadoras (ver protocolo) anote en la primera columna el o los desempeÃ±os que el docente requiere mejorar. En la segunda columna, registre los compromisos de mejora relacionados con cada uno de los desempeÃ±os.",
                                                 "filas":  [
                                                               {
-                                                                  "id":  "f_2_1",
-                                                                  "etiqueta":  "2.1 Formas organizativas: Planifica usando proyectos, unidades de aprendizaje, talleres u otros"
-                                                              },
-                                                              {
-                                                                  "id":  "f_2_2",
-                                                                  "etiqueta":  "2.2 Ejecución: La sesión/actividad planificada es ejecutada el día de la observación según programación"
+                                                                  "id":  "f_comp_1",
+                                                                  "etiqueta":  "Compromiso"
                                                               }
                                                           ],
                                                 "columnas":  [
                                                                  {
-                                                                     "nombre":  "Alternativa seleccionada (Proyectos, Unidades, Talleres, Otros / Sí, No)",
-                                                                     "tipo":  "texto",
-                                                                     "id":  "c_estado"
+                                                                     "id":  "c_desempeno",
+                                                                     "tipo":  "area",
+                                                                     "nombre":  "DesempeÃ±o por mejorar"
                                                                  },
                                                                  {
-                                                                     "nombre":  "Observaciones / Sustento",
+                                                                     "id":  "c_compromiso",
+                                                                     "tipo":  "area",
+                                                                     "nombre":  "Compromisos de mejora"
+                                                                 }
+                                                             ],
+                                                "titulo":  "III. COMPROMISOS DE MEJORA"
+                                            },
+                                            {
+                                                "id":  "tbl_datos_planif_2_1",
+                                                "sinColumnaCategoria":  false,
+                                                "descripcion":  "El docente planifica sus sesiones de clase haciendo uso de proyectos, unidades de aprendizaje, talleres, u otros.",
+                                                "filas":  [
+                                                              {
+                                                                  "id":  "f_2_1",
+                                                                  "etiqueta":  "2.1 El docente planifica sus sesiones de clase haciendo uso de proyectos, unidades de aprendizaje, talleres, u otros."
+                                                              }
+                                                          ],
+                                                "columnas":  [
+                                                                 {
+                                                                     "nombre":  "PROYECTOS",
+                                                                     "tipo":  "checkbox",
+                                                                     "id":  "c_proyectos"
+                                                                 },
+                                                                 {
+                                                                     "nombre":  "UNIDADES DE APRENDIZAJE",
+                                                                     "tipo":  "checkbox",
+                                                                     "id":  "c_unidades"
+                                                                 },
+                                                                 {
+                                                                     "nombre":  "TALLERES",
+                                                                     "tipo":  "checkbox",
+                                                                     "id":  "c_talleres"
+                                                                 },
+                                                                 {
+                                                                     "nombre":  "OTROS",
+                                                                     "tipo":  "checkbox",
+                                                                     "id":  "c_otros"
+                                                                 }
+                                                             ],
+                                                "nombreColumnaCategoria":  "Ãtems",
+                                                "titulo":  "2.1 Formas organizativas de la planificaciÃ³n"
+                                            },
+                                            {
+                                                "id":  "tbl_datos_planif_2_2",
+                                                "sinColumnaCategoria":  false,
+                                                "descripcion":  "La sesiÃ³n/actividad de aprendizaje planificada es ejecutada el dÃ­a de la observaciÃ³n o visita al aula, segÃºn programaciÃ³n.",
+                                                "filas":  [
+                                                              {
+                                                                  "id":  "f_2_2",
+                                                                  "etiqueta":  "2.2 La sesiÃ³n/actividad de aprendizaje planificada es ejecutada el dÃ­a de la observaciÃ³n o visita al aula, segÃºn programaciÃ³n."
+                                                              }
+                                                          ],
+                                                "columnas":  [
+                                                                 {
+                                                                     "nombre":  "SI",
+                                                                     "tipo":  "checkbox",
+                                                                     "id":  "c_si"
+                                                                 },
+                                                                 {
+                                                                     "nombre":  "NO",
+                                                                     "tipo":  "checkbox",
+                                                                     "id":  "c_no"
+                                                                 },
+                                                                 {
+                                                                     "nombre":  "OBSERVACIONES",
                                                                      "tipo":  "texto",
                                                                      "id":  "c_observaciones"
                                                                  }
                                                              ],
-                                                "nombreColumnaCategoria":  "Ítem / Verificación",
-                                                "titulo":  "INSTRUMENTO 2 - PARTE II: DATOS INFORMATIVOS DE LA PLANIFICACIÓN CURRICULAR DOCENTE"
+                                                "nombreColumnaCategoria":  "Ãtems",
+                                                "titulo":  "2.2 EjecuciÃ³n de la sesiÃ³n/actividad planificada"
                                             },
                                             {
                                                 "id":  "tbl_observaciones_docente",
                                                 "sinColumnaCategoria":  false,
-                                                "descripcion":  "En caso de no contar con la carpeta de planificación curricular o presentarse incidencias pedagógicas, registre el sustento en este numeral.",
+                                                "descripcion":  "En caso de no contar con la carpeta de planificaciÃ³n curricular o presentarse incidencias pedagÃ³gicas, registre el sustento en este numeral.",
                                                 "filas":  [
                                                               {
                                                                   "id":  "f_obs_planif",
-                                                                  "etiqueta":  "Observaciones generales / Sustento de planificación curricular"
+                                                                  "etiqueta":  "Observaciones generales / Sustento de planificaciÃ³n curricular"
                                                               }
                                                           ],
                                                 "columnas":  [
                                                                  {
-                                                                     "nombre":  "Detalle de las observaciones y sustento pedagógico",
+                                                                     "nombre":  "Detalle de las observaciones y sustento pedagÃ³gico",
                                                                      "tipo":  "area",
                                                                      "id":  "c_detalle_obs"
                                                                  }
@@ -1030,7 +1085,7 @@
                                             {
                                                 "id":  "tbl_retroalimentacion_planificacion",
                                                 "sinColumnaCategoria":  false,
-                                                "descripcion":  "Cuadro de diálogo reflexivo y retroalimentación pedagógica a partir de los ítems observados en la planificación curricular.",
+                                                "descripcion":  "Cuadro de diÃ¡logo reflexivo y retroalimentaciÃ³n pedagÃ³gica a partir de los Ã­tems observados en la planificaciÃ³n curricular.",
                                                 "filas":  [
                                                               {
                                                                   "id":  "f_fortalezas",
@@ -1047,98 +1102,98 @@
                                                           ],
                                                 "columnas":  [
                                                                  {
-                                                                     "nombre":  "Detalle de la retroalimentación y compromisos acordados",
+                                                                     "nombre":  "Detalle de la retroalimentaciÃ³n y compromisos acordados",
                                                                      "tipo":  "area",
                                                                      "id":  "c_retroalimentacion"
                                                                  }
                                                              ],
                                                 "nombreColumnaCategoria":  "Aspecto",
-                                                "titulo":  "V. ASPECTOS PARA RETROALIMENTACIÓN AL DOCENTE EN RELACIÓN A LOS ÍTEMS OBSERVADAS EN LA PLANIFICACIÓN CURRICULAR"
+                                                "titulo":  "V. ASPECTOS PARA RETROALIMENTACIÃ“N AL DOCENTE EN RELACIÃ“N A LOS ÃTEMS OBSERVADAS EN LA PLANIFICACIÃ“N CURRICULAR"
                                             }
                                         ],
                              "tieneVisitas":  false,
                              "modalidad":  "Docentes",
                              "secciones":  [
                                                {
-                                                   "nombre":  "INSTRUMENTO 1: RÚBRICAS DE OBSERVACIÓN DE AULA (MINEDU)",
+                                                   "nombre":  "INSTRUMENTO 1: RÃšBRICAS DE OBSERVACIÃ“N DE AULA (MINEDU)",
                                                    "num":  "I",
                                                    "items":  [
                                                                  {
                                                                      "num":  1,
                                                                      "id":  "ra_1",
-                                                                     "texto":  "Rúbrica 1: Involucra activamente a los estudiantes en el proceso de aprendizaje",
-                                                                     "evidencia":  "Acciones del docente para promover el interés de los estudiantes en las actividades de aprendizaje. Proporción de estudiantes involucrados en la sesión. Acciones del docente para favorecer la comprensión del sentido, importancia o utilidad de lo que se aprende."
+                                                                     "texto":  "RÃºbrica 1: Involucra activamente a los estudiantes en el proceso de aprendizaje",
+                                                                     "evidencia":  "Acciones del docente para promover el interÃ©s de los estudiantes en las actividades de aprendizaje. ProporciÃ³n de estudiantes involucrados en la sesiÃ³n. Acciones del docente para favorecer la comprensiÃ³n del sentido, importancia o utilidad de lo que se aprende."
                                                                  },
                                                                  {
                                                                      "num":  2,
                                                                      "id":  "ra_2",
-                                                                     "texto":  "Rúbrica 2: Promueve el razonamiento, la creatividad y/o el pensamiento crítico",
-                                                                     "evidencia":  "Actividades e interacciones (sea entre docente y estudiantes, o entre estudiantes) que promueven efectivamente el razonamiento, la creatividad y/o el pensamiento crítico."
+                                                                     "texto":  "RÃºbrica 2: Promueve el razonamiento, la creatividad y/o el pensamiento crÃ­tico",
+                                                                     "evidencia":  "Actividades e interacciones (sea entre docente y estudiantes, o entre estudiantes) que promueven efectivamente el razonamiento, la creatividad y/o el pensamiento crÃ­tico."
                                                                  },
                                                                  {
                                                                      "num":  3,
                                                                      "id":  "ra_3",
-                                                                     "texto":  "Rúbrica 3: Evalúa el progreso de los aprendizajes para retroalimentar a los estudiantes y adecuar su enseñanza",
-                                                                     "evidencia":  "Monitoreo que realiza el docente del trabajo de los estudiantes y de sus avances durante la sesión. Calidad de la retroalimentación que el docente brinda y/o la adaptación de las actividades que realiza en la sesión a partir de las necesidades de aprendizaje identificadas."
+                                                                     "texto":  "RÃºbrica 3: EvalÃºa el progreso de los aprendizajes para retroalimentar a los estudiantes y adecuar su enseÃ±anza",
+                                                                     "evidencia":  "Monitoreo que realiza el docente del trabajo de los estudiantes y de sus avances durante la sesiÃ³n. Calidad de la retroalimentaciÃ³n que el docente brinda y/o la adaptaciÃ³n de las actividades que realiza en la sesiÃ³n a partir de las necesidades de aprendizaje identificadas."
                                                                  },
                                                                  {
                                                                      "num":  4,
                                                                      "id":  "ra_4",
-                                                                     "texto":  "Rúbrica 4: Propicia un ambiente de respeto y proximidad",
-                                                                     "evidencia":  "Trato respetuoso y consideración hacia la perspectiva de los estudiantes. Cordialidad o calidez que transmite el docente. Comprensión y empatía del docente ante las necesidades afectivas o físicas de los estudiantes."
+                                                                     "texto":  "RÃºbrica 4: Propicia un ambiente de respeto y proximidad",
+                                                                     "evidencia":  "Trato respetuoso y consideraciÃ³n hacia la perspectiva de los estudiantes. Cordialidad o calidez que transmite el docente. ComprensiÃ³n y empatÃ­a del docente ante las necesidades afectivas o fÃ­sicas de los estudiantes."
                                                                  },
                                                                  {
                                                                      "num":  5,
                                                                      "id":  "ra_5",
-                                                                     "texto":  "Rúbrica 5: Regula positivamente el comportamiento de los estudiantes",
+                                                                     "texto":  "RÃºbrica 5: Regula positivamente el comportamiento de los estudiantes",
                                                                      "evidencia":  "Tipos de mecanismos que emplea el docente para regular el comportamiento y promover el respeto de las normas de convivencia en el aula: formativos, de control externo, de maltrato. Eficacia con que el docente implementa los mecanismos para regular el comportamiento."
                                                                  }
                                                              ]
                                                },
                                                {
-                                                   "nombre":  "INSTRUMENTO 2 - PARTE III: PLANIFICACIÓN CURRICULAR DOCENTE (DRELM)",
+                                                   "nombre":  "INSTRUMENTO 2 - PARTE III: PLANIFICACIÃ“N CURRICULAR DOCENTE (DRELM)",
                                                    "num":  "II",
                                                    "items":  [
                                                                  {
                                                                      "num":  1,
                                                                      "id":  "pc_1",
-                                                                     "texto":  "1. La planificación anual se sustenta en el diagnóstico de los estudiantes y organiza, de manera secuenciada, las unidades didácticas, competencias y enfoques transversales, en atención a las necesidades e intereses, identificados.",
-                                                                     "evidencia":  "Solicita al docente la información diagnóstica de los aprendizajes de los estudiantes del aula a cargo, respetando el formato utilizado por cada IE."
+                                                                     "texto":  "1. La planificaciÃ³n anual se sustenta en el diagnÃ³stico de los estudiantes y organiza, de manera secuenciada, las unidades didÃ¡cticas, competencias y enfoques transversales, en atenciÃ³n a las necesidades e intereses, identificados.",
+                                                                     "evidencia":  "Solicita al docente la informaciÃ³n diagnÃ³stica de los aprendizajes de los estudiantes del aula a cargo, respetando el formato utilizado por cada IE."
                                                                  },
                                                                  {
                                                                      "num":  2,
                                                                      "id":  "pc_2",
-                                                                     "texto":  "2. El proyecto o unidad de aprendizaje parte de una situación significativa, pertinente y desafiante, que plantea retos a los estudiantes y se desarrolla de manera articulada a lo largo de las sesiones y actividades de aprendizaje.",
-                                                                     "evidencia":  "Verifica la coherencia entre situación significativa, propósitos de aprendizaje, retos y secuencia de actividades."
+                                                                     "texto":  "2. El proyecto o unidad de aprendizaje parte de una situaciÃ³n significativa, pertinente y desafiante, que plantea retos a los estudiantes y se desarrolla de manera articulada a lo largo de las sesiones y actividades de aprendizaje.",
+                                                                     "evidencia":  "Verifica la coherencia entre situaciÃ³n significativa, propÃ³sitos de aprendizaje, retos y secuencia de actividades."
                                                                  },
                                                                  {
                                                                      "num":  3,
                                                                      "id":  "pc_3",
-                                                                     "texto":  "3. Las sesiones/actividades de aprendizaje planificadas en la unidad didáctica incorporan una secuencia metodológica estructurada en la que se incluye los componentes clave, atendiendo a la diversidad de estudiantes.",
-                                                                     "evidencia":  "Componentes clave: inicio, desarrollo, cierre, criterios de evaluación, adecuaciones o adaptaciones para la diversidad."
+                                                                     "texto":  "3. Las sesiones/actividades de aprendizaje planificadas en la unidad didÃ¡ctica incorporan una secuencia metodolÃ³gica estructurada en la que se incluye los componentes clave, atendiendo a la diversidad de estudiantes.",
+                                                                     "evidencia":  "Componentes clave: inicio, desarrollo, cierre, criterios de evaluaciÃ³n, adecuaciones o adaptaciones para la diversidad."
                                                                  },
                                                                  {
                                                                      "num":  4,
                                                                      "id":  "pc_4",
-                                                                     "texto":  "4. Las sesiones/actividades de aprendizaje planificadas a lo largo de la unidad o proyecto, consideran una propuesta de metodología activa con estrategias retadoras que promueven la reflexión y el pensamiento crítico y creativo de los estudiantes.",
-                                                                     "evidencia":  "Estrategias retadoras, preguntas orientadoras, metodología activa y desarrollo del pensamiento reflexivo."
+                                                                     "texto":  "4. Las sesiones/actividades de aprendizaje planificadas a lo largo de la unidad o proyecto, consideran una propuesta de metodologÃ­a activa con estrategias retadoras que promueven la reflexiÃ³n y el pensamiento crÃ­tico y creativo de los estudiantes.",
+                                                                     "evidencia":  "Estrategias retadoras, preguntas orientadoras, metodologÃ­a activa y desarrollo del pensamiento reflexivo."
                                                                  },
                                                                  {
                                                                      "num":  5,
                                                                      "id":  "pc_5",
-                                                                     "texto":  "5. Las sesiones/actividades de aprendizaje planificadas a lo largo de la unidad o proyecto, contempla el uso pedagógico de diversos recursos y/o materiales que promueven el logro de competencias y aprendizajes significativos para los estudiantes, atendiendo a la diversidad.",
-                                                                     "evidencia":  "Uso pedagógico de materiales educativos, recursos del contexto, tecnológicos y adaptaciones pertinentes."
+                                                                     "texto":  "5. Las sesiones/actividades de aprendizaje planificadas a lo largo de la unidad o proyecto, contempla el uso pedagÃ³gico de diversos recursos y/o materiales que promueven el logro de competencias y aprendizajes significativos para los estudiantes, atendiendo a la diversidad.",
+                                                                     "evidencia":  "Uso pedagÃ³gico de materiales educativos, recursos del contexto, tecnolÃ³gicos y adaptaciones pertinentes."
                                                                  }
                                                              ]
                                                }
                                            ]
                          },
     "ft_gestion_ugel03_ebr":  {
-                                  "grupo":  "Gestión escolar y docentes (EBR)",
-                                  "nombreCorto":  "Gestión Escolar EBR",
+                                  "grupo":  "GestiÃ³n escolar y docentes (EBR)",
+                                  "nombreCorto":  "GestiÃ³n Escolar EBR",
                                   "orden":  20,
                                   "tieneVisitas":  true,
-                                  "descripcion":  "Monitorea el cumplimiento de la Política Regional 01 (Instituciones Educativas que Aseguran Aprendizajes) en IE de Educación Básica Regular.",
+                                  "descripcion":  "Monitorea el cumplimiento de la PolÃ­tica Regional 01 (Instituciones Educativas que Aseguran Aprendizajes) en IE de EducaciÃ³n BÃ¡sica Regular.",
                                   "extras":  [
                                                  {
                                                      "label":  "RED"
@@ -1153,35 +1208,35 @@
                                                      "label":  "Total docentes Secundaria"
                                                  }
                                              ],
-                                  "icono":  "🏛️",
-                                  "nombre":  "Monitoreo y Asistencia Técnica a la Gestión Escolar - UGEL 03 EBR",
+                                  "icono":  "ðŸ›ï¸",
+                                  "nombre":  "Monitoreo y Asistencia TÃ©cnica a la GestiÃ³n Escolar - UGEL 03 EBR",
                                   "secciones":  [
                                                     {
                                                         "items":  [
                                                                       {
                                                                           "id":  "ge_1",
-                                                                          "texto":  "El equipo directivo realiza el monitoreo y acompañamiento a los docentes según el cronograma establecido, promoviendo un diálogo reflexivo con cada docente visitado"
+                                                                          "texto":  "El equipo directivo realiza el monitoreo y acompaÃ±amiento a los docentes segÃºn el cronograma establecido, promoviendo un diÃ¡logo reflexivo con cada docente visitado"
                                                                       },
                                                                       {
                                                                           "id":  "ge_2",
-                                                                          "texto":  "El equipo directivo realiza la sistematización del monitoreo a la práctica pedagógica en sus tres etapas (inicio, proceso y salida)"
+                                                                          "texto":  "El equipo directivo realiza la sistematizaciÃ³n del monitoreo a la prÃ¡ctica pedagÃ³gica en sus tres etapas (inicio, proceso y salida)"
                                                                       },
                                                                       {
                                                                           "id":  "ge_3",
-                                                                          "texto":  "El equipo directivo, a partir del análisis del monitoreo, identifica logros y necesidades formativas, los cuales son socializados en las semanas de gestión"
+                                                                          "texto":  "El equipo directivo, a partir del anÃ¡lisis del monitoreo, identifica logros y necesidades formativas, los cuales son socializados en las semanas de gestiÃ³n"
                                                                       }
                                                                   ],
-                                                        "nombre":  "Monitoreo y acompañamiento a la práctica docente"
+                                                        "nombre":  "Monitoreo y acompaÃ±amiento a la prÃ¡ctica docente"
                                                     },
                                                     {
                                                         "items":  [
                                                                       {
                                                                           "id":  "ge_4",
-                                                                          "texto":  "El equipo directivo promueve la participación de los docentes en las ofertas formativas brindadas por MINEDU, DRELM o UGEL y realiza seguimiento"
+                                                                          "texto":  "El equipo directivo promueve la participaciÃ³n de los docentes en las ofertas formativas brindadas por MINEDU, DRELM o UGEL y realiza seguimiento"
                                                                       },
                                                                       {
                                                                           "id":  "ge_5",
-                                                                          "texto":  "El equipo directivo ejecuta acciones formativas en relación a las necesidades encontradas (GIA, microtalleres, pasantías, etc.) de acuerdo al cronograma establecido"
+                                                                          "texto":  "El equipo directivo ejecuta acciones formativas en relaciÃ³n a las necesidades encontradas (GIA, microtalleres, pasantÃ­as, etc.) de acuerdo al cronograma establecido"
                                                                       }
                                                                   ],
                                                         "nombre":  "Fortalecimiento docente"
@@ -1190,28 +1245,28 @@
                                                         "items":  [
                                                                       {
                                                                           "id":  "ge_6",
-                                                                          "texto":  "El equipo directivo sistematiza, analiza y reflexiona sobre los resultados de aprendizaje por competencias, con el propósito de proponer acciones de mejora"
+                                                                          "texto":  "El equipo directivo sistematiza, analiza y reflexiona sobre los resultados de aprendizaje por competencias, con el propÃ³sito de proponer acciones de mejora"
                                                                       },
                                                                       {
                                                                           "id":  "ge_7",
-                                                                          "texto":  "A partir de la evaluación diagnóstica, la IE incorpora en su PAT metas de aprendizaje contextualizadas que responden a las características y necesidades de los estudiantes"
+                                                                          "texto":  "A partir de la evaluaciÃ³n diagnÃ³stica, la IE incorpora en su PAT metas de aprendizaje contextualizadas que responden a las caracterÃ­sticas y necesidades de los estudiantes"
                                                                       },
                                                                       {
                                                                           "id":  "ge_8",
-                                                                          "texto":  "Se cuenta con evidencias para el reporte de las actividades de atención diferenciada realizada con los estudiantes en el horario de Refuerzo Escolar"
+                                                                          "texto":  "Se cuenta con evidencias para el reporte de las actividades de atenciÃ³n diferenciada realizada con los estudiantes en el horario de Refuerzo Escolar"
                                                                       },
                                                                       {
                                                                           "id":  "ge_9",
-                                                                          "texto":  "Se cuenta con evidencias de fortalecimiento y/o acompañamiento pedagógico a los docentes sobre Refuerzo Escolar (primaria y secundaria)"
+                                                                          "texto":  "Se cuenta con evidencias de fortalecimiento y/o acompaÃ±amiento pedagÃ³gico a los docentes sobre Refuerzo Escolar (primaria y secundaria)"
                                                                       }
                                                                   ],
-                                                        "nombre":  "Evaluación de los aprendizajes / Refuerzo escolar"
+                                                        "nombre":  "EvaluaciÃ³n de los aprendizajes / Refuerzo escolar"
                                                     },
                                                     {
                                                         "items":  [
                                                                       {
                                                                           "id":  "ge_10",
-                                                                          "texto":  "El equipo directivo realiza acciones de fortalecimiento docente sobre el uso pedagógico de los materiales educativos"
+                                                                          "texto":  "El equipo directivo realiza acciones de fortalecimiento docente sobre el uso pedagÃ³gico de los materiales educativos"
                                                                       },
                                                                       {
                                                                           "id":  "ge_11",
@@ -1219,7 +1274,7 @@
                                                                       },
                                                                       {
                                                                           "id":  "ge_12",
-                                                                          "texto":  "Se cuenta con espacios lúdicos matemáticos implementados con materiales concretos proporcionados por el MINEDU u otros"
+                                                                          "texto":  "Se cuenta con espacios lÃºdicos matemÃ¡ticos implementados con materiales concretos proporcionados por el MINEDU u otros"
                                                                       },
                                                                       {
                                                                           "id":  "ge_13",
@@ -1227,7 +1282,7 @@
                                                                       },
                                                                       {
                                                                           "id":  "ge_14",
-                                                                          "texto":  "El Profesor de Innovación Pedagógica (PIP) realiza acciones de fortalecimiento con la comunidad educativa, promoviendo la incorporación de las TIC en los procesos pedagógicos"
+                                                                          "texto":  "El Profesor de InnovaciÃ³n PedagÃ³gica (PIP) realiza acciones de fortalecimiento con la comunidad educativa, promoviendo la incorporaciÃ³n de las TIC en los procesos pedagÃ³gicos"
                                                                       },
                                                                       {
                                                                           "id":  "ge_15",
@@ -1235,7 +1290,7 @@
                                                                       },
                                                                       {
                                                                           "id":  "ge_16",
-                                                                          "texto":  "En la IE se realiza el monitoreo a la implementación de la estrategia Khan Academy"
+                                                                          "texto":  "En la IE se realiza el monitoreo a la implementaciÃ³n de la estrategia Khan Academy"
                                                                       }
                                                                   ],
                                                         "nombre":  "Uso de materiales y espacios educativos"
@@ -1244,15 +1299,15 @@
                                                         "items":  [
                                                                       {
                                                                           "id":  "ge_17",
-                                                                          "texto":  "El directivo ha identificado e implementado buenas prácticas (pedagógica y/o de gestión) y/o Proyecto(s) de Innovación en la IE, incluyéndolos en el PAT actualizado"
+                                                                          "texto":  "El directivo ha identificado e implementado buenas prÃ¡cticas (pedagÃ³gica y/o de gestiÃ³n) y/o Proyecto(s) de InnovaciÃ³n en la IE, incluyÃ©ndolos en el PAT actualizado"
                                                                       },
                                                                       {
                                                                           "id":  "ge_18",
-                                                                          "texto":  "Presenta evidencias de los avances o resultados de la implementación de Buenas Prácticas o Proyectos Innovadores"
+                                                                          "texto":  "Presenta evidencias de los avances o resultados de la implementaciÃ³n de Buenas PrÃ¡cticas o Proyectos Innovadores"
                                                                       },
                                                                       {
                                                                           "id":  "ge_19",
-                                                                          "texto":  "Ha monitoreado la implementación de las actividades consideradas en el Plan Lector"
+                                                                          "texto":  "Ha monitoreado la implementaciÃ³n de las actividades consideradas en el Plan Lector"
                                                                       },
                                                                       {
                                                                           "id":  "ge_20",
@@ -1260,7 +1315,7 @@
                                                                       },
                                                                       {
                                                                           "id":  "ge_21",
-                                                                          "texto":  "Monitorea la implementación de actividades según el PEAI propuestas en el plan de trabajo (enfoque ambiental)"
+                                                                          "texto":  "Monitorea la implementaciÃ³n de actividades segÃºn el PEAI propuestas en el plan de trabajo (enfoque ambiental)"
                                                                       },
                                                                       {
                                                                           "id":  "ge_22",
@@ -1279,7 +1334,7 @@
                                   "regla_nivel":  {
                                                       "tipo":  "puntaje",
                                                       "escala":  "IPL",
-                                                      "nota":  "Regla oficial 2do Momento: Inicio (0–23), Proceso (24–46), Logrado (47–69). 1er Momento: Inicio (0–19), Proceso (20–38), Logrado (39–57)",
+                                                      "nota":  "Regla oficial 2do Momento: Inicio (0â€“23), Proceso (24â€“46), Logrado (47â€“69). 1er Momento: Inicio (0â€“19), Proceso (20â€“38), Logrado (39â€“57)",
                                                       "maxPuntaje":  69,
                                                       "minPuntaje":  0,
                                                       "rangos":  [
@@ -1288,21 +1343,21 @@
                                                                          "min":  47,
                                                                          "max":  69,
                                                                          "estado_panel":  "Logrado",
-                                                                         "descripcion":  "Nivel Logrado: La IE evidencia un nivel óptimo en las condiciones y compromisos de gestión escolar (47 a 69 puntos en 2do momento / 39 a 57 puntos en 1er momento)."
+                                                                         "descripcion":  "Nivel Logrado: La IE evidencia un nivel Ã³ptimo en las condiciones y compromisos de gestiÃ³n escolar (47 a 69 puntos en 2do momento / 39 a 57 puntos en 1er momento)."
                                                                      },
                                                                      {
                                                                          "nivel":  "Proceso",
                                                                          "min":  24,
                                                                          "max":  46,
                                                                          "estado_panel":  "En proceso",
-                                                                         "descripcion":  "Nivel Proceso: La IE se encuentra en proceso de implementación y requiere consolidar acciones de mejora (24 a 46 puntos en 2do momento / 20 a 38 puntos en 1er momento)."
+                                                                         "descripcion":  "Nivel Proceso: La IE se encuentra en proceso de implementaciÃ³n y requiere consolidar acciones de mejora (24 a 46 puntos en 2do momento / 20 a 38 puntos en 1er momento)."
                                                                      },
                                                                      {
                                                                          "nivel":  "Inicio",
                                                                          "min":  0,
                                                                          "max":  23,
                                                                          "estado_panel":  "Inicio",
-                                                                         "descripcion":  "Nivel Inicio: La IE requiere asistencia técnica prioritaria para el cumplimiento de las condiciones de gestión (0 a 23 puntos en 2do momento / 0 a 19 puntos en 1er momento)."
+                                                                         "descripcion":  "Nivel Inicio: La IE requiere asistencia tÃ©cnica prioritaria para el cumplimiento de las condiciones de gestiÃ³n (0 a 23 puntos en 2do momento / 0 a 19 puntos en 1er momento)."
                                                                      }
                                                                  ],
                                                       "momento1":  {
@@ -1336,16 +1391,17 @@
                                                   "anio":  2026,
                                                   "momento":  "2do",
                                                   "estado":  "publicada"
-                                              }
+                                              },
+                                  "id":  "ft_gestion_ugel03_ebr"
                               },
     "ft_directivo":  {
-                         "grupo":  "Gestión escolar y docentes (EBR)",
+                         "grupo":  "GestiÃ³n escolar y docentes (EBR)",
                          "nombreCorto":  "Directivo de IE",
                          "orden":  21,
                          "tieneVisitas":  false,
                          "nombre":  "Ficha de monitoreo al directivo de IE",
-                         "descripcion":  "Monitoreo y acompañamiento pedagógico e institucional al directivo de Instituciones Educativas de Educación Básica (EBR/EBE).",
-                         "icono":  "👔",
+                         "descripcion":  "Monitoreo y acompaÃ±amiento pedagÃ³gico e institucional al directivo de Instituciones Educativas de EducaciÃ³n BÃ¡sica (EBR/EBE).",
+                         "icono":  "ðŸ‘”",
                          "tipoRespuesta":  "nivel_1_4",
                          "extras":  [
                                         {
@@ -1356,7 +1412,7 @@
                                         },
                                         {
                                             "id":  "ex_codigo",
-                                            "label":  "Código modular / Local",
+                                            "label":  "CÃ³digo modular / Local",
                                             "tipo":  "texto",
                                             "required":  false
                                         },
@@ -1380,7 +1436,7 @@
                                         },
                                         {
                                             "id":  "ex_condicion",
-                                            "label":  "Condición del directivo",
+                                            "label":  "CondiciÃ³n del directivo",
                                             "tipo":  "texto",
                                             "required":  false
                                         },
@@ -1392,7 +1448,7 @@
                                         },
                                         {
                                             "id":  "ex_turno_atencion",
-                                            "label":  "Turno de atención de la IE",
+                                            "label":  "Turno de atenciÃ³n de la IE",
                                             "tipo":  "texto",
                                             "required":  false
                                         },
@@ -1422,97 +1478,97 @@
                                         },
                                         {
                                             "id":  "ex_hora_termino",
-                                            "label":  "Hora de término",
+                                            "label":  "Hora de tÃ©rmino",
                                             "tipo":  "texto",
                                             "required":  false
                                         }
                                     ],
                          "secciones":  [
                                            {
-                                               "nombre":  "A. DIMENSIÓN ESTRATÉGICA",
+                                               "nombre":  "A. DIMENSIÃ“N ESTRATÃ‰GICA",
                                                "items":  [
                                                              {
                                                                  "id":  "dir_a_1",
-                                                                 "texto":  "La IE cuenta con instrumentos de gestión aprobados mediante RD y evidencia la articulación entre el PEI y el PAT, de modo que el diagnóstico, los objetivos y las metas institucionales se traducen en acciones planificadas para el año escolar."
+                                                                 "texto":  "La IE cuenta con instrumentos de gestiÃ³n aprobados mediante RD y evidencia la articulaciÃ³n entre el PEI y el PAT, de modo que el diagnÃ³stico, los objetivos y las metas institucionales se traducen en acciones planificadas para el aÃ±o escolar."
                                                              },
                                                              {
                                                                  "id":  "dir_a_2",
-                                                                 "texto":  "El PCI de la IE se encuentra actualizado y contiene el Plan de Estudios y orientaciones para la planificación, mediación y evaluación formativa, en correspondencia con las características y necesidades de los estudiantes."
+                                                                 "texto":  "El PCI de la IE se encuentra actualizado y contiene el Plan de Estudios y orientaciones para la planificaciÃ³n, mediaciÃ³n y evaluaciÃ³n formativa, en correspondencia con las caracterÃ­sticas y necesidades de los estudiantes."
                                                              },
                                                              {
                                                                  "id":  "dir_a_3",
-                                                                 "texto":  "El PAT de la IE articula los objetivos y metas del PEI con la programación de actividades para cada compromiso de gestión escolar y la calendarización de las horas lectivas."
+                                                                 "texto":  "El PAT de la IE articula los objetivos y metas del PEI con la programaciÃ³n de actividades para cada compromiso de gestiÃ³n escolar y la calendarizaciÃ³n de las horas lectivas."
                                                              },
                                                              {
                                                                  "id":  "dir_a_4",
-                                                                 "texto":  "En la IE se cuenta con evidencia de seguimiento periódico a las actividades planificadas en el PAT y se registra su avance."
+                                                                 "texto":  "En la IE se cuenta con evidencia de seguimiento periÃ³dico a las actividades planificadas en el PAT y se registra su avance."
                                                              },
                                                              {
                                                                  "id":  "dir_a_5",
-                                                                 "texto":  "En la IE se evalúa y se toman decisiones para mejorar o reajustar las actividades del PAT a partir de un proceso de evaluación continua."
+                                                                 "texto":  "En la IE se evalÃºa y se toman decisiones para mejorar o reajustar las actividades del PAT a partir de un proceso de evaluaciÃ³n continua."
                                                              }
                                                          ]
                                            },
                                            {
-                                               "nombre":  "B. DIMENSIÓN PEDAGÓGICA: ESTRATEGIAS PRIORIZADAS",
+                                               "nombre":  "B. DIMENSIÃ“N PEDAGÃ“GICA: ESTRATEGIAS PRIORIZADAS",
                                                "items":  [
                                                              {
                                                                  "id":  "dir_b_1",
-                                                                 "texto":  "El directivo realiza seguimiento periódico a la estrategia de Refuerzo Escolar y verifica la implementación de las acciones previstas."
+                                                                 "texto":  "El directivo realiza seguimiento periÃ³dico a la estrategia de Refuerzo Escolar y verifica la implementaciÃ³n de las acciones previstas."
                                                              },
                                                              {
                                                                  "id":  "dir_b_2",
-                                                                 "texto":  "El directivo implementa, realiza seguimiento y fortalece el uso de los materiales educativos (textos y cuadernos de trabajo entregados en el año en curso)."
+                                                                 "texto":  "El directivo implementa, realiza seguimiento y fortalece el uso de los materiales educativos (textos y cuadernos de trabajo entregados en el aÃ±o en curso)."
                                                              },
                                                              {
                                                                  "id":  "dir_b_3",
-                                                                 "texto":  "El directivo planifica, da seguimiento y evalúa la implementación del Plan Lector de la IE."
+                                                                 "texto":  "El directivo planifica, da seguimiento y evalÃºa la implementaciÃ³n del Plan Lector de la IE."
                                                              },
                                                              {
                                                                  "id":  "dir_b_4",
-                                                                 "texto":  "El directivo planifica, da seguimiento y evalúa la implementación del Proyecto Educativo Ambiental Integrado (PEAI) de la IE."
+                                                                 "texto":  "El directivo planifica, da seguimiento y evalÃºa la implementaciÃ³n del Proyecto Educativo Ambiental Integrado (PEAI) de la IE."
                                                              },
                                                              {
                                                                  "id":  "dir_b_5",
-                                                                 "texto":  "El directivo planifica, implementa y evalúa la Gestión del Riesgo de Desastres (GRD) en la IE, incluyendo acciones de prevención, mitigación y preparación para la respuesta."
+                                                                 "texto":  "El directivo planifica, implementa y evalÃºa la GestiÃ³n del Riesgo de Desastres (GRD) en la IE, incluyendo acciones de prevenciÃ³n, mitigaciÃ³n y preparaciÃ³n para la respuesta."
                                                              }
                                                          ]
                                            },
                                            {
-                                               "nombre":  "C. PLANIFICACIÓN CURRICULAR",
+                                               "nombre":  "C. PLANIFICACIÃ“N CURRICULAR",
                                                "items":  [
                                                              {
                                                                  "id":  "dir_c_1",
-                                                                 "texto":  "Los docentes de la IE cuentan con la planificación de la unidad didáctica correspondiente al grado y sección a su cargo, vigente para el periodo en curso."
+                                                                 "texto":  "Los docentes de la IE cuentan con la planificaciÃ³n de la unidad didÃ¡ctica correspondiente al grado y secciÃ³n a su cargo, vigente para el periodo en curso."
                                                              },
                                                              {
                                                                  "id":  "dir_c_2",
-                                                                 "texto":  "Los docentes de la IE cuentan con la planificación de sus sesiones o actividades de aprendizaje correspondientes al grado y sección a su cargo, vigente para el periodo en curso y articulada con la unidad didáctica correspondiente."
+                                                                 "texto":  "Los docentes de la IE cuentan con la planificaciÃ³n de sus sesiones o actividades de aprendizaje correspondientes al grado y secciÃ³n a su cargo, vigente para el periodo en curso y articulada con la unidad didÃ¡ctica correspondiente."
                                                              },
                                                              {
                                                                  "id":  "dir_c_3",
-                                                                 "texto":  "El directivo brinda asesoría pedagógica a los docentes para mejorar la planificación curricular, orientándola hacia el desarrollo de las competencias de los estudiantes."
+                                                                 "texto":  "El directivo brinda asesorÃ­a pedagÃ³gica a los docentes para mejorar la planificaciÃ³n curricular, orientÃ¡ndola hacia el desarrollo de las competencias de los estudiantes."
                                                              },
                                                              {
                                                                  "id":  "dir_c_4",
-                                                                 "texto":  "En la IE se promueve que los docentes realicen la planificación curricular de manera colegiada (programación anual y unidades didácticas) evidenciando acuerdos pedagógicos."
+                                                                 "texto":  "En la IE se promueve que los docentes realicen la planificaciÃ³n curricular de manera colegiada (programaciÃ³n anual y unidades didÃ¡cticas) evidenciando acuerdos pedagÃ³gicos."
                                                              }
                                                          ]
                                            },
                                            {
-                                               "nombre":  "D. MONITOREO DE LA PRÁCTICA PEDAGÓGICA EN AULA",
+                                               "nombre":  "D. MONITOREO DE LA PRÃCTICA PEDAGÃ“GICA EN AULA",
                                                "items":  [
                                                              {
                                                                  "id":  "dir_d_1",
-                                                                 "texto":  "En la IE se cuenta con un cronograma de monitoreo de la práctica pedagógica en el aula del presente año y se han ejecutado las visitas programadas."
+                                                                 "texto":  "En la IE se cuenta con un cronograma de monitoreo de la prÃ¡ctica pedagÃ³gica en el aula del presente aÃ±o y se han ejecutado las visitas programadas."
                                                              },
                                                              {
                                                                  "id":  "dir_d_2",
-                                                                 "texto":  "En la IE se organiza e interpreta la información obtenida a partir del monitoreo, identificando logros y oportunidades de mejora de la práctica pedagógica docente."
+                                                                 "texto":  "En la IE se organiza e interpreta la informaciÃ³n obtenida a partir del monitoreo, identificando logros y oportunidades de mejora de la prÃ¡ctica pedagÃ³gica docente."
                                                              },
                                                              {
                                                                  "id":  "dir_d_3",
-                                                                 "texto":  "En la IE se identifican, plantean e implementan propuestas de mejora que atienden las dificultades identificadas en la práctica pedagógica a partir del monitoreo."
+                                                                 "texto":  "En la IE se identifican, plantean e implementan propuestas de mejora que atienden las dificultades identificadas en la prÃ¡ctica pedagÃ³gica a partir del monitoreo."
                                                              }
                                                          ]
                                            },
@@ -1521,11 +1577,11 @@
                                                "items":  [
                                                              {
                                                                  "id":  "dir_e_1",
-                                                                 "texto":  "En la IE se realiza un diagnóstico de necesidades formativas docentes y se implementa al menos una acción de fortalecimiento que responde a una necesidad identificada en el diagnóstico."
+                                                                 "texto":  "En la IE se realiza un diagnÃ³stico de necesidades formativas docentes y se implementa al menos una acciÃ³n de fortalecimiento que responde a una necesidad identificada en el diagnÃ³stico."
                                                              },
                                                              {
                                                                  "id":  "dir_e_2",
-                                                                 "texto":  "La IE planifica e implementa (o viene implementando) al menos un proyecto de innovación pedagógica formulado, cuyos resultados son verificables y se difunden a la comunidad educativa."
+                                                                 "texto":  "La IE planifica e implementa (o viene implementando) al menos un proyecto de innovaciÃ³n pedagÃ³gica formulado, cuyos resultados son verificables y se difunden a la comunidad educativa."
                                                              }
                                                          ]
                                            },
@@ -1538,7 +1594,7 @@
                                                              },
                                                              {
                                                                  "id":  "dir_f_2",
-                                                                 "texto":  "En la IE se analizan los resultados de aprendizaje y, a partir de ellos, se implementan estrategias pedagógicas para la mejora de los aprendizajes."
+                                                                 "texto":  "En la IE se analizan los resultados de aprendizaje y, a partir de ellos, se implementan estrategias pedagÃ³gicas para la mejora de los aprendizajes."
                                                              }
                                                          ]
                                            }
@@ -1567,6 +1623,7 @@
                                          "anio":  2026,
                                          "momento":  null,
                                          "estado":  "publicada"
-                                     }
+                                     },
+                         "id":  "ft_directivo"
                      }
 }

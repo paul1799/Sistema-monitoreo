@@ -114,13 +114,18 @@ export function normalizarEscala1_3(rawVal) {
   if (s === '1') return 1;
   if (s === '2') return 2;
   if (s === '3') return 3;
+  if (s === '4') return 4;
 
   if (s === 'INICIO' || s === 'I' || s === 'NO CUMPLE' || s === 'NO') return 1;
   if (s === 'PROCESO' || s === 'P' || s === 'EN PROCESO' || s === 'CUMPLE PARCIALMENTE') return 2;
   if (s === 'LOGRADO' || s === 'L' || s === 'LOGRADA' || s === 'CUMPLE' || s === 'SI' || s === 'SÍ') return 3;
 
+  if (s === 'II') return 2;
+  if (s === 'III') return 3;
+  if (s === 'IV' || s === 'DESTACADO') return 4;
+
   const num = Number(s);
-  if (!isNaN(num) && (num === 1 || num === 2 || num === 3)) {
+  if (!isNaN(num) && (num === 1 || num === 2 || num === 3 || num === 4)) {
     return num;
   }
 
@@ -516,4 +521,72 @@ export function _obtenerRespuestaItem(s, it) {
   }
 
   return '';
+}
+
+/**
+ * Obtiene el valor específico de un campo del Docente Monitoreado
+ * @param {Object} s - Submission
+ * @param {string} key - Clave del campo
+ * @param {Object} state - Estado global
+ * @returns {string}
+ */
+export function _obtenerValorDocente(s, key, state = null) {
+  if (!s) return '';
+  const lk = String(key || '').toLowerCase();
+  const extras = Array.isArray(s.extras) ? s.extras : [];
+  const getExtraVal = (patterns) => {
+    for (const pat of patterns) {
+      const byId = extras.find(e => e && e.id === pat);
+      if (byId && byId.value !== undefined && byId.value !== null && String(byId.value).trim() !== '') {
+        return String(byId.value).trim();
+      }
+      const pLow = pat.toLowerCase();
+      const byLabel = extras.find(e => {
+        const lbl = String(e?.label || e?.campo || e?.nombre || '').toLowerCase();
+        return lbl.includes(pLow);
+      });
+      if (byLabel && byLabel.value !== undefined && byLabel.value !== null && String(byLabel.value).trim() !== '') {
+        return String(byLabel.value).trim();
+      }
+    }
+    return '';
+  };
+
+  if (lk.includes('nombre') || lk === 'docente') {
+    return s.docente || s.docenteNombre || getExtraVal(['ex_docente', 'docente observado', 'docente']) || '';
+  }
+  if (lk.includes('dni')) {
+    return s.docenteDni || getExtraVal(['ex_dni', 'dni del docente', 'dni']) || '';
+  }
+  if (lk.includes('nivel')) {
+    return s.docenteNivel || getExtraVal(['ex_nivel', 'nivel educativo', 'nivel']) || '';
+  }
+  if (lk.includes('grado')) {
+    return s.docenteGrado || getExtraVal(['ex_grado', 'grado']) || '';
+  }
+  if (lk.includes('seccion') || lk.includes('sección')) {
+    return s.docenteSeccion || getExtraVal(['ex_seccion', 'sección', 'seccion']) || '';
+  }
+  if (lk.includes('area') || lk.includes('área')) {
+    return s.docenteArea || getExtraVal(['ex_area', 'área curricular observada', 'area curricular', 'área']) || '';
+  }
+  if (lk.includes('matriculado')) {
+    return s.docenteEstMatriculados || getExtraVal(['ex_est_matriculados', 'estudiantes matriculados', 'matriculados']) || '';
+  }
+  if (lk.includes('asistente')) {
+    return s.docenteEstAsistentes || getExtraVal(['ex_est_asistentes', 'estudiantes asistentes', 'asistentes']) || '';
+  }
+  if (lk.includes('discapacidad')) {
+    return s.docenteEstDiscapacidad || getExtraVal(['ex_est_discapacidad', 'discapacidad']) || '';
+  }
+  if (lk.includes('horainicio') || lk.includes('hora_inicio') || lk.includes('inicio')) {
+    return s.docenteHoraInicio || s.horaInicio || getExtraVal(['ex_hora_inicio', 'hora de inicio']) || '';
+  }
+  if (lk.includes('horafin') || lk.includes('hora_fin') || lk.includes('termino') || lk.includes('término') || lk.includes('fin')) {
+    return s.docenteHoraFin || s.horaTermino || getExtraVal(['ex_hora_fin', 'hora de término', 'hora de fin']) || '';
+  }
+  if (lk.includes('monitor') || lk.includes('observador') || lk.includes('responsable')) {
+    return s.docenteMonitor || s.responsable || getExtraVal(['ex_monitor', 'observador/monitor', 'monitor', 'responsable']) || '';
+  }
+  return s[key] !== undefined ? s[key] : getExtraVal([key]);
 }

@@ -5,7 +5,8 @@
 
 import { computeItemAgg, renderItemReportHtml } from '../../ui/scoring.js';
 import { getEbrSeccionesForVisita } from '../../ebr-gestion.js';
-import { isFichaEbrGestionEscolar } from '../../domain/fichas/index.js';
+import { isFichaEbrGestionEscolar, isFichaMaterialesCebe } from '../../domain/fichas/index.js';
+import { MATERIALES_CEBE_SECCIONES } from '../../domain/fichas/catalogo-base.js';
 import { isFichaCebeGestion, CEBE_SECCIONES } from '../../cebe-gestion.js';
 import { isFichaPriteGestion, PRITE_SECCIONES } from '../../prite-gestion.js';
 
@@ -35,6 +36,9 @@ export function renderItemReportSectionHtml(ft, statsList, isAllMode = false) {
   } else if (!isSiNo && isFichaPriteGestion(ft)) {
     const isOfficialPrite = (ft.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 32);
     seccionesParaAgg = isOfficialPrite ? ft.secciones : PRITE_SECCIONES;
+  } else if (isFichaMaterialesCebe(ft)) {
+    const isOfficialMat = (ft.secciones?.length === 5 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 14);
+    seccionesParaAgg = isOfficialMat ? ft.secciones : MATERIALES_CEBE_SECCIONES;
   }
   const secAgg = {};
   const normSec = (name) => String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();

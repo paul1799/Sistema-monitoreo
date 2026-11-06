@@ -1,4 +1,4 @@
-﻿/* =========================================================================
+/* =========================================================================
    features/reportes/export.js — Lógica de exportación a CSV y utilidades de descarga
    UGEL 03 · AGEBRE · Fase 2 Reorganización
    ========================================================================= */
@@ -12,7 +12,7 @@ import {
   isFichaEbrGestionEscolar,
   getMomentoVisitaEbr
 } from '../../domain/fichas/index.js';
-import { openModalLimpiarRegistros } from '../../ui/modales-limpieza.js?v=20261030_v1';
+import { openModalLimpiarRegistros } from '../../ui/modales-limpieza.js?v=20261103_v8';
 import { exportFichaIndividualPdf, exportConsolidadoReportPdf } from '../../pdf-template.js';
 import { exportarMatrizSeguimiento } from '../../exportarMatriz.js';
 import { exportarTableroEBRCompleto } from '../../exportarTableroEBR.js';

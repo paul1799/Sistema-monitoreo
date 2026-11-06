@@ -120,7 +120,10 @@
                                                "anio":  2026,
                                                "momento":  null,
                                                "estado":  "publicada"
-                                           }
+                                           },
+                               "id":  "ft_materiales_cebe",
+                               "escala":  "SI_NO_NA",
+                               "tipoVisitas":  "mismos_items"
                            },
     "ft_coord_tutoria_jec":  {
                                  "grupo":  "Modelo JEC",
@@ -412,7 +415,8 @@
                                                  "anio":  2026,
                                                  "momento":  null,
                                                  "estado":  "publicada"
-                                             }
+                                             },
+                                 "id":  "ft_coord_tutoria_jec"
                              },
     "ft_msejec_2do":  {
                           "grupo":  "Modelo JEC",
@@ -628,7 +632,8 @@
                                           "anio":  2026,
                                           "momento":  "2do",
                                           "estado":  "publicada"
-                                      }
+                                      },
+                          "id":  "ft_msejec_2do"
                       },
     "ft_gestion_cebe":  {
                             "grupo":  "CEBE / PRITE",
@@ -844,7 +849,8 @@
                                             "anio":  2026,
                                             "momento":  null,
                                             "estado":  "publicada"
-                                        }
+                                        },
+                            "id":  "ft_gestion_cebe"
                         },
     "ft_rubricas_aula":  {
                              "extras":  [
@@ -1336,7 +1342,8 @@
                                                   "anio":  2026,
                                                   "momento":  "2do",
                                                   "estado":  "publicada"
-                                              }
+                                              },
+                                  "id":  "ft_gestion_ugel03_ebr"
                               },
     "ft_directivo":  {
                          "grupo":  "Gestión escolar y docentes (EBR)",
@@ -1567,6 +1574,7 @@
                                          "anio":  2026,
                                          "momento":  null,
                                          "estado":  "publicada"
-                                     }
+                                     },
+                         "id":  "ft_directivo"
                      }
 }

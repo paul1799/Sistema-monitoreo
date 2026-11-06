@@ -4,8 +4,8 @@
  * UGEL 03 · AGEBRE · Fase 3 Reorganización
  */
 
-export * from './payload.js';
-export * from './preview.js';
-export * from './list.js';
-export * from './editor.js';
+export * from './payload.js?v=20261103_v8';
+export * from './preview.js?v=20261103_v8';
+export * from './list.js?v=20261103_v8';
+export * from './editor.js?v=20261103_v8';
 

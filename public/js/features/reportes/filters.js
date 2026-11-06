@@ -1,4 +1,4 @@
-﻿/* =========================================================================
+/* =========================================================================
    features/reportes/filters.js — Lógica de filtros, búsqueda, cajón y catálogo
    UGEL 03 · AGEBRE · Fase 2 Reorganización
    ========================================================================= */
@@ -50,7 +50,7 @@ import {
   renderItemReportHtml
 } from '../../ui/scoring.js';
 import { openDownloadConfigModal } from '../../ui/modales.js';
-import { openModalLimpiarRegistros } from '../../ui/modales-limpieza.js?v=20261030_v1';
+import { openModalLimpiarRegistros } from '../../ui/modales-limpieza.js?v=20261103_v8';
 import {
   buildColegioIndex,
   matchColegio,
@@ -76,6 +76,7 @@ import {
   getNivelCoordTutoriaJec,
   getNivelCoordPedagogicoJec,
   isFichaEbrGestionEscolar,
+  isFichaMaterialesCebe,
   isFichaEbrEbePrite,
   isFichaJec1erMomento,
   getReglaNivelEbrGestion,
@@ -519,6 +520,9 @@ export function getSubmissionsForFichaType(submissions, tipoId, targetFt = null)
       return true;
     }
     const isTargetEbr = (tid === 'ft_gestion_ugel03_ebr' || tid === 'ft_ebr_gestion_1er' || tid === 'ft_ebr_gestion' || (targetFt && isFichaEbrGestionEscolar(targetFt)));
+    if ((tid === 'ft_materiales_cebe' || (targetFt && isFichaMaterialesCebe(targetFt))) && isFichaMaterialesCebe(s)) return true;
+    if ((tid === 'ft_gestion_cebe' || (targetFt && isFichaCebeGestion(targetFt))) && isFichaCebeGestion(s)) return true;
+    if ((tid === 'ft_prite_gestion' || (targetFt && isFichaPriteGestion(targetFt))) && isFichaPriteGestion(s)) return true;
     if (isTargetEbr && isFichaEbrGestionEscolar(s)) {
       return true;
     }

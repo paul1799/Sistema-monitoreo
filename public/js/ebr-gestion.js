@@ -829,7 +829,7 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
   if (!isEditing) {
     const targetVis = (prefillOptions && prefillOptions.visita)
       ? Number(prefillOptions.visita)
-      : ((getRegTargetVisita ? Number(getRegTargetVisita()) : null) || (function() {
+      : (ebrFormState.visita || (getRegTargetVisita ? Number(getRegTargetVisita()) : null) || (function() {
           try {
             const v = sessionStorage.getItem('reg_prefill_visita');
             return v ? Number(v) : null;
@@ -856,7 +856,7 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
     }
   }
 
-  const currentVisita = ebrFormState.visita;
+  const currentVisita = ebrFormState.visita || 1;
   const isV1 = currentVisita === 1;
   const isV2 = currentVisita === 2;
   const isV3 = currentVisita === 3;
@@ -1755,7 +1755,8 @@ function attachVisitaSelectorEvents(host, ft, state, dbNs, currentUser, navigate
       ebrFormState.observacionesItems = newObs;
 
       ebrFormState.visita = targetVisita;
-      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing);
+      try { sessionStorage.setItem('reg_prefill_visita', String(targetVisita)); } catch (_) { }
+      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: targetVisita });
     };
   });
 }
@@ -1931,6 +1932,8 @@ export const syncCommonFieldsFromDom = syncAllEbrFormDataFromDom;
  * Vincula todos los eventos interactivos del formulario de EBR
  */
 function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEditing) {
+  const getActiveVisita = () => Number(ebrFormState.visita) || Number(host.querySelector('#f_visita')?.value) || 1;
+  const currentVisita = getActiveVisita();
   // ---- Buscador de IE con autocompletado y detección de visita previa ----
   const instInput = host.querySelector('#f_institucion');
   const dropdown = host.querySelector('#ieDropdown');
@@ -1988,7 +1991,8 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
     if (ebrFormState.subdirectores && ebrFormState.subdirectores.length > 0) {
       syncAllEbrFormDataFromDom(host);
       const scrollY = window.scrollY;
-      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing);
+      try { sessionStorage.setItem('reg_prefill_visita', String(getActiveVisita())); } catch (_) { }
+      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: getActiveVisita() });
       window.scrollTo({ top: scrollY, behavior: 'instant' });
     }
   };
@@ -2196,7 +2200,8 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
         correo: ''
       });
       const scrollY = window.scrollY;
-      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing);
+      try { sessionStorage.setItem('reg_prefill_visita', String(getActiveVisita())); } catch (_) { }
+      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: getActiveVisita() });
       window.scrollTo({ top: scrollY, behavior: 'instant' });
     };
   }
@@ -2207,7 +2212,8 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       const idx = Number(btn.dataset.rmSubdir);
       ebrFormState.subdirectores.splice(idx, 1);
       const scrollY = window.scrollY;
-      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing);
+      try { sessionStorage.setItem('reg_prefill_visita', String(getActiveVisita())); } catch (_) { }
+      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: getActiveVisita() });
       window.scrollTo({ top: scrollY, behavior: 'instant' });
     };
   });
@@ -2316,13 +2322,19 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
         const m2 = ebrFormState.docentesMomento2 || [];
         let copied = 0;
         m1.forEach((r1, i) => {
-          if (m2[i] && r1.total !== '' && r1.total !== undefined) {
-            m2[i].total = r1.total;
+          let targetRow = m2.find(r2 => (r2.nivel || '').trim().toLowerCase() === (r1.nivel || '').trim().toLowerCase());
+          if (!targetRow && m2[i]) targetRow = m2[i];
+          if (targetRow && r1.total !== '' && r1.total !== undefined) {
+            targetRow.total = r1.total;
+            const tNum = Number(targetRow.total) || 0;
+            const mNum = Number(targetRow.monitoreados) || 0;
+            targetRow.noMonitoreados = Math.max(0, tNum - mNum);
             copied++;
           }
         });
         const scrollY = window.scrollY;
-        renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing);
+        try { sessionStorage.setItem('reg_prefill_visita', String(getActiveVisita())); } catch (_) { }
+      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: getActiveVisita() });
         window.scrollTo({ top: scrollY, behavior: 'instant' });
         showToast(copied > 0 ? '✓ Totales de docentes copiados del primer momento.' : '⚠️ No hay totales ingresados en el primer momento.');
       };
@@ -2349,7 +2361,8 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
           R5: ['', '', '', '']
         });
         const scrollY = window.scrollY;
-        renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing);
+        try { sessionStorage.setItem('reg_prefill_visita', String(getActiveVisita())); } catch (_) { }
+      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: getActiveVisita() });
         window.scrollTo({ top: scrollY, behavior: 'instant' });
       };
     });
@@ -2362,7 +2375,8 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
         const list = momentoKey === 'momento1' ? ebrFormState.docentesMomento1 : ebrFormState.docentesMomento2;
         list.splice(Number(rIdxStr), 1);
         const scrollY = window.scrollY;
-        renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing);
+        try { sessionStorage.setItem('reg_prefill_visita', String(getActiveVisita())); } catch (_) { }
+      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: getActiveVisita() });
         window.scrollTo({ top: scrollY, behavior: 'instant' });
       };
     });
@@ -2464,7 +2478,8 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       syncAllEbrFormDataFromDom(host);
       ebrFormState.proyectosInnovacion.push('');
       const scrollY = window.scrollY;
-      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing);
+      try { sessionStorage.setItem('reg_prefill_visita', String(getActiveVisita())); } catch (_) { }
+      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: getActiveVisita() });
       window.scrollTo({ top: scrollY, behavior: 'instant' });
     };
   }
@@ -2481,7 +2496,8 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       ebrFormState.proyectosInnovacion.splice(+btn.dataset.rmProj, 1);
       if (!ebrFormState.proyectosInnovacion.length) ebrFormState.proyectosInnovacion.push('');
       const scrollY = window.scrollY;
-      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing);
+      try { sessionStorage.setItem('reg_prefill_visita', String(getActiveVisita())); } catch (_) { }
+      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: getActiveVisita() });
       window.scrollTo({ top: scrollY, behavior: 'instant' });
     };
   });
@@ -2574,7 +2590,8 @@ function checkExistingVisitasEbr(colegio, host, state, ft, dbNs = null, currentU
     `;
     if (!ebrFormState.visita) {
       ebrFormState.visita = 1;
-      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing);
+      try { sessionStorage.setItem('reg_prefill_visita', '1'); } catch (_) { }
+      renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: 1 });
     }
   } else {
     const hasV1 = submissions.find(s => Number(s.visita) === 1);
@@ -2600,7 +2617,8 @@ function checkExistingVisitasEbr(colegio, host, state, ft, dbNs = null, currentU
       }
       if (!ebrFormState.visita) {
         ebrFormState.visita = 2;
-        renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing);
+        try { sessionStorage.setItem('reg_prefill_visita', '2'); } catch (_) { }
+        renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: 2 });
       }
     } else if (hasV2) {
       // Ya tiene Visita 2
@@ -2939,9 +2957,9 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
     domDetectedVisita = 1;
   }
 
-  const rawVisita = Number(vEl?.value) ||
+  const rawVisita = domDetectedVisita ||
                     Number(activeCard?.dataset?.ebrVisita) ||
-                    domDetectedVisita ||
+                    Number(vEl?.value) ||
                     Number(ebrFormState.visita) ||
                     (function() {
                       try {

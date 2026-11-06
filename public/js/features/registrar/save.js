@@ -27,7 +27,7 @@ import {
   REGLA_NIVEL_COORD_TUTORIA_JEC,
   REGLA_NIVEL_COORD_PEDAGOGICO,
   ESPECIALISTA_JEC_OFICIAL
-} from '../../calcEngine.js?v=20261030_v1';
+} from '../../calcEngine.js?v=20261103_v8';
 import { syncDirectivosFromFicha } from '../../directorio.js?v=20261013_v1';
 import { isFichaCebeGestion, guardarFormularioCebe } from '../../cebe-gestion.js';
 import { isFichaPriteGestion, guardarFormularioPrite } from '../../prite-gestion.js';
@@ -419,6 +419,8 @@ export async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate
     let ugelVal = '', redVal = '', codigoVal = '', responsableVal = '', directorVal = '';
     let directorDniVal = '', directorCondicionVal = '', directorCorreoVal = '', condicionVal = '', nivelAtencionVal = '', turnoAtencionVal = '', turnoVisitadoVal = '', monitorDniVal = '';
     let coordTutoriaVal = '', coordTutoriaDniVal = '', coordTutoriaCondicionVal = '', coordTutoriaEspVal = '', coordTutoriaCorreoVal = '', docentesTutoresVal = '', horasVisitaVal = '';
+    let docenteObsVal = '', docenteDniVal = '', docenteNivelVal = '', docenteGradoVal = '', docenteSeccionVal = '', docenteAreaVal = '';
+    let docenteEstMatriculadosVal = '', docenteEstAsistentesVal = '', docenteEstDiscapacidadVal = '', docenteMonitorVal = '';
 
     extrasCollected.forEach(ex => {
       const l = (ex.label || '').toLowerCase();
@@ -443,7 +445,24 @@ export async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate
       if (l.includes('turno') && l.includes('visit') && !turnoVisitadoVal) turnoVisitadoVal = ex.value;
       if ((l.includes('responsable') || l.includes('especialista') || l.includes('monitor')) && !l.includes('dni') && !responsableVal) responsableVal = ex.value;
       if ((l.includes('responsable') || l.includes('especialista') || l.includes('monitor')) && l.includes('dni') && !monitorDniVal) monitorDniVal = ex.value;
+
+      // Campos específicos de Docente Monitoreado
+      if ((xid === 'ex_docente' || (l.includes('docente') && (l.includes('observ') || l.includes('nombre') || !l.includes('dni')))) && !docenteObsVal) docenteObsVal = ex.value;
+      if ((xid === 'ex_dni' || (l.includes('docente') && l.includes('dni')) || l === 'dni del docente') && !docenteDniVal) docenteDniVal = ex.value;
+      if ((xid === 'ex_nivel' || l.includes('nivel educativo')) && !docenteNivelVal) docenteNivelVal = ex.value;
+      if ((xid === 'ex_grado' || l === 'grado') && !docenteGradoVal) docenteGradoVal = ex.value;
+      if ((xid === 'ex_seccion' || l === 'sección' || l === 'seccion') && !docenteSeccionVal) docenteSeccionVal = ex.value;
+      if ((xid === 'ex_area' || l.includes('área curricular') || l.includes('area curricular')) && !docenteAreaVal) docenteAreaVal = ex.value;
+      if ((xid === 'ex_est_matriculados' || l.includes('matriculados')) && !docenteEstMatriculadosVal) docenteEstMatriculadosVal = ex.value;
+      if ((xid === 'ex_est_asistentes' || l.includes('asistentes')) && !docenteEstAsistentesVal) docenteEstAsistentesVal = ex.value;
+      if ((xid === 'ex_est_discapacidad' || l.includes('discapacidad')) && !docenteEstDiscapacidadVal) docenteEstDiscapacidadVal = ex.value;
+      if ((xid === 'ex_monitor' || l.includes('observador/monitor') || l.includes('observador')) && !docenteMonitorVal) docenteMonitorVal = ex.value;
     });
+
+    const redEl = document.getElementById('f_red');
+    if (redEl && redEl.value.trim() && (!redVal || redVal === 'No aplica')) {
+      redVal = redEl.value.trim();
+    }
 
     // Vincular con padrón
     let matchedCol = null;
@@ -593,7 +612,13 @@ export async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate
             const cId = col.id || ('c_' + ci);
             const inp = form.querySelector(`[name="tbl_${tblId}_${fId}_${cId}"]`);
             if (inp) {
-              tablasRespuestas[tblId][fId][cId] = inp.value.trim();
+              if (inp.type === 'checkbox') {
+                tablasRespuestas[tblId][fId][cId] = inp.checked ? (inp.value || '1') : '';
+              } else if (inp.type === 'radio') {
+                tablasRespuestas[tblId][fId][cId] = inp.checked ? inp.value : '';
+              } else {
+                tablasRespuestas[tblId][fId][cId] = inp.value.trim();
+              }
             }
           });
         });
@@ -628,6 +653,19 @@ export async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate
       coordTutoriaEspecialidad: coordTutoriaEspVal || '',
       coordTutoriaCorreo: coordTutoriaCorreoVal || '',
       docentesTutores: docentesTutoresVal || '',
+      docente: docenteObsVal || '',
+      docenteNombre: docenteObsVal || '',
+      docenteDni: docenteDniVal || '',
+      docenteNivel: docenteNivelVal || '',
+      docenteGrado: docenteGradoVal || '',
+      docenteSeccion: docenteSeccionVal || '',
+      docenteArea: docenteAreaVal || '',
+      docenteEstMatriculados: docenteEstMatriculadosVal || '',
+      docenteEstAsistentes: docenteEstAsistentesVal || '',
+      docenteEstDiscapacidad: docenteEstDiscapacidadVal || '',
+      docenteMonitor: docenteMonitorVal || responsableVal || '',
+      docenteHoraInicio: horaInicioVal || '',
+      docenteHoraFin: horaTerminoVal || '',
       horasVisita: horasVisitaVal || '',
       condicion: condicionVal || directorCondicionVal || '',
       nivelAtencion: nivelAtencionVal || '',

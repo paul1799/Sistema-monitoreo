@@ -1,16 +1,22 @@
 # scripts/serve.ps1 - Servidor estatico HTTP en PowerShell puro
 param (
-  [int]$Port = 8089
+  [int]$Port = 5000
 )
 
 $root = if (Test-Path (Join-Path $PSScriptRoot "..\public")) { (Resolve-Path (Join-Path $PSScriptRoot "..\public")).Path } else { (Resolve-Path (Join-Path $PSScriptRoot "..\..\public")).Path }
-$prefix = "http://localhost:$Port/"
 
 $listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add($prefix)
+$prefixes = @("http://localhost:$Port/")
+if ($Port -ne 8089) { $prefixes += "http://localhost:8089/" }
+if ($Port -ne 5000) { $prefixes += "http://localhost:5000/" }
+
+foreach ($p in $prefixes) {
+  try { $listener.Prefixes.Add($p) } catch {}
+}
+
 try {
   $listener.Start()
-  Write-Host "Servidor escuchando en $prefix (raiz: $root)"
+  Write-Host "Servidor escuchando en $($prefixes -join ' y ') (raiz: $root)"
 } catch {
   Write-Host "Error iniciando listener: $_"
   exit 1
@@ -62,8 +68,11 @@ try {
           ".png"  { $contentType = "image/png" }
           ".jpg"  { $contentType = "image/jpeg" }
           ".jpeg" { $contentType = "image/jpeg" }
-          ".svg"  { $contentType = "image/svg+xml" }
-          ".ttf"  { $contentType = "font/ttf" }
+          ".svg"   { $contentType = "image/svg+xml" }
+          ".ico"   { $contentType = "image/x-icon" }
+          ".ttf"   { $contentType = "font/ttf" }
+          ".woff"  { $contentType = "font/woff" }
+          ".woff2" { $contentType = "font/woff2" }
         }
         $response.ContentType = $contentType
         $response.Headers.Add("Access-Control-Allow-Origin", "*")

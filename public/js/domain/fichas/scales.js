@@ -31,21 +31,23 @@ export function puntajeItem(escala, valor) {
     return null; // excluido del denominador
   }
 
-  switch (escala) {
+  const escUpper = String(escala || '').toUpperCase().trim();
+  switch (escUpper) {
     case 'SI_NO':
     case 'SI_NO_NA':
-      if (vClean === 'si' || vClean === 'sí') return 1;
-      if (vClean === 'no') return 0;
+      if (vClean === 'si' || vClean === 'sí' || vClean === '1' || vClean === 'true' || vClean === 'cumple' || vClean === 'logrado') return 1;
+      if (vClean === 'no' || vClean === '0' || vClean === 'false' || vClean === 'no cumple' || vClean === 'no_cumple' || vClean === 'inicio') return 0;
       return null;
 
     case 'IPL':
     case 'IPL_NA':
+    case 'IPS':
       if (vClean === 'logrado') return 1;
       if (vClean === 'proceso') return 0.5;
       if (vClean === 'inicio') return 0;
       // Compatibilidad hacia atrás (si/no legacy)
-      if (vClean === 'si' || vClean === 'sí') return 1;
-      if (vClean === 'no') return 0;
+      if (vClean === 'si' || vClean === 'sí' || vClean === '1' || vClean === 'true' || vClean === 'cumple' || vClean === 'logrado') return 1;
+      if (vClean === 'no' || vClean === '0' || vClean === 'false' || vClean === 'no cumple' || vClean === 'no_cumple' || vClean === 'inicio') return 0;
       return null;
 
     case 'NIVEL_1_4':

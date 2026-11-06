@@ -14,7 +14,7 @@ import {
 /**
  * Renderiza el gráfico de dona de distribución de resultados y su leyenda
  */
-export function renderDistributionChartHtml(dist, vFilter = '') {
+export function renderDistributionChartHtml(dist, vFilter = '', cardsHtml = '') {
   const colLog = 'var(--ok, #16a34a)';
   const colProc = 'var(--warn, #d97706)';
   const colIni = 'var(--danger, #dc2626)';
@@ -58,7 +58,7 @@ export function renderDistributionChartHtml(dist, vFilter = '') {
       { value: dist.proceso, color: colProc, label: 'En proceso' },
       { value: dist.inicio, color: colIni, label: 'Inicio' },
       { value: dist.none, color: 'var(--line-strong, #94a3b8)', label: 'Sin datos' },
-    ], { centerLabel: distTotal, centerSub: centerSubLabel }) +
+    ], { size: 165, stroke: 24, centerLabel: distTotal, centerSub: centerSubLabel }) +
     '<div class="seglegend" style="flex-direction:column;gap:8px;align-items:flex-start">' +
     '<span><span class="dot" style="background:' + colLog + '"></span>Logrado: <strong>' + dist.logrado + '</strong>' + pLog + '</span>' +
     '<span><span class="dot" style="background:' + colProc + '"></span>En proceso: <strong>' + dist.proceso + '</strong>' + pProc + '</span>' +
@@ -66,7 +66,23 @@ export function renderDistributionChartHtml(dist, vFilter = '') {
     (dist.none ? '<span><span class="dot" style="background:var(--line-strong, #94a3b8)"></span>Sin datos: <strong>' + dist.none + '</strong>' + pNone + '</span>' : '') +
     '</div></div>';
 
-  return { title: panelDistTitle, html: seg };
+  const combinedHtml = cardsHtml ? `
+    <div class="panel panelDistribucionYMetricas">
+      <div class="panelDistribucionHead">
+        <h3>${panelDistTitle}</h3>
+      </div>
+      <div class="distribucionMainFlex">
+        <div class="distribucionChartSide">
+          ${seg}
+        </div>
+        <div class="distribucionCardsSide">
+          ${cardsHtml}
+        </div>
+      </div>
+    </div>
+  ` : seg;
+
+  return { title: panelDistTitle, html: combinedHtml };
 }
 
 /**

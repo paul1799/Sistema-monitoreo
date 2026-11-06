@@ -1,4 +1,4 @@
-﻿/**
+/**
  * features/plantillas/list.js
  * Gestión de catálogo de plantillas, vistas de tipos, áreas y firmantes oficiales
  * UGEL 03 · AGEBRE · Fase 3 Reorganización
@@ -44,7 +44,7 @@ import {
   setTiposView,
   openFichaInBuilder,
   startNewPlantillaBuilder
-} from './editor.js';
+} from './editor.js?v=20261103_v8';
 
 async function verifyAdminPassword(pw, adminEmail) {
   const authModule = await import('../../core/firebase/auth.js');

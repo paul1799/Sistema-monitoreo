@@ -20,6 +20,6 @@ export {
   openFichaInBuilder,
   renderSplitScreenBuilder,
   renderBuilder
-} from '../features/plantillas/index.js?v=20261030_v1';
+} from '../features/plantillas/index.js?v=20261103_v8';
 
-export * from '../features/plantillas/index.js?v=20261030_v1';
+export * from '../features/plantillas/index.js?v=20261103_v8';

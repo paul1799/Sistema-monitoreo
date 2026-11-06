@@ -24,8 +24,8 @@ import {
   getReglaNivelEbrGestion,
   getNivelEbrGestion,
   getMomentoVisitaEbr
-} from '../calcEngine.js?v=20261030_v1';
-import * as RepDatos from '../reportes-datos.js?v=20261030_v1';
+} from '../calcEngine.js?v=20261103_v8';
+import * as RepDatos from '../reportes-datos.js?v=20261103_v8';
 import { getEbrSeccionesForVisita } from '../ebr-gestion.js';
 import { isFichaJec, JEC_SECCIONES } from '../jec-monitoreo.js';
 import { JEC_1ER_SECCIONES } from '../jec-1er-monitoreo.js';

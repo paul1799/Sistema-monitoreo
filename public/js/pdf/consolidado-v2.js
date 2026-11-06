@@ -20,7 +20,8 @@ import {
   isFichaCoordPedagogico,
   isFichaEspecialistaJec,
   isFichaEbrGestionEscolar,
-  isFichaEbrEbePrite
+  isFichaEbrEbePrite,
+  isFichaMonitoreoDocente
 } from '../calc/detectors.js';
 
 import { ESPECIALISTA_JEC_OFICIAL } from '../calc/reglas.js';
@@ -37,6 +38,12 @@ function getCoordinatorCell(s, ft) {
     const e = extras.find(x => regs.every(re => re.test(norm(x?.label || x?.campo || x?.nombre))));
     return e ? String(e.value || e.valor || '').trim() : '';
   };
+  if (isFichaMonitoreoDocente(ft)) {
+    const docNom = String(s?.docente || s?.docenteNombre || extraVal([/docente/, /observado/]) || extraVal([/docente/]) || '').trim();
+    const docArea = String(s?.docenteArea || extraVal([/area/, /curricular/]) || extraVal([/area/]) || '').trim();
+    if (docNom && docArea) return `${docNom} (${docArea})`;
+    return docNom || '—';
+  }
   if (isFichaCoordPedagogico(ft)) {
     return String(s?.coordPedagNombre || s?.coordinadorPedagogico || s?.coordPedag
       || extraVal([/coordinador/, /pedagog/]) || '—').trim() || '—';
@@ -667,9 +674,11 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
 
         const isCoordPedagGroup = isFichaCoordPedagogico(groupFt);
         const isCoordTutoriaGroup = isFichaCoordTutoriaJec(groupFt);
-        const isCoordGroup = isCoordPedagGroup || isCoordTutoriaGroup;
-        const coordColLabel = isCoordPedagGroup ? 'Coordinador(a) Pedagógico'
-          : (isCoordTutoriaGroup ? 'Coordinador(a) de Tutoría' : 'REI');
+        const isDocenteGroup = isFichaMonitoreoDocente(groupFt);
+        const isCoordGroup = isCoordPedagGroup || isCoordTutoriaGroup || isDocenteGroup;
+        const coordColLabel = isDocenteGroup ? 'Docente Observado'
+          : (isCoordPedagGroup ? 'Coordinador(a) Pedagógico'
+          : (isCoordTutoriaGroup ? 'Coordinador(a) de Tutoría' : 'REI'));
 
         const matrizHeaders = ['N.°', 'Institución Educativa', (isCoordGroup ? coordColLabel : 'REI'), ...(showVisitaCol ? ['Visita'] : []), ...secHeaders, 'Global', 'Estado'];
 

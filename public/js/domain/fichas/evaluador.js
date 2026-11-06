@@ -1,4 +1,4 @@
-﻿/**
+/**
  * public/js/calc/evaluador.js
  * Funciones de evaluación de estados, niveles y porcentajes por regla
  * UGEL 03 · AGEBRE

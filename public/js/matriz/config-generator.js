@@ -17,6 +17,17 @@ import { ITEMS_COORD_TUTORIA_JEC } from './items-tutoria.js';
 import { ITEMS_COORD_PEDAGOGICO } from './items-pedagogico.js';
 
 /**
+ * Detecta si la ficha corresponde al Cuadernillo de Monitoreo Pedagógico a Docentes (EBR-EBA)
+ */
+export function isFichaMonitoreoDocente(ft, state = null) {
+  if (!ft) return false;
+  const id = String(ft.id || '').toLowerCase();
+  const nom = String(ft.nombre || '').toLowerCase();
+  const mod = String(ft.modalidad || '').toLowerCase();
+  return id === 'ft_rubricas_aula' || id.includes('rubricas_aula') || nom.includes('cuadernillo del monitoreo pedag') || nom.includes('monitoreo a docentes') || (mod === 'docentes' && id.includes('docente'));
+}
+
+/**
  * Genera la configuración completa para una ficha según su tipo o plantilla dinámica
  * @param {Object} ft - Definición de la ficha en el sistema (state.fichaTypes) o submission
  * @param {Object} [state] - Estado global de la app
@@ -194,6 +205,69 @@ export function getMatrizConfig(ft, state = null) {
             { key: 'coordPedagTelefono', header: 'Teléfono', width: 12.0, isText: true },
             { key: 'coordPedagCondicion', header: 'Condición', width: 12.0 },
             { key: 'coordPedagCorreo', header: 'Correo', width: 22.0 }
+          ]
+        }
+      ]
+    };
+  }
+
+  // D) Ficha de Monitoreo Pedagógico a Docentes (EBR-EBA)
+  if (isFichaMonitoreoDocente(ft, state)) {
+    const items = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0)
+      ? _extraerItemsDeSecciones(ft.secciones)
+      : [];
+
+    return {
+      sheetName: 'MONITOREO A DOCENTES',
+      tituloDocumento: 'MATRIZ DE SEGUIMIENTO 2026 — CUADERNILLO DE MONITOREO PEDAGÓGICO A DOCENTES (EBR-EBA)',
+      tipoFicha: 'DOCENTE',
+      esEscala1_4: true,
+      limites: {
+        max: items.length * 4,
+        limInicio: Math.round((items.length * 4) * 0.50),
+        limProceso: Math.round((items.length * 4) * 0.75)
+      },
+      items: items,
+      datosGeneralesCampos: [
+        { key: 'institucion', header: 'Número y/o nombre de la Institución Educativa', width: 32.4 },
+        { key: 'codigoModular', header: 'Código Modular', width: 16, isText: true },
+        { key: 'ugel', header: 'UGEL', width: 9.0, isText: true },
+        { key: 'red', header: 'RED', width: 8.6, isText: true },
+        { key: 'fecha', header: 'Fecha', width: 12.4, isDate: true },
+        { key: 'visita', header: 'Visita', width: 8.0 }
+      ],
+      bloquesPersonas: [
+        {
+          titulo: 'II. DATOS DEL DIRECTOR(A)',
+          fillHeader: PALETA_MATRIZ.persona1Header,
+          fillSubheader: PALETA_MATRIZ.persona1Subheader,
+          fillData: PALETA_MATRIZ.persona1Data,
+          campos: [
+            { key: 'dirNombre', header: 'Nombres y Apellidos', width: 29.9 },
+            { key: 'dirDni', header: 'DNI', width: 11.7, isText: true },
+            { key: 'dirTelefono', header: 'Teléfono', width: 12.0, isText: true },
+            { key: 'dirCondicion', header: 'Condición', width: 12.1 },
+            { key: 'dirCorreo', header: 'Correo', width: 26.7 }
+          ]
+        },
+        {
+          titulo: 'III. DATOS DEL DOCENTE OBSERVADO',
+          fillHeader: PALETA_MATRIZ.persona2Header,
+          fillSubheader: PALETA_MATRIZ.persona2Subheader,
+          fillData: PALETA_MATRIZ.persona2Data,
+          campos: [
+            { key: 'docenteNombre', header: 'Docente Observado (Nombres y Apellidos)', width: 30.0 },
+            { key: 'docenteDni', header: 'DNI del Docente', width: 12.0, isText: true },
+            { key: 'docenteNivel', header: 'Nivel Educativo', width: 14.0 },
+            { key: 'docenteGrado', header: 'Grado', width: 10.0 },
+            { key: 'docenteSeccion', header: 'Sección', width: 10.0 },
+            { key: 'docenteArea', header: 'Área Curricular Observada', width: 25.0 },
+            { key: 'docenteEstMatriculados', header: 'N° Est. Matriculados', width: 12.0 },
+            { key: 'docenteEstAsistentes', header: 'N° Est. Asistentes', width: 12.0 },
+            { key: 'docenteEstDiscapacidad', header: 'Est. con Discapacidad', width: 12.0 },
+            { key: 'docenteHoraInicio', header: 'Hora Inicio', width: 11.0 },
+            { key: 'docenteHoraFin', header: 'Hora Término', width: 11.0 },
+            { key: 'docenteMonitor', header: 'Observador / Monitor', width: 25.0 }
           ]
         }
       ]

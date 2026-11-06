@@ -44,6 +44,7 @@ import {
   isFichaEspecialistaJec,
   ESPECIALISTA_JEC_OFICIAL,
   isFichaEbrGestionEscolar,
+  isFichaMaterialesCebe,
   isFichaEbrEbePrite,
   isFichaJec1erMomento,
   getMomentoVisitaEbr,
@@ -64,6 +65,7 @@ import {
 import {
   getEbrSeccionesForVisita
 } from '../../ebr-gestion.js';
+import { MATERIALES_CEBE_SECCIONES } from '../../domain/fichas/catalogo-base.js';
 import {
   getJecFichaConfig,
   buildJecVisitBadges,
@@ -422,7 +424,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
       { value: dist.proceso, color: colProc, label: 'En proceso' },
       { value: dist.inicio, color: colIni, label: 'Inicio' },
       { value: dist.none, color: 'var(--line-strong, #94a3b8)', label: 'Sin datos' },
-    ], { centerLabel: distTotal, centerSub: centerSubLabel }) +
+    ], { size: 165, stroke: 24, centerLabel: distTotal, centerSub: centerSubLabel }) +
     '<div class="seglegend" style="flex-direction:column;gap:8px;align-items:flex-start">' +
     '<span><span class="dot" style="background:' + colLog + '"></span>Logrado: <strong>' + dist.logrado + '</strong>' + pLog + '</span>' +
     '<span><span class="dot" style="background:' + colProc + '"></span>En proceso: <strong>' + dist.proceso + '</strong>' + pProc + '</span>' +
@@ -449,6 +451,9 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     } else if (!isSiNo && isFichaPriteGestion(ft)) {
       const isOfficialPrite = (ft.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 32);
       seccionesParaAgg = isOfficialPrite ? ft.secciones : PRITE_SECCIONES;
+    } else if (isFichaMaterialesCebe(ft)) {
+      const isOfficialMat = (ft.secciones?.length === 5 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 14);
+      seccionesParaAgg = isOfficialMat ? ft.secciones : MATERIALES_CEBE_SECCIONES;
     }
     const secAgg = {};
     const normSec = (name) => String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
@@ -945,7 +950,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
         </div>
         <div class="card card-warn" id="kpiCardIesPendientes" title="Instituciones educativas de modalidad ${targetModality} pendientes de monitoreo (Clic para ir al directorio)" style="cursor:pointer">
           <div class="num" style="color:var(--warn, #d97706)">${iesPendientes}</div>
-          <div class="lbl">IEs Pendientes ←</div>
+          <div class="lbl">IEs Pendientes ↓</div>
         </div>
         <div class="card card-blue" title="Cantidad total de fichas de monitoreo registradas con los filtros seleccionados">
           <div class="num">${statsList.length}</div>
@@ -1302,8 +1307,19 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
 
   host.innerHTML = `
     <div id="reportCapture">
-      ${cardsHtml}
-      <div class="panel"><h3>${panelDistTitle}</h3>${seg}</div>
+      <div class="panel panelDistribucionYMetricas" id="secPanelDistribucionMetricas">
+        <div class="panelDistribucionHead">
+          <h3>${panelDistTitle}</h3>
+        </div>
+        <div class="distribucionMainFlex">
+          <div class="distribucionChartSide">
+            ${seg}
+          </div>
+          <div class="distribucionCardsSide">
+            ${cardsHtml}
+          </div>
+        </div>
+      </div>
       ${allTypesSummaryHtml}
       ${!isAllMode ? `<div class="panel"><h3>Reporte por ítem <small>resultado de cada indicador</small></h3>${itemReportHtml}</div>` : ''}
       <div class="panel"><h3>Evolución por N° de visita</h3>${visRows}</div>

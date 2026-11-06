@@ -228,13 +228,14 @@ export function buildPreviewInnerHtml(options) {
                   ${cols.map((c, ci) => {
                     const isFirstCol = ci === 0 && omitirCategoria;
                     const isArea = c.tipo === 'area' || c.tipo === 'textarea' || c.tipo === 'texto_largo';
+                    const isCheckbox = c.tipo === 'checkbox';
                     const cellHtml = isFirstCol
                       ? esc(r.etiqueta || '')
                       : (isArea
                           ? '<textarea class="input small" style="width:100%;padding:4px 6px;font-size:11px;min-height:42px;resize:none" placeholder="Área de texto..." disabled></textarea>'
-                          : '<input type="' + (c.tipo === 'numero' ? 'number' : 'text') + '" class="input small" style="width:100%;padding:3px 6px;font-size:11px;text-align:' + (c.tipo === 'numero' ? 'center' : 'left') + '" placeholder="' + (c.tipo === 'numero' ? '0' : 'texto') + '" disabled>');
+                          : (isCheckbox ? '<input type="checkbox" disabled style="transform:scale(1.15);cursor:not-allowed">' : '<input type="' + (c.tipo === 'numero' ? 'number' : 'text') + '" class="input small" style="width:100%;padding:3px 6px;font-size:11px;text-align:' + (c.tipo === 'numero' ? 'center' : 'left') + '" placeholder="' + (c.tipo === 'numero' ? '0' : 'texto') + '" disabled>'));
                     return `
-                      <td style="padding:4px 8px;text-align:${c.tipo === 'numero' ? 'center' : 'left'}">
+                      <td style="padding:4px 8px;text-align:${(c.tipo === 'numero' || isCheckbox) ? 'center' : 'left'}">
                         ${cellHtml}
                       </td>
                     `;

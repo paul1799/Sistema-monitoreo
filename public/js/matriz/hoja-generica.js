@@ -13,7 +13,8 @@ import {
   setSafeCellValue,
   formatObservaciones,
   formatCompromisos,
-  normalizarEscala1_3
+  normalizarEscala1_3,
+  _obtenerValorDocente
 } from './format-helpers.js';
 
 /**
@@ -418,6 +419,8 @@ export function _construirHojaMatriz(ws, config, itemsList, state) {
         cargo = 'coordinador_tutoria';
       } else if (bTit.includes('pedag')) {
         cargo = 'coordinador_pedagogico';
+      } else if (bTit.includes('docente') || bTit.includes('profesor')) {
+        cargo = 'docente';
       }
 
       let rawPersonaVal = null;
@@ -429,6 +432,8 @@ export function _construirHojaMatriz(ws, config, itemsList, state) {
         rawPersonaVal = s.coordinadorTutoria || s.coordTutoria || s.coordTutoriaNombre || null;
       } else if (cargo === 'coordinador_pedagogico') {
         rawPersonaVal = s.coordinadorPedagogico || s.coordPedag || s.coordPedagNombre || null;
+      } else if (cargo === 'docente') {
+        rawPersonaVal = s.docente || s.docenteNombre || null;
       }
 
       const personaNorm = normalizarPersona(rawPersonaVal, s, cargo, state);
@@ -458,7 +463,10 @@ export function _construirHojaMatriz(ws, config, itemsList, state) {
         let isDniOrTel = false;
 
         const lKey = c.key.toLowerCase();
-        if (lKey.includes('nombre')) {
+        if (cargo === 'docente') {
+          valFinal = _obtenerValorDocente(s, c.key, state);
+          if (lKey.includes('dni')) isDniOrTel = true;
+        } else if (lKey.includes('nombre')) {
           valFinal = personaNorm.nombres;
         } else if (lKey.includes('dni')) {
           valFinal = personaNorm.dni;
@@ -517,24 +525,28 @@ export function _construirHojaMatriz(ws, config, itemsList, state) {
     sepCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PALETA_MATRIZ.separadorGris } };
     sepCell.border = BORDER_THIN;
 
-    // Aspectos con Escala 1-2-3 y sus PUNTAJES
+    // Aspectos con Escala 1-2-3 (o 1-4) y sus PUNTAJES
+    const esEscala4 = Boolean(config.esEscala1_4 || config.tipoFicha === 'DOCENTE');
     aspectosConPuntaje.forEach(asp => {
       asp.items.forEach(it => {
         const itCell = row.getCell(it.colIndex);
         const itVal = _obtenerRespuestaItem(s, it);
         const numVal = normalizarEscala1_3(itVal);
+        const isValidNum = esEscala4
+          ? (numVal === 1 || numVal === 2 || numVal === 3 || numVal === 4)
+          : (numVal === 1 || numVal === 2 || numVal === 3);
 
-        setSafeCellValue(itCell, (numVal === 1 || numVal === 2 || numVal === 3) ? numVal : '', it.id || it.num, colToLetter(it.colIndex));
+        setSafeCellValue(itCell, isValidNum ? numVal : '', it.id || it.num, colToLetter(it.colIndex));
         itCell.font = { name: 'Arial', size: 12 };
         itCell.alignment = { horizontal: 'center', vertical: 'middle' };
         itCell.border = BORDER_THIN;
-        if (numVal === 1 || numVal === 2 || numVal === 3) {
+        if (isValidNum) {
           itCell.numFmt = '0';
         }
         itCell.dataValidation = {
           type: 'list',
           allowBlank: true,
-          formulae: ['"1,2,3"']
+          formulae: [esEscala4 ? '"1,2,3,4"' : '"1,2,3"']
         };
       });
 
@@ -788,8 +800,11 @@ export function _construirHojaMatriz(ws, config, itemsList, state) {
       cProc.alignment = { horizontal: 'center', vertical: 'middle' };
       cProc.border = BORDER_THIN;
 
+      const isEscala4 = Boolean(config.esEscala1_4 || config.tipoFicha === 'DOCENTE');
       const cLog = ws.getCell(sRow3, itCol);
-      cLog.value = { formula: `COUNTIF(${itLetter}${d1}:${itLetter}${dN},3)` };
+      cLog.value = isEscala4
+        ? { formula: `COUNTIF(${itLetter}${d1}:${itLetter}${dN},3)+COUNTIF(${itLetter}${d1}:${itLetter}${dN},4)` }
+        : { formula: `COUNTIF(${itLetter}${d1}:${itLetter}${dN},3)` };
       cLog.font = { name: 'Arial', size: 12 };
       cLog.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PALETA_MATRIZ.statScoreValues } };
       cLog.alignment = { horizontal: 'center', vertical: 'middle' };

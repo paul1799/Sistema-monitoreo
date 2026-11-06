@@ -132,6 +132,33 @@ export function isFichaEspecialistaJec(ft, state = null) {
 }
 
 /**
+ * Determina si la ficha corresponde al Cuadernillo de Monitoreo Pedagógico a Docentes (EBR-EBA)
+ * @param {Object|string} ft - Ficha, plantilla o submission
+ * @param {Object} [state] - Estado opcional para resolver fichaTypeId
+ * @returns {boolean}
+ */
+export function isFichaMonitoreoDocente(ft, state = null) {
+  if (!ft) return false;
+  let obj = ft;
+  if (typeof ft === 'string' && state && Array.isArray(state.fichaTypes)) {
+    obj = state.fichaTypes.find(f => f && f.id === ft) || { id: ft };
+  } else if (typeof ft === 'object' && ft.fichaTypeId && state && Array.isArray(state.fichaTypes)) {
+    const found = state.fichaTypes.find(f => f && f.id === ft.fichaTypeId);
+    if (found) obj = { ...found, ...ft };
+  }
+  const fid = String(obj.id || obj.fichaTypeId || obj.tipo || '').toLowerCase();
+  const fNom = String(obj.nombre || obj.titulo || '').toLowerCase();
+  const fMod = String(obj.modalidad || '').toLowerCase();
+  return fid === 'ft_rubricas_aula' ||
+         fid.includes('rubricas_aula') ||
+         fid.includes('monitoreo_docente') ||
+         fMod === 'docentes' ||
+         fNom.includes('cuadernillo del monitoreo pedag') ||
+         fNom.includes('monitoreo a docentes') ||
+         (fNom.includes('docente') && fNom.includes('cuadernillo'));
+}
+
+/**
  * Determina con precisión si una plantilla o ficha corresponde a la de
  * "Monitoreo y Asistencia Técnica a la Gestión Escolar - UGEL 03 EBR"
  *

@@ -1,4 +1,4 @@
-﻿/* =========================================================================
+/* =========================================================================
    pdf/ficha-individual.js — Generador oficial de PDF para Fichas Individuales
    de Monitoreo (Directivo, Coordinador de Tutoría JEC, Coordinador Pedagógico, etc.)
    UGEL 03 · AGEBRE
@@ -28,8 +28,11 @@ import {
   isFichaJec,
   isFichaCoordTutoriaJec,
   isFichaCoordPedagogico,
-  isFichaEspecialistaJec
+  isFichaEspecialistaJec,
+  isFichaMonitoreoDocente
 } from '../calc/detectors.js';
+
+import { _obtenerValorDocente } from '../matriz/format-helpers.js';
 
 import {
   ESPECIALISTA_JEC_OFICIAL,
@@ -42,7 +45,7 @@ import {
   getNivelCoordPedagogicoJec
 } from '../calc/evaluador.js';
 
-import { calcScore, buildResponseValMap, resolveItemValue } from '../calcEngine.js?v=20261030_v1';
+import { calcScore, buildResponseValMap, resolveItemValue } from '../calcEngine.js?v=20261103_v8';
 
 /**
  * Formatea el valor individual de un ítem para su presentación en el PDF individual
@@ -67,11 +70,11 @@ function formatIndividualItemVal(val, ft) {
     if (vLower === 'na' || vLower === 'n/a') return 'N/A';
     return raw;
   }
-  if (tipoResp === 'nivel_1_4' || escala === 'NIVEL_1_4') {
-    if (vLower === '4') return 'IV';
-    if (vLower === '3') return 'III';
-    if (vLower === '2') return 'II';
-    if (vLower === '1') return 'I';
+  if (tipoResp === 'nivel_1_4' || escala === 'NIVEL_1_4' || tipoResp === 'escala_1_4' || escala === 'ESCALA_1_4' || isFichaMonitoreoDocente(ft)) {
+    if (vLower === '4' || vLower === 'iv') return 'IV (Destacado)';
+    if (vLower === '3' || vLower === 'iii') return 'III (Suficiente)';
+    if (vLower === '2' || vLower === 'ii') return 'II (En proceso)';
+    if (vLower === '1' || vLower === 'i') return 'I (Muy deficiente)';
     if (vLower === 'na' || vLower === 'n/a') return 'N/A';
     return raw;
   }
@@ -115,8 +118,9 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
   }
 
   const rawTypeName = (fichaType.nombre || 'EVALUACIÓN').trim();
-  const isDirectivoFicha = (fichaType.id || '').includes('directivo') || rawTypeName.toLowerCase().includes('directivo');
-  const isNivel14 = fichaType.tipoRespuesta === 'nivel_1_4' || isDirectivoFicha;
+  const isDocenteFicha = isFichaMonitoreoDocente(fichaType) || isFichaMonitoreoDocente(sub);
+  const isDirectivoFicha = !isDocenteFicha && ((fichaType.id || '').includes('directivo') || rawTypeName.toLowerCase().includes('directivo'));
+  const isNivel14 = fichaType.tipoRespuesta === 'nivel_1_4' || fichaType.tipoRespuesta === 'escala_1_4' || isDirectivoFicha || isDocenteFicha;
 
   // F5: Título limpio sin duplicaciones
   const title = /^ficha\s+de\s+monitoreo/i.test(rawTypeName)
@@ -135,10 +139,26 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
   const ugel = sub.ugel || 'UGEL 03';
   const red = sub.red || (colegio ? colegio.rei : '—');
 
+  // Datos específicos para ficha de docentes
+  const docenteNombre = sub.docente || sub.docenteNombre || _obtenerValorDocente(sub, 'docenteNombre') || '';
+  const docenteDni = sub.docenteDni || _obtenerValorDocente(sub, 'docenteDni') || '';
+  const docenteNivel = sub.docenteNivel || _obtenerValorDocente(sub, 'docenteNivel') || '';
+  const docenteGrado = sub.docenteGrado || _obtenerValorDocente(sub, 'docenteGrado') || '';
+  const docenteSeccion = sub.docenteSeccion || _obtenerValorDocente(sub, 'docenteSeccion') || '';
+  const docenteArea = sub.docenteArea || _obtenerValorDocente(sub, 'docenteArea') || '';
+  const docenteMatriculados = sub.docenteEstMatriculados || _obtenerValorDocente(sub, 'docenteEstMatriculados') || '0';
+  const docenteAsistentes = sub.docenteEstAsistentes || _obtenerValorDocente(sub, 'docenteEstAsistentes') || '0';
+  const docenteDiscapacidad = sub.docenteEstDiscapacidad || _obtenerValorDocente(sub, 'docenteEstDiscapacidad') || '0';
+  const docenteMonitor = sub.docenteMonitor || _obtenerValorDocente(sub, 'docenteMonitor') || responsable || 'Especialista UGEL 03';
+
   // Párrafo introductorio oficial (opcional, activo por defecto)
   let introParagraph = '';
   if (downloadConfig.incluirIntro !== false) {
-    introParagraph = `En la ciudad de Lima, con fecha ${fechaVisita}, se procedió a realizar la jornada de monitoreo y acompañamiento institucional correspondiente a la ${numVisita} en la institución educativa ${ieName}, perteneciente a la ${ugel} y ${red ? 'RED/REI ' + red : 'jurisdicción asignada'}, a cargo del especialista ${responsable}, con la presencia y coordinación de la dirección escolar a cargo de ${director}. A continuación, se detallan los resultados obtenidos y los compromisos asumidos.`;
+    if (isDocenteFicha) {
+      introParagraph = `En la ciudad de Lima, con fecha ${fechaVisita}, se procedió a realizar la jornada de monitoreo pedagógico correspondiente a la ${numVisita} en la institución educativa ${ieName}, perteneciente a la ${ugel} y ${red ? 'RED/REI ' + red : 'jurisdicción asignada'}, a cargo del especialista monitor ${docenteMonitor}, observando la práctica pedagógica del docente ${docenteNombre || 'del aula'} en el área de ${docenteArea || 'curricular'}. A continuación, se detallan los resultados de la observación y los compromisos asumidos.`;
+    } else {
+      introParagraph = `En la ciudad de Lima, con fecha ${fechaVisita}, se procedió a realizar la jornada de monitoreo y acompañamiento institucional correspondiente a la ${numVisita} en la institución educativa ${ieName}, perteneciente a la ${ugel} y ${red ? 'RED/REI ' + red : 'jurisdicción asignada'}, a cargo del especialista ${responsable}, con la presencia y coordinación de la dirección escolar a cargo de ${director}. A continuación, se detallan los resultados obtenidos y los compromisos asumidos.`;
+    }
   }
 
   // Extraer valores adicionales de cabecera si están guardados en sub.extras
@@ -248,104 +268,182 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
     const visM = visUp.includes('MAÑANA') || visUp.includes('MANANA');
     const visT = visUp.includes('TARDE');
 
-    const generalDataRows = [
-      [
-        { content: 'Institución Educativa', styles: lblStyle },
-        { content: ieName.toUpperCase(), colSpan: 5, styles: { ...valStyle, fontStyle: 'bold' } }
-      ],
-      [
-        { content: 'Código local', styles: lblStyle },
-        { content: codLocal || '—', styles: valStyle },
-        { content: 'UGEL', styles: lblStyle },
-        { content: ugel || 'UGEL 03', styles: valStyle },
-        { content: 'REI / RED', styles: lblStyle },
-        { content: red || '—', styles: valStyle }
-      ],
-      [
-        { content: 'Nombre del directivo', styles: lblStyle },
-        { content: director && director !== '—' ? formatPersonName(director).toUpperCase() : 'No registrado', colSpan: 3, styles: director && director !== '—' ? { ...valStyle, fontStyle: 'bold' } : valGrayStyle },
-        { content: 'DNI', styles: lblStyle },
-        fmtVal(directorDni)
-      ],
-      [
-        { content: 'Condición', styles: lblStyle },
-        {
-          content: '',
-          colSpan: 5,
-          styles: valStyle,
-          raw: {
-            isCheckboxes: true,
-            items: [
-              { label: 'Designado', checked: isDesig },
-              { label: 'Encargado', checked: isEncarg },
-              { label: otroCondLabel, checked: isOtroCond }
-            ]
+    let generalDataRows;
+    if (isDocenteFicha) {
+      // Casillas de Nivel Educativo del Docente
+      const dNivUp = String(docenteNivel).toUpperCase();
+      const docHasIni = dNivUp.includes('INICIAL');
+      const docHasPrim = dNivUp.includes('PRIMARIA');
+      const docHasSec = dNivUp.includes('SECUNDARIA');
+      const docHasEbe = dNivUp.includes('EBE') || dNivUp.includes('ESPECIAL');
+
+      generalDataRows = [
+        [
+          { content: 'Institución Educativa', styles: lblStyle },
+          { content: ieName.toUpperCase(), colSpan: 5, styles: { ...valStyle, fontStyle: 'bold' } }
+        ],
+        [
+          { content: 'Código local / Modular', styles: lblStyle },
+          { content: codLocal || '—', styles: valStyle },
+          { content: 'UGEL', styles: lblStyle },
+          { content: ugel || 'UGEL 03', styles: valStyle },
+          { content: 'RED / REI', styles: lblStyle },
+          { content: red || '—', styles: { ...valStyle, fontStyle: 'bold' } }
+        ],
+        [
+          { content: 'Docente Observado(a)', styles: lblStyle },
+          { content: (docenteNombre && docenteNombre !== '—') ? formatPersonName(docenteNombre).toUpperCase() : 'No registrado', colSpan: 3, styles: (docenteNombre && docenteNombre !== '—') ? { ...valStyle, fontStyle: 'bold' } : valGrayStyle },
+          { content: 'DNI', styles: lblStyle },
+          fmtVal(docenteDni)
+        ],
+        [
+          { content: 'Nivel educativo', styles: lblStyle },
+          {
+            content: '',
+            colSpan: 5,
+            styles: valStyle,
+            raw: {
+              isCheckboxes: true,
+              items: [
+                { label: 'Inicial', checked: docHasIni },
+                { label: 'Primaria', checked: docHasPrim },
+                { label: 'Secundaria', checked: docHasSec },
+                { label: 'EBE', checked: docHasEbe }
+              ]
+            }
           }
-        }
-      ],
-      [
-        { content: 'Nivel educativo', styles: lblStyle },
-        {
-          content: '',
-          colSpan: 5,
-          styles: valStyle,
-          raw: {
-            isCheckboxes: true,
-            items: [
-              { label: 'Inicial', checked: hasIni },
-              { label: 'Primaria', checked: hasPrim },
-              { label: 'Secundaria', checked: hasSec },
-              { label: 'EBE', checked: hasEbe }
-            ]
+        ],
+        [
+          { content: 'Grado', styles: lblStyle },
+          fmtVal(docenteGrado),
+          { content: 'Sección', styles: lblStyle },
+          fmtVal(docenteSeccion),
+          { content: 'N.° de Visita', styles: lblStyle },
+          { content: numVisita, styles: { ...valStyle, fontStyle: 'bold' } }
+        ],
+        [
+          { content: 'Área Curricular', styles: lblStyle },
+          { content: docenteArea || '—', colSpan: 5, styles: { ...valStyle, fontStyle: 'bold' } }
+        ],
+        [
+          { content: 'Est. Matriculados', styles: lblStyle },
+          { content: String(docenteMatriculados), styles: { ...valStyle, halign: 'center' } },
+          { content: 'Est. Asistentes', styles: lblStyle },
+          { content: String(docenteAsistentes), styles: { ...valStyle, halign: 'center' } },
+          { content: 'Est. c/ Discapacidad', styles: lblStyle },
+          { content: String(docenteDiscapacidad), styles: { ...valStyle, halign: 'center' } }
+        ],
+        [
+          { content: 'Observador / Monitor', styles: lblStyle },
+          { content: docenteMonitor ? formatPersonName(docenteMonitor).toUpperCase() : 'No registrado', colSpan: 3, styles: valStyle },
+          { content: 'Fecha de visita', styles: lblStyle },
+          { content: fechaVisita, styles: valStyle }
+        ],
+        [
+          { content: 'Horario de Observación', styles: lblStyle },
+          { content: (sub.horaInicio && sub.horaTermino) ? `${sub.horaInicio} – ${sub.horaTermino}` : (sub.horaInicio || horarioStr || 'No registrado'), colSpan: 5, styles: horarioStr !== '—' ? valStyle : valGrayStyle }
+        ]
+      ];
+    } else {
+      generalDataRows = [
+        [
+          { content: 'Institución Educativa', styles: lblStyle },
+          { content: ieName.toUpperCase(), colSpan: 5, styles: { ...valStyle, fontStyle: 'bold' } }
+        ],
+        [
+          { content: 'Código local', styles: lblStyle },
+          { content: codLocal || '—', styles: valStyle },
+          { content: 'UGEL', styles: lblStyle },
+          { content: ugel || 'UGEL 03', styles: valStyle },
+          { content: 'REI / RED', styles: lblStyle },
+          { content: red || '—', styles: valStyle }
+        ],
+        [
+          { content: 'Nombre del directivo', styles: lblStyle },
+          { content: director && director !== '—' ? formatPersonName(director).toUpperCase() : 'No registrado', colSpan: 3, styles: director && director !== '—' ? { ...valStyle, fontStyle: 'bold' } : valGrayStyle },
+          { content: 'DNI', styles: lblStyle },
+          fmtVal(directorDni)
+        ],
+        [
+          { content: 'Condición', styles: lblStyle },
+          {
+            content: '',
+            colSpan: 5,
+            styles: valStyle,
+            raw: {
+              isCheckboxes: true,
+              items: [
+                { label: 'Designado', checked: isDesig },
+                { label: 'Encargado', checked: isEncarg },
+                { label: otroCondLabel, checked: isOtroCond }
+              ]
+            }
           }
-        }
-      ],
-      [
-        { content: 'Turno de atención', styles: lblStyle },
-        {
-          content: '',
-          colSpan: 2,
-          styles: valStyle,
-          raw: {
-            isCheckboxes: true,
-            items: [
-              { label: 'Mañana', checked: hasTurM },
-              { label: 'Tarde', checked: hasTurT }
-            ]
+        ],
+        [
+          { content: 'Nivel educativo', styles: lblStyle },
+          {
+            content: '',
+            colSpan: 5,
+            styles: valStyle,
+            raw: {
+              isCheckboxes: true,
+              items: [
+                { label: 'Inicial', checked: hasIni },
+                { label: 'Primaria', checked: hasPrim },
+                { label: 'Secundaria', checked: hasSec },
+                { label: 'EBE', checked: hasEbe }
+              ]
+            }
           }
-        },
-        { content: 'Turno visitado', styles: lblStyle },
-        {
-          content: '',
-          colSpan: 2,
-          styles: valStyle,
-          raw: {
-            isCheckboxes: true,
-            items: [
-              { label: 'Mañana', checked: visM },
-              { label: 'Tarde', checked: visT }
-            ]
+        ],
+        [
+          { content: 'Turno de atención', styles: lblStyle },
+          {
+            content: '',
+            colSpan: 2,
+            styles: valStyle,
+            raw: {
+              isCheckboxes: true,
+              items: [
+                { label: 'Mañana', checked: hasTurM },
+                { label: 'Tarde', checked: hasTurT }
+              ]
+            }
+          },
+          { content: 'Turno visitado', styles: lblStyle },
+          {
+            content: '',
+            colSpan: 2,
+            styles: valStyle,
+            raw: {
+              isCheckboxes: true,
+              items: [
+                { label: 'Mañana', checked: visM },
+                { label: 'Tarde', checked: visT }
+              ]
+            }
           }
-        }
-      ],
-      [
-        { content: 'Nombre del monitor', styles: lblStyle },
-        { content: responsable ? formatPersonName(responsable).toUpperCase() : 'No registrado', colSpan: 3, styles: valStyle },
-        { content: 'DNI', styles: lblStyle },
-        fmtVal(monitorDni)
-      ],
-      [
-        { content: 'Fecha de visita', styles: lblStyle },
-        { content: fechaVisita, styles: valStyle },
-        { content: 'Horario', styles: lblStyle },
-        { content: horarioStr !== '—' ? horarioStr : 'No registrado', styles: horarioStr !== '—' ? valStyle : valGrayStyle },
-        { content: 'N.° de Visita', styles: lblStyle },
-        { content: numVisita, styles: { ...valStyle, fontStyle: 'bold' } }
-      ]
-    ];
+        ],
+        [
+          { content: 'Nombre del monitor', styles: lblStyle },
+          { content: responsable ? formatPersonName(responsable).toUpperCase() : 'No registrado', colSpan: 3, styles: valStyle },
+          { content: 'DNI', styles: lblStyle },
+          fmtVal(monitorDni)
+        ],
+        [
+          { content: 'Fecha de visita', styles: lblStyle },
+          { content: fechaVisita, styles: valStyle },
+          { content: 'Horario', styles: lblStyle },
+          { content: horarioStr !== '—' ? horarioStr : 'No registrado', styles: horarioStr !== '—' ? valStyle : valGrayStyle },
+          { content: 'N.° de Visita', styles: lblStyle },
+          { content: numVisita, styles: { ...valStyle, fontStyle: 'bold' } }
+        ]
+      ];
+    }
 
     customTables.push({
-      title: 'DATOS GENERALES DE LA VISITA',
+      title: isDocenteFicha ? 'DATOS GENERALES DEL MONITOREO PEDAGÓGICO' : 'DATOS GENERALES DE LA VISITA',
       minHeight: 140,
       tableHeaders: null,
       tableRows: generalDataRows,
@@ -388,7 +486,9 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
     // =========================================================================
     customTables.push({
       title: 'ESCALA DE VALORACIÓN (NIVELES DESCRIPTIVOS)',
-      subtitle: 'Criterios de valoración del desempeño y gestión directiva institucional.',
+      subtitle: isDocenteFicha
+        ? 'Criterios de valoración del desempeño pedagógico en el aula según rúbricas oficiales (DRELM/MINEDU).'
+        : 'Criterios de valoración del desempeño y gestión directiva institucional.',
       minHeight: 80,
       tableHeaders: ['Nivel', 'Valor', 'Descriptor'],
       tableRows: [
@@ -597,80 +697,82 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
       });
     }
 
-    // =========================================================================
-    // 4. SÍNTESIS POR DIMENSIÓN (LOGROS, DIFICULTADES, RECOMENDACIONES)
-    // =========================================================================
-    const sintesisData = (sub.sintesis && sub.sintesis.length > 0)
-      ? sub.sintesis
-      : OFFICIAL_DIRECTIVO_DIMENSIONS.map(d => ({ dimension: d.nombre, logros: '', dificultades: '', recomendaciones: '' }));
+    if (!isDocenteFicha) {
+      // =========================================================================
+      // 4. SÍNTESIS POR DIMENSIÓN (LOGROS, DIFICULTADES, RECOMENDACIONES)
+      // =========================================================================
+      const sintesisData = (sub.sintesis && sub.sintesis.length > 0)
+        ? sub.sintesis
+        : OFFICIAL_DIRECTIVO_DIMENSIONS.map(d => ({ dimension: d.nombre, logros: '', dificultades: '', recomendaciones: '' }));
 
-    customTables.push({
-      title: 'SÍNTESIS POR DIMENSIÓN',
-      subtitle: 'Logros, dificultades y recomendaciones acordadas durante la jornada de monitoreo.',
-      minHeight: 100,
-      tableHeaders: ['Dimensiones', 'Logros', 'Dificultades', 'Recomendaciones'],
-      tableRows: sintesisData.map(s => [
-        s.dimension || 'Dimensión',
-        (s.logros && s.logros !== '—') ? s.logros : '',
-        (s.dificultades && s.dificultades !== '—') ? s.dificultades : '',
-        (s.recomendaciones && s.recomendaciones !== '—') ? s.recomendaciones : ''
-      ]),
-      styles: {
-        minCellHeight: 38, // Altura suficiente (~14mm) para llenado a mano
-        fontSize: 7.2
-      },
-      columnStyles: {
-        0: { halign: 'left', cellWidth: 131, fontStyle: 'bold' },
-        1: { halign: 'left', cellWidth: 126 },
-        2: { halign: 'left', cellWidth: 126 },
-        3: { halign: 'left', cellWidth: 128 }
-      }
-    });
+      customTables.push({
+        title: 'SÍNTESIS POR DIMENSIÓN',
+        subtitle: 'Logros, dificultades y recomendaciones acordadas durante la jornada de monitoreo.',
+        minHeight: 100,
+        tableHeaders: ['Dimensiones', 'Logros', 'Dificultades', 'Recomendaciones'],
+        tableRows: sintesisData.map(s => [
+          s.dimension || 'Dimensión',
+          (s.logros && s.logros !== '—') ? s.logros : '',
+          (s.dificultades && s.dificultades !== '—') ? s.dificultades : '',
+          (s.recomendaciones && s.recomendaciones !== '—') ? s.recomendaciones : ''
+        ]),
+        styles: {
+          minCellHeight: 38, // Altura suficiente (~14mm) para llenado a mano
+          fontSize: 7.2
+        },
+        columnStyles: {
+          0: { halign: 'left', cellWidth: 131, fontStyle: 'bold' },
+          1: { halign: 'left', cellWidth: 126 },
+          2: { halign: 'left', cellWidth: 126 },
+          3: { halign: 'left', cellWidth: 128 }
+        }
+      });
 
-    // =========================================================================
-    // F2: COMPROMISOS ASUMIDOS (DIRECTOR Y MONITOR — CON LÍNEAS PUNTEADAS SI VACÍO)
-    // =========================================================================
-    const compDir = (sub.compromisoDirector && sub.compromisoDirector !== '—') ? sub.compromisoDirector.trim() : '';
-    const compMon = (sub.compromisoMonitor && sub.compromisoMonitor !== '—') ? sub.compromisoMonitor.trim() : '';
+      // =========================================================================
+      // F2: COMPROMISOS ASUMIDOS (DIRECTOR Y MONITOR — CON LÍNEAS PUNTEADAS SI VACÍO)
+      // =========================================================================
+      const compDir = (sub.compromisoDirector && sub.compromisoDirector !== '—') ? sub.compromisoDirector.trim() : '';
+      const compMon = (sub.compromisoMonitor && sub.compromisoMonitor !== '—') ? sub.compromisoMonitor.trim() : '';
 
-    customTables.push({
-      title: 'COMPROMISOS ASUMIDOS',
-      subtitle: 'Compromisos de mejora institucional asumidos por la dirección y el equipo monitor.',
-      minHeight: 110,
-      tableHeaders: ['DEL DIRECTOR(A) DE LA IE', 'DEL MONITOR / ESPECIALISTA'],
-      tableRows: [[
-        { content: compDir, styles: { minCellHeight: 90, valign: 'top' } },
-        { content: compMon, styles: { minCellHeight: 90, valign: 'top' } }
-      ]],
-      columnStyles: {
-        0: { cellWidth: 255 },
-        1: { cellWidth: 256 }
-      },
-      didDrawCell: (data) => {
-        if (data.section === 'body') {
-          const text = (data.cell.text || []).join('').trim();
-          if (!text && downloadConfig.imprimirLineas !== false) {
-            // Dibujar 5 líneas punteadas para escribir a mano si está vacío
-            const doc = data.doc;
-            if (!doc) return;
-            doc.saveGraphicsState && doc.saveGraphicsState();
-            doc.setDrawColor(190, 200, 215);
-            doc.setLineWidth(0.5);
-            doc.setLineDashPattern && doc.setLineDashPattern([2, 3], 0);
-            const startX = data.cell.x + 8;
-            const endX = data.cell.x + data.cell.width - 8;
-            for (let l = 1; l <= 5; l++) {
-              const ly = data.cell.y + l * 16 + 2;
-              if (ly < data.cell.y + data.cell.height - 4) {
-                doc.line(startX, ly, endX, ly);
+      customTables.push({
+        title: 'COMPROMISOS ASUMIDOS',
+        subtitle: 'Compromisos de mejora institucional asumidos por la dirección y el equipo monitor.',
+        minHeight: 110,
+        tableHeaders: ['DEL DIRECTOR(A) DE LA IE', 'DEL MONITOR / ESPECIALISTA'],
+        tableRows: [[
+          { content: compDir, styles: { minCellHeight: 90, valign: 'top' } },
+          { content: compMon, styles: { minCellHeight: 90, valign: 'top' } }
+        ]],
+        columnStyles: {
+          0: { cellWidth: 255 },
+          1: { cellWidth: 256 }
+        },
+        didDrawCell: (data) => {
+          if (data.section === 'body') {
+            const text = (data.cell.text || []).join('').trim();
+            if (!text && downloadConfig.imprimirLineas !== false) {
+              // Dibujar 5 líneas punteadas para escribir a mano si está vacío
+              const doc = data.doc;
+              if (!doc) return;
+              doc.saveGraphicsState && doc.saveGraphicsState();
+              doc.setDrawColor(190, 200, 215);
+              doc.setLineWidth(0.5);
+              doc.setLineDashPattern && doc.setLineDashPattern([2, 3], 0);
+              const startX = data.cell.x + 8;
+              const endX = data.cell.x + data.cell.width - 8;
+              for (let l = 1; l <= 5; l++) {
+                const ly = data.cell.y + l * 16 + 2;
+                if (ly < data.cell.y + data.cell.height - 4) {
+                  doc.line(startX, ly, endX, ly);
+                }
               }
+              doc.setLineDashPattern && doc.setLineDashPattern([], 0);
+              doc.restoreGraphicsState && doc.restoreGraphicsState();
             }
-            doc.setLineDashPattern && doc.setLineDashPattern([], 0);
-            doc.restoreGraphicsState && doc.restoreGraphicsState();
           }
         }
-      }
-    });
+      });
+    }
 
     // =========================================================================
     // F2: OBSERVACIONES (CON LÍNEAS PUNTEADAS SI VACÍO)
@@ -852,14 +954,20 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
   // F8: Nombre de archivo limpio y estandarizado
   const cleanCodLocal = sanitizeFilename(String(codLocal).replace(/[^0-9A-Za-z_-]/g, ''));
   const cleanIeName = sanitizeFilename(ieName);
-  const filename = isNivel14
-    ? `Ficha_Monitoreo_Directivo_IE_${cleanCodLocal || 'IE'}_${cleanIeName}_${getLimaDateStr()}.pdf`
-    : `Ficha_${sanitizeFilename(rawTypeName)}_${cleanIeName}_${getLimaDateStr()}.pdf`;
+  const filename = isDocenteFicha
+    ? `Ficha_Monitoreo_Docente_${cleanIeName}_${sanitizeFilename(docenteNombre || 'Docente')}_${getLimaDateStr()}.pdf`
+    : (isNivel14
+      ? `Ficha_Monitoreo_Directivo_IE_${cleanCodLocal || 'IE'}_${cleanIeName}_${getLimaDateStr()}.pdf`
+      : `Ficha_${sanitizeFilename(rawTypeName)}_${cleanIeName}_${getLimaDateStr()}.pdf`);
 
-  // Firmas por defecto (Director, Monitor, Jefatura opcional)
+  // Firmas por defecto (Docente, Director, Monitor, Jefatura opcional)
   const areaSigla = (downloadConfig.areaConfig && downloadConfig.areaConfig.sigla) ? downloadConfig.areaConfig.sigla : 'AGEBRE';
-  const monitorCargo = isJecFicha ? 'Especialista de JEC — UGEL 03' : (isNivel14 ? `Monitor(a) — ${areaSigla}` : `Especialista que monitorea — ${areaSigla}`);
-  const defaultSignatures = isNivel14 ? [
+  const monitorCargo = isDocenteFicha ? `Especialista Monitor — ${areaSigla}` : (isJecFicha ? 'Especialista de JEC — UGEL 03' : (isNivel14 ? `Monitor(a) — ${areaSigla}` : `Especialista que monitorea — ${areaSigla}`));
+  const defaultSignatures = isDocenteFicha ? [
+    { cargo: 'Docente Observado(a)', entidad: ieName, nombre: (docenteNombre && docenteNombre !== '—') ? formatPersonName(docenteNombre) : '', leyenda: 'Firma' },
+    { cargo: monitorCargo, entidad: 'UGEL 03 – DRELM', nombre: docenteMonitor ? formatPersonName(docenteMonitor) : (responsable ? formatPersonName(responsable) : ''), leyenda: 'Firma y Sello' },
+    { cargo: 'Director(a) de la I.E.', entidad: ieName, nombre: (director && director !== '—') ? formatPersonName(director) : '', leyenda: 'Firma y Sello' }
+  ] : (isNivel14 ? [
     { cargo: 'Director(a) de la I.E.', entidad: ieName, nombre: (director && director !== '—') ? formatPersonName(director) : '', leyenda: 'Firma y Sello' },
     { cargo: monitorCargo, entidad: 'UGEL 03 – DRELM', nombre: responsable ? formatPersonName(responsable) : '', leyenda: 'Firma y Sello' },
     { cargo: `V.° B.° Jefatura de ${areaSigla}`, entidad: 'UGEL 03', nombre: '', leyenda: 'V.° B.°' }
@@ -867,7 +975,7 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
     { cargo: monitorCargo, entidad: 'UGEL 03 – DRELM', nombre: responsable ? formatPersonName(responsable) : '', leyenda: 'Firma y Sello' },
     { cargo: 'Director(a) / Autoridad de la I.E.', entidad: ieName, nombre: (director && director !== '—') ? formatPersonName(director) : '', leyenda: 'Firma y Sello' },
     { cargo: `Jefatura de ${areaSigla}`, entidad: 'UGEL 03', nombre: '', leyenda: 'V.° B.°' }
-  ];
+  ]);
 
   const metaGrid = isNivel14 ? [] : [
     { label: 'Institución Educativa', value: ieName },

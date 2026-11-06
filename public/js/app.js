@@ -29,15 +29,15 @@ import {
   getConcursoSubTab,
   setConcursoSubTab,
   getDeletedFichaTypeIds,
-} from './ui.js?v=20261030_v1';
+} from './ui.js?v=20261103_v8';
 
 import { renderPortalView } from './portal.js?v=20261014_v1';
 import { renderDirectorioTab } from './directorio.js?v=20261015_v1';
 import { renderAlertasTab, getAlertCount } from './alertas.js?v=20261023_v3';
-import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261030_v1';
+import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261103_v8';
 import { PLANTILLAS_BASE_OFICIALES, ALIAS_A_PLANTILLA_BASE } from './catalogo-plantillas-base.js?v=20261016_v4';
-import { isFichaEbrGestionEscolar, isFichaCoordTutoriaJec } from './calc/detectors.js?v=20261030_v1';
-import { cleanForFirestore } from './ui/core-utils.js?v=20261030_v1';
+import { isFichaEbrGestionEscolar, isFichaCoordTutoriaJec } from './calc/detectors.js?v=20261103_v8';
+import { cleanForFirestore } from './ui/core-utils.js?v=20261103_v8';
 
 /* ============================= MANEJADORES GLOBALES DE ERROR ============================= */
 if (typeof window !== 'undefined') {
@@ -452,7 +452,10 @@ function startListeners() {
 
   activeUnsubscribers.push(
     dbNs.collection('fichaTypes').onSnapshot(snap => {
-      const rawLoaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const rawLoaded = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      rawLoaded.forEach(doc => {
+        if (!doc.id || doc.id.trim() === '') doc.id = doc.fichaTypeId || doc._docId || '';
+      });
       const deletedIds = getDeletedFichaTypeIds();
 
       // 1. Filtrar cualquier documento que el usuario haya eliminado explícitamente
@@ -618,10 +621,15 @@ function startListeners() {
       const rubricasDoc = activeRaw.find(x => x.id === 'ft_rubricas_aula' || (x.nombre || '').toLowerCase().includes('rúbricas de observación') || (x.nombre || '').toLowerCase().includes('monitoreo pedagógico a docente'));
       if (rubricasDoc && PLANTILLAS_BASE_OFICIALES.ft_rubricas_aula) {
         const canon = PLANTILLAS_BASE_OFICIALES.ft_rubricas_aula;
+        const compTbl = Array.isArray(rubricasDoc.tablas) ? rubricasDoc.tablas.find(t => t.id === 'tbl_compromisos_rubricas_aula') : null;
         const needsUpdate = !Array.isArray(rubricasDoc.secciones) || 
                             rubricasDoc.secciones.length < 2 || 
                             !Array.isArray(rubricasDoc.tablas) || 
-                            rubricasDoc.tablas.length < 2 ||
+                            rubricasDoc.tablas.length < 5 ||
+                            !compTbl ||
+                            (compTbl.filas && compTbl.filas.length > 1) ||
+                            (Array.isArray(rubricasDoc.extras) && rubricasDoc.extras.some(e => e && (e.id === 'ex_hora_inicio' || e.id === 'ex_hora_fin'))) ||
+                            !rubricasDoc.tablas.some(t => t.id === 'tbl_datos_planif_2_1') ||
                             !rubricasDoc.tablas.some(t => t.id === 'tbl_retroalimentacion_planificacion');
         if (needsUpdate) {
           rubricasDoc.nombre = canon.nombre;
@@ -747,7 +755,7 @@ function startListeners() {
 
   activeUnsubscribers.push(
     dbNs.collection('submissions').limit(1000).onSnapshot(snap => {
-      let subs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      let subs = snap.docs.map(d => ({ ...d.data(), id: d.id }));
       subs.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
       subs = healCoordTutoriaSubmissions(subs, dbNs);
       state.submissions = subs;

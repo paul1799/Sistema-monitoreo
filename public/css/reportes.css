@@ -1320,3 +1320,299 @@
   max-height: 460px;
   overflow-y: auto;
 }
+
+/* =========================================================================
+   BLOQUE INTEGRADO: DISTRIBUCIÓN DE RESULTADOS Y TARJETAS KPI A LA MISMA ALTURA
+   ========================================================================= */
+
+.panelDistribucionYMetricas {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  padding: 18px 24px 20px;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.05));
+  overflow: hidden;
+}
+
+.panelDistribucionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border, #f1f5f9);
+  padding-bottom: 8px;
+}
+
+.panelDistribucionHead h3 {
+  margin: 0;
+  font-family: var(--serif, 'Playfair Display', serif);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--navy-900, #0f172a);
+}
+
+.distribucionMainFlex {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+}
+
+/* Sección izquierda: Caja de la gráfica más grande y destacada */
+.distribucionChartSide {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  border-right: 1.5px solid var(--border, #e2e8f0);
+  padding-right: 24px;
+  min-width: 330px;
+}
+
+.distribucionChartSide .distWrap {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 22px;
+  padding: 4px 0;
+  width: 100%;
+}
+
+.distribucionChartSide svg.donutChart,
+.distribucionChartSide svg {
+  width: 165px;
+  height: 165px;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+.distribucionChartSide .seglegend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  white-space: nowrap;
+}
+
+.distribucionChartSide .seglegend span {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-900, #1e293b);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.25;
+}
+
+.distribucionChartSide .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Sección derecha: Cajas de valores más pequeñas y compactas según bosquejo */
+.distribucionCardsSide {
+  flex: 1 1 0%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.distribucionCardsSide .cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+  margin-bottom: 0;
+  width: 100%;
+}
+
+@media (min-width: 1120px) {
+  .distribucionCardsSide .cards.cards-5col {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.distribucionCardsSide .card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  padding: 10px 8px 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-height: 58px;
+  min-width: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.distribucionCardsSide .card::after {
+  height: 3px;
+}
+
+.distribucionCardsSide .card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.07);
+}
+
+.distribucionCardsSide .card .num {
+  font-family: var(--serif, 'Playfair Display', serif);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--navy-900, #0f172a);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  width: 100%;
+}
+
+.distribucionCardsSide .card .lbl {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-600, #475569);
+  line-height: 1.25;
+  white-space: normal;
+  word-break: break-word;
+  text-align: center;
+  width: 100%;
+}
+
+.distribucionCardsSide #kpiCardIesPendientes {
+  cursor: pointer;
+}
+
+.distribucionCardsSide #kpiCardIesPendientes:hover {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+/* =========================================================================
+   PANTALLAS INTERMEDIAS / VENTANAS REDUCIDAS (< 1120px)
+   ========================================================================= */
+@media (max-width: 1119px) {
+  .distribucionMainFlex {
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .distribucionChartSide {
+    min-width: 140px;
+    max-width: 175px;
+    padding-right: 16px;
+  }
+
+  .distribucionChartSide .distWrap {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .distribucionChartSide svg.donutChart,
+  .distribucionChartSide svg {
+    width: 135px;
+    height: 135px;
+  }
+
+  .distribucionChartSide .seglegend {
+    gap: 4px;
+    padding: 0 2px;
+  }
+
+  .distribucionChartSide .seglegend span {
+    font-size: 11px;
+    gap: 6px;
+  }
+
+  .distribucionCardsSide .cards {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    height: 100%;
+    justify-content: space-between;
+  }
+
+  .distribucionCardsSide .card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 10px;
+    min-height: 28px;
+    flex: 1 1 0;
+  }
+
+  .distribucionCardsSide .card .num {
+    font-size: 16px;
+    margin-bottom: 0;
+    order: 1;
+    width: auto;
+    text-align: left;
+  }
+
+  .distribucionCardsSide .card .lbl {
+    font-size: 9.5px;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    order: 2;
+    width: auto;
+  }
+}
+
+/* =========================================================================
+   PANTALLAS MÓVILES (< 480px)
+   ========================================================================= */
+@media (max-width: 480px) {
+  .panelDistribucionYMetricas {
+    padding: 12px 10px 14px;
+  }
+
+  .distribucionMainFlex {
+    gap: 10px;
+  }
+
+  .distribucionChartSide {
+    min-width: 115px;
+    max-width: 130px;
+    padding-right: 10px;
+  }
+
+  .distribucionChartSide svg.donutChart,
+  .distribucionChartSide svg {
+    width: 110px;
+    height: 110px;
+  }
+
+  .distribucionChartSide .seglegend span {
+    font-size: 9.5px;
+    gap: 4px;
+  }
+
+  .distribucionCardsSide .cards {
+    gap: 4px;
+  }
+
+  .distribucionCardsSide .card {
+    padding: 4px 8px;
+    min-height: 24px;
+  }
+
+  .distribucionCardsSide .card .num {
+    font-size: 14px;
+  }
+
+  .distribucionCardsSide .card .lbl {
+    font-size: 8.5px;
+  }
+}

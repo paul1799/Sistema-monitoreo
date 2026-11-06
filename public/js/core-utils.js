@@ -3,5 +3,5 @@
    UGEL 03 – AGEBRE – Reorganización
    ========================================================================= */
 
-export * from './core/utils/index.js?v=20261030_v1';
+export * from './core/utils/index.js?v=20261103_v8';
 

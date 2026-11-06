@@ -1,5 +1,5 @@
-import { calcScore, puntajeItem, estadoPorRegla, LEGADO_A_ESCALA, buildResponseValMap, resolveItemValue } from './calcEngine.js?v=20261030_v1';
-/*  */import { isFichaCoordPedagogico, isFichaCoordTutoriaJec, isFichaMaterialesCebe } from './calc/detectors.js?v=20261030_v1';
+import { calcScore, puntajeItem, estadoPorRegla, LEGADO_A_ESCALA, buildResponseValMap, resolveItemValue } from './calcEngine.js?v=20261103_v8';
+/*  */import { isFichaCoordPedagogico, isFichaCoordTutoriaJec, isFichaMaterialesCebe } from './calc/detectors.js?v=20261103_v8';
 import { MATERIALES_CEBE_SECCIONES } from './domain/fichas/catalogo-base.js';
 import {
   isFichaEbrGestionEscolar,

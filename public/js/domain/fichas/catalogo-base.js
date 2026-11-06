@@ -1,4 +1,4 @@
-﻿/* =========================================================================
+/* =========================================================================
    catalogo-plantillas-base.js — Catálogo Oficial de Plantillas de Fichas
    UGEL 03 · AGEBRE · Monitoreo y Acompañamiento 2026
 
@@ -421,8 +421,6 @@ export const PLANTILLAS_BASE_OFICIALES = {
       { id: 'ex_est_matriculados', label: 'N° de estudiantes matriculados', tipo: 'numero', required: false },
       { id: 'ex_est_asistentes', label: 'N° de estudiantes asistentes', tipo: 'numero', required: false },
       { id: 'ex_est_discapacidad', label: 'N° de estudiantes con discapacidad o condición con diagnóstico', tipo: 'numero', required: false },
-      { id: 'ex_hora_inicio', label: 'Hora de inicio de la observación', tipo: 'hora', required: false },
-      { id: 'ex_hora_fin', label: 'Hora de fin de la observación', tipo: 'hora', required: false },
       { id: 'ex_monitor', label: 'Nombre del observador/monitor', tipo: 'responsable', required: false }
     ],
     secciones: [
@@ -501,18 +499,48 @@ export const PLANTILLAS_BASE_OFICIALES = {
     ],
     tablas: [
       {
-        id: 'tbl_datos_planificacion',
-        titulo: 'INSTRUMENTO 2 - PARTE II: DATOS INFORMATIVOS DE LA PLANIFICACIÓN CURRICULAR DOCENTE',
-        descripcion: 'Verificación de formas organizativas de planificación curricular (proyectos, unidades, talleres u otros) y ejecución de la sesión programada.',
-        nombreColumnaCategoria: 'Ítem / Verificación',
-        sinColumnaCategoria: false,
+        id: 'tbl_compromisos_rubricas_aula',
+        titulo: 'III. COMPROMISOS DE MEJORA',
+        descripcion: 'A partir de las conductas observables registradas por cada uno de los desempeños y del diálogo reflexivo y haciendo uso de preguntas orientadoras (ver protocolo) anote en la primera columna el o los desempeños que el docente requiere mejorar. En la segunda columna, registre los compromisos de mejora relacionados con cada uno de los desempeños.',
+        nombreColumnaCategoria: 'N°',
+        sinColumnaCategoria: true,
         columnas: [
-          { id: 'c_estado', nombre: 'Alternativa seleccionada (Proyectos, Unidades, Talleres, Otros / Sí, No)', tipo: 'texto' },
-          { id: 'c_observaciones', nombre: 'Observaciones / Sustento', tipo: 'texto' }
+          { id: 'c_desempeno', nombre: 'Desempeño por mejorar', tipo: 'area' },
+          { id: 'c_compromiso', nombre: 'Compromisos de mejora', tipo: 'area' }
         ],
         filas: [
-          { id: 'f_2_1', etiqueta: '2.1 Formas organizativas: Planifica usando proyectos, unidades de aprendizaje, talleres u otros' },
-          { id: 'f_2_2', etiqueta: '2.2 Ejecución: La sesión/actividad planificada es ejecutada el día de la observación según programación' }
+          { id: 'f_comp_1', etiqueta: 'Compromiso' }
+        ]
+      },
+      {
+        id: 'tbl_datos_planif_2_1',
+        titulo: '2.1 Formas organizativas de la planificación',
+        descripcion: 'El docente planifica sus sesiones de clase haciendo uso de proyectos, unidades de aprendizaje, talleres, u otros.',
+        nombreColumnaCategoria: 'Ítems',
+        sinColumnaCategoria: false,
+        columnas: [
+          { id: 'c_proyectos', nombre: 'PROYECTOS', tipo: 'checkbox' },
+          { id: 'c_unidades', nombre: 'UNIDADES DE APRENDIZAJE', tipo: 'checkbox' },
+          { id: 'c_talleres', nombre: 'TALLERES', tipo: 'checkbox' },
+          { id: 'c_otros', nombre: 'OTROS', tipo: 'checkbox' }
+        ],
+        filas: [
+          { id: 'f_2_1', etiqueta: '2.1 El docente planifica sus sesiones de clase haciendo uso de proyectos, unidades de aprendizaje, talleres, u otros.' }
+        ]
+      },
+      {
+        id: 'tbl_datos_planif_2_2',
+        titulo: '2.2 Ejecución de la sesión/actividad planificada',
+        descripcion: 'La sesión/actividad de aprendizaje planificada es ejecutada el día de la observación o visita al aula, según programación.',
+        nombreColumnaCategoria: 'Ítems',
+        sinColumnaCategoria: false,
+        columnas: [
+          { id: 'c_si', nombre: 'SI', tipo: 'checkbox' },
+          { id: 'c_no', nombre: 'NO', tipo: 'checkbox' },
+          { id: 'c_observaciones', nombre: 'OBSERVACIONES', tipo: 'texto' }
+        ],
+        filas: [
+          { id: 'f_2_2', etiqueta: '2.2 La sesión/actividad de aprendizaje planificada es ejecutada el día de la observación o visita al aula, según programación.' }
         ]
       },
       {
@@ -550,7 +578,7 @@ export const PLANTILLAS_BASE_OFICIALES = {
       especialista: true,
       filasPorVisita: 3
     },
-    version: '2026.1',
+    version: '2026.3',
     esBorrador: false
   },
 
