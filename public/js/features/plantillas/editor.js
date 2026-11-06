@@ -1,4 +1,4 @@
-﻿/**
+/**
  * features/plantillas/editor.js
  * Diseñador visual split-screen de plantillas de ficha de monitoreo
  * UGEL 03 · AGEBRE · Fase 3 Reorganización
@@ -724,7 +724,8 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
               <input type="text" placeholder="Nueva columna..." id="newColNom_${ti}" style="width:140px;font-size:11.5px;padding:3px 6px">
               <select id="newColTipo_${ti}" style="font-size:11.5px;padding:3px 4px">
                 <option value="numero">Número</option>
-                <option value="texto">Texto</option>`r`n                <option value="area">Texto largo / Área</option>
+                <option value="texto">Texto</option>
+                <option value="area">Texto largo / Área</option>
               </select>
               <button type="button" class="btn secondary small" data-addtblcol="${ti}" style="padding:2px 8px;font-size:11px">＋ Col</button>
             </div>
