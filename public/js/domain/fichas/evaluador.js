@@ -444,7 +444,7 @@ export function getNivelEbrGestion(puntaje, visitaOrMomento, maxAplicable = null
   const p = Number(puntaje) || 0;
   const v = (typeof visitaOrMomento === 'object' && visitaOrMomento !== null)
     ? getMomentoVisitaEbr(visitaOrMomento)
-    : (Number(visitaOrMomento) === 2 ? 2 : 1);
+    : (Number(visitaOrMomento) === 3 ? 3 : (Number(visitaOrMomento) === 2 ? 2 : 1));
   const regla = getReglaNivelEbrGestion(v);
   const maxPts = regla.maxPuntaje;
   const rangos = regla.rangos;

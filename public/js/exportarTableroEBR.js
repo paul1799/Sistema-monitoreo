@@ -130,15 +130,15 @@ function formatearFechaDDMMYYYY(fechaStr) {
 export async function exportarTableroEBRCompleto(submissions, visita, colegios, state = null) {
   // ─── Regla 8.2: Validación estricta de visita en el servidor / cliente ──────
   const v = Number(visita);
-  if (v !== 1 && v !== 2) {
-    const err = new Error('Parámetro visita inválido o ausente. Debe ser 1 (Primer momento) o 2 (Segundo momento). No se permite exportar ambas visitas juntas.');
+  if (v !== 1 && v !== 2 && v !== 3) {
+    const err = new Error('Parámetro visita inválido o ausente. Debe ser 1 (Primer momento), 2 (Segundo momento) o 3 (Tercer momento). No se permite exportar varias visitas juntas.');
     err.status = 400;
     throw err;
   }
 
   // Filtrar y validar que todas las fichas pertenezcan a la visita seleccionada y modalidad EBR
   const fichasVisita = (submissions || []).filter(s => {
-    const sVis = Number(s.visita) || (Array.isArray(s.respuestas) && s.respuestas.some(r => String(r?.id || '').startsWith('ge2_')) ? 2 : 1);
+    const sVis = Number(s.visita) || (Array.isArray(s.respuestas) && s.respuestas.some(r => String(r?.id || '').startsWith('ge3_')) ? 3 : (Array.isArray(s.respuestas) && s.respuestas.some(r => String(r?.id || '').startsWith('ge2_')) ? 2 : 1));
     return sVis === v;
   });
 
@@ -210,13 +210,23 @@ export async function exportarTableroEBRCompleto(submissions, visita, colegios, 
       views: [{ state: 'frozen', xSplit: 2, ySplit: 2, topLeftCell: 'C3' }]
     });
     _construirHojaDocentes(wsDoc2, 'T_DOC2', 'momento2', filasGenerales, 'V. DATA DE DOCENTES MONITOREADOS - SEGUNDO MOMENTO (por nivel). R1-R5 = rúbricas; I-IV = niveles de logro');
+  } else if (v === 3) {
+    const wsDoc2 = wb.addWorksheet('DOCENTES_2DO_MOM', {
+      views: [{ state: 'frozen', xSplit: 2, ySplit: 2, topLeftCell: 'C3' }]
+    });
+    _construirHojaDocentes(wsDoc2, 'T_DOC2', 'momento2', filasGenerales, 'IV. DATA DE DOCENTES MONITOREADOS - SEGUNDO MOMENTO (por nivel). R1-R5 = rúbricas; I-IV = niveles de logro');
+
+    const wsDoc3 = wb.addWorksheet('DOCENTES_3ER_MOM', {
+      views: [{ state: 'frozen', xSplit: 2, ySplit: 2, topLeftCell: 'C3' }]
+    });
+    _construirHojaDocentes(wsDoc3, 'T_DOC3', 'momento3', filasGenerales, 'V. DATA DE DOCENTES MONITOREADOS - TERCER MOMENTO (por nivel). R1-R5 = rúbricas; I-IV = niveles de logro');
   }
 
   // ─── Descarga / Retorno de Buffer ───────────────────────────────────────────
   const rawBuffer = await wb.xlsx.writeBuffer();
   const buffer = await _sanitizarBufferOpenXml(rawBuffer);
   const fechaLima = getFechaLimaAAAAMMDD();
-  const momRomano = v === 2 ? 'II' : 'I';
+  const momRomano = v === 3 ? 'III' : (v === 2 ? 'II' : 'I');
   const fileName = `TABLERO_MONITOREO_GESTION_EBR_${momRomano}_MOMENTO_${fechaLima}.xlsx`;
 
   if (typeof window !== 'undefined' && typeof document !== 'undefined') {
@@ -322,8 +332,8 @@ function _construirHojaGeneral(ws, filas, visita, secciones) {
     ws.getColumn(i + 1).width = w;
   });
 
-  const catPrefix = visita === 2 ? 'CAT_6.' : 'CAT_4.';
-  const tCatPrefix = visita === 2 ? 'T_6_' : 'T_4_';
+  const catPrefix = (visita === 2 || visita === 3) ? 'CAT_6.' : 'CAT_4.';
+  const tCatPrefix = (visita === 2 || visita === 3) ? 'T_6_' : 'T_4_';
 
   const encabezados = [
     'Fecha_Visita',

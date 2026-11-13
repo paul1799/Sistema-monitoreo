@@ -131,9 +131,9 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
   // -------------------------------------------------------------------------
   // TABLAS DE DOCENTES MONITOREADOS (SOLO VISITA 2)
   // -------------------------------------------------------------------------
-  if (isV2) {
+  if (isV2 || isV3) {
     let docData = sub.docentes;
-    if (!docData || (!docData.momento1 && !docData.momento2)) {
+    if (!docData || (!docData.momento1 && !docData.momento2 && !docData.momento3)) {
       docData = migrateLegacyEbrTotals(sub);
     }
 
@@ -236,7 +236,19 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
       });
     };
 
-    buildDocTable(
+    if (visitaNum === 3) {
+      buildDocTable(
+        (docData && docData.momento2) || [],
+        2,
+        'IV',
+        'DATA DE DOCENTES MONITOREADOS DEL SEGUNDO MOMENTO POR NIVEL A LA FECHA DE LA VISITA'
+      );
+      buildDocTable(
+        (docData && docData.momento3) || [],
+        3,
+        'V', 'DATA DE DOCENTES MONITOREADOS DEL TERCER MOMENTO POR NIVEL A LA FECHA DE LA VISITA');
+    } else {
+      buildDocTable(
       (docData && docData.momento1) || [],
       1,
       'IV',
@@ -250,11 +262,35 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
       'DATA DE DOCENTES MONITOREADOS DEL SEGUNDO MOMENTO POR NIVEL A LA FECHA DE LA VISITA'
     );
   }
+}
+/*
+    );
+
+    if (visitaNum === 3) {
+      buildDocTable(
+        (docData && docData.momento2) || [],
+        2,
+        'IV',
+        'DATA DE DOCENTES MONITOREADOS DEL SEGUNDO MOMENTO POR NIVEL A LA FECHA DE LA VISITA'
+      );
+      buildDocTable(
+        (docData && docData.momento3) || [],
+        3,
+        'V', 'DATA DE DOCENTES MONITOREADOS DEL TERCER MOMENTO POR NIVEL A LA FECHA DE LA VISITA');
+    } else {
+      buildDocTable(
+      (docData && docData.momento2) || [],
+      2,
+      'V',
+      'DATA DE DOCENTES MONITOREADOS DEL SEGUNDO MOMENTO POR NIVEL A LA FECHA DE LA VISITA'
+    );
+  }
 
   // -------------------------------------------------------------------------
   // ASPECTOS E INDICADORES (ESCALA: INICIO / PROCESO / LOGRADO)
   // -------------------------------------------------------------------------
-  const secAspectosRomano = isV2 ? 'VI' : 'IV';
+*/
+  const secAspectosRomano = (isV2 || isV3) ? 'VI' : 'IV';
   const seccionesDef = getEbrSeccionesForVisita(visitaNum, fichaType);
 
   const respuestas = sub.respuestas || [];

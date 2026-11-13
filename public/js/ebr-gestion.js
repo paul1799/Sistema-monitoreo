@@ -563,6 +563,7 @@ let ebrFormState = {
   subdirectores: [],
   docentesMomento1: [],
   docentesMomento2: [],
+  docentesMomento3: [],
   respuestas: {},
   observacionesItems: {},
   proyectosInnovacion: [''],
@@ -649,6 +650,7 @@ export function resetEbrFormState() {
     ],
     docentesMomento1: createDefaultDocentesRows(),
     docentesMomento2: createDefaultDocentesRows(),
+    docentesMomento3: createDefaultDocentesRows(),
     respuestas: {},
     observacionesItems: {},
     proyectosInnovacion: [''],
@@ -749,9 +751,10 @@ export function preloadEbrFormState(sub, ft) {
   }
 
   // Cargar tablas de docentes si existen o migrar de campos planos
-  if (sub.docentes && (sub.docentes.momento1 || sub.docentes.momento2)) {
+  if (sub.docentes && (sub.docentes.momento1 || sub.docentes.momento2 || sub.docentes.momento3)) {
     ebrFormState.docentesMomento1 = (sub.docentes.momento1 || createDefaultDocentesRows()).map(r => ({ ...r, id: r.id || genId() }));
     ebrFormState.docentesMomento2 = (sub.docentes.momento2 || createDefaultDocentesRows()).map(r => ({ ...r, id: r.id || genId() }));
+    ebrFormState.docentesMomento3 = (sub.docentes.momento3 || createDefaultDocentesRows()).map(r => ({ ...r, id: r.id || genId() }));
   } else {
     const migrated = migrateLegacyEbrTotals(sub);
     if (migrated) {
@@ -897,7 +900,7 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
         </div>
         ${currentVisita ? `
           <div class="badge" style="background:var(--primary-tint);color:var(--primary-dark);font-weight:700;font-size:12px;padding:4px 10px;border-radius:12px">
-            ${isV1 ? 'Visita 1 (Primer momento) · 19 ítems' : isV2 ? 'Visita 2 (Segundo momento) · 23 ítems + Tablas R1–R5' : `Visita 3 (Tercer momento · Salida) · ${totalItemsCount} ítems`}
+            ${isV1 ? 'Visita 1 (Primer momento) · 19 ítems' : isV2 ? 'Visita 2 (Segundo momento) · 23 ítems + Tablas R1–R5' : `Visita 3 (Tercer momento · Salida) · ${totalItemsCount} ítems + Tablas R1–R5`}
           </div>
         ` : ''}
       </div>
@@ -940,11 +943,11 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
               ${isV3 ? '✓ ' : ''}Visita 3 · Tercer momento
             </span>
             <span style="font-size:11px;background:${isV3 ? 'var(--primary)' : 'var(--line)'};color:${isV3 ? '#fff' : 'var(--ink-soft)'};padding:2px 8px;border-radius:10px;font-weight:700">
-              ${isV3 ? totalItemsCount + ' ítems' : 'Balance y Salida'}
+              ${totalItemsCount} ítems + R1–R5
             </span>
           </div>
           <div style="font-size:12px;color:var(--ink-soft);line-height:1.4">
-            Balance anual de gestión escolar, evaluación de salida por competencias, informe de monitoreo y compromisos de cierre del año escolar.
+            Incluye <strong>Data de docentes monitoreados</strong> del segundo y tercer momento por nivel (R1–R5 y niveles I–IV), más balance anual y compromisos de salida.
           </div>
         </button>
       </div>
@@ -1131,39 +1134,61 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
   // SECCIONES IV Y V: TABLAS DE DOCENTES MONITOREADOS (SOLO VISITA 2)
   // =========================================================================
   let tablasDocentesHtml = '';
-  if (isV2) {
+  if (isV2 || isV3) {
+    const t4MomentoKey = isV3 ? 'momento2' : 'momento1';
+    const t4MomentoNum = isV3 ? '2' : '1';
+    const t4Titulo = isV3
+      ? 'IV. DATA DE DOCENTES MONITOREADOS DEL SEGUNDO MOMENTO POR NIVEL A LA FECHA DE LA VISITA'
+      : 'IV. DATA DE DOCENTES MONITOREADOS DEL PRIMER MOMENTO POR NIVEL A LA FECHA DE LA VISITA';
+    const t4Rows = isV3 ? ebrFormState.docentesMomento2 : ebrFormState.docentesMomento1;
+
+    const t5MomentoKey = isV3 ? 'momento3' : 'momento2';
+    const t5MomentoNum = isV3 ? '3' : '2';
+    const t5Titulo = isV3
+      ? 'V. DATA DE DOCENTES MONITOREADOS DEL TERCER MOMENTO POR NIVEL A LA FECHA DE LA VISITA'
+      : 'V. DATA DE DOCENTES MONITOREADOS DEL SEGUNDO MOMENTO POR NIVEL A LA FECHA DE LA VISITA';
+    const t5Rows = isV3 ? ebrFormState.docentesMomento3 : ebrFormState.docentesMomento2;
+    const btnCopiarId = isV3 ? 'btnCopiarTotalesM2' : 'btnCopiarTotalesM1';
+    const btnCopiarText = isV3 ? '📋 Copiar totales del segundo momento' : '📋 Copiar totales del primer momento';
+    const btnCopiarTitle = isV3
+      ? 'Copia el Total de Docentes por nivel desde el segundo momento'
+      : 'Copia el Total de Docentes por nivel desde el primer momento';
+    const t5Ayuda = isV3
+      ? 'Resultados correspondientes al tercer momento (salida y balance anual) de monitoreo a la práctica pedagógica.'
+      : 'Resultados acumulados o correspondientes al segundo momento de monitoreo a la práctica pedagógica.';
+
     tablasDocentesHtml = `
       <!-- TABLA IV: PRIMER MOMENTO -->
-      <div class="panel ebrDocentesPanel" id="panelDocentesM1">
+      <div class="panel ebrDocentesPanel" id="panelDocentes${isV3 ? 'M2' : 'M1'}">
         <div class="sectionHeaderTitle">
-          IV. DATA DE DOCENTES MONITOREADOS DEL PRIMER MOMENTO POR NIVEL A LA FECHA DE LA VISITA
+          ${t4Titulo}
         </div>
         <p class="helpText" style="margin-top:0">
           Registre los docentes monitoreados y los resultados de las 5 rúbricas de aula (I, II, III y IV). La fila <strong>Total</strong> y los <strong>no monitoreados</strong> se calculan automáticamente.
         </p>
-        ${renderDocentesTableHtml('momento1', ebrFormState.docentesMomento1)}
+        ${renderDocentesTableHtml(t4MomentoKey, t4Rows)}
         <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <button type="button" class="btn secondary small btnAddFilaDocente" data-momento="1">＋ Agregar fila (ej: AIP / Otro)</button>
+          <button type="button" class="btn secondary small btnAddFilaDocente" data-momento="${t4MomentoNum}">＋ Agregar fila (ej: AIP / Otro)</button>
           <div style="font-size:11px;color:var(--ink-soft)">* El grupo resalta en ámbar si la suma de niveles no coincide con los monitoreados.</div>
         </div>
       </div>
 
       <!-- TABLA V: SEGUNDO MOMENTO -->
-      <div class="panel ebrDocentesPanel" id="panelDocentesM2">
+      <div class="panel ebrDocentesPanel" id="panelDocentes${isV3 ? 'M3' : 'M2'}">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">
           <div class="sectionHeaderTitle" style="margin:0">
-            V. DATA DE DOCENTES MONITOREADOS DEL SEGUNDO MOMENTO POR NIVEL A LA FECHA DE LA VISITA
+            ${t5Titulo}
           </div>
-          <button type="button" class="btn secondary small" id="btnCopiarTotalesM1" title="Copia el Total de Docentes por nivel desde el primer momento">
-            📋 Copiar totales del primer momento
+          <button type="button" class="btn secondary small" id="${btnCopiarId}" title="${btnCopiarTitle}">
+            ${btnCopiarText}
           </button>
         </div>
         <p class="helpText" style="margin-top:0">
-          Resultados acumulados o correspondientes al segundo momento de monitoreo a la práctica pedagógica.
+          ${t5Ayuda}
         </p>
-        ${renderDocentesTableHtml('momento2', ebrFormState.docentesMomento2)}
+        ${renderDocentesTableHtml(t5MomentoKey, t5Rows)}
         <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <button type="button" class="btn secondary small btnAddFilaDocente" data-momento="2">＋ Agregar fila (ej: AIP / Otro)</button>
+          <button type="button" class="btn secondary small btnAddFilaDocente" data-momento="${t5MomentoNum}">＋ Agregar fila (ej: AIP / Otro)</button>
           <div style="font-size:11px;color:var(--ink-soft)">* Docentes no monitoreados = Total de docentes − Docentes monitoreados.</div>
         </div>
       </div>
@@ -1573,7 +1598,7 @@ function renderDocentesTableHtml(momentoKey, rows) {
         <!-- Nivel con opción de edición (Fija a la izquierda) -->
         <td class="ebrStickyCol colNivelDoc" style="font-weight:700;background:${cellBg};position:sticky;left:0;z-index:3">
           <div class="ebrNivelCellContent">
-            <span class="ebrNivelLabel" title="${esc(row.nivel)}">${esc(row.nivel)}</span>
+            <span class="ebrNivelLabel" title="Clic o lápiz para editar: ${esc(row.nivel)}" style="cursor:pointer">${esc(row.nivel)}</span>
             <button type="button" class="iconBtn small btnEditNivel" data-edit-nivel="${momentoKey}|${rIdx}" title="Editar nombre del nivel o servicio educativo" style="padding:2px 4px;font-size:11px;line-height:1.1;cursor:pointer;opacity:0.85;border:1px solid var(--line);border-radius:4px;background:var(--surface-2);flex-shrink:0">✏️</button>
           </div>
         </td>
@@ -1607,7 +1632,7 @@ function renderDocentesTableHtml(momentoKey, rows) {
             <label style="font-size:11px;display:inline-flex;align-items:center;gap:3px;cursor:pointer;font-weight:600" title="Marcar si la I.E. no brinda este nivel educativo">
               <input type="checkbox" class="chkDocNa" data-doc-na="${momentoKey}|${rIdx}" ${isNa ? 'checked' : ''}> N/A
             </label>
-            ${rIdx >= 3 ? `<button type="button" class="iconBtn danger small btnRmFilaDoc" data-rm-doc="${momentoKey}|${rIdx}" title="Eliminar fila" style="padding:1px 4px;font-size:10px;margin-left:2px">✕</button>` : ''}
+            ${rowsList.length > 1 ? `<button type="button" class="iconBtn danger small btnRmFilaDoc" data-rm-doc="${momentoKey}|${rIdx}" title="Eliminar fila" style="padding:1px 4px;font-size:10px;margin-left:2px">✕</button>` : ''}
           </div>
         </td>
       </tr>
@@ -1721,7 +1746,8 @@ function attachVisitaSelectorEvents(host, ft, state, dbNs, currentUser, navigate
       // Si se pasa de Visita 2 o 3 a Visita 1 y hay datos en las tablas de docentes o ítems posteriores
       if ((ebrFormState.visita === 2 || ebrFormState.visita === 3) && targetVisita === 1) {
         const hasDocData = (ebrFormState.docentesMomento1 || []).some(r => r.total || r.monitoreados) ||
-                           (ebrFormState.docentesMomento2 || []).some(r => r.total || r.monitoreados);
+                           (ebrFormState.docentesMomento2 || []).some(r => r.total || r.monitoreados) ||
+                           (ebrFormState.docentesMomento3 || []).some(r => r.total || r.monitoreados);
         const hasExtraAnswers = Object.keys(ebrFormState.respuestas).some(k => k.startsWith('ge2_20') || k.startsWith('ge2_21') || k.startsWith('ge2_22') || k.startsWith('ge2_23') || k.startsWith('ge3_'));
 
         if (hasDocData || hasExtraAnswers) {
@@ -1841,12 +1867,12 @@ export function syncAllEbrFormDataFromDom(host) {
   }
 
   // 4. Tablas de Docentes Monitoreados (Momento 1 y Momento 2)
-  ['momento1', 'momento2'].forEach(mKey => {
+  ['momento1', 'momento2', 'momento3'].forEach(mKey => {
     const tbl = host.querySelector(`.ebrDocentesTable[data-momento-table="${mKey}"]`);
     if (!tbl) return;
     const trs = tbl.querySelectorAll('tbody tr[data-doc-row]');
     if (!trs.length) return;
-    const existingList = mKey === 'momento1' ? ebrFormState.docentesMomento1 : ebrFormState.docentesMomento2;
+    const existingList = mKey === 'momento1' ? ebrFormState.docentesMomento1 : (mKey === 'momento2' ? ebrFormState.docentesMomento2 : ebrFormState.docentesMomento3);
 
     const parsedList = Array.from(trs).map((tr, rIdx) => {
       const prev = (existingList && existingList[rIdx]) || {};
@@ -1881,8 +1907,10 @@ export function syncAllEbrFormDataFromDom(host) {
 
     if (mKey === 'momento1') {
       ebrFormState.docentesMomento1 = parsedList;
-    } else {
+    } else if (mKey === 'momento2') {
       ebrFormState.docentesMomento2 = parsedList;
+    } else if (mKey === 'momento3') {
+      ebrFormState.docentesMomento3 = parsedList;
     }
   });
 
@@ -2167,7 +2195,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
           } else {
             showToast('✓ Datos del subdirector guardados en el formulario.');
           }
-        } else {
+        } else if (mKey === 'momento2') {
           showToast('✓ Datos del subdirector guardados en el formulario.');
         }
       } catch (err) {
@@ -2228,7 +2256,12 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
   });
 
   // ---- Tablas de Docentes (Visita 2) ----
-  if (ebrFormState.visita === 2) {
+  if (ebrFormState.visita === 2 || ebrFormState.visita === 3) {
+    const getDocList = (momKey) => {
+      if (momKey === 'momento1') return ebrFormState.docentesMomento1;
+      if (momKey === 'momento2') return ebrFormState.docentesMomento2;
+      return ebrFormState.docentesMomento3;
+    };
     // Sincronizar inputs de tablas en tiempo real
     host.querySelectorAll('.ebrDocInp').forEach(inp => {
       inp.addEventListener('input', () => {
@@ -2236,7 +2269,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
         if (tr && tr.dataset.docRow) {
           const [momentoKey, rIdxStr] = tr.dataset.docRow.split('|');
           const rIdx = Number(rIdxStr);
-          const list = momentoKey === 'momento1' ? ebrFormState.docentesMomento1 : ebrFormState.docentesMomento2;
+          const list = getDocList(momentoKey);
           if (list && list[rIdx]) {
             const field = inp.dataset.f;
             if (field === 'total' || field === 'monitoreados') {
@@ -2275,7 +2308,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       chk.addEventListener('change', () => {
         const [momentoKey, rIdxStr] = chk.dataset.docNa.split('|');
         const rIdx = Number(rIdxStr);
-        const list = momentoKey === 'momento1' ? ebrFormState.docentesMomento1 : ebrFormState.docentesMomento2;
+        const list = getDocList(momentoKey);
         if (list && list[rIdx]) list[rIdx].noAplica = chk.checked;
         const tr = chk.closest('tr');
         tr.querySelectorAll('.ebrDocInp').forEach(i => i.disabled = chk.checked);
@@ -2291,13 +2324,47 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
     });
 
     // Editar nombre del nivel en filas de docentes
+    const handleEditNivel = (momentoKey, rIdx, tr) => {
+      syncAllEbrFormDataFromDom(host);
+      const list = getDocList(momentoKey);
+      const row = list && list[rIdx];
+      if (!row) return;
+
+      const nuevoNombre = prompt('Editar nombre del nivel o servicio educativo (ej: Inicial, Primaria, Secundaria, AIP, Otro):', row.nivel || '');
+      if (nuevoNombre === null) return;
+      const trimmed = nuevoNombre.trim();
+      if (!trimmed) {
+        showToast('⚠️ El nombre del nivel no puede estar vacío.');
+        return;
+      }
+
+      row.nivel = trimmed;
+      if (tr) {
+        const lbl = tr.querySelector('.ebrNivelLabel');
+        if (lbl) {
+          lbl.textContent = trimmed;
+          lbl.title = `Clic o lápiz para editar: ${trimmed}`;
+        }
+      }
+      showToast(`✓ Nivel actualizado: ${trimmed}`);
+    };
+    host.querySelectorAll('.colNivelDoc .ebrNivelLabel').forEach(lbl => {
+      lbl.onclick = (e) => {
+        e.preventDefault();
+        const tr = lbl.closest('tr');
+        if (tr && tr.dataset.docRow) {
+          const [mKey, rStr] = tr.dataset.docRow.split('|');
+          handleEditNivel(mKey, Number(rStr), tr);
+        }
+      };
+    });
     host.querySelectorAll('.btnEditNivel').forEach(btn => {
       btn.onclick = (e) => {
         e.preventDefault();
         syncAllEbrFormDataFromDom(host);
         const [momentoKey, rIdxStr] = btn.dataset.editNivel.split('|');
         const rIdx = Number(rIdxStr);
-        const list = momentoKey === 'momento1' ? ebrFormState.docentesMomento1 : ebrFormState.docentesMomento2;
+        const list = getDocList(momentoKey);
         const row = list && list[rIdx];
         if (!row) return;
 
@@ -2349,11 +2416,38 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       };
     }
 
+    // Copiar totales del segundo momento
+    const btnCopyM2 = host.querySelector('#btnCopiarTotalesM2');
+    if (btnCopyM2) {
+      btnCopyM2.onclick = () => {
+        syncAllEbrFormDataFromDom(host);
+        const m2 = ebrFormState.docentesMomento2 || [];
+        const m3 = ebrFormState.docentesMomento3 || [];
+        let copied = 0;
+        m2.forEach((r2, i) => {
+          let targetRow = m3.find(r3 => (r3.nivel || '').trim().toLowerCase() === (r2.nivel || '').trim().toLowerCase());
+          if (!targetRow && m3[i]) targetRow = m3[i];
+          if (targetRow && r2.total !== '' && r2.total !== undefined) {
+            targetRow.total = r2.total;
+            const tNum = Number(targetRow.total) || 0;
+            const mNum = Number(targetRow.monitoreados) || 0;
+            targetRow.noMonitoreados = Math.max(0, tNum - mNum);
+            copied++;
+          }
+        });
+        const scrollY = window.scrollY;
+        try { sessionStorage.setItem('reg_prefill_visita', String(getActiveVisita())); } catch (_) { }
+        renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: getActiveVisita() });
+        window.scrollTo({ top: scrollY, behavior: 'instant' });
+        showToast(copied > 0 ? '✓ Totales de docentes copiados del segundo momento.' : '⚠️ No hay totales ingresados en el segundo momento.');
+      };
+    }
+
     // Agregar fila personalizada a la tabla de docentes
     host.querySelectorAll('.btnAddFilaDocente').forEach(btn => {
       btn.onclick = () => {
         syncAllEbrFormDataFromDom(host);
-        const mKey = btn.dataset.momento === '1' ? 'docentesMomento1' : 'docentesMomento2';
+        const mKey = btn.dataset.momento === '1' ? 'docentesMomento1' : (btn.dataset.momento === '2' ? 'docentesMomento2' : 'docentesMomento3');
         const nivelName = prompt('Ingrese el nombre del nivel o servicio (ej: AIP, Aula de Innovación):', 'AIP');
         if (!nivelName || !nivelName.trim()) return;
         ebrFormState[mKey].push({
@@ -2381,7 +2475,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       btn.onclick = () => {
         syncAllEbrFormDataFromDom(host);
         const [momentoKey, rIdxStr] = btn.dataset.rmDoc.split('|');
-        const list = momentoKey === 'momento1' ? ebrFormState.docentesMomento1 : ebrFormState.docentesMomento2;
+        const list = getDocList(momentoKey);
         list.splice(Number(rIdxStr), 1);
         const scrollY = window.scrollY;
         try { sessionStorage.setItem('reg_prefill_visita', String(getActiveVisita())); } catch (_) { }
@@ -2411,7 +2505,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
         radio.checked = false;
         delete ebrFormState.respuestas[itemId];
         lbl.classList.remove('active');
-      } else {
+      } else if (mKey === 'momento2') {
         // Primer clic: seleccionar
         lbl.parentElement.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
         radio.checked = true;
@@ -2464,7 +2558,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
         btn.textContent = '✕ Ocultar obs.';
         const tx = wrap.querySelector('textarea, input');
         if (tx) tx.focus();
-      } else {
+      } else if (mKey === 'momento2') {
         wrap.style.display = 'none';
         btn.classList.remove('active');
         const tx = wrap.querySelector('textarea, input');
@@ -2472,7 +2566,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
         if (hasVal) {
           btn.classList.add('has-content');
           btn.textContent = '💬 Observación ✓';
-        } else {
+        } else if (mKey === 'momento2') {
           btn.classList.remove('has-content');
           btn.textContent = '💬 Observación';
         }
@@ -2612,6 +2706,7 @@ function checkExistingVisitasEbr(colegio, host, state, ft, dbNs = null, currentU
   } else {
     const hasV1 = submissions.find(s => Number(s.visita) === 1);
     const hasV2 = submissions.find(s => Number(s.visita) === 2);
+    const hasV3 = submissions.find(s => Number(s.visita) === 3);
 
     if (hasV1 && !hasV2) {
       // Ya tiene Visita 1: sugerir Visita 2 y precargar datos de la IE y Director
@@ -2636,11 +2731,39 @@ function checkExistingVisitasEbr(colegio, host, state, ft, dbNs = null, currentU
         try { sessionStorage.setItem('reg_prefill_visita', '2'); } catch (_) { }
         renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: 2 });
       }
-    } else if (hasV2) {
-      // Ya tiene Visita 2
+    } else if (hasV2 && !hasV3) {
+      // Ya tiene Visita 3: sugerir Visita 3
+      noticeWrap.innerHTML = `
+        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:8px 12px;font-size:12px;color:#1E40AF">
+          💡 <strong>Sugerencia:</strong> Esta I.E. ya cuenta con la <strong>Visita 2</strong> registrada el ${formatDate(hasV2.fecha)}. Se sugiere registrar la <strong>Visita 3 · Tercer momento</strong> (se han precargado los datos de la I.E., directivos y docentes del segundo momento).
+        </div>
+      `;
+      if (hasV2.director && !ebrFormState.director.nombres) {
+        ebrFormState.director.nombres = typeof hasV2.director === 'object' ? hasV2.director.nombres : hasV2.director;
+        ebrFormState.director.dni = hasV2.directorDni || (hasV2.director && hasV2.director.dni) || '';
+      }
+      if (hasV2.responsable && !ebrFormState.responsable) {
+        ebrFormState.responsable = hasV2.responsable;
+      }
+      if (Array.isArray(hasV2.subdirectores) && hasV2.subdirectores.length && !ebrFormState.subdirectores.length) {
+        ebrFormState.subdirectores = [...hasV2.subdirectores];
+      }
+      if (hasV2.docentes && (hasV2.docentes.momento2 || hasV2.docentes.momento1)) {
+        const sourceDoc = hasV2.docentes.momento2 || hasV2.docentes.momento1;
+        if (Array.isArray(sourceDoc) && sourceDoc.length) {
+          ebrFormState.docentesMomento2 = sourceDoc.map(r => ({ ...r, id: r.id || genId() }));
+        }
+      }
+      if (!ebrFormState.visita) {
+        ebrFormState.visita = 3;
+        try { sessionStorage.setItem('reg_prefill_visita', '3'); } catch (_) { }
+        renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: 3 });
+      }
+    } else if (hasV3) {
+      // Ya tiene Visita 3
       noticeWrap.innerHTML = `
         <div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:6px;padding:8px 12px;font-size:12px;color:#92400E">
-          ⚠️ <strong>Atención:</strong> Esta I.E. ya tiene registrada la <strong>Visita 2</strong> del ${formatDate(hasV2.fecha)}.
+          ⚠️ <strong>Atención:</strong> Esta I.E. ya tiene registrada la <strong>Visita 3</strong> del ${formatDate(hasV3.fecha)}.
         </div>
       `;
     }
@@ -2996,7 +3119,7 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
   let hasRubricMismatch = false;
   let mismatchDetails = [];
 
-  if (visita === 2) {
+  if (visita === 2 || visita === 3) {
     const parseDocTable = (momentoKey) => {
       const tbl = host.querySelector(`.ebrDocentesTable[data-momento-table="${momentoKey}"]`);
       if (!tbl) return [];
@@ -3038,7 +3161,10 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
       });
     };
 
-    docentesPayload = {
+    docentesPayload = visita === 3 ? {
+      momento2: parseDocTable('momento2'),
+      momento3: parseDocTable('momento3')
+    } : {
       momento1: parseDocTable('momento1'),
       momento2: parseDocTable('momento2')
     };
@@ -3114,12 +3240,18 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
   if (docentesPayload) {
     const m1 = docentesPayload.momento1 || [];
     const m2 = docentesPayload.momento2 || [];
+    const m3 = docentesPayload.momento3 || [];
     extrasFlat.push({ label: 'Total docentes Inicial 1er momento', value: (m1.find(r => r.nivel === 'Inicial') || {}).total || 0 });
     extrasFlat.push({ label: 'Total docentes Primaria 1er momento', value: (m1.find(r => r.nivel === 'Primaria') || {}).total || 0 });
     extrasFlat.push({ label: 'Total docentes Secundaria 1er momento', value: (m1.find(r => r.nivel === 'Secundaria') || {}).total || 0 });
     extrasFlat.push({ label: 'Total docentes Inicial 2do momento', value: (m2.find(r => r.nivel === 'Inicial') || {}).total || 0 });
     extrasFlat.push({ label: 'Total docentes Primaria 2do momento', value: (m2.find(r => r.nivel === 'Primaria') || {}).total || 0 });
     extrasFlat.push({ label: 'Total docentes Secundaria 2do momento', value: (m2.find(r => r.nivel === 'Secundaria') || {}).total || 0 });
+    if (m3.length) {
+      extrasFlat.push({ label: 'Total docentes Inicial 3er momento', value: (m3.find(r => r.nivel === 'Inicial') || {}).total || 0 });
+      extrasFlat.push({ label: 'Total docentes Primaria 3er momento', value: (m3.find(r => r.nivel === 'Primaria') || {}).total || 0 });
+      extrasFlat.push({ label: 'Total docentes Secundaria 3er momento', value: (m3.find(r => r.nivel === 'Secundaria') || {}).total || 0 });
+    }
   }
 
   const respEl = host.querySelector('#ebr_responsable');
