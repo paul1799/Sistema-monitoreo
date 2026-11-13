@@ -1,19 +1,19 @@
-/* =========================================================================
-   reportes.css — Rediseño de Vista Reportes, Acordeones y Filtros Unificados
+﻿/* =========================================================================
+   reportes.css â€” RediseÃ±o de Vista Reportes, Acordeones y Filtros Unificados
    -------------------------------------------------------------------------
    Utilizado por:
      - public/js/reportes-datos.js
      - public/js/reportes-redesign.js
-     - public/js/ui.js (sección renderReportesView)
+     - public/js/ui.js (secciÃ³n renderReportesView)
    Contiene:
      - Selector de tipo de ficha (.secReportesTipoFicha)
      - Contenedor de filtros unificados (.secReportesFiltros, .secHeaderFlex)
-     - Acordeón por ítem (.itemAccordion, .itemAccHeader)
-     - Distribución estadística y porcentajes de logro
-     - Tablas comparativas y gráficos de avance
+     - AcordeÃ³n por Ã­tem (.itemAccordion, .itemAccHeader)
+     - DistribuciÃ³n estadÃ­stica y porcentajes de logro
+     - Tablas comparativas y grÃ¡ficos de avance
    ========================================================================= */
 /* =========================================================================
-   REDISEÑO VISTA REPORTES: SECCION TIPO DE FICHA Y FILTROS UNIFICADOS
+   REDISEÃ‘O VISTA REPORTES: SECCION TIPO DE FICHA Y FILTROS UNIFICADOS
    ========================================================================= */
 
 .secReportesTipoFicha,
@@ -1027,7 +1027,7 @@
   cursor: pointer;
 }
 
-/* Autocompletado de IE en el Drawer de Filtros (Estilo idéntico a Fichas de Monitoreo) */
+/* Autocompletado de IE en el Drawer de Filtros (Estilo idÃ©ntico a Fichas de Monitoreo) */
 .secReportesFiltros .ieSearchWrap {
   position: relative;
   width: 100%;
@@ -1071,10 +1071,10 @@
 }
 
 /* =========================================================================
-   PAGINACIÓN: FICHAS REGISTRADAS Y SEGUIMIENTO POR INSTITUCIÓN EDUCATIVA
+   PAGINACIÃ“N: FICHAS REGISTRADAS Y SEGUIMIENTO POR INSTITUCIÃ“N EDUCATIVA
    ========================================================================= */
 
-/* Barra de paginación para la tabla de Fichas registradas */
+/* Barra de paginaciÃ³n para la tabla de Fichas registradas */
 .tablePaginationBar {
   display: flex;
   justify-content: space-between;
@@ -1113,7 +1113,7 @@
   gap: 8px;
 }
 
-/* Botones de pasar o retroceder página */
+/* Botones de pasar o retroceder pÃ¡gina */
 .btnPagination {
   display: inline-flex;
   align-items: center;
@@ -1146,7 +1146,7 @@
   color: #94A3B8;
 }
 
-/* Barra de paginación en cajas comparativas (Seguimiento por IE) */
+/* Barra de paginaciÃ³n en cajas comparativas (Seguimiento por IE) */
 .boxPaginationBar {
   display: flex;
   justify-content: space-between;
@@ -1187,7 +1187,7 @@
   border-radius: 5px;
 }
 
-/* Cabecera y Toolbar de Seguimiento por Institución Educativa */
+/* Cabecera y Toolbar de Seguimiento por InstituciÃ³n Educativa */
 .comparativaHead {
   display: flex;
   flex-direction: column;
@@ -1280,7 +1280,7 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
-/* Grilla comparativa: cajas simétricas y homogéneas a la misma altura sin descuadres */
+/* Grilla comparativa: cajas simÃ©tricas y homogÃ©neas a la misma altura sin descuadres */
 .comparativaGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1312,7 +1312,7 @@
   box-sizing: border-box;
 }
 
-/* Tablas comparativas: tamaño homogéneo con scroll interno y ajuste flexible */
+/* Tablas comparativas: tamaÃ±o homogÃ©neo con scroll interno y ajuste flexible */
 .colMonitoreados .comparativaTblWrap,
 .colPendientes .comparativaTblWrap {
   flex: 1 1 auto;
@@ -1322,7 +1322,7 @@
 }
 
 /* =========================================================================
-   BLOQUE INTEGRADO: DISTRIBUCIÓN DE RESULTADOS Y TARJETAS KPI A LA MISMA ALTURA
+   BLOQUE INTEGRADO: DISTRIBUCIÃ“N DE RESULTADOS Y TARJETAS KPI A LA MISMA ALTURA
    ========================================================================= */
 
 .panelDistribucionYMetricas {
@@ -1360,29 +1360,32 @@
   width: 100%;
 }
 
-/* Sección izquierda: Caja de la gráfica más grande y destacada */
+/* Sección izquierda: Gráfica de dona con leyenda lateral */
 .distribucionChartSide {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  justify-content: center;
   border-right: 1.5px solid var(--border, #e2e8f0);
-  padding-right: 24px;
-  min-width: 330px;
+  padding-right: 22px;
+  min-width: 290px;
+  max-width: 330px;
 }
 
 .distribucionChartSide .distWrap {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 22px;
+  justify-content: center;
+  gap: 20px;
   padding: 4px 0;
   width: 100%;
 }
 
 .distribucionChartSide svg.donutChart,
 .distribucionChartSide svg {
-  width: 165px;
-  height: 165px;
+  width: 150px;
+  height: 150px;
   max-width: 100%;
   flex-shrink: 0;
 }
@@ -1412,80 +1415,120 @@
   flex-shrink: 0;
 }
 
-/* Sección derecha: Cajas de valores más pequeñas y compactas según bosquejo */
+/* Sección derecha: Cuadrícula limpia y estructurada de tarjetas de métricas */
 .distribucionCardsSide {
   flex: 1 1 0%;
   min-width: 0;
   display: flex;
   align-items: center;
-}
-
-.distribucionCardsSide .cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 10px;
-  margin-bottom: 0;
   width: 100%;
 }
 
-@media (min-width: 1120px) {
-  .distribucionCardsSide .cards.cards-5col {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
+.panelDistribucionYMetricas .distribucionCardsSide .cards,
+.distribucionCardsSide .cards {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+  gap: 10px !important;
+  margin-bottom: 0 !important;
+  width: 100% !important;
 }
 
+/* Distribución balanceada para 5 tarjetas (EBR, JEC, CEBE, PRITE):
+   Fila 1 con 3 tarjetas (33.3% c/u) y Fila 2 con 2 tarjetas (50% c/u)
+   coincidiendo exactamente con el bosquejo deseado y manteniendo el ancho completo */
+.panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col,
+.distribucionCardsSide .cards.cards-5col {
+  display: grid !important;
+  grid-template-columns: repeat(6, 1fr) !important;
+  gap: 10px !important;
+  margin-bottom: 0 !important;
+  width: 100% !important;
+}
+
+.panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(1),
+.panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(2),
+.panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(3),
+.distribucionCardsSide .cards.cards-5col > .card:nth-child(1),
+.distribucionCardsSide .cards.cards-5col > .card:nth-child(2),
+.distribucionCardsSide .cards.cards-5col > .card:nth-child(3) {
+  grid-column: span 2 !important;
+  width: auto !important;
+}
+
+.panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(4),
+.panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(5),
+.distribucionCardsSide .cards.cards-5col > .card:nth-child(4),
+.distribucionCardsSide .cards.cards-5col > .card:nth-child(5) {
+  grid-column: span 3 !important;
+  width: auto !important;
+}
+
+/* Diseño de tarjeta: rectangular con número arriba centrado y etiqueta abajo centrada */
 .distribucionCardsSide .card {
-  background: var(--bg-card, #ffffff);
-  border: 1px solid var(--border, #e2e8f0);
-  border-radius: 8px;
-  padding: 10px 8px 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  min-height: 58px;
-  min-width: 0;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  background: var(--bg-card, #ffffff) !important;
+  border: 1px solid var(--border, #e2e8f0) !important;
+  border-radius: 8px !important;
+  padding: 10px 10px 14px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  text-align: center !important;
+  min-height: 64px !important;
+  min-width: 0 !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease !important;
 }
 
 .distribucionCardsSide .card::after {
-  height: 3px;
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3.5px;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
+
+.distribucionCardsSide .card.card-navy::after { background: var(--navy-800, #1e293b) !important; }
+.distribucionCardsSide .card.card-ok::after { background: var(--ok, #16a34a) !important; }
+.distribucionCardsSide .card.card-warn::after { background: var(--warn, #d97706) !important; }
+.distribucionCardsSide .card.card-blue::after { background: var(--blue-600, #2563eb) !important; }
+.distribucionCardsSide .card.card-gold::after { background: var(--gold-500, #f59e0b) !important; }
 
 .distribucionCardsSide .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.07);
+  box-shadow: 0 4px 8px -1px rgba(0, 0, 0, 0.08) !important;
 }
 
 .distribucionCardsSide .card .num {
-  font-family: var(--serif, 'Playfair Display', serif);
-  font-size: 26px;
-  font-weight: 700;
-  line-height: 1.1;
-  color: var(--navy-900, #0f172a);
-  margin-bottom: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: center;
-  width: 100%;
+  font-family: var(--serif, 'Playfair Display', serif) !important;
+  font-size: 26px !important;
+  font-weight: 700 !important;
+  line-height: 1.15 !important;
+  color: var(--navy-900, #0f172a) !important;
+  margin-bottom: 4px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  text-align: center !important;
+  width: 100% !important;
 }
 
 .distribucionCardsSide .card .lbl {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--text-600, #475569);
-  line-height: 1.25;
-  white-space: normal;
-  word-break: break-word;
-  text-align: center;
-  width: 100%;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+  color: var(--text-600, #475569) !important;
+  line-height: 1.25 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  text-align: center !important;
+  width: 100% !important;
 }
 
 .distribucionCardsSide #kpiCardIesPendientes {
@@ -1493,29 +1536,27 @@
 }
 
 .distribucionCardsSide #kpiCardIesPendientes:hover {
-  background: #fffbeb;
-  border-color: #fde68a;
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
 }
 
 /* =========================================================================
-   PANTALLAS INTERMEDIAS / VENTANAS REDUCIDAS (< 1120px)
+   PANTALLAS INTERMEDIAS / VENTANAS REDUCIDAS O LAPTOPS (< 1200px)
    ========================================================================= */
-@media (max-width: 1119px) {
+@media (max-width: 1199px) {
   .distribucionMainFlex {
     gap: 16px;
-    align-items: stretch;
   }
 
   .distribucionChartSide {
-    min-width: 140px;
-    max-width: 175px;
+    min-width: 260px;
+    max-width: 295px;
     padding-right: 16px;
   }
 
   .distribucionChartSide .distWrap {
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
+    gap: 14px;
+    justify-content: center;
   }
 
   .distribucionChartSide svg.donutChart,
@@ -1524,49 +1565,95 @@
     height: 135px;
   }
 
-  .distribucionChartSide .seglegend {
-    gap: 4px;
-    padding: 0 2px;
-  }
-
   .distribucionChartSide .seglegend span {
-    font-size: 11px;
+    font-size: 11.5px;
     gap: 6px;
   }
 
+  .panelDistribucionYMetricas .distribucionCardsSide .cards,
   .distribucionCardsSide .cards {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    height: 100%;
-    justify-content: space-between;
+    gap: 8px !important;
   }
 
   .distribucionCardsSide .card {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    padding: 5px 10px;
-    min-height: 28px;
-    flex: 1 1 0;
+    padding: 8px 6px 12px !important;
+    min-height: 58px !important;
   }
 
   .distribucionCardsSide .card .num {
-    font-size: 16px;
-    margin-bottom: 0;
-    order: 1;
-    width: auto;
-    text-align: left;
+    font-size: 22px !important;
+    margin-bottom: 3px !important;
   }
 
   .distribucionCardsSide .card .lbl {
-    font-size: 9.5px;
-    text-align: right;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    order: 2;
-    width: auto;
+    font-size: 9.5px !important;
+  }
+}
+
+/* =========================================================================
+   PANTALLAS TABLET / VENTANAS ESTRECHAS (< 860px)
+   ========================================================================= */
+@media (max-width: 859px) {
+  .distribucionMainFlex {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 16px !important;
+  }
+
+  .distribucionChartSide {
+    border-right: none !important;
+    border-bottom: 1.5px solid var(--border, #e2e8f0) !important;
+    padding-right: 0 !important;
+    padding-bottom: 16px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin: 0 auto !important;
+  }
+
+  .distribucionChartSide .distWrap {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 24px !important;
+    width: 100% !important;
+    max-width: 480px !important;
+    margin: 0 auto !important;
+  }
+
+  .panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col,
+  .distribucionCardsSide .cards.cards-5col {
+    display: grid !important;
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(1),
+  .panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(2),
+  .panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(3),
+  .distribucionCardsSide .cards.cards-5col > .card:nth-child(1),
+  .distribucionCardsSide .cards.cards-5col > .card:nth-child(2),
+  .distribucionCardsSide .cards.cards-5col > .card:nth-child(3) {
+    grid-column: span 2 !important;
+  }
+
+  .panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(4),
+  .panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(5),
+  .distribucionCardsSide .cards.cards-5col > .card:nth-child(4),
+  .distribucionCardsSide .cards.cards-5col > .card:nth-child(5) {
+    grid-column: span 3 !important;
+  }
+
+  .panelDistribucionYMetricas .distribucionCardsSide .cards:not(.cards-5col),
+  .distribucionCardsSide .cards:not(.cards-5col) {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)) !important;
+    gap: 10px !important;
   }
 }
 
@@ -1575,44 +1662,91 @@
    ========================================================================= */
 @media (max-width: 480px) {
   .panelDistribucionYMetricas {
-    padding: 12px 10px 14px;
+    padding: 12px 10px 14px !important;
   }
 
   .distribucionMainFlex {
-    gap: 10px;
+    gap: 12px !important;
   }
 
   .distribucionChartSide {
-    min-width: 115px;
-    max-width: 130px;
-    padding-right: 10px;
+    border-right: none !important;
+    border-bottom: 1.5px solid var(--border, #e2e8f0) !important;
+    padding-right: 0 !important;
+    padding-bottom: 12px !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin: 0 auto !important;
+  }
+
+  .distribucionChartSide .distWrap {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 16px !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    margin: 0 auto !important;
   }
 
   .distribucionChartSide svg.donutChart,
   .distribucionChartSide svg {
-    width: 110px;
-    height: 110px;
+    width: 115px !important;
+    height: 115px !important;
   }
 
   .distribucionChartSide .seglegend span {
-    font-size: 9.5px;
-    gap: 4px;
+    font-size: 10px !important;
+    gap: 4px !important;
   }
 
-  .distribucionCardsSide .cards {
-    gap: 4px;
+  .panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col,
+  .distribucionCardsSide .cards.cards-5col {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(1),
+  .panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(2),
+  .panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(3),
+  .panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(4),
+  .distribucionCardsSide .cards.cards-5col > .card:nth-child(1),
+  .distribucionCardsSide .cards.cards-5col > .card:nth-child(2),
+  .distribucionCardsSide .cards.cards-5col > .card:nth-child(3),
+  .distribucionCardsSide .cards.cards-5col > .card:nth-child(4) {
+    grid-column: span 1 !important;
+  }
+
+  .panelDistribucionYMetricas .distribucionCardsSide .cards.cards-5col > .card:nth-child(5),
+  .distribucionCardsSide .cards.cards-5col > .card:nth-child(5) {
+    grid-column: span 2 !important;
+  }
+
+  .panelDistribucionYMetricas .distribucionCardsSide .cards:not(.cards-5col),
+  .distribucionCardsSide .cards:not(.cards-5col) {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)) !important;
+    gap: 8px !important;
   }
 
   .distribucionCardsSide .card {
-    padding: 4px 8px;
-    min-height: 24px;
+    padding: 8px 4px 10px !important;
+    min-height: 50px !important;
   }
 
   .distribucionCardsSide .card .num {
-    font-size: 14px;
+    font-size: 18px !important;
+    margin-bottom: 2px !important;
   }
 
   .distribucionCardsSide .card .lbl {
-    font-size: 8.5px;
+    font-size: 8.5px !important;
   }
 }

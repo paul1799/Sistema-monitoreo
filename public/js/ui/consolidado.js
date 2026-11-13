@@ -3,4 +3,4 @@
    UGEL 03 · AGEBRE · Fase 2 Reorganización
    ========================================================================= */
 
-export * from '../features/reportes/index.js?v=20261103_v8';
+export * from '../features/reportes/index.js';

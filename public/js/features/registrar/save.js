@@ -679,7 +679,7 @@ export async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate
       sintesis: sintesisCollected || [],
       compromisoDirector: compDirectorVal || '',
       compromisoMonitor: compMonitorVal || '',
-      observaciones: document.getElementById('f_observaciones') ? document.getElementById('f_observaciones').value.trim() : '',
+      observaciones: document.getElementById('f_observaciones') ? document.getElementById('f_observaciones').value.trim() : ((tablasRespuestas && (tablasRespuestas.tbl_observaciones_docente?.f_obs_planif?.c_detalle_obs || tablasRespuestas.tbl_tbl_observaciones_docente_f_obs_planif?.c_detalle_obs)) || ''),
       tablasRespuestas: tablasRespuestas || {},
       compromisos: allCompromisos || [],
       esBorrador: esBorrador || false,

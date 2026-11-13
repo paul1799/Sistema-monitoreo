@@ -21,7 +21,7 @@ import {
   renderResponsablesTab,
   renderConcursosTab,
   renderForbidden,
-  setEditMode,
+  setEditMode, clearEditMode, setRegBuiltFor,
   computeStats,
   forceResetBodyScroll,
   setAppState,
@@ -29,7 +29,7 @@ import {
   getConcursoSubTab,
   setConcursoSubTab,
   getDeletedFichaTypeIds,
-} from './ui.js?v=20261103_v8';
+} from './ui.js?v=20261112_v1';
 
 import { renderPortalView } from './portal.js?v=20261014_v1';
 import { renderDirectorioTab } from './directorio.js?v=20261015_v1';
@@ -188,6 +188,11 @@ function renderSubNavBar() {
 
     subNav.querySelectorAll('.navbtn[data-tab]').forEach(btn => {
       btn.addEventListener('click', () => {
+        if (btn.dataset.tab === 'registrar') {
+          clearEditMode();
+          setRegBuiltFor(null);
+          setRegistrarSubTab('registrar');
+        }
         navigate(btn.dataset.tab);
       });
     });

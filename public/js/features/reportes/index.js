@@ -27,6 +27,7 @@ import {
   setRegTargetVisita,
   getRegTargetVisita
 } from '../../core/state/app-state.js';
+import { resetRegistrationSessionState } from '../registrar/state.js';
 import {
   statusFromPct,
   getSubmissionResponsable,
@@ -147,7 +148,7 @@ import {
 import {
   buildPendingRowsHtml,
   buildDetail
-} from './table.js';
+} from './table.js?v=20261110_v1';
 
 import { openDownloadConfigModal } from '../../ui/modales.js';
 import {
@@ -162,7 +163,7 @@ import {
 export * from './filters.js';
 export * from './kpis.js';
 export * from './item-report.js';
-export * from './table.js';
+export * from './table.js?v=20261110_v1';
 export * from './export.js';
 
 export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdmin, navigate, currentUser = null) {
@@ -1297,10 +1298,10 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     setCurrentPendingActiveTab('ALL');
     cardsHtml = `
       <div class="cards">
-        <div class="card"><div class="num">${statsList.length}</div><div class="lbl">Fichas registradas ${vFilter ? `(V${vFilter})` : ''}</div></div>
-        <div class="card"><div class="num">${instCount}</div><div class="lbl">Instituciones</div></div>
-        ${isAllMode ? `<div class="card"><div class="num">${(state.fichaTypes || []).filter(isFichaActiva).length}</div><div class="lbl">Tipos de ficha</div></div>` : ''}
-        <div class="card"><div class="num">${avgPct === null ? '—' : avgPct + '%'}</div><div class="lbl">Cumplimiento promedio</div></div>
+        <div class="card card-blue"><div class="num">${statsList.length}</div><div class="lbl">Fichas registradas ${vFilter ? `(V${vFilter})` : ''}</div></div>
+        <div class="card card-ok"><div class="num">${instCount}</div><div class="lbl">Instituciones</div></div>
+        ${isAllMode ? `<div class="card card-navy"><div class="num">${(state.fichaTypes || []).filter(isFichaActiva).length}</div><div class="lbl">Tipos de ficha</div></div>` : ''}
+        <div class="card card-gold"><div class="num">${avgPct === null ? '—' : avgPct + '%'}</div><div class="lbl">Cumplimiento promedio</div></div>
       </div>
     `;
   }
@@ -1591,7 +1592,7 @@ function attachReportHostListeners(host, state, getFichaType, dbNs, isAdmin, nav
         return;
       }
 
-      clearEditMode();
+      resetRegistrationSessionState();
       setRegSelectedTypeId(ftId);
       setRegBuiltFor(null);
       setRegSelectedColegioId(colId || null);

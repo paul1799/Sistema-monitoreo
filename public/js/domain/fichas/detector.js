@@ -105,6 +105,7 @@ export function isFichaCoordTutoriaJec(ft, state = null) {
  */
 export function isFichaCoordPedagogico(ft, state = null) {
   if (!ft) return false;
+  if (isFichaMonitoreoDocente(ft, state)) return false;
   const id = (typeof ft === 'string' ? ft : (ft.id || ft.fichaTypeId || ft.tipo || '')).toLowerCase();
   if (id === 'ft_coord_pedagogico' || id === 'ft_coord_pedagogico_jec') return true;
   const n = String(typeof ft === 'string' ? ft : (ft.nombre || ft.fichaTypeNombre || ft.tipo || id || ''))

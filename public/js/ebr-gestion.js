@@ -6,7 +6,7 @@
    ========================================================================= */
 
 import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr } from './ui/core-utils.js?v=20261015_v1';
-import { clearEditMode, getRegTargetVisita, getRegSelectedColegioId } from './ui/state.js?v=20261016_v1';
+import { clearEditMode, getRegTargetVisita, getRegSelectedColegioId, setRegBuiltFor } from './core/state/app-state.js';
 import { getResponsableForColegio } from './ui/scoring.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20261013_v1';
 import {
@@ -684,6 +684,8 @@ export function applyColegioToEbrFormState(c, state, ft = null) {
     ebrFormState.director.telefono = cleanTextCode(c.director.telefono || '');
     ebrFormState.director.correo = c.director.correo || '';
     ebrFormState.director.condicion = c.director.condicion || 'D';
+  } else {
+    ebrFormState.director = { nombres: '', dni: '', telefono: '', condicion: 'D', correo: '' };
   }
 
   if (subsActivos && subsActivos.length > 0) {
@@ -695,13 +697,13 @@ export function applyColegioToEbrFormState(c, state, ft = null) {
       condicion: s.condicion || 'D',
       correo: s.correo || ''
     }));
+  } else {
+    ebrFormState.subdirectores = [{ id: genId(), nombres: '', dni: '', telefono: '', condicion: 'D', correo: '' }];
   }
 
   // 2. Especialista correspondiente a la RED de la institución
   const respColegio = getResponsableForColegio(c, ft, state);
-  if (respColegio && respColegio !== '—' && respColegio !== 'Por asignar') {
-    ebrFormState.responsable = respColegio;
-  }
+  ebrFormState.responsable = (respColegio && respColegio !== '—' && respColegio !== 'Por asignar') ? respColegio : '';
 }
 
 /**
@@ -851,6 +853,13 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
         ? state.colegios.find(c => c.id === targetColId || c.codigoLocal === targetColId || c.codigoModular === targetColId)
         : null;
       if (col) {
+        if (ebrFormState.colegioId && ebrFormState.colegioId !== targetColId) {
+          const preservedVisita = (targetVis && [1, 2, 3].includes(targetVis)) ? targetVis : ebrFormState.visita;
+          resetEbrFormState();
+          if (preservedVisita && [1, 2, 3].includes(preservedVisita)) {
+            ebrFormState.visita = preservedVisita;
+          }
+        }
         applyColegioToEbrFormState(col, state, ft);
       }
     }
@@ -2518,7 +2527,14 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
   if (cancelBtn) {
     cancelBtn.onclick = () => {
       if (confirm('¿Deseas salir del formulario? Los cambios no guardados se perderán.')) {
+        const regForm = host.querySelector('#regForm');
+        if (regForm) {
+          regForm.dataset.submissionId = '';
+          regForm.dataset.editingId = '';
+          regForm.dataset.selectedColegioId = '';
+        }
         clearEditMode();
+        setRegBuiltFor(null);
         resetEbrFormState();
         if (navigate) navigate('registrar');
       }

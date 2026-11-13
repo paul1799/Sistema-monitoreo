@@ -6,7 +6,7 @@
 export * from './core-utils.js?v=20261103_v8';
 
 // Gestión centralizada de estado de aplicación, sesión y edición
-export * from './state.js?v=20261103_v8';
+export * from './state.js';
 
 // Reglas de puntuación, agregación y visualización de indicadores
 export * from './scoring.js?v=20261103_v8';
@@ -39,10 +39,10 @@ export * from './concursos-tab.js?v=20261103_v8';
 export * from './jec-reportes.js?v=20261103_v8';
 
 // Formulario dinámico de registro y edición de fichas
-export * from './registrar.js?v=20261103_v8';
+export * from './registrar.js?v=20261112_v1';
 
 // Vista consolidada, reportes ejecutivos, filtros y pendientes
-export * from './consolidado.js?v=20261103_v8';
+export * from './consolidado.js?v=20261112_v1';
 
 // Gestor y diseñador visual de tipos de ficha y plantillas
 export * from './plantillas.js?v=20261103_v8';

@@ -3,4 +3,4 @@
    UGEL 03 · AGEBRE · Fase 1 Reorganización
    ========================================================================= */
 
-export * from '../core/state/app-state.js?v=20261103_v8';
+export * from '../core/state/app-state.js';

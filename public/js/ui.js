@@ -11,7 +11,7 @@ import {
 } from './pdf-template.js?v=20261019_v2';
 
 // Re-exportación completa de todos los submódulos desfragmentados
-export * from './ui/index.js?v=20261103_v8';
+export * from './ui/index.js?v=20261112_v1';
 
 // Re-exportaciones explícitas de compatibilidad para analizadores estáticos y pruebas
 export {

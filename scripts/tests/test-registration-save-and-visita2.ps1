@@ -104,6 +104,31 @@ $ebrGestion = Get-Content -Path (Join-Path $root "public/js/ebr-gestion.js") -Ra
 Assert-Check "ebr-gestion.js no tiene importaciones duplicadas desde rules.js" `
     (-not ($ebrGestion -match "getReglaNivelEbrGestion[^\n]+from '\./domain/fichas/rules\.js'"))
 
+$reportesIndex = Get-Content -Path (Join-Path $root "public/js/features/reportes/index.js") -Raw -Encoding utf8
+$regStateJs = Get-Content -Path (Join-Path $root "public/js/features/registrar/state.js") -Raw -Encoding utf8
+$regIndexJs = Get-Content -Path (Join-Path $root "public/js/features/registrar/index.js") -Raw -Encoding utf8
+$cebeGestion = Get-Content -Path (Join-Path $root "public/js/cebe-gestion.js") -Raw -Encoding utf8
+$priteGestion = Get-Content -Path (Join-Path $root "public/js/prite-gestion.js") -Raw -Encoding utf8
+$appJs = Get-Content -Path (Join-Path $root "public/js/app.js") -Raw -Encoding utf8
+$servePs1 = Get-Content -Path (Join-Path $root "scripts/tools/serve.ps1") -Raw -Encoding utf8
+
+Assert-Check "reportes/index.js llama resetRegistrationSessionState en handleRegistrarClick" `
+    ($reportesIndex -match "const handleRegistrarClick[\s\S]{0,600}resetRegistrationSessionState\(\)")
+Assert-Check "registrar/state.js resetea todos los formularios especializados al cambiar epoca/sesion" `
+    ($regStateJs -match "export function resetAllSpecializedFormStates" -and $regStateJs -match "resetEbrFormState\(\)" -and $regStateJs -match "resetCebeFormState\(\)" -and $regStateJs -match "resetPriteFormState\(\)" -and $regStateJs -match "getRegSessionEpoch")
+Assert-Check "registrar/index.js incluye targetColId y targetVisita en sessionKey y resetea estados al cambiar" `
+    ($regIndexJs -match 'new:\$\{ft\.id\}:\$\{targetColId \|\| ''''\}\:\$\{targetVisita \|\| ''''\}' -and $regIndexJs -match "resetAllSpecializedFormStates\(\)")
+Assert-Check "ebr/cebe/prite-gestion.js importan estado compartido desde ./core/state/app-state.js sin ?v=" `
+    (($ebrGestion -match "from '\./core/state/app-state\.js'") -and ($cebeGestion -match "from '\./core/state/app-state\.js'") -and ($priteGestion -match "from '\./core/state/app-state\.js'"))
+Assert-Check "ebr/cebe/prite-gestion.js resetean formState previo si cambia targetColId" `
+    (($ebrGestion -match "ebrFormState\.colegioId !== targetColId[\s\S]{0,300}resetEbrFormState\(\)") -and ($cebeGestion -match "cebeFormState\.colegioId !== targetColId[\s\S]{0,300}resetCebeFormState\(\)") -and ($priteGestion -match "priteFormState\.colegioId !== targetColId[\s\S]{0,300}resetPriteFormState\(\)"))
+Assert-Check "ebr-gestion.js limpia dataset de #regForm y regBuiltFor al cancelar" `
+    ($ebrGestion -match "regForm\.dataset\.submissionId = ''" -and $ebrGestion -match "setRegBuiltFor\(null\)")
+Assert-Check "app.js limpia modo edicion y session al hacer clic en + Registrar ficha de subNav" `
+    ($appJs -match "btn\.dataset\.tab === 'registrar'[\s\S]{0,200}clearEditMode\(\)")
+Assert-Check "scripts/tools/serve.ps1 envia Cache-Control: no-cache para evitar modulos cacheados" `
+    ($servePs1 -match 'Cache-Control", "no-cache, no-store, must-revalidate"')
+
 Write-Host "======================================================="
 Write-Host "RESULTADOS: $($ctx.passed) de $($ctx.tests) pruebas pasadas con exito."
 if ($ctx.passed -eq $ctx.tests) {

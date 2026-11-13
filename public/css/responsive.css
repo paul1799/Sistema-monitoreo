@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    responsive.css — Sistema Responsivo Integral y Adaptabilidad Multidispositivo
    -------------------------------------------------------------------------
    Utilizado por:
@@ -70,8 +70,7 @@
   #main {
     padding: 14px 18px 50px;
   }
-
-  .cards {
+  .cards:not(.distribucionCardsSide *) {
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 12px;
   }
@@ -348,23 +347,20 @@
   }
 
   /* Tarjetas KPI: distribuciÃ³n en cuadrÃ­cula 2x2 perfecta */
-  .cards {
+  .cards:not(.distribucionCardsSide *) {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 8px !important;
     margin-bottom: 14px !important;
   }
-
-  .card {
+  .card:not(.distribucionCardsSide *) {
     padding: 10px 10px !important;
     border-radius: 8px !important;
   }
-
-  .card .num {
+  .card:not(.distribucionCardsSide *) .num {
     font-size: 22px !important;
     margin-bottom: 2px !important;
   }
-
-  .card .lbl {
+  .card:not(.distribucionCardsSide *) .lbl {
     font-size: 9.5px !important;
     letter-spacing: 0.02em !important;
     line-height: 1.2 !important;
@@ -612,20 +608,16 @@
     width: 24px !important;
     height: 24px !important;
   }
-
-  .cards {
+  .cards:not(.distribucionCardsSide *) {
     gap: 6px !important;
   }
-
-  .card {
+  .card:not(.distribucionCardsSide *) {
     padding: 8px 8px !important;
   }
-
-  .card .num {
+  .card:not(.distribucionCardsSide *) .num {
     font-size: 20px !important;
   }
-
-  .card .lbl {
+  .card:not(.distribucionCardsSide *) .lbl {
     font-size: 9px !important;
   }
 
@@ -656,7 +648,7 @@
   }
 
   /* Tarjetas KPI del resumen */
-  .cards {
+  .cards:not(.distribucionCardsSide *) {
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
     gap: 12px !important;
   }
@@ -963,22 +955,19 @@
   }
 
   /* Tarjetas KPI en cuadrÃ­cula 2x2 tÃ¡ctil */
-  .cards {
+  .cards:not(.distribucionCardsSide *) {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 8px !important;
     margin-bottom: 12px !important;
   }
-
-  .card {
+  .card:not(.distribucionCardsSide *) {
     padding: 10px 8px !important;
     border-radius: 8px !important;
   }
-
-  .card .num {
+  .card:not(.distribucionCardsSide *) .num {
     font-size: 20px !important;
   }
-
-  .card .lbl {
+  .card:not(.distribucionCardsSide *) .lbl {
     font-size: 9px !important;
     line-height: 1.2 !important;
   }
@@ -1343,20 +1332,16 @@
     width: 22px !important;
     height: 22px !important;
   }
-
-  .cards {
+  .cards:not(.distribucionCardsSide *) {
     gap: 6px !important;
   }
-
-  .card {
+  .card:not(.distribucionCardsSide *) {
     padding: 8px 6px !important;
   }
-
-  .card .num {
+  .card:not(.distribucionCardsSide *) .num {
     font-size: 18px !important;
   }
-
-  .card .lbl {
+  .card:not(.distribucionCardsSide *) .lbl {
     font-size: 8.5px !important;
   }
 

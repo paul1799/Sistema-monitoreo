@@ -14,7 +14,7 @@
    ========================================================================= */
 
 import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, normalizeReiNumber, isEbeOrPriteResponsable } from './ui/core-utils.js?v=20261015_v1';
-import { getRegTargetVisita, getRegSelectedColegioId } from './ui/state.js?v=20261016_v1';
+import { clearEditMode, getRegTargetVisita, getRegSelectedColegioId } from './core/state/app-state.js';
 import { getResponsableForColegio } from './ui/scoring.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha } from './directorio.js?v=20261013_v1';
 
@@ -474,12 +474,12 @@ export function applyColegioToPriteFormState(c, state, ft = null) {
       correo: c.director.correo || '',
       condicion: c.director.condicion || 'Encargada'
     };
+  } else {
+    priteFormState.director = { nombres: '', dni: '', telefono: '', correo: '', condicion: 'Encargada' };
   }
 
   const resp = getResponsableForColegio(c, ft, state);
-  if (resp && resp !== '—' && resp !== 'Por asignar') {
-    priteFormState.responsable = resp;
-  }
+  priteFormState.responsable = (resp && resp !== '—' && resp !== 'Por asignar') ? resp : '';
 }
 
 /**
@@ -654,6 +654,13 @@ export function renderPriteGestionForm(host, ft, state, dbNs, currentUser, navig
         ? state.colegios.find(c => c.id === targetColId || c.codigoLocal === targetColId || c.codigoModular === targetColId)
         : null;
       if (col) {
+        if (priteFormState.colegioId && priteFormState.colegioId !== targetColId) {
+          const preservedVisita = (targetVis && [1, 2, 3].includes(targetVis)) ? targetVis : priteFormState.visita;
+          resetPriteFormState();
+          if (preservedVisita && [1, 2, 3].includes(preservedVisita)) {
+            priteFormState.visita = preservedVisita;
+          }
+        }
         applyColegioToPriteFormState(col, state, ft);
       }
     }
@@ -1135,6 +1142,7 @@ function bindPriteFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
   const btnCancel = form.querySelector('#btnCancelarPrite');
   if (btnCancel) {
     btnCancel.addEventListener('click', () => {
+      clearEditMode();
       resetPriteFormState();
       if (navigate) navigate('consolidado');
     });
@@ -1806,6 +1814,10 @@ export async function guardarFormularioPrite(form, ft, state, dbNs, currentUser,
       console.warn('Directorio sync warning:', eDir);
     }
 
+    form.dataset.editingId = '';
+    form.dataset.submissionId = '';
+    form.dataset.selectedColegioId = '';
+    clearEditMode();
     resetPriteFormState();
     if (navigate) navigate('consolidado');
   } catch (err) {

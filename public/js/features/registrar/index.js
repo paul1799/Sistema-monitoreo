@@ -28,7 +28,7 @@ import {
 import {
   renderEbrGestionForm,
   preloadEbrFormState
-} from '../../ebr-gestion.js?v=20261103_v8';
+} from '../../ebr-gestion.js';
 import {
   isFichaCebeGestion,
   renderCebeGestionForm,
@@ -76,7 +76,11 @@ import {
   getFichaListSearchQuery,
   getFichaListFilterEscala,
   getFichaListFilterModalidad,
-  getFichaDescExpanded
+  getFichaDescExpanded,
+  resetAllSpecializedFormStates,
+  resetRegistrationSessionState,
+  getRegFormSessionKey,
+  setRegFormSessionKey
 } from './state.js';
 import {
   renderCompList,
@@ -84,7 +88,7 @@ import {
   syncCommonJecFields,
   renderUnifiedJecForm,
   renderDynamicForm
-} from './form-render.js?v=20261106_v3';
+} from './form-render.js';
 import { onSubmitRegistro } from './save.js';
 import {
   fileToBase64,
@@ -150,6 +154,14 @@ export function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
   if (!editingSubmissionData) {
     regCompromisos.length = 0;
     setRegSelectedColegioIdVal(targetColId || null);
+    const sessionKey = `new:${ft.id}:${targetColId || ''}:${targetVisita || ''}`;
+    if (getRegFormSessionKey() !== sessionKey) {
+      resetAllSpecializedFormStates();
+      setCurrentJecVisita(targetVisita && [1, 2, 3].includes(Number(targetVisita)) ? Number(targetVisita) : 1);
+      setRegFormSessionKey(sessionKey);
+    }
+  } else {
+    setRegFormSessionKey(`edit:${editingSubmissionData.id || editingSubmissionId || ft.id}`);
   }
 
   // Interceptar Ficha "Monitoreo y Asistencia Técnica a la Gestión Escolar - CEBE"
@@ -357,9 +369,7 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
     const cambiarBtn = document.getElementById('btnCambiarFicha');
     if (cambiarBtn) {
       cambiarBtn.onclick = () => {
-        setRegSelectedTypeIdVal(null);
-        clearEditMode();
-        setRegBuiltFor(null);
+        resetRegistrationSessionState();
         renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);
       };
     }
@@ -379,7 +389,7 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
     actualIsAdmin,
     subNavHtml,
     onSelectFicha: (id) => {
-      clearEditMode();
+      resetRegistrationSessionState();
       setRegSelectedTypeIdVal(id);
       setRegBuiltFor(null);
       renderRegistrarTab(container, state, getFichaType, dbNs, currentUser, navigate, actualIsAdmin);

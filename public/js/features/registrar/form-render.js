@@ -71,7 +71,8 @@ import {
   setFichaListFilterEscala,
   fichaListFilterModalidad,
   setFichaListFilterModalidad,
-  fichaDescExpanded
+  fichaDescExpanded,
+  resetRegistrationSessionState
 } from './state.js';
 import { onSubmitRegistro } from './save.js';
 import { extractFichaFromImage } from './preload.js';
@@ -456,7 +457,7 @@ export function renderUnifiedJecForm(host, ft, state, dbNs, currentUser, navigat
   }
 
   // Pre-cargar colegio si viene preseleccionado desde reportes y no estamos editando
-  if (!isEditing && targetColId) {
+  if (!isEditing && targetColId && (jecFormState.colegioId !== targetColId || jec1erState.colegioId !== targetColId)) {
     const col = (state && Array.isArray(state.colegios))
       ? state.colegios.find(c => c.id === targetColId || c.codigoLocal === targetColId || c.codigoModular === targetColId)
       : null;
@@ -503,6 +504,9 @@ export function renderUnifiedJecForm(host, ft, state, dbNs, currentUser, navigat
           correo: col.director.correo || '',
           condicion: 'DESIGNADO'
         };
+      } else {
+        jecFormState.director = { nombres: '', dni: '', telefono: '', correo: '', condicion: 'D' };
+        jec1erState.director = { nombres: '', dni: '', telefono: '', correo: '', condicion: 'DESIGNADO' };
       }
     }
   }
@@ -1705,19 +1709,20 @@ export function renderDynamicForm({
   if (editingSubmissionData) {
     const d = editingSubmissionData;
     setTimeout(() => {
-      if (document.getElementById('f_institucion')) {
-        document.getElementById('f_institucion').value = d.institucion || '';
-        if (document.getElementById('f_red')) {
-          let rVal = d.red || d.rei || '';
-          if (!rVal && Array.isArray(d.extras)) {
-            const exRed = d.extras.find(e => (e.id === 'ex_rei' || e.id === 'ex_red' || (e.label || '').toLowerCase().includes('red') || (e.label || '').toLowerCase().includes('rei')));
-            if (exRed) rVal = exRed.value || '';
+      try {
+        if (document.getElementById('f_institucion')) {
+          document.getElementById('f_institucion').value = d.institucion || '';
+          if (document.getElementById('f_red')) {
+            let rVal = d.red || d.rei || '';
+            if (!rVal && Array.isArray(d.extras)) {
+              const exRed = d.extras.find(e => (e.id === 'ex_rei' || e.id === 'ex_red' || (e.label || '').toLowerCase().includes('red') || (e.label || '').toLowerCase().includes('rei')));
+              if (exRed) rVal = exRed.value || '';
+            }
+            document.getElementById('f_red').value = rVal;
           }
-          document.getElementById('f_red').value = rVal;
-        }
-        document.getElementById('f_fecha').value = d.fecha || todayStr();
-        document.getElementById('f_visita').value = d.visita || 1;
-        document.getElementById('f_observaciones').value = d.observaciones || '';
+          if (document.getElementById('f_fecha')) document.getElementById('f_fecha').value = d.fecha || todayStr();
+          if (document.getElementById('f_visita')) document.getElementById('f_visita').value = d.visita || 1;
+          if (document.getElementById('f_observaciones')) document.getElementById('f_observaciones').value = d.observaciones || '';
         if (document.getElementById('f_hora_inicio')) {
           const hi = d.horaInicio || d.docenteHoraInicio || (Array.isArray(d.extras) ? d.extras.find(x => x && x.id === 'ex_hora_inicio')?.value : '');
           if (hi) document.getElementById('f_hora_inicio').value = hi;
@@ -1749,8 +1754,16 @@ export function renderDynamicForm({
               const evidencia = resolveItemValue(evidMap, it, sec, sIdx, iIdx, isJec);
 
               if (valor !== undefined && valor !== null && valor !== '') {
-                const radio = document.querySelector('input[name="item_' + itemDomKey + '"][value="' + valor + '"]') ||
-                              document.querySelector('input[name="item_' + it.id + '"][value="' + valor + '"]');
+                let radio = document.querySelector('input[name="item_' + itemDomKey + '"][value="' + valor + '"]') ||
+                            document.querySelector('input[name="item_' + it.id + '"][value="' + valor + '"]');
+                if (!radio && typeof valor === 'string') {
+                  const romanMap = { 'I': '1', 'II': '2', 'III': '3', 'IV': '4', '1': '1', '2': '2', '3': '3', '4': '4' };
+                  const mapped = romanMap[valor.trim().toUpperCase()] || romanMap[valor.trim()];
+                  if (mapped) {
+                    radio = document.querySelector('input[name="item_' + itemDomKey + '"][value="' + mapped + '"]') ||
+                            document.querySelector('input[name="item_' + it.id + '"][value="' + mapped + '"]');
+                  }
+                }
                 if (radio) radio.checked = true;
               }
               if (evidencia) {
@@ -1797,6 +1810,16 @@ export function renderDynamicForm({
             if (l.includes('ugel') && d.ugel) val = d.ugel;
             else if ((l.includes('red') || l.includes('rei')) && d.red) val = d.red;
             else if ((l.includes('código') || l.includes('codigo')) && d.codigoModular) val = d.codigoModular;
+            else if ((xid === 'ex_docente' || (l.includes('docente') && l.includes('observado'))) && (d.docente || d.docenteNombre)) val = d.docente || d.docenteNombre;
+            else if ((xid === 'ex_dni' || (l.includes('dni') && l.includes('docente'))) && (d.docenteDni || d.dni)) val = d.docenteDni || d.dni;
+            else if ((xid === 'ex_nivel' || (l.includes('nivel') && l.includes('educativo'))) && (d.docenteNivel || d.nivel)) val = d.docenteNivel || d.nivel;
+            else if ((xid === 'ex_grado' || l.includes('grado')) && (d.docenteGrado || d.grado)) val = d.docenteGrado || d.grado;
+            else if ((xid === 'ex_seccion' || l.includes('secci')) && (d.docenteSeccion || d.seccion)) val = d.docenteSeccion || d.seccion;
+            else if ((xid === 'ex_area' || l.includes('curricular')) && (d.docenteArea || d.area)) val = d.docenteArea || d.area;
+            else if ((xid === 'ex_est_matriculados' || l.includes('matriculado')) && (d.docenteEstMatriculados !== undefined || d.matriculados !== undefined)) val = d.docenteEstMatriculados ?? d.matriculados;
+            else if ((xid === 'ex_est_asistentes' || l.includes('asistente')) && (d.docenteEstAsistentes !== undefined || d.asistentes !== undefined)) val = d.docenteEstAsistentes ?? d.asistentes;
+            else if ((xid === 'ex_est_discapacidad' || l.includes('discapacidad')) && (d.docenteEstDiscapacidad !== undefined || d.discapacidad !== undefined)) val = d.docenteEstDiscapacidad ?? d.discapacidad;
+            else if ((xid === 'ex_monitor' || l.includes('observador')) && (d.docenteMonitor || d.responsable)) val = d.docenteMonitor || d.responsable;
             else if ((xid === 'ex_dir_nombre' || (l.includes('director') && (l.includes('nombre') || !l.includes('dni')) && !l.includes('condici') && !l.includes('correo'))) && d.director) val = d.director;
             else if ((xid === 'ex_dir_dni' || (l.includes('director') && l.includes('dni'))) && (d.directorDni || d.dirDni)) val = d.directorDni || d.dirDni;
             else if ((xid === 'ex_dir_condicion' || (l.includes('director') && l.includes('condici'))) && (d.directorCondicion || d.dirCondicion || d.condicion)) val = d.directorCondicion || d.dirCondicion || d.condicion;
@@ -1903,6 +1926,9 @@ export function renderDynamicForm({
           hint.textContent = '✓ Datos precargados para edición.';
         }
       }
+      } catch (preloadErr) {
+        console.error('Error precargando datos para edición:', preloadErr);
+      }
     }, 0);
   } else if (targetColId || targetVisita) {
     setTimeout(() => {
@@ -1966,16 +1992,11 @@ export function renderDynamicForm({
   if (cancelFormBtn) {
     cancelFormBtn.addEventListener('click', () => {
       if (editingSubmissionId) {
-        clearEditMode();
-        setRegBuiltFor(null);
-        setRegSelectedTypeIdVal(null);
+        resetRegistrationSessionState();
         if (navigate) navigate('consolidado');
       } else {
         if (confirm('¿Deseas cancelar el registro? Se descartarán los cambios ingresados.')) {
-          clearEditMode();
-          setRegBuiltFor(null);
-          regCompromisos.length = 0;
-          setRegSelectedColegioIdVal(null);
+          resetRegistrationSessionState();
           if (navigate) navigate('dashboard');
         }
       }

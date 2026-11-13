@@ -13,7 +13,7 @@
    ========================================================================= */
 
 import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, normalizeReiNumber, isEbeOrPriteResponsable } from './ui/core-utils.js?v=20261015_v1';
-import { getRegTargetVisita, getRegSelectedColegioId } from './ui/state.js?v=20261016_v1';
+import { clearEditMode, getRegTargetVisita, getRegSelectedColegioId } from './core/state/app-state.js';
 import { getResponsableForColegio } from './ui/scoring.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha } from './directorio.js?v=20261013_v1';
 
@@ -293,12 +293,12 @@ export function applyColegioToCebeFormState(c, state, ft = null) {
       correo: c.director.correo || '',
       condicion: c.director.condicion || 'Designada'
     };
+  } else {
+    cebeFormState.director = { nombres: '', dni: '', telefono: '', correo: '', condicion: 'Designada' };
   }
 
   const resp = getResponsableForColegio(c, ft, state);
-  if (resp && resp !== '—' && resp !== 'Por asignar') {
-    cebeFormState.responsable = resp;
-  }
+  cebeFormState.responsable = (resp && resp !== '—' && resp !== 'Por asignar') ? resp : '';
 }
 
 /**
@@ -465,6 +465,13 @@ export function renderCebeGestionForm(host, ft, state, dbNs, currentUser, naviga
         ? state.colegios.find(c => c.id === targetColId || c.codigoLocal === targetColId || c.codigoModular === targetColId)
         : null;
       if (col) {
+        if (cebeFormState.colegioId && cebeFormState.colegioId !== targetColId) {
+          const preservedVisita = (targetVis && [1, 2, 3].includes(targetVis)) ? targetVis : cebeFormState.visita;
+          resetCebeFormState();
+          if (preservedVisita && [1, 2, 3].includes(preservedVisita)) {
+            cebeFormState.visita = preservedVisita;
+          }
+        }
         applyColegioToCebeFormState(col, state, ft);
       }
     }
@@ -985,6 +992,7 @@ function bindCebeFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdit
   const btnCancel = form.querySelector('#btnCancelarCebe');
   if (btnCancel) {
     btnCancel.addEventListener('click', () => {
+      clearEditMode();
       resetCebeFormState();
       if (navigate) navigate('consolidado');
     });
@@ -1064,17 +1072,17 @@ function bindCebeFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdit
           const cid = item.dataset.colId;
           const selected = colegios.find(c => c.id === cid);
           if (selected) {
+            applyColegioToCebeFormState(selected, state, ft);
             form.dataset.selectedColegioId = selected.id;
-            inpInst.value = selected.ie || selected.nombre;
-            if (inpCodLocal) inpCodLocal.value = selected.codigoLocal || '';
-            if (inpRei) inpRei.value = selected.rei || selected.red || '';
+            inpInst.value = cebeFormState.institucion;
+            if (inpCodLocal) inpCodLocal.value = cebeFormState.codigoLocal;
+            if (inpRei) inpRei.value = cebeFormState.rei;
 
-            if (selected.director) {
-              if (inpDirNom && selected.director.nombre) inpDirNom.value = selected.director.nombre;
-              if (inpDirDni && selected.director.dni) inpDirDni.value = selected.director.dni;
-              if (inpDirTel && selected.director.telefono) inpDirTel.value = selected.director.telefono;
-              if (inpDirCorreo && selected.director.correo) inpDirCorreo.value = selected.director.correo;
-            }
+            if (inpDirNom) inpDirNom.value = cebeFormState.director.nombres;
+            if (inpDirDni) inpDirDni.value = cebeFormState.director.dni;
+            if (inpDirTel) inpDirTel.value = cebeFormState.director.telefono;
+            if (inpDirCorreo) inpDirCorreo.value = cebeFormState.director.correo;
+            if (selDirCond) selDirCond.value = cebeFormState.director.condicion || 'Designada';
 
             // Auto-asignar Especialista Responsable para CEBE
             const cRei = selected.rei || selected.red || '';
@@ -1102,14 +1110,15 @@ function bindCebeFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdit
               }
             }
 
-            if (assignedName) {
-              cebeFormState.responsable = assignedName;
-              const selResp = form.querySelector('#cebe_responsable');
-              if (selResp) selResp.value = assignedName;
-              const rHint = form.querySelector('#cebeRespHint');
-              if (rHint) {
-                rHint.innerHTML = `✓ Especialista asignada: <strong>${esc(assignedName)}</strong>`;
-              }
+            const resolvedResp = assignedName || cebeFormState.responsable || '';
+            cebeFormState.responsable = resolvedResp;
+            const selResp = form.querySelector('#cebe_responsable');
+            if (selResp) selResp.value = resolvedResp;
+            const rHint = form.querySelector('#cebeRespHint');
+            if (rHint) {
+              rHint.innerHTML = resolvedResp
+                ? `✓ Especialista asignada: <strong>${esc(resolvedResp)}</strong>`
+                : 'Se auto-completa según el CEBE o puedes seleccionarla.';
             }
 
             if (hint) {
@@ -1676,6 +1685,10 @@ export async function guardarFormularioCebe(form, ft, state, dbNs, currentUser, 
       console.warn('Directorio sync warning:', eDir);
     }
 
+    form.dataset.editingId = '';
+    form.dataset.submissionId = '';
+    form.dataset.selectedColegioId = '';
+    clearEditMode();
     resetCebeFormState();
     if (navigate) navigate('consolidado');
   } catch (err) {

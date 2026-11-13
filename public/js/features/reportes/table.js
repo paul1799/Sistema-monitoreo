@@ -12,6 +12,7 @@ import {
   getNivelEbrGestion,
   isFichaCoordTutoriaJec,
   isFichaCoordPedagogico,
+  isFichaMonitoreoDocente,
   isFichaMaterialesCebe,
   getNivelCoordTutoriaJec,
   getNivelCoordPedagogicoJec
@@ -62,8 +63,9 @@ export function buildPendingRowsHtml(items, ft = null, startIndex = 0) {
 }
 
 export function buildDetail(s) {
-  const isCoordTutoria = (s.fichaTypeId === 'ft_coord_tutoria_jec' || (s.fichaTypeNombre || '').toLowerCase().includes('tutor'));
-  const isJec = !isCoordTutoria && (s.fichaTypeId === 'ft_msejec_2do' || s.fichaTypeId === 'ft_jec' || (s.fichaTypeNombre || '').toLowerCase().includes('jec') || !!s.docentes_monitoreo);
+  const isDocente = isFichaMonitoreoDocente(s);
+  const isCoordTutoria = !isDocente && (s.fichaTypeId === 'ft_coord_tutoria_jec' || (s.fichaTypeNombre || '').toLowerCase().includes('tutor'));
+  const isJec = !isDocente && !isCoordTutoria && (s.fichaTypeId === 'ft_msejec_2do' || s.fichaTypeId === 'ft_jec' || (s.fichaTypeNombre || '').toLowerCase().includes('jec') || !!s.docentes_monitoreo);
 
   let ebrGestionBanner = '';
   const isEbr = isFichaEbrGestionEscolar(s);
@@ -211,7 +213,7 @@ export function buildDetail(s) {
   }
 
   let coordPedagogicoBanner = '';
-  const isCoordPed = isFichaCoordPedagogico(s) || (s.fichaTypeNombre || '').toLowerCase().includes('pedagógic') || (s.fichaTypeNombre || '').toLowerCase().includes('pedagogic');
+  const isCoordPed = !isDocente && isFichaCoordPedagogico(s);
   if (isCoordPed) {
     let puntaje = s.puntaje;
     if (puntaje === undefined || puntaje === null) {
@@ -241,6 +243,30 @@ export function buildDetail(s) {
         <p style="font-size:12.5px;color:var(--text-800,#1e293b);background:var(--surface-sunken,#f8fafc);padding:8px 12px;border-radius:6px;margin:0 0 10px 0;border-left:3px solid var(--primary,#2563eb)">
           <strong>Criterio oficial:</strong> ${esc(nivelDesc)}
         </p>
+      </div>
+    `;
+  }
+
+  let docenteBanner = '';
+  if (isDocente) {
+    const pct = (s.porcentaje !== undefined && s.porcentaje !== null) ? Number(s.porcentaje) : (s.pct !== undefined ? Number(s.pct) : null);
+    const estado = s.estado || (pct !== null ? (pct >= 75 ? 'Logrado' : (pct >= 50 ? 'En proceso' : 'Inicio')) : 'Registrado');
+    let estadoColor = '#16a34a';
+    let estadoCls = 'st-logrado';
+    if (estado === 'En proceso' || String(estado).toLowerCase().includes('proces')) { estadoColor = '#d97706'; estadoCls = 'st-proceso'; }
+    else if (estado === 'Inicio' || String(estado).toLowerCase().includes('inic')) { estadoColor = '#dc2626'; estadoCls = 'st-inicio'; }
+
+    docenteBanner = `
+      <div style="margin-bottom:14px;padding:14px 18px;border-radius:8px;background:var(--surface-card,#ffffff);border:1px solid var(--border-soft,#e2e8f0);box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted,#64748b);text-transform:uppercase;letter-spacing:0.5px">Monitoreo Pedagógico a Docentes · Rúbricas de Aula (EBR-EBA 2026)</span>
+            <div style="font-size:17px;font-weight:800;color:var(--text-main,#0f172a);margin-top:2px">Nivel de Logro: ${esc(estado)} ${pct !== null ? `(${pct}%)` : ''}</div>
+          </div>
+          <div>
+            <span class="badge ${esc(estadoCls)}" style="font-size:13px;padding:5px 14px;font-weight:700;background:${estadoColor};color:#ffffff">${esc(estado)}</span>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -583,6 +609,7 @@ export function buildDetail(s) {
     ebrGestionBanner +
     coordTutoriaBanner +
     coordPedagogicoBanner +
+    docenteBanner +
     jecNivelBanner +
     cebeBanner +
     priteBanner +

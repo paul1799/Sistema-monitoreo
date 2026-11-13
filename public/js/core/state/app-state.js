@@ -31,6 +31,15 @@ let _regSelectedTypeId = null;
 let _regBuiltFor = null;
 let _regSelectedColegioId = null;
 let _regTargetVisita = null;
+let _regSessionEpoch = 0;
+
+export function getRegSessionEpoch() {
+  return _regSessionEpoch;
+}
+export function bumpRegSessionEpoch() {
+  _regSessionEpoch++;
+  return _regSessionEpoch;
+}
 
 export function getRegSelectedTypeId() {
   return _regSelectedTypeId;
@@ -65,12 +74,14 @@ export function selectFichaForRegistration(fichaTypeId, colegioId = null, target
   _regBuiltFor = null;
   _regSelectedColegioId = colegioId;
   _regTargetVisita = targetVisita;
+  _regSessionEpoch++;
 }
 
 /** Activa el modo edición de una ficha ya registrada. Llamar antes de navegar a 'registrar'. */
 export function setEditMode(id, data) {
   editingSubmissionId = id;
   editingSubmissionData = data ? JSON.parse(JSON.stringify(data)) : null;
+  _regSessionEpoch++;
   if (data && data.fichaTypeId) {
     _regSelectedTypeId = data.fichaTypeId;
     _regBuiltFor = null;
@@ -85,6 +96,7 @@ export function clearEditMode() {
   _regBuiltFor = null;
   _regSelectedColegioId = null;
   _regTargetVisita = null;
+  _regSessionEpoch++;
   try {
     sessionStorage.removeItem('reg_prefill_colegioid');
     sessionStorage.removeItem('reg_prefill_visita');

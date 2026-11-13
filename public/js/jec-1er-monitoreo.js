@@ -9,6 +9,7 @@ import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr }
 import { getDirectivosActivosForColegio, cleanTextCode, isPlaceholderDirectivo, syncDirectivosFromFicha } from './directorio.js?v=20261013_v1';
 import { REGLA_NIVEL_JEC_1ER_MOMENTO, getNivelJec1erMomento, ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261016_v2';
 import { renderJecVisitaSelectorHtml } from './jec-monitoreo.js';
+import { clearEditMode } from './core/state/app-state.js';
 
 export { REGLA_NIVEL_JEC_1ER_MOMENTO, getNivelJec1erMomento, ESPECIALISTA_JEC_OFICIAL };
 
@@ -1634,6 +1635,8 @@ function attachJec1erEvents(host, ft, state, currentUser, navigate, isEditing) {
   const btnCancel = host.querySelector('#cancelFormBtn') || host.querySelector('#jec1_btn_cancel');
   if (btnCancel) {
     btnCancel.addEventListener('click', () => {
+      clearEditMode();
+      resetJec1erFormState();
       if (navigate) navigate('consolidado');
     });
   }

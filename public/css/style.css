@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    style.css — Orquestador de Estilos Desfragmentados (UGEL 03 / MINEDU)
    =========================================================================
    Este archivo es el punto de entrada maestro que orquesta y conecta todos
@@ -35,6 +35,6 @@
 @import './prite-gestion.css';
 @import './directorio.css';
 @import './jec-monitoreo.css';
-@import './reportes.css?v=20261103_v9';
+@import './reportes.css?v=20261110_v4';
 @import './portal-modulos.css';
-@import './responsive.css?v=20261016_v7';
+@import './responsive.css?v=20261110_v3';

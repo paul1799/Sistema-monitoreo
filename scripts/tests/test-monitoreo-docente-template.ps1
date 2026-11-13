@@ -1,4 +1,4 @@
-# =============================================================================
+﻿# =============================================================================
 # test-monitoreo-docente-template.ps1
 # Validación exhaustiva de la plantilla y formulario de Monitoreo a Docentes
 # =============================================================================
@@ -23,7 +23,7 @@ $global:totalTests = 0
 $global:passedTests = 0
 $global:failedTests = 0
 
-Write-Host "`n=== TEST: PLANTILLA MONITOREO PEDAGÓGICO A DOCENTES (EBR-EBA 2026) ===" -ForegroundColor Cyan
+Write-Host "`n=== TEST: PLANTILLA MONITOREO PEDAGÓGICO A DOCENTES [EBR-EBA 2026] ===" -ForegroundColor Cyan
 
 # 1. Verificación en catalogo-base.js
 $catPath = Join-Path $root "public/js/domain/fichas/catalogo-base.js"

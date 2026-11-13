@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    features/reportes/kpis.js — Tarjetas KPI, dona de distribución y avance
    UGEL 03 · AGEBRE · Fase 2 Reorganización
    ========================================================================= */
@@ -220,10 +220,10 @@ export function renderKpiCardsHtml({
 
   return `
     <div class="cards">
-      <div class="card"><div class="num">${totalFichas}</div><div class="lbl">Fichas registradas ${vFilter ? `(V${vFilter})` : ''}</div></div>
-      <div class="card"><div class="num">${instCount}</div><div class="lbl">Instituciones</div></div>
-      ${isAllMode ? `<div class="card"><div class="num">${(state.fichaTypes || []).filter(isFichaActiva).length}</div><div class="lbl">Tipos de ficha</div></div>` : ''}
-      <div class="card"><div class="num">${avgPct === null ? '—' : avgPct + '%'}</div><div class="lbl">Cumplimiento promedio</div></div>
+      <div class="card card-blue"><div class="num">${totalFichas}</div><div class="lbl">Fichas registradas ${vFilter ? `(V${vFilter})` : ''}</div></div>
+      <div class="card card-ok"><div class="num">${instCount}</div><div class="lbl">Instituciones</div></div>
+      ${isAllMode ? `<div class="card card-navy"><div class="num">${(state.fichaTypes || []).filter(isFichaActiva).length}</div><div class="lbl">Tipos de ficha</div></div>` : ''}
+      <div class="card card-gold"><div class="num">${avgPct === null ? '—' : avgPct + '%'}</div><div class="lbl">Cumplimiento promedio</div></div>
     </div>
   `;
 }

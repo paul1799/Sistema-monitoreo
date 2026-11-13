@@ -40,6 +40,9 @@ try {
         $fs.Close()
         $respBytes = [System.Text.Encoding]::UTF8.GetBytes("OK")
         $response.StatusCode = 200
+        $response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate")
+        $response.Headers.Add("Pragma", "no-cache")
+        $response.Headers.Add("Expires", "0")
         $response.Headers.Add("Access-Control-Allow-Origin", "*")
         $response.OutputStream.Write($respBytes, 0, $respBytes.Length)
       } catch {
@@ -75,6 +78,9 @@ try {
           ".woff2" { $contentType = "font/woff2" }
         }
         $response.ContentType = $contentType
+        $response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate")
+        $response.Headers.Add("Pragma", "no-cache")
+        $response.Headers.Add("Expires", "0")
         $response.Headers.Add("Access-Control-Allow-Origin", "*")
         $response.OutputStream.Write($bytes, 0, $bytes.Length)
       } else {

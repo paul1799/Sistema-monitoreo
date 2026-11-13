@@ -19,6 +19,7 @@ import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr }
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha, isPlaceholderDirectivo } from './directorio.js?v=20261013_v1';
 import { RUBRICAS_OBSERVACION_AULA } from './ebr-gestion.js';
 import { isFichaJec, REGLA_NIVEL_JEC, estadoPorRegla, ESPECIALISTA_JEC_OFICIAL, isFichaEspecialistaJec } from './calcEngine.js?v=20260928_v12';
+import { clearEditMode } from './core/state/app-state.js';
 
 export { isFichaJec, REGLA_NIVEL_JEC, ESPECIALISTA_JEC_OFICIAL, isFichaEspecialistaJec };
 
@@ -1147,6 +1148,8 @@ function attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       jecFormState.director.dni = cleanTextCode(col.director.dni || '');
       jecFormState.director.telefono = cleanTextCode(col.director.telefono || '');
       jecFormState.director.correo = col.director.correo || '';
+    } else {
+      jecFormState.director = { nombres: '', dni: '', telefono: '', condicion: 'D', correo: '' };
     }
 
     const dNom = host.querySelector('#jec_dir_nombre');
@@ -1383,6 +1386,7 @@ function attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
   if (btnCancel) {
     btnCancel.onclick = () => {
       if (confirm('¿Estás seguro de cancelar? Se perderán los datos no guardados.')) {
+        clearEditMode();
         resetJecFormState();
         if (navigate) navigate('consolidado');
       }
