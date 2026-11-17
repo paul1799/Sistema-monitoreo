@@ -29,26 +29,26 @@ import {
 
 /**
  * Resuelve las secciones e indicadores correspondientes a la visita (1, 2 o 3)
- * priorizando las secciones configuradas dinámicamente en Firestore (ft.seccionesPorVisita)
+ * priorizando las secciones configuradas dinámicamente en Firestore (activeFt.seccionesPorVisita)
  * con fallback a los catálogos estándar para garantizar 100% de compatibilidad histórica.
  */
 export function getEbrSeccionesForVisita(visitaNum, ft = null) {
+  const activeFt = ft || (typeof ebrFormState !== 'undefined' ? ebrFormState.ft : null) || currentEbrFt;
   const v = Number(visitaNum) || 1;
   const vIdx = v - 1;
-
-  if (ft) {
-    if (ft.tipoVisitas === 'items_por_visita' && ft.seccionesPorVisita) {
-      if (Array.isArray(ft.seccionesPorVisita[vIdx]) && ft.seccionesPorVisita[vIdx].length > 0) {
-        return ft.seccionesPorVisita[vIdx];
+  if (activeFt) {
+    if (activeFt.seccionesPorVisita) {
+      if (Array.isArray(activeFt.seccionesPorVisita[vIdx]) && activeFt.seccionesPorVisita[vIdx].length > 0) {
+        return activeFt.seccionesPorVisita[vIdx];
       }
-      if (Array.isArray(ft.seccionesPorVisita[String(vIdx)]) && ft.seccionesPorVisita[String(vIdx)].length > 0) {
-        return ft.seccionesPorVisita[String(vIdx)];
+      if (Array.isArray(activeFt.seccionesPorVisita[String(vIdx)]) && activeFt.seccionesPorVisita[String(vIdx)].length > 0) {
+        return activeFt.seccionesPorVisita[String(vIdx)];
       }
     }
-    if (v === 1 && Array.isArray(ft.seccionesVisita1) && ft.seccionesVisita1.length > 0) return ft.seccionesVisita1;
-    if (v === 2 && Array.isArray(ft.seccionesVisita2) && ft.seccionesVisita2.length > 0) return ft.seccionesVisita2;
-    if (v === 3 && Array.isArray(ft.seccionesVisita3) && ft.seccionesVisita3.length > 0) return ft.seccionesVisita3;
-    if (v === 1 && Array.isArray(ft.secciones) && ft.secciones.length > 0 && !ft.tieneVisitas) return ft.secciones;
+    if (v === 1 && Array.isArray(activeFt.seccionesVisita1) && activeFt.seccionesVisita1.length > 0) return activeFt.seccionesVisita1;
+    if (v === 2 && Array.isArray(activeFt.seccionesVisita2) && activeFt.seccionesVisita2.length > 0) return activeFt.seccionesVisita2;
+    if (v === 3 && Array.isArray(activeFt.seccionesVisita3) && activeFt.seccionesVisita3.length > 0) return activeFt.seccionesVisita3;
+    if (v === 1 && Array.isArray(activeFt.secciones) && activeFt.secciones.length > 0 && !activeFt.tieneVisitas) return activeFt.secciones;
   }
 
   if (v === 2) return EBR_GESTION_VISITA_2_SECCIONES;
@@ -548,6 +548,7 @@ export function isFichaEbrGestionEscolar(ft) {
 /**
  * Estado en memoria para el formulario activo de EBR Gestión Escolar
  */
+let currentEbrFt = null;
 let ebrFormState = {
   visita: null, // 1 | 2 | null
   formacionTecnica: false,
@@ -712,8 +713,8 @@ export function applyColegioToEbrFormState(c, state, ft = null) {
  * Precarga el estado a partir de una ficha guardada previamente (modo edición)
  */
 export function preloadEbrFormState(sub, ft) {
+  if (ft) { currentEbrFt = ft; if (typeof ebrFormState !== 'undefined') ebrFormState.ft = ft; }
   resetEbrFormState();
-  if (!sub) return;
 
   const rawV = Number(sub.visita);
   ebrFormState.visita = rawV === 3 ? 3 : (rawV === 2 ? 2 : 1);
@@ -830,7 +831,8 @@ export function preloadEbrFormState(sub, ft) {
  */
 export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing = false, prefillOptions = null) {
   if (!host || !ft) return;
-
+  currentEbrFt = ft;
+  if (typeof ebrFormState !== 'undefined') ebrFormState.ft = ft;
   if (!isEditing) {
     const targetVis = (prefillOptions && prefillOptions.visita)
       ? Number(prefillOptions.visita)
@@ -1420,11 +1422,11 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
   // =========================================================================
   // PANEL OFICIAL DE RESULTADOS Y PUNTAJE EN TIEMPO REAL
   // =========================================================================
-  const reglaEbr = isV3 ? REGLA_NIVEL_EBR_GESTION_M3 : (isV2 ? REGLA_NIVEL_EBR_GESTION_M2 : REGLA_NIVEL_EBR_GESTION_M1);
-  const maxPtsOficial = reglaEbr.maxPuntaje || (totalItemsCount * 3);
+  const reglaEbr = getReglaNivelEbrGestion(currentVisita, totalItemsCount);
+  const maxPtsOficial = totalItemsCount * 3;
   const momentoTitulo = isV3
     ? `3ER MOMENTO (Visita 3 · Salida · ${totalItemsCount} ítems · Máx ${maxPtsOficial} pts)`
-    : (isV2 ? '2DO MOMENTO (Visita 2 · 23 ítems · Máx 69 pts)' : '1ER MOMENTO (Visita 1 · 19 ítems · Máx 57 pts)');
+    : (isV2 ? `2DO MOMENTO (Visita 2 · ${totalItemsCount} ítems · Máx ${maxPtsOficial} pts)` : `1ER MOMENTO (Visita 1 · ${totalItemsCount} ítems · Máx ${maxPtsOficial} pts)`);
 
   const rLogrado = reglaEbr.rangos.find(r => r.nivel === 'Logrado') || { min: Math.round(maxPtsOficial * 0.67), max: maxPtsOficial };
   const rProceso = reglaEbr.rangos.find(r => r.nivel === 'Proceso') || { min: Math.round(maxPtsOficial * 0.34), max: rLogrado.min - 1 };
@@ -1576,8 +1578,8 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
   attachVisitaSelectorEvents(host, ft, state, dbNs, currentUser, navigate, isEditing);
   attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEditing);
   updateAllSectionTotals(host);
-  updateEbrProgressBadge(host, totalItemsCount);
-  updateEbrLiveScore(host);
+  updateEbrProgressBadge(host, totalItemsCount, ft);
+  updateEbrLiveScore(host, ft);
 }
 
 /**
@@ -2505,7 +2507,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
         radio.checked = false;
         delete ebrFormState.respuestas[itemId];
         lbl.classList.remove('active');
-      } else if (mKey === 'momento2') {
+      } else {
         // Primer clic: seleccionar
         lbl.parentElement.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
         radio.checked = true;
@@ -2516,8 +2518,8 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       updateAllSectionTotals(host);
       const seccionesActuales = getEbrSeccionesForVisita(ebrFormState.visita, ft);
       const totalItemsCount = seccionesActuales.reduce((a, s) => a + (s.items || []).length, 0);
-      updateEbrProgressBadge(host, totalItemsCount);
-      updateEbrLiveScore(host);
+      updateEbrProgressBadge(host, totalItemsCount, ft);
+      updateEbrLiveScore(host, ft);
     };
   });
 
@@ -2558,7 +2560,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
         btn.textContent = '✕ Ocultar obs.';
         const tx = wrap.querySelector('textarea, input');
         if (tx) tx.focus();
-      } else if (mKey === 'momento2') {
+      } else {
         wrap.style.display = 'none';
         btn.classList.remove('active');
         const tx = wrap.querySelector('textarea, input');
@@ -2566,7 +2568,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
         if (hasVal) {
           btn.classList.add('has-content');
           btn.textContent = '💬 Observación ✓';
-        } else if (mKey === 'momento2') {
+        } else {
           btn.classList.remove('has-content');
           btn.textContent = '💬 Observación';
         }
@@ -2908,8 +2910,8 @@ function updateAllSectionTotals(host) {
 /**
  * Actualiza la insignia de progreso general del formulario
  */
-function updateEbrProgressBadge(host, totalItems) {
-  updateEbrLiveScore(host);
+function updateEbrProgressBadge(host, totalItems, ft = null) {
+  updateEbrLiveScore(host, ft);
 }
 
 /**
@@ -2920,11 +2922,11 @@ function updateEbrProgressBadge(host, totalItems) {
  * acumulaciones indebidas por alias, claves redundantes o datos legacy.
  */
 export function calculateEbrCurrentScore(visita, respuestas, ft = null) {
+  const activeFt = ft || (typeof ebrFormState !== 'undefined' ? ebrFormState.ft : null) || currentEbrFt;
   const v = Number(visita) || 1;
-  const secciones = getEbrSeccionesForVisita(v, ft);
-  const totalItems = secciones.reduce((acc, s) => acc + (s.items || []).length, 0) || (v === 2 ? 23 : (v === 3 ? 15 : 19));
+  const secciones = getEbrSeccionesForVisita(v, activeFt);
+  const totalItems = secciones.reduce((acc, s) => acc + (s.items || []).length, 0) || (v === 2 ? 23 : (v === 3 ? 18 : 19));
   const maxPts = totalItems * 3;
-
   // Normalizar respuestas tanto si viene como Array de objetos o Map de clave-valor
   const map = {};
   if (Array.isArray(respuestas)) {
@@ -2980,7 +2982,7 @@ export function calculateEbrCurrentScore(visita, respuestas, ft = null) {
   answered = Math.min(totalItems, Math.max(0, answered));
   const pct = maxPts > 0 ? Math.min(100, Math.round((pts / maxPts) * 100)) : 0;
   const answeredPct = totalItems > 0 ? Math.min(100, Math.round((answered / totalItems) * 100)) : 0;
-  const nivelInfo = getNivelEbrGestion(pts, v);
+  const nivelInfo = getNivelEbrGestion(pts, v, maxPts, totalItems);
 
   return {
     visita: v,
@@ -2998,11 +3000,11 @@ export function calculateEbrCurrentScore(visita, respuestas, ft = null) {
  * Actualiza en tiempo real la puntuacion, barra de avance y resaltado de baremos oficiales.
  * Tambien actualiza el mini-panel de promedios por aspecto del tablero (si existe en el DOM).
  */
-export function updateEbrLiveScore(host) {
+export function updateEbrLiveScore(host, ft = null) {
   if (!host) return;
+  const activeFt = ft || (typeof ebrFormState !== 'undefined' ? ebrFormState.ft : null) || currentEbrFt;
   const currentVisita = ebrFormState.visita || 1;
-  const scoreData = calculateEbrCurrentScore(currentVisita, ebrFormState.respuestas);
-
+  const scoreData = calculateEbrCurrentScore(currentVisita, ebrFormState.respuestas, activeFt);
   const elPoints = host.querySelector('#ebrLivePoints');
   const elPct = host.querySelector('#ebrLivePct');
   const elBadge = host.querySelector('#ebrLiveBadge');
@@ -3040,7 +3042,7 @@ export function updateEbrLiveScore(host) {
 
   const badge = host.querySelector('#regProgressBadge');
   if (badge) {
-    const totalItems = scoreData.totalItems || (currentVisita === 2 ? 23 : 19);
+    const totalItems = scoreData.totalItems || (currentVisita === 2 ? 23 : (currentVisita === 3 ? 18 : 19));
     const answered = scoreData.answered;
     const pct = scoreData.answeredPct;
     badge.innerHTML = `Avance: <strong>${answered} de ${totalItems}</strong> respondidos (${pct}%) · Puntaje: <strong>${scoreData.puntaje}/${scoreData.maxPuntaje} pts</strong> · <span class="badge ${scoreData.nivelInfo.cls}" style="font-size:11px;padding:2px 8px">${lvl}</span>`;
@@ -3258,7 +3260,7 @@ export function collectEbrGestionFormData(host, ft, isEdit = false) {
   const responsableVal = (respEl ? respEl.value.trim() : '') || ebrFormState.responsable || '';
 
   // Cálculo del puntaje oficial y nivel de cumplimiento (usando respuestas recolectadas del DOM)
-  const scoreData = calculateEbrCurrentScore(visita, respuestas);
+  const scoreData = calculateEbrCurrentScore(visita, respuestas, ft || (typeof ebrFormState !== 'undefined' ? ebrFormState.ft : null) || currentEbrFt);
 
   // Modelo estructurado exacto según Requerimiento 8
   return {

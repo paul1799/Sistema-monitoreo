@@ -31,7 +31,7 @@ import {
 import { syncDirectivosFromFicha } from '../../directorio.js?v=20261013_v1';
 import { isFichaCebeGestion, guardarFormularioCebe } from '../../cebe-gestion.js';
 import { isFichaPriteGestion, guardarFormularioPrite } from '../../prite-gestion.js';
-import { isFichaEbrGestionEscolar, collectEbrGestionFormData, resetEbrFormState } from '../../ebr-gestion.js';
+import { isFichaEbrGestionEscolar, collectEbrGestionFormData, resetEbrFormState } from '../../ebr-gestion.js?v=20261117_v1';
 import { isFichaJec, collectJecFormData, resetJecFormState } from '../../jec-monitoreo.js';
 import { collectJec1erFormData, resetJec1erFormState } from '../../jec-1er-monitoreo.js';
 import { getSubmissionVisitaNum } from '../../domain/fichas/index.js';

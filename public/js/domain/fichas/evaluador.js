@@ -425,10 +425,62 @@ export function getNivelCoordPedagogicoJec(puntaje) {
  * @param {number|string|Object} visitaOrSub - Número de visita (1, 2 o 3) o ficha
  * @returns {Object} Regla oficial M1, M2 o M3
  */
-export function getReglaNivelEbrGestion(visitaOrSub) {
+export function getReglaNivelEbrGestion(visitaOrSub, customTotalItems = null) {
   const v = (typeof visitaOrSub === 'object' && visitaOrSub !== null)
     ? getMomentoVisitaEbr(visitaOrSub)
     : (Number(visitaOrSub) || 1);
+  let items = customTotalItems;
+  if (!items && typeof visitaOrSub === 'object' && visitaOrSub !== null) {
+    if (visitaOrSub.totalItems) items = Number(visitaOrSub.totalItems);
+    else if (visitaOrSub.puntaje_max) items = Math.round(Number(visitaOrSub.puntaje_max) / 3);
+  }
+  const stdItems = v === 2 ? 23 : (v === 3 ? 18 : 19);
+  if (items && items > 0 && items !== stdItems) {
+    const maxP = items * 3;
+    const maxIni = items;
+    const minProc = items + 1;
+    const maxProc = items * 2;
+    const minLog = (items * 2) + 1;
+    return {
+      tipo: 'puntaje',
+      escala: 'IPL',
+      momento: v,
+      visita: v,
+      maxPuntaje: maxP,
+      minPuntaje: 0,
+      totalItems: items,
+      nota: `Regla adaptativa Momento ${v} EBR Gestión Escolar (${items} ítems): Inicio (0–${maxIni}), Proceso (${minProc}–${maxProc}), Logrado (${minLog}–${maxP})`,
+      rangos: [
+        {
+          nivel: 'Logrado',
+          min: minLog,
+          max: maxP,
+          estado_panel: 'Logrado',
+          cls: 'st-logrado',
+          color: '#16A34A',
+          descripcion: `Nivel Logrado: Cumplimiento óptimo en la gestión escolar (${minLog} a ${maxP} puntos).`
+        },
+        {
+          nivel: 'Proceso',
+          min: minProc,
+          max: maxProc,
+          estado_panel: 'En proceso',
+          cls: 'st-proceso',
+          color: '#D97706',
+          descripcion: `Nivel Proceso: En proceso de consolidación (${minProc} a ${maxProc} puntos).`
+        },
+        {
+          nivel: 'Inicio',
+          min: 0,
+          max: maxIni,
+          estado_panel: 'Inicio',
+          cls: 'st-inicio',
+          color: '#DC2626',
+          descripcion: `Nivel Inicio: Requiere asistencia técnica prioritaria (0 a ${maxIni} puntos).`
+        }
+      ]
+    };
+  }
   if (v === 3) return REGLA_NIVEL_EBR_GESTION_M3;
   return v === 2 ? REGLA_NIVEL_EBR_GESTION_M2 : REGLA_NIVEL_EBR_GESTION_M1;
 }
@@ -440,18 +492,22 @@ export function getReglaNivelEbrGestion(visitaOrSub) {
  * @param {number|string|Object} visitaOrMomento - 1 o 2
  * @returns {{ nivel: string, estado_panel: string, cls: string, color: string, rangoTexto: string, rangoMin: number, rangoMax: number, maxPuntaje: number, puntaje: number, pct: number, descripcion: string }}
  */
-export function getNivelEbrGestion(puntaje, visitaOrMomento, maxAplicable = null) {
+export function getNivelEbrGestion(puntaje, visitaOrMomento, maxAplicable = null, customTotalItems = null) {
   const p = Number(puntaje) || 0;
   const v = (typeof visitaOrMomento === 'object' && visitaOrMomento !== null)
     ? getMomentoVisitaEbr(visitaOrMomento)
     : (Number(visitaOrMomento) === 3 ? 3 : (Number(visitaOrMomento) === 2 ? 2 : 1));
-  const regla = getReglaNivelEbrGestion(v);
+  let items = customTotalItems;
+  if (!items && maxAplicable && maxAplicable > 0) {
+    items = Math.round(maxAplicable / 3);
+  }
+  const regla = getReglaNivelEbrGestion(visitaOrMomento, items);
   const maxPts = regla.maxPuntaje;
   const rangos = regla.rangos;
 
   // Proyectar el puntaje a la base oficial para no penalizar ítems N/A
   let pEval = p;
-  let realPct = Math.round((p / maxPts) * 100);
+  let realPct = maxPts > 0 ? Math.round((p / maxPts) * 100) : 0;
   if (maxAplicable !== null && maxAplicable > 0 && maxAplicable < maxPts) {
     pEval = (p / maxAplicable) * maxPts;
     realPct = Math.round((p / maxAplicable) * 100);

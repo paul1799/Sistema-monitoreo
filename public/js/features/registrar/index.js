@@ -28,7 +28,7 @@ import {
 import {
   renderEbrGestionForm,
   preloadEbrFormState
-} from '../../ebr-gestion.js';
+} from '../../ebr-gestion.js?v=20261117_v1';
 import {
   isFichaCebeGestion,
   renderCebeGestionForm,

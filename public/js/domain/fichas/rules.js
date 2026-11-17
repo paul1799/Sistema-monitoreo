@@ -225,43 +225,43 @@ export const REGLA_NIVEL_EBR_GESTION_M2 = {
   ],
 };
 
-/** Regla oficial 3er Momento: Monitoreo y Asistencia Técnica a la Gestión Escolar EBR (15 ítems base, máx 45 pts) */
+/** Regla oficial 3er Momento: Monitoreo y Asistencia Técnica a la Gestión Escolar EBR (18 ítems base, máx 54 pts) */
 export const REGLA_NIVEL_EBR_GESTION_M3 = {
   tipo:       'puntaje',
   escala:     'IPL',
   momento:    3,
   visita:     3,
-  maxPuntaje: 45,
+  maxPuntaje: 54,
   minPuntaje: 0,
-  totalItems: 15,
-  nota:       'Regla oficial 3er Momento EBR Gestión Escolar: Inicio (0–15), Proceso (16–30), Logrado (31–45)',
+  totalItems: 18,
+  nota:       'Regla oficial 3er Momento EBR Gestión Escolar (18 ítems): Inicio (0–18), Proceso (19–36), Logrado (37–54)',
   rangos: [
     {
       nivel:        'Logrado',
-      min:          31,
-      max:          45,
+      min:          37,
+      max:          54,
       estado_panel: 'Logrado',
       cls:          'st-logrado',
       color:        '#16A34A',
-      descripcion:  'Nivel Logrado: Cumplimiento óptimo en el balance y cierre de gestión escolar (31 a 45 puntos).'
+      descripcion:  'Nivel Logrado: Cumplimiento óptimo en el balance y cierre de gestión escolar (37 a 54 puntos).'
     },
     {
       nivel:        'Proceso',
-      min:          16,
-      max:          30,
+      min:          19,
+      max:          36,
       estado_panel: 'En proceso',
       cls:          'st-proceso',
       color:        '#D97706',
-      descripcion:  'Nivel Proceso: En proceso de consolidación de resultados anuales (16 a 30 puntos).'
+      descripcion:  'Nivel Proceso: En proceso de consolidación de resultados anuales (19 a 36 puntos).'
     },
     {
       nivel:        'Inicio',
       min:          0,
-      max:          15,
+      max:          18,
       estado_panel: 'Inicio',
       cls:          'st-inicio',
       color:        '#DC2626',
-      descripcion:  'Nivel Inicio: Requiere asistencia técnica prioritaria en el balance institucional (0 a 15 puntos).'
+      descripcion:  'Nivel Inicio: Requiere asistencia técnica prioritaria en el balance institucional (0 a 18 puntos).'
     },
   ],
 };
