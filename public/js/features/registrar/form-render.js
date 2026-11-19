@@ -35,6 +35,7 @@ import {
   resolveItemValue,
   getSubmissionVisitaNum
 } from '../../calcEngine.js?v=20261103_v8';
+import { getScopedColegios, getUserAssignedModalidades, getScopedSubmissions, isFichaTypeInUserScope } from '../../core/user-scope.js';
 import {
   renderJecForm,
   preloadJecFormState,
@@ -131,7 +132,22 @@ export function renderFichaPicker({
   onOpenPlantillas,
   onSubNavClick
 }) {
-  const allTypes = (state.fichaTypes || []).filter(isFichaActiva);
+  let allTypes = (state.fichaTypes || []).filter(isFichaActiva);
+  const uDoc = state?.currentUserRoleDoc ||
+    (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+    (() => {
+      try {
+        const uid = currentUser?.uid || (typeof window !== 'undefined' && window.currentUser?.uid);
+        if (uid) {
+          const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+          if (raw) return JSON.parse(raw);
+        }
+      } catch (_) {}
+      return null;
+    })();
+  if (!actualIsAdmin && uDoc) {
+    allTypes = allTypes.filter(ft => isFichaTypeInUserScope(ft, uDoc, false));
+  }
 
   if (allTypes.length === 0) {
     container.innerHTML = `
@@ -211,11 +227,12 @@ export function renderFichaPicker({
     const cardTitle = isEbrImpl
       ? 'Monitoreo y Asistencia Técnica a la Gestión Escolar - UGEL 03 EBR'
       : (isJecImpl ? 'Monitoreo a la Implementación del Modelo JEC' : ft.nombre);
+    const scopedSubs = getScopedSubmissions(state, state?.currentUserRoleDoc, actualIsAdmin, getFichaType);
     const count = isEbrImpl
-      ? deduplicateTwinSubmissions((state.submissions || []).filter(s => isFichaEbrGestionEscolar(s))).length
+      ? deduplicateTwinSubmissions(scopedSubs.filter(s => isFichaEbrGestionEscolar(s))).length
       : (isJecImpl
-        ? deduplicateTwinSubmissions((state.submissions || []).filter(s => isFichaJec(s) && !isFichaCoordTutoriaJec(s) && !isFichaCoordPedagogico(s))).length
-        : deduplicateTwinSubmissions((state.submissions || []).filter(s => s.fichaTypeId === ft.id)).length);
+        ? deduplicateTwinSubmissions(scopedSubs.filter(s => isFichaJec(s) && !isFichaCoordTutoriaJec(s) && !isFichaCoordPedagogico(s))).length
+        : deduplicateTwinSubmissions(scopedSubs.filter(s => s.fichaTypeId === ft.id)).length);
     const templateForCard = isEbrImpl ? (PLANTILLAS_BASE_OFICIALES?.ft_gestion_ugel03_ebr || ft) : ft;
     const totalItems = (templateForCard.secciones || []).reduce((a, s) => a + (s.items || []).length, 0);
     const totalSecs = (templateForCard.secciones || []).length;
@@ -1361,7 +1378,8 @@ export function renderDynamicForm({
 
   const showDropdown = () => {
     const query = normalizeText(instInput.value);
-    const colegios = state.colegios || [];
+    const isUserAdmin = (typeof window !== 'undefined' && typeof window.isAdmin === 'function') ? window.isAdmin() : false;
+    const colegios = isUserAdmin ? (state.colegios || []) : getScopedColegios(state, state?.currentUserRoleDoc, false);
     const matches = colegios
       .filter(c => !query || normalizeText(c.ie).includes(query) || normalizeText(c.codigoLocal).includes(query))
       .slice(0, 25);

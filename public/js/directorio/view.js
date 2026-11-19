@@ -4,6 +4,7 @@
    ========================================================================= */
 
 import { esc, showToast, genId, fmtDate, normalizeReiNumber } from '../ui/core-utils.js';
+import { isColegioInUserScope, getUserAssignedReis, getScopedColegios } from '../core/user-scope.js';
 import {
   normalizeStr,
   cleanTextCode,
@@ -38,9 +39,10 @@ export function renderDirectorioTab(container, state, dbNs, isAdmin, currentUser
   if (!container || !state) return;
 
   // Ejecutar limpieza única en segundo plano de textos de relleno espurios
-  cleanExistingPlaceholderDirectivos(dbNs, state, currentUser);
+  if (isAdmin) cleanExistingPlaceholderDirectivos(dbNs, state, currentUser);
 
   const colegios = state.colegios || [];
+
   const standardReis = Array.from({ length: 16 }, (_, i) => String(i + 1).padStart(2, '0'));
   const reiSet = new Set(standardReis);
   colegios.forEach(c => {

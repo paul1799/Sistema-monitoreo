@@ -35,8 +35,13 @@ service cloud.firestore {
         ))
       );
       // Cambiar el rol de alguien (promover/degradar) es solo para admins.
-      allow update: if isAdmin();
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid && request.resource.data.role == resource.data.role);
       allow delete: if isAdmin();
+    }
+
+    // --- Verificaciones OTP de seguridad institucional ---
+    match /verificaciones/{docId} {
+      allow read, write: if signedIn();
     }
 
     // --- Tipos de ficha: cualquiera con sesión los lee, solo admin los administra ---

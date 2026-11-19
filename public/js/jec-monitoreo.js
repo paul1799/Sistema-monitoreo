@@ -20,6 +20,7 @@ import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha,
 import { RUBRICAS_OBSERVACION_AULA } from './ebr-gestion.js';
 import { isFichaJec, REGLA_NIVEL_JEC, estadoPorRegla, ESPECIALISTA_JEC_OFICIAL, isFichaEspecialistaJec } from './calcEngine.js?v=20260928_v12';
 import { clearEditMode } from './core/state/app-state.js';
+import { getScopedColegios } from './core/user-scope.js';
 
 export { isFichaJec, REGLA_NIVEL_JEC, ESPECIALISTA_JEC_OFICIAL, isFichaEspecialistaJec };
 
@@ -1170,7 +1171,20 @@ function attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
   if (instInput && dropdown) {
     const showDropdown = () => {
       const q = normalizeText(instInput.value);
-      const colegios = state.colegios || [];
+      const isUserAdmin = (typeof window !== 'undefined' && typeof window.isAdmin === 'function') ? window.isAdmin() : false;
+      const uDoc = state?.currentUserRoleDoc ||
+        (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+        (() => {
+          try {
+            const uid = (typeof window !== 'undefined' && window.currentUser?.uid);
+            if (uid) {
+              const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+              if (raw) return JSON.parse(raw);
+            }
+          } catch (_) {}
+          return null;
+        })();
+      const colegios = (!isUserAdmin && uDoc) ? getScopedColegios(state, uDoc, false) : (state.colegios || []);
       const matches = colegios.filter(c => !q || normalizeText(c.ie).includes(q) || normalizeText(c.codigoModular || c.codigoLocal || '').includes(q)).slice(0, 25);
       if (!matches.length) { dropdown.style.display = 'none'; return; }
       dropdown.innerHTML = matches.map(c => `

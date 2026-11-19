@@ -89,6 +89,11 @@ export function makeDbAdapter(firestoreDb) {
       set(data, opts) { return opts ? setDoc(ref, data, opts) : setDoc(ref, data); },
       update(data) { return updateDoc(ref, data); },
       delete() { return deleteDoc(ref); },
+      onSnapshot(cb, errCb) {
+        return onSnapshot(ref, snap => {
+          cb({ id: snap.id, exists: snap.exists(), data: () => snap.data() });
+        }, errCb);
+      },
     };
   }
 

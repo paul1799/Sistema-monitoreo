@@ -1,0 +1,211 @@
+/**
+ * Modal para modificar la jurisdicción (REIs y Modalidades) de un especialista desde la interfaz
+ */
+export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, onComplete) {
+  const existingModal = document.getElementById('editJurisdictionModalOverlay');
+  if (existingModal) existingModal.remove();
+
+  lockBodyScroll();
+
+  const rawMods = userDoc.modalidades || userDoc.modalidad || 'EBR';
+  const userMods = Array.isArray(rawMods) ? rawMods : String(rawMods).split(/[,\s/]+/).map(s => s.trim().toUpperCase());
+  
+  const rawReis = userDoc.reis || ['01'];
+  const userReis = Array.isArray(rawReis) ? rawReis.map(normalizeReiNumber) : String(rawReis).split(/[,\s/]+/).map(normalizeReiNumber);
+  const isTodas = Array.isArray(rawReis) ? rawReis.includes('TODAS') : String(rawReis).toUpperCase().includes('TODAS');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'downloadModalOverlay';
+  overlay.id = 'editJurisdictionModalOverlay';
+
+  const reisNumbers = Array.from({ length: 16 }, (_, i) => String(i + 1).padStart(2, '0'));
+
+  overlay.innerHTML = `
+    <div class="downloadModalContent" style="max-width:540px;border-radius:14px;box-shadow:0 20px 40px rgba(11,27,54,0.3)">
+      <div class="downloadModalHeader" style="background:var(--navy-900);color:#FFFFFF;border-top-left-radius:14px;border-top-right-radius:14px;padding:16px 20px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:22px">✏️</span>
+          <div>
+            <h3 style="margin:0;font-size:16px;font-weight:700;color:#FFFFFF">Modificar Jurisdicción de Especialista</h3>
+            <p style="margin:2px 0 0;font-size:12px;color:rgba(255,255,255,0.75)">
+              Asignación de REDes y Modalidades para <strong>${esc(userDoc.email || userDoc.id)}</strong>
+            </p>
+          </div>
+        </div>
+        <button type="button" class="closeDownloadModal" id="btnCloseModalJurisdiction" style="color:#FFFFFF;opacity:0.8" title="Cerrar">×</button>
+      </div>
+
+      <div class="downloadModalBody" style="padding:20px;max-height:75vh;overflow-y:auto">
+        <form id="editJurisdictionForm" style="display:flex;flex-direction:column;gap:18px" onsubmit="return false;">
+          
+          <!-- Modalidad(es) -->
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <label style="font-size:13px;font-weight:700;color:var(--navy-900)">
+                Modalidad(es) a su cargo <span style="color:var(--danger)">*</span>
+              </label>
+              <small style="color:var(--text-400);font-size:11px">Puede abarcar más de una (ej. EBR + EBE)</small>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px">
+              <label style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:#F8FAFC;border:1px solid var(--border);border-radius:8px;cursor:pointer">
+                <input type="checkbox" name="editMod" value="EBR" ${userMods.includes('EBR') ? 'checked' : ''} style="accent-color:var(--primary);cursor:pointer">
+                <span style="font-size:12.5px;font-weight:600;color:var(--navy-900)">EBR</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:#F8FAFC;border:1px solid var(--border);border-radius:8px;cursor:pointer">
+                <input type="checkbox" name="editMod" value="EBE" ${userMods.includes('EBE') ? 'checked' : ''} style="accent-color:var(--primary);cursor:pointer">
+                <span style="font-size:12.5px;font-weight:600;color:var(--navy-900)">EBE</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:#F8FAFC;border:1px solid var(--border);border-radius:8px;cursor:pointer">
+                <input type="checkbox" name="editMod" value="JEC" ${userMods.includes('JEC') ? 'checked' : ''} style="accent-color:var(--primary);cursor:pointer">
+                <span style="font-size:12.5px;font-weight:600;color:var(--navy-900)">JEC</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- REDes Educativas (REI) -->
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+              <label style="font-size:13px;font-weight:700;color:var(--navy-900)">
+                RED(es) Educativas asignadas <span style="color:var(--danger)">*</span>
+              </label>
+              <div style="display:flex;gap:6px">
+                <button type="button" id="btnEditSelectAllReis" class="btn secondary" style="padding:2px 8px;font-size:11px">Todas</button>
+                <button type="button" id="btnEditClearAllReis" class="btn secondary" style="padding:2px 8px;font-size:11px">Limpiar</button>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:8px;max-height:180px;overflow-y:auto;padding:6px;background:#F8FAFC;border:1px solid var(--border);border-radius:8px" id="editReisGrid">
+              ${reisNumbers.map(n => {
+                const checked = isTodas || userReis.includes(n);
+                return `
+                  <label style="display:flex;align-items:center;gap:5px;padding:6px 8px;background:#FFFFFF;border:1px solid var(--border);border-radius:6px;cursor:pointer">
+                    <input type="checkbox" name="editRei" value="${n}" ${checked ? 'checked' : ''} style="accent-color:var(--primary);cursor:pointer">
+                    <span style="font-size:12px;font-weight:600;color:var(--navy-900)">REI ${n}</span>
+                  </label>
+                `;
+              }).join('')}
+            </div>
+            <small style="color:var(--text-600);font-size:11.5px">
+              El especialista visualizará exclusivamente los colegios y fichas pertenecientes a las REIs marcadas.
+            </small>
+          </div>
+
+          <!-- Permiso de Concursos -->
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#F8FAFC;border:1px solid var(--border);border-radius:8px">
+            <input type="checkbox" id="editConcursosAccess" ${userDoc.accesoConcursos ? 'checked' : ''} style="cursor:pointer;accent-color:var(--ok)">
+            <label for="editConcursosAccess" style="font-size:12.5px;font-weight:600;color:var(--navy-900);cursor:pointer">
+              Habilitar acceso directo al Módulo de Concursos Escolares
+            </label>
+          </div>
+
+          <div id="editJurisdictionErrorAlert" style="display:none;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#991B1B"></div>
+        </form>
+      </div>
+
+      <div class="downloadModalFooter" style="padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px">
+        <button type="button" class="btn secondary" id="btnCancelEditJurisdiction">Cancelar</button>
+        <button type="button" class="btn" id="btnSaveJurisdiction" style="background:var(--blue-600);border-color:var(--blue-600)">
+          <span>💾</span>
+          <span>Guardar Cambios</span>
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const closeModal = () => {
+    overlay.remove();
+    unlockBodyScroll();
+  };
+
+  overlay.querySelector('#btnCloseModalJurisdiction').addEventListener('click', closeModal);
+  overlay.querySelector('#btnCancelEditJurisdiction').addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
+  });
+
+  const reiCheckboxes = Array.from(overlay.querySelectorAll('input[name="editRei"]'));
+  overlay.querySelector('#btnEditSelectAllReis').addEventListener('click', () => {
+    reiCheckboxes.forEach(cb => cb.checked = true);
+  });
+  overlay.querySelector('#btnEditClearAllReis').addEventListener('click', () => {
+    reiCheckboxes.forEach(cb => cb.checked = false);
+  });
+
+  const errorAlert = overlay.querySelector('#editJurisdictionErrorAlert');
+  const saveBtn = overlay.querySelector('#btnSaveJurisdiction');
+
+  saveBtn.addEventListener('click', async () => {
+    errorAlert.style.display = 'none';
+    errorAlert.textContent = '';
+
+    const selectedMods = Array.from(overlay.querySelectorAll('input[name="editMod"]:checked')).map(cb => cb.value);
+    const selectedReis = reiCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
+    const hasConcursos = overlay.querySelector('#editConcursosAccess')?.checked || false;
+
+    if (selectedMods.length === 0) {
+      errorAlert.textContent = 'Debes seleccionar al menos una modalidad a cargo del especialista.';
+      errorAlert.style.display = 'block';
+      return;
+    }
+
+    if (selectedReis.length === 0) {
+      errorAlert.textContent = 'Debes seleccionar al menos una REI a cargo del especialista.';
+      errorAlert.style.display = 'block';
+      return;
+    }
+
+    try {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span>⏳</span> Guardando en Firestore...';
+
+      const modalidadStr = selectedMods.join(', ');
+      const reisToSave = (selectedReis.length === 16) ? ['TODAS'] : selectedReis;
+
+      await dbNs.collection('roles').doc(userDoc.id).set({
+        modalidad: modalidadStr,
+        modalidades: selectedMods,
+        reis: reisToSave,
+        accesoConcursos: hasConcursos,
+        actualizadoPor: currentUser?.email || 'admin',
+        actualizadoEn: Date.now()
+      }, { merge: true });
+
+      // Registrar auditoría en logActividades
+      try {
+        await dbNs.collection('logActividades').add({
+          tipo: 'MODIFICACION_JURISDICCION_ESPECIALISTA',
+          usuarioUid: userDoc.id,
+          usuarioEmail: userDoc.email || userDoc.id,
+          modalidad: modalidadStr,
+          modalidades: selectedMods,
+          reis: reisToSave,
+          modificadoPor: currentUser?.email || 'admin',
+          timestamp: Date.now(),
+          fecha: new Date().toISOString(),
+          detalle: `Se modificó la jurisdicción de ${userDoc.email || userDoc.id}: Modalidad(es) [${modalidadStr}], REI(s) [${reisToSave.join(', ')}] por ${currentUser?.email || 'admin'}`
+        });
+      } catch (_) {}
+
+      if (typeof window !== 'undefined' && window.state && window.state.currentUserRoleDoc && window.state.currentUserRoleDoc.id === userDoc.id) {
+        window.state.currentUserRoleDoc.modalidad = modalidadStr;
+        window.state.currentUserRoleDoc.modalidades = selectedMods;
+        window.state.currentUserRoleDoc.reis = reisToSave;
+        window.state.currentUserRoleDoc.accesoConcursos = hasConcursos;
+        try {
+          sessionStorage.setItem('agebre_user_doc_' + userDoc.id, JSON.stringify(window.state.currentUserRoleDoc));
+        } catch (_) {}
+      }
+
+      showToast(`Jurisdicción de ${userDoc.email || 'usuario'} actualizada con éxito.`);
+      closeModal();
+      if (typeof onComplete === 'function') onComplete();
+    } catch (err) {
+      console.error('Error al guardar jurisdicción:', err);
+      errorAlert.textContent = 'Ocurrió un error al guardar en Firestore: ' + (err.message || err);
+      errorAlert.style.display = 'block';
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<span>💾</span> <span>Guardar Cambios</span>';
+    }
+  });
+}

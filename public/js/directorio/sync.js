@@ -44,7 +44,7 @@ export async function cleanExistingPlaceholderDirectivos(dbNs, state, currentUse
         try {
           await dbNs.collection('directivos').doc(id).delete();
         } catch (e) {
-          console.warn('Error eliminando directivo placeholder en Firestore:', id, e);
+          // Omitir log ruidoso si no hay permisos de administrador
         }
       }
     }
@@ -71,7 +71,7 @@ export async function cleanExistingPlaceholderDirectivos(dbNs, state, currentUse
         try {
           await dbNs.collection('colegios').doc(c.id).set(colUpdates, { merge: true });
         } catch (e) {
-          console.warn('Error limpiando placeholders en colegio doc:', c.id, e);
+          // Omitir advertencia en consola si el usuario no tiene permisos de administrador sobre colegios
         }
       }
     }

@@ -28,17 +28,17 @@ import {
 import {
   renderEbrGestionForm,
   preloadEbrFormState
-} from '../../ebr-gestion.js?v=20261117_v1';
+} from '../../ebr-gestion.js?v=20261119_v1';
 import {
   isFichaCebeGestion,
   renderCebeGestionForm,
   preloadCebeFormState
-} from '../../cebe-gestion.js';
+} from '../../cebe-gestion.js?v=20261119_v1';
 import {
   isFichaPriteGestion,
   renderPriteGestionForm,
   preloadPriteFormState
-} from '../../prite-gestion.js';
+} from '../../prite-gestion.js?v=20261119_v1';
 import {
   renderAreasYFirmantesView,
   renderPlantillasManagementView,
@@ -88,7 +88,7 @@ import {
   syncCommonJecFields,
   renderUnifiedJecForm,
   renderDynamicForm
-} from './form-render.js';
+} from './form-render.js?v=20261119_v1';
 import { onSubmitRegistro } from './save.js';
 import {
   fileToBase64,

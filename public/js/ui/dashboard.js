@@ -7,19 +7,53 @@ import { statusFromPct, bar, stackedBar, computeStats, donutChart } from './scor
 import { getDashboardSortAsc, setDashboardSortAsc } from './state.js';
 import { deduplicateTwinSubmissions } from './consolidado.js';
 import { isFichaEbrGestionEscolar } from '../calcEngine.js';
+import { getScopedSubmissions, getScopedColegios, getUserAssignedReis, getUserAssignedModalidades } from '../core/user-scope.js';
 
 /* ============================= DASHBOARD (RESUMEN GENERAL) ============================= */
 export function viewDashboard(state, getFichaType, renderFn) {
-  const activeFichaTypes = (state.fichaTypes || []).filter(isFichaActiva);
-  const totalTipos = activeFichaTypes.length;
+  const isAdmin = (typeof window !== 'undefined' && typeof window.isAdmin === 'function') ? window.isAdmin() : false;
+  const userRoleDoc = state?.currentUserRoleDoc ||
+    (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+    (() => {
+      try {
+        const uid = (typeof window !== 'undefined' && window.currentUser?.uid);
+        if (uid) {
+          const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+          if (raw) return JSON.parse(raw);
+        }
+      } catch (_) {}
+      return null;
+    })();
 
-  // Filtrar envíos para considerar únicamente aquellos de fichas activas
-  const cleanSubs = deduplicateTwinSubmissions(state.submissions || []).filter(s => {
+  // Filtrar envíos y colegios estrictamente delimitados a la jurisdicción (REI y modalidad) del especialista
+  const scopedSubs = getScopedSubmissions(state, userRoleDoc, isAdmin, getFichaType);
+  const scopedColegios = getScopedColegios(state, userRoleDoc, isAdmin);
+
+  const cleanSubs = deduplicateTwinSubmissions(scopedSubs).filter(s => {
     const ft = getFichaType(s.fichaTypeId);
     return isFichaActiva(ft);
   });
   const totalFichas = cleanSubs.length;
   const instSet = new Set(cleanSubs.map(s => (s.institucion || '') + '|' + (s.ugel || '')));
+
+  let activeFichaTypes = (state?.fichaTypes || []).filter(isFichaActiva);
+  if (!isAdmin && userRoleDoc) {
+    const assignedMods = getUserAssignedModalidades(userRoleDoc, false);
+    if (!assignedMods.includes('TODAS')) {
+      activeFichaTypes = activeFichaTypes.filter(ft => {
+        const ftMod = String(ft.modalidad || ft.grupo || '').toUpperCase();
+        const hasRecords = cleanSubs.some(s => s.fichaTypeId === ft.id);
+        if (hasRecords) return true;
+        return assignedMods.some(m => {
+          if (m === 'JEC') return ftMod.includes('JEC') || ft.id.includes('jec');
+          if (m === 'EBE') return ftMod.includes('EBE') || ftMod.includes('CEBE') || ftMod.includes('PRITE');
+          if (m === 'EBR') return ftMod.includes('EBR') || ftMod.includes('PRIMARIA') || ftMod.includes('SECUNDARIA') || ftMod.includes('INICIAL');
+          return ftMod.includes(m);
+        });
+      });
+    }
+  }
+  const totalTipos = activeFichaTypes.length;
 
   let sumPct = 0, cntPct = 0;
   const dist = { logrado: 0, proceso: 0, inicio: 0, none: 0 };
@@ -123,8 +157,7 @@ export function viewDashboard(state, getFichaType, renderFn) {
 
   return '' +
     '<div class="pageHead">' +
-    '<h2>Resumen general</h2>' +
-    '<p>Vista consolidada de monitoreo y niveles de avance institucional.</p>' +
+    (isAdmin ? '<h2>Resumen general</h2><p>Vista consolidada institucional de monitoreo y niveles de avance.</p>' : ('<h2>Resumen de Monitoreo — ' + (getUserAssignedReis(userRoleDoc, false).includes('TODAS') ? 'Todas las REIs' : 'REI ' + getUserAssignedReis(userRoleDoc, false).join(', ')) + '</h2><p>Monitoreo y cobertura de ' + esc(getUserAssignedModalidades(userRoleDoc, false).join(' y ')) + ' en su Red Educativa asignada.</p>')) +
     '</div>' +
     '<div class="cards">' +
     '<div class="card"><div class="num">' + totalTipos + '</div><div class="lbl">Tipos de ficha</div></div>' +

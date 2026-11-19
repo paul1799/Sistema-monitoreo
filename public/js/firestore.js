@@ -3,4 +3,4 @@
    UGEL 03 · AGEBRE · Fase 1 Reorganización
    ========================================================================= */
 
-export * from './core/firebase/firestore-adapter.js?v=20261103_v8';
+export * from './core/firebase/firestore-adapter.js?v=20261118_v1';

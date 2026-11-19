@@ -28,7 +28,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&display=swap"
     rel="stylesheet">
 
-  <link rel="stylesheet" href="./css/style.css?v=20261110_v4">
+  <link rel="stylesheet" href="./css/style.css?v=20261119_v1">
   <link rel="stylesheet" href="./css/jec-1er-monitoreo.css?v=20261020_v1">
 </head>
 
@@ -50,23 +50,215 @@
       </div>
       <div class="loginPane">
         <div class="loginCard">
-          <h2>Iniciar sesión</h2>
-          <p class="sub">Ingresa con tu cuenta institucional asignada de la UGEL 03.</p>
-          <form id="loginForm">
-            <div class="field">
-              <label for="loginEmail">Correo institucional</label>
-              <input type="email" id="loginEmail" autocomplete="username" placeholder="ejemplo@ugel03.gob.pe" required>
+          
+          <!-- VISTA 1: INICIAR SESIÓN -->
+          <div id="loginViewSection" class="authSection">
+            <h2>Iniciar sesión</h2>
+            <p class="sub">Ingresa con tu cuenta institucional asignada de la UGEL 03.</p>
+            <form id="loginForm">
+              <div class="field">
+                <label for="loginEmail">Correo institucional</label>
+                <input type="email" id="loginEmail" autocomplete="username" placeholder="ejemplo@ugel03.gob.pe" required>
+              </div>
+              <div class="field">
+                <label for="loginPassword">Contraseña</label>
+                <div class="pwWrap">
+                  <input type="password" id="loginPassword" autocomplete="current-password" required>
+                  <button type="button" class="pwToggle" id="pwToggleBtn" tabindex="-1">Mostrar</button>
+                </div>
+              </div>
+              <button type="submit" class="btn" id="loginBtn">Iniciar sesión</button>
+            </form>
+            <p id="loginError" class="helpText" style="color:var(--danger); margin-top:8px;"></p>
+
+            <div class="authFooterLinks">
+              <button type="button" class="authTextBtn" id="btnToForgot">¿Olvidó su contraseña?</button>
+              <div class="authDivider"><span>o</span></div>
+              <button type="button" class="btn secondary authRegisterBtn" id="btnToRegister">Registrarse como nuevo usuario</button>
             </div>
-            <div class="field">
-              <label for="loginPassword">Contraseña</label>
-              <div class="pwWrap">
-                <input type="password" id="loginPassword" autocomplete="current-password" required>
-                <button type="button" class="pwToggle" id="pwToggleBtn" tabindex="-1">Mostrar</button>
+          </div>
+
+          <!-- VISTA 2: REGISTRARSE COMO NUEVO USUARIO -->
+          <div id="registerViewSection" class="authSection" style="display:none;">
+            <h2>Registrar nuevo usuario</h2>
+            <p class="sub">Crea tu cuenta institucional y selecciona tu rol de trabajo.</p>
+            <form id="registerForm">
+              <div class="field">
+                <label for="regNombre">Nombres y Apellidos *</label>
+                <input type="text" id="regNombre" placeholder="Ej. Juan Pérez Quispe" required>
+              </div>
+              <div class="field">
+                <label for="regEmail">Correo institucional *</label>
+                <input type="email" id="regEmail" placeholder="ejemplo@ugel03.gob.pe" required>
+                <span id="regEmailFeedback" class="helpText" style="margin-top:4px;font-size:12px;display:none;"></span>
+              </div>
+              <div class="field">
+                <label for="regPassword">Contraseña *</label>
+                <div class="pwWrap">
+                  <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" autocomplete="new-password" required minlength="6">
+                  <button type="button" class="pwToggle" id="regPwToggleBtn" tabindex="-1">Mostrar</button>
+                </div>
+              </div>
+              <div class="field">
+                <label for="regPasswordConfirm">Confirmar contraseña *</label>
+                <input type="password" id="regPasswordConfirm" placeholder="Repite tu contraseña" autocomplete="new-password" required minlength="6">
+              </div>
+
+              <!-- Selección de Rol -->
+              <div class="field">
+                <label>Rol en el sistema *</label>
+                <div class="roleRadioGroup">
+                  <label class="roleRadioCard active" id="roleCardEspecialista">
+                    <input type="radio" name="regRole" value="especialista" checked>
+                    <div class="roleRadioInfo">
+                      <strong>Especialista</strong>
+                      <span>Monitoreo de REI y modalidad asignada</span>
+                    </div>
+                  </label>
+                  <label class="roleRadioCard" id="roleCardCoordinador">
+                    <input type="radio" name="regRole" value="coordinador">
+                    <div class="roleRadioInfo">
+                      <strong>Coordinador</strong>
+                      <span>Acceso total y supervisión general</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Campos condicionales para Especialista -->
+              <div id="regEspecialistaFields">
+                <div class="field" id="regModalidadSection">
+                  <div class="reiHeaderWrap">
+                    <label>Modalidad(es) a su cargo *</label>
+                    <small style="color:var(--text-400);font-size:11px;font-weight:400">(Puede abarcar más de una, ej. EBR + EBE)</small>
+                  </div>
+                  <input type="hidden" id="regModalidad" value="EBR">
+                  <div class="modalidadGrid" id="regModalidadGrid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;margin-top:6px">
+                    <label class="reiChip" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                      <input type="checkbox" name="regModalidad" value="EBR" checked>
+                      <span>EBR (Regular)</span>
+                    </label>
+                    <label class="reiChip" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                      <input type="checkbox" name="regModalidad" value="EBE">
+                      <span>EBE (Especial)</span>
+                    </label>
+                    <label class="reiChip" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                      <input type="checkbox" name="regModalidad" value="JEC">
+                      <span>JEC</span>
+                    </label>
+                  </div>
+                  <small class="helpText" id="regModalidadHelp" style="margin-top:4px;display:block">Selecciona una o más modalidades a tu cargo.</small>
+                </div>
+
+                <div class="field" id="regReiSection">
+                  <div class="reiHeaderWrap">
+                    <label>REI(s) a su cargo *</label>
+                    <div class="reiQuickBtns">
+                      <button type="button" id="btnSelectAllReis" class="btnMini">Todas</button>
+                      <button type="button" id="btnClearAllReis" class="btnMini">Limpiar</button>
+                    </div>
+                  </div>
+                  <div class="reiGrid" id="regReiGrid">
+                    <label class="reiChip"><input type="checkbox" name="regRei" value="01"><span>REI 01</span></label>
+                    <label class="reiChip"><input type="checkbox" name="regRei" value="02"><span>REI 02</span></label>
+                    <label class="reiChip"><input type="checkbox" name="regRei" value="03"><span>REI 03</span></label>
+                    <label class="reiChip"><input type="checkbox" name="regRei" value="04"><span>REI 04</span></label>
+                    <label class="reiChip"><input type="checkbox" name="regRei" value="05"><span>REI 05</span></label>
+                    <label class="reiChip"><input type="checkbox" name="regRei" value="06"><span>REI 06</span></label>
+                    <label class="reiChip"><input type="checkbox" name="regRei" value="07"><span>REI 07</span></label>
+                    <label class="reiChip"><input type="checkbox" name="regRei" value="08"><span>REI 08</span></label>
+                    <label class="reiChip"><input type="checkbox" name="regRei" value="09"><span>REI 09</span></label>
+                    <label class="reiChip"><input type="checkbox" name="regRei" value="10"><span>REI 10</span></label>
+                    <label class="reiChip"><input type="checkbox" name="regRei" value="11"><span>REI 11</span></label>
+                    <label class="reiChip"><input type="checkbox" name="regRei" value="12"><span>REI 12</span></label>
+                    <label class="reiChip"><input type="checkbox" name="regRei" value="13"><span>REI 13</span></label>
+                    <label class="reiChip"><input type="checkbox" name="regRei" value="14"><span>REI 14</span></label>
+                  </div>
+                  <small class="helpText" id="regReiHelp">Selecciona una o más REDes Educativas asignadas.</small>
+                </div>
+              </div>
+
+              <!-- Aviso informativo para Coordinador -->
+              <div id="regCoordinadorNotice" class="roleNoticeBox" style="display:none;">
+                <span class="roleNoticeIcon">🛡️</span>
+                <div>
+                  <strong>Perfil de Coordinador:</strong>
+                  <p>Tendrá acceso total al sistema (todos los módulos, reportes y configuración de usuarios).</p>
+                </div>
+              </div>
+
+              <button type="submit" class="btn" id="regSubmitBtn">Crear cuenta institucional</button>
+            </form>
+            <p id="regError" class="helpText" style="color:var(--danger); margin-top:10px;"></p>
+            <p id="regSuccess" class="helpText" style="color:var(--ok); margin-top:10px;"></p>
+
+            <div class="authFooterLinks">
+              <button type="button" class="authTextBtn" id="btnBackToLoginFromReg">← Volver a Iniciar sesión</button>
+            </div>
+          </div>
+
+          <!-- VISTA 3: RECUPERAR CONTRASEÑA -->
+          <div id="forgotViewSection" class="authSection" style="display:none;">
+            <h2>Recuperar contraseña</h2>
+            <p class="sub">Ingresa tu correo institucional y te enviaremos un enlace oficial para restablecer tu contraseña.</p>
+            <form id="forgotForm">
+              <div class="field">
+                <label for="forgotEmail">Correo institucional</label>
+                <input type="email" id="forgotEmail" placeholder="ejemplo@ugel03.gob.pe" required>
+              </div>
+              <button type="submit" class="btn" id="forgotSubmitBtn">Enviar enlace de recuperación</button>
+            </form>
+            <p id="forgotError" class="helpText" style="color:var(--danger); margin-top:10px;"></p>
+            <p id="forgotSuccess" class="helpText" style="color:var(--ok); margin-top:10px;"></p>
+
+            <div class="authFooterLinks">
+              <button type="button" class="authTextBtn" id="btnBackToLoginFromForgot">← Volver a Iniciar sesión</button>
+            </div>
+          </div>
+
+          <!-- VISTA 4: VERIFICACIÓN POR CÓDIGO DE 5 DÍGITOS (OTP) -->
+          <div id="verifyOtpSection" class="authSection" style="display:none;">
+            <div class="otpHeaderBadge">
+              <span class="otpBadgeIcon">🔒</span>
+              <span class="otpBadgeText">Verificación de Seguridad UGEL 03</span>
+            </div>
+            <h2>Código de confirmación</h2>
+            <p class="sub">Ingresa el código de 5 dígitos enviado a tu correo institucional:</p>
+            
+            <div class="otpEmailBox">
+              <span class="otpEmailIcon">✉️</span>
+              <span id="otpDisplayEmail" class="otpEmailText">ejemplo@ugel03.gob.pe</span>
+            </div>
+
+            <div class="field" style="margin-top:16px;">
+              <label style="text-align:center;display:block;margin-bottom:8px;font-weight:600;color:var(--navy-900);">Código de 5 dígitos:</label>
+              <div class="otpBoxesRow" id="otpBoxesRow">
+                <input type="text" maxlength="1" class="otpBoxInput" data-otp-idx="0" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code">
+                <input type="text" maxlength="1" class="otpBoxInput" data-otp-idx="1" inputmode="numeric" pattern="[0-9]*">
+                <input type="text" maxlength="1" class="otpBoxInput" data-otp-idx="2" inputmode="numeric" pattern="[0-9]*">
+                <input type="text" maxlength="1" class="otpBoxInput" data-otp-idx="3" inputmode="numeric" pattern="[0-9]*">
+                <input type="text" maxlength="1" class="otpBoxInput" data-otp-idx="4" inputmode="numeric" pattern="[0-9]*">
               </div>
             </div>
-            <button type="submit" class="btn" id="loginBtn">Iniciar sesión</button>
-          </form>
-          <p id="loginError" class="helpText" style="color:var(--danger);"></p>
+
+            <div class="otpSecurityMeta">
+              <span class="otpTimerWrap">⏱️ Vence en: <strong id="otpTimerDisplay">10:00</strong></span>
+              <span class="otpAttemptsWrap">🛡️ Intentos: <strong id="otpAttemptsDisplay">3 restantes</strong></span>
+            </div>
+
+            <button type="button" class="btn" id="btnConfirmOtp" style="margin-top:14px;">Validar y Acceder al Sistema</button>
+            <p id="otpError" class="helpText" style="color:var(--danger); margin-top:10px;"></p>
+            <p id="otpSuccess" class="helpText" style="color:var(--ok); margin-top:10px;"></p>
+            <p class="helpText" style="color:var(--navy-700); font-size:12px; text-align:center; margin-top:8px;">
+              🛡️ Por motivos de seguridad y validación de identidad, el código solo se despacha a la bandeja de entrada de tu correo institucional. Revisa tu buzón y carpeta de correo no deseado (Spam).
+            </p>
+
+            <div class="authFooterLinks">
+              <button type="button" class="authTextBtn" id="btnResendOtp">¿No recibiste el código? Reenviar (<span id="otpCooldownDisplay">60</span>s)</button>
+              <button type="button" class="authTextBtn" id="btnBackFromOtp">← Corregir correo / Volver</button>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -125,12 +317,47 @@
           <!-- Separador vertical -->
           <div class="topDivider"></div>
 
-          <!-- Perfil de Usuario -->
-          <div class="topUserProfile">
+          <!-- Perfil de Usuario con Menú Desplegable de Opciones -->
+          <div class="topUserProfile" id="topUserProfile" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false" title="Mi Cuenta y Opciones">
             <div class="userAvatar" id="topUserAvatar">U</div>
             <div class="userDetails">
-              <span class="userName" id="topUserName">Cargando...</span>
+              <div style="display:flex;align-items:center;gap:4px">
+                <span class="userName" id="topUserName">Cargando...</span>
+                <span class="userDropdownChevron" id="topUserChevron">▾</span>
+              </div>
               <span class="userBadge" id="topUserBadge">GENERAL</span>
+            </div>
+
+            <!-- Menú Desplegable de Usuario -->
+            <div class="userDropdownMenu" id="userDropdownMenu" style="display:none;" role="menu">
+              <div class="userDropdownHeader">
+                <div class="userDropdownNombre" id="menuUserNombre">Usuario</div>
+                <div class="userDropdownEmail" id="menuUserEmail">cargando...</div>
+                <div class="userDropdownRole" id="menuUserRole">Especialista</div>
+              </div>
+              <div class="userDropdownDivider"></div>
+              <button type="button" class="userDropdownItem" id="btnMenuActualizarDatos" role="menuitem">
+                <span class="userDropdownIcon">👤</span>
+                <div class="userDropdownItemText">
+                  <strong>Actualizar mis datos</strong>
+                  <small>Nombres, celular y cargo</small>
+                </div>
+              </button>
+              <button type="button" class="userDropdownItem" id="btnMenuCambiarClave" role="menuitem">
+                <span class="userDropdownIcon">🔑</span>
+                <div class="userDropdownItemText">
+                  <strong>Cambiar mi contraseña</strong>
+                  <small>Seguridad de acceso</small>
+                </div>
+              </button>
+              <div class="userDropdownDivider"></div>
+              <button type="button" class="userDropdownItem danger" id="btnMenuCerrarSesion" role="menuitem">
+                <span class="userDropdownIcon">🚪</span>
+                <div class="userDropdownItemText">
+                  <strong style="color:#DC2626;">Cerrar sesión</strong>
+                  <small>Salir del sistema de monitoreo</small>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -145,7 +372,7 @@
       <nav class="subNavBar app-tabs" id="subNavBar">
         <button class="navbtn active" data-tab="dashboard"><span class="ic">📊</span> Resumen</button>
         <button class="navbtn" data-tab="registrar"><span class="ic">＋</span> Registrar ficha</button>
-        <button class="navbtn" data-tab="consolidado"><span class="ic">▤</span> Reportes</button>
+        <button class="navbtn" data-tab="consolidado"><span class="ic">▦</span> Reportes</button>
         <button class="navbtn" data-tab="concursos"><span class="ic">🏆</span> Concursos</button>
         <button class="navbtn" data-tab="colegios"><span class="ic">🏫</span> Colegios</button>
         <button class="navbtn" data-tab="directorio"><span class="ic">📋</span> Directorio</button>
@@ -194,7 +421,7 @@
   <!-- ===== MÓDULO PRINCIPAL (ES6 Modules) ===== -->
   <!-- Fase 1: precarga del motor de cálculo puro -->
   <link rel="modulepreload" href="./js/calcEngine.js?v=20261110_v2">
-  <script type="module" src="./js/app.js?v=20261117_v1"></script>
+  <script type="module" src="./js/app.js?v=20261119_v5"></script>
 
 </body>
 

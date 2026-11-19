@@ -3,4 +3,4 @@
    UGEL 03 · AGEBRE · Fase 1 Reorganización
    ========================================================================= */
 
-export * from './core/firebase/config.js?v=20261103_v8';
+export * from './core/firebase/config.js?v=20261118_v6';

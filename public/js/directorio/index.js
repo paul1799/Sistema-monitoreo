@@ -7,4 +7,4 @@ export * from './constants.js';
 export * from './helpers.js';
 export * from './sync.js';
 export * from './excel.js';
-export * from './view.js';
+export * from './view.js?v=20261119_v2';

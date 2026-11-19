@@ -10,6 +10,7 @@ import { getDirectivosActivosForColegio, cleanTextCode, isPlaceholderDirectivo, 
 import { REGLA_NIVEL_JEC_1ER_MOMENTO, getNivelJec1erMomento, ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261016_v2';
 import { renderJecVisitaSelectorHtml } from './jec-monitoreo.js';
 import { clearEditMode } from './core/state/app-state.js';
+import { getScopedColegios } from './core/user-scope.js';
 
 export { REGLA_NIVEL_JEC_1ER_MOMENTO, getNivelJec1erMomento, ESPECIALISTA_JEC_OFICIAL };
 
@@ -619,7 +620,20 @@ export const isJecColegio = (c) => {
 };
 
 export const getJecColegiosList = (state) => {
-  const all = Array.isArray(state?.colegios) ? state.colegios : [];
+  const isUserAdmin = (typeof window !== 'undefined' && typeof window.isAdmin === 'function') ? window.isAdmin() : false;
+  const uDoc = state?.currentUserRoleDoc ||
+    (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+    (() => {
+      try {
+        const uid = (typeof window !== 'undefined' && window.currentUser?.uid);
+        if (uid) {
+          const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+          if (raw) return JSON.parse(raw);
+        }
+      } catch (_) {}
+      return null;
+    })();
+  const all = (!isUserAdmin && uDoc) ? getScopedColegios(state, uDoc, false) : (Array.isArray(state?.colegios) ? state.colegios : []);
   const filtered = all.filter(isJecColegio);
   return filtered.length > 0 ? filtered : all;
 };

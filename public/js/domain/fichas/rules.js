@@ -140,6 +140,7 @@ export const ESPECIALISTA_JEC_OFICIAL = {
   modalidad: 'EBR',
   red: 'MSE JEC (Todas las REI)',
   distrito: 'UGEL 03',
+  entidad: 'UGEL 03',
   correo: 'farias@ugel03.gob.pe'
 };
 

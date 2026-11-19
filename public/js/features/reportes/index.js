@@ -14,6 +14,7 @@ import {
   showToast,
   isFichaActiva
 } from '../../core/utils/index.js';
+import { isFichaTypeInUserScope } from '../../core/user-scope.js';
 import {
   setAppState,
   getAppState,
@@ -132,7 +133,7 @@ import {
   setCurrentReportFt,
   currentPendingActiveTab,
   setCurrentPendingActiveTab
-} from './filters.js';
+} from './filters.js?v=20261119_v1';
 
 import {
   renderDistributionChartHtml,
@@ -160,7 +161,7 @@ import {
   exportarTableroEBRCompleto
 } from './export.js';
 
-export * from './filters.js';
+export * from './filters.js?v=20261119_v1';
 export * from './kpis.js';
 export * from './item-report.js';
 export * from './table.js?v=20261110_v1';
@@ -267,7 +268,7 @@ export function renderConsolidadoTab(container, state, getFichaType, dbNs, isAdm
   window.addEventListener('keydown', window._reportDrawerEscHandler);
 
   const secTipo = document.getElementById('secTipoFicha');
-  if (secTipo) secTipo.innerHTML = renderSection1Html(state, getFichaType, user);
+  if (secTipo) secTipo.innerHTML = renderSection1Html(state, getFichaType, user, isAdmin);
 
   renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, user);
 
@@ -322,7 +323,8 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     filtrosReporte,
     state,
     getFichaType,
-    user
+    user,
+    isAdmin
   );
 
   const ft = targetFt;
@@ -335,7 +337,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
         const tid = c.dataset.typeId;
         const countSpan = c.querySelector('.fItemCount');
         if (tid && countSpan) {
-          const count = countFichasForCard(tid, state.submissions, filtrosReporte, state, getFichaType, user);
+          const count = countFichasForCard(tid, state.submissions, filtrosReporte, state, getFichaType, user, isAdmin);
           countSpan.textContent = `${count} fichas`;
           countSpan.className = `fItemCount ${count === 0 ? 'countZero' : 'countHas'}`;
           c.classList.toggle('isZero', count === 0);
@@ -343,7 +345,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
       });
     } else {
       const prevSearch = reportesSearchTerm;
-      secTipo.innerHTML = renderSection1Html(state, getFichaType, user);
+      secTipo.innerHTML = renderSection1Html(state, getFichaType, user, isAdmin);
       const searchInp = secTipo.querySelector('#searchFichaType');
       if (searchInp && prevSearch) {
         searchInp.value = prevSearch;
@@ -1296,11 +1298,27 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     setCurrentReportPendingItems([]);
     setCurrentReportFt(null);
     setCurrentPendingActiveTab('ALL');
+    const uDocForKpi = state?.currentUserRoleDoc ||
+      (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+      (() => {
+        try {
+          const uid = user?.uid || (typeof window !== 'undefined' && window.currentUser?.uid);
+          if (uid) {
+            const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+            if (raw) return JSON.parse(raw);
+          }
+        } catch (_) {}
+        return null;
+      })();
+    const activeTypesForUser = (state.fichaTypes || [])
+      .filter(isFichaActiva)
+      .filter(f => isFichaTypeInUserScope(f, uDocForKpi, isAdmin));
+
     cardsHtml = `
       <div class="cards">
         <div class="card card-blue"><div class="num">${statsList.length}</div><div class="lbl">Fichas registradas ${vFilter ? `(V${vFilter})` : ''}</div></div>
         <div class="card card-ok"><div class="num">${instCount}</div><div class="lbl">Instituciones</div></div>
-        ${isAllMode ? `<div class="card card-navy"><div class="num">${(state.fichaTypes || []).filter(isFichaActiva).length}</div><div class="lbl">Tipos de ficha</div></div>` : ''}
+        ${isAllMode ? `<div class="card card-navy"><div class="num">${activeTypesForUser.length}</div><div class="lbl">Tipos de ficha</div></div>` : ''}
         <div class="card card-gold"><div class="num">${avgPct === null ? '—' : avgPct + '%'}</div><div class="lbl">Cumplimiento promedio</div></div>
       </div>
     `;

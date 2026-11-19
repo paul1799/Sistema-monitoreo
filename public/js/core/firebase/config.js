@@ -15,3 +15,7 @@ export const FIREBASE_CONFIG = {
 /* Opcional: URL de una Cloud Function propia que lea fichas escaneadas con IA.
    Déjalo vacío ("") para ocultar esa función. */
 export const AI_SCAN_ENDPOINT = "";
+
+/* Webhook oficial de Google Apps Script para el envío de correos institucionales y códigos OTP */
+export const AGEBRE_EMAIL_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwNd_fX-e2evBYmB5PmbXtq7bB8-HyDEWUjUT2ROoH35KqWvGgCSApHxKdWVGLx3Zs/exec";
+

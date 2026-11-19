@@ -8,8 +8,10 @@
  * Estilos definidos en portal-modulos.css según diseño institucional.
  */
 
-export function renderPortalView(container, { onSelectModule }) {
+export function renderPortalView(container, { onSelectModule, canAccessConcursos = true, onShowToast }) {
   if (!container) return;
+
+  const isRestricted = !canAccessConcursos;
 
   container.innerHTML = `
     <div class="portalContainer">
@@ -33,13 +35,15 @@ export function renderPortalView(container, { onSelectModule }) {
         </div>
 
         <!-- Tarjeta: Concursos -->
-        <div class="portalCard concursos" id="portalCardConcursos" tabindex="0" role="button" aria-label="Ingresar a Concursos Escolares">
+        <div class="portalCard concursos ${isRestricted ? 'portalCard--restricted' : ''}" id="portalCardConcursos" tabindex="0" role="button" aria-label="${isRestricted ? 'Acceso restringido a Concursos Escolares' : 'Ingresar a Concursos Escolares'}" title="${isRestricted ? 'Acceso restringido: requiere habilitación del Administrador' : 'Ingresar a Concursos Escolares'}">
+          ${isRestricted ? '<div class="portalRestrictedBadge">🔒 Requiere autorización</div>' : ''}
           <div class="portalCardHeader">
             <h3>Concursos</h3>
           </div>
           <div class="portalCardImageWrap">
             <img class="portalCardImg" src="./images/concursos.png" alt="Concursos Escolares AGEBRE - UGEL 03" loading="eager">
           </div>
+          ${isRestricted ? '<div class="portalRestrictedBar"><span>🔒 Acceso restringido por el Administrador</span></div>' : ''}
         </div>
       </div>
     </div>
@@ -65,11 +69,24 @@ export function renderPortalView(container, { onSelectModule }) {
   }
 
   if (btnConcursos) {
-    btnConcursos.addEventListener('click', () => select('concursos'));
+    const handleConcursos = (e) => {
+      e.preventDefault();
+      if (isRestricted) {
+        const msg = '🔒 Acceso restringido: Tu cuenta de especialista actualmente solo tiene acceso a Monitoreo y Seguimiento. Para acceder a Concursos Escolares, solicita la habilitación al Administrador.';
+        if (typeof onShowToast === 'function') {
+          onShowToast(msg);
+        } else {
+          alert(msg);
+        }
+        return;
+      }
+      select('concursos');
+    };
+
+    btnConcursos.addEventListener('click', handleConcursos);
     btnConcursos.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        select('concursos');
+        handleConcursos(e);
       }
     });
   }

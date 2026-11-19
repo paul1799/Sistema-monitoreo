@@ -18,6 +18,7 @@ import { bar, getResponsableForColegio } from './scoring.js';
 
 
 import { getDirectivosActivosForColegio } from '../directorio.js?v=20261015_v1';
+import { getScopedColegios, getUserAssignedReis } from '../core/user-scope.js';
 
 /* ============================= COLEGIOS — HELPERS ============================= */
 export function buildColegioIndex(state) {
@@ -470,21 +471,23 @@ function buildColegioRowsHtml(filtered, bySchool, getFichaType, colExpandedId, i
 export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin, currentUser) {
   if (currentUser) cachedCurrentUser = currentUser;
   const bySchool = groupSubmissionsByColegio(state);
+  const scopedColegios = state.colegios || [];
+
   const standardReis = Array.from({ length: 16 }, (_, i) => String(i + 1).padStart(2, '0'));
   const reiSet = new Set(standardReis);
-  state.colegios.forEach(c => {
+  scopedColegios.forEach(c => {
     const r = normalizeReiNumber(c.rei || c.red);
     if (r) reiSet.add(r);
   });
   const reiList = Array.from(reiSet).sort((a, b) => Number(a) - Number(b));
-  const distritoList = Array.from(new Set(state.colegios.map(c => c.distrito).filter(Boolean))).sort();
-  const modalidadList = Array.from(new Set(state.colegios.map(c => c.modalidad).filter(Boolean))).sort();
 
-  const totalColegios = state.colegios.length;
-  const sinMonitoreo = state.colegios.filter(c => (bySchool[c.id] || []).length === 0).length;
+  const distritoList = Array.from(new Set(scopedColegios.map(c => c.distrito).filter(Boolean))).sort();
+  const modalidadList = Array.from(new Set(scopedColegios.map(c => c.modalidad).filter(Boolean))).sort();
+
+  const totalColegios = scopedColegios.length;
+  const sinMonitoreo = scopedColegios.filter(c => (bySchool[c.id] || []).length === 0).length;
   const coberturaPct = totalColegios ? Math.round((totalColegios - sinMonitoreo) / totalColegios * 100) : null;
-  const totalJec = state.colegios.filter(c => c.esJec || c.es_jec || String(c.modelo || '').toUpperCase() === 'JEC').length;
-
+  const totalJec = scopedColegios.filter(c => c.esJec || c.es_jec || String(c.modelo || '').toUpperCase() === 'JEC').length;
   const reiAgg = {};
   reiList.forEach(r => reiAgg[r] = { rei: r, total: 0, monitoreados: 0, sumPct: 0, cntPct: 0 });
   state.colegios.forEach(c => {
@@ -556,7 +559,7 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
       '<div class="panel">' +
       '<h3>Padrón de instituciones</h3>' +
       '<div class="filterBar">' +
-      '<div class="field"><label>REI</label><select id="col_fil_rei"><option value="">Todas</option>' + reiList.map(r => {
+      '<div class="field"><label>REI</label><select id="col_fil_rei">' + (assignedReis.includes('TODAS') ? '<option value="">Todas</option>' : (assignedReis.length > 1 ? '<option value="">Todas mis REIs (' + assignedReis.join(', ') + ')</option>' : '')) + reiList.map(r => {
         const isSel = (r === colFilters.rei) || (normalizeReiNumber(colFilters.rei) === r);
         return '<option value="' + esc(r) + '"' + (isSel ? ' selected' : '') + '>' + esc(r) + '</option>';
       }).join('') + '</select></div>' +

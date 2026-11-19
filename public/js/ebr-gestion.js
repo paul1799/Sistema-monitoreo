@@ -26,6 +26,7 @@ import {
   calcularResultadoEbrDesdeRespuestas,
   COLORES_ESTADO_EBR
 } from './instrumentoGestionEBR.js?v=20261001_v1';
+import { getScopedColegios } from './core/user-scope.js';
 
 /**
  * Resuelve las secciones e indicadores correspondientes a la visita (1, 2 o 3)
@@ -2039,7 +2040,20 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
   if (instInput && dropdown) {
     const showDropdown = () => {
       const q = normalizeText(instInput.value);
-      const todosColegios = state.colegios || [];
+      const isUserAdmin = (typeof window !== 'undefined' && typeof window.isAdmin === 'function') ? window.isAdmin() : false;
+      const uDoc = state?.currentUserRoleDoc ||
+        (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+        (() => {
+          try {
+            const uid = (typeof window !== 'undefined' && window.currentUser?.uid);
+            if (uid) {
+              const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+              if (raw) return JSON.parse(raw);
+            }
+          } catch (_) {}
+          return null;
+        })();
+      const todosColegios = (!isUserAdmin && uDoc) ? getScopedColegios(state, uDoc, false) : (state.colegios || []);
       // Filtro EBR: mostrar solo IEs con modalidad='EBR' o sin campo modalidad (retrocompatibilidad)
       const colegiosEbr = todosColegios.filter(c => {
         const mod = String(c.modalidad || '').trim().toUpperCase();

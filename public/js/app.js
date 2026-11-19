@@ -4,9 +4,9 @@
    ========================================================================= */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { FIREBASE_CONFIG } from './firebase-config.js?v=20260918_v11';
-import { getFirestore, initFirestore, makeDbAdapter } from './firestore.js?v=20261028_v2';
-import { getAuth, signOut, setupAuthListeners } from './auth.js?v=20261023_v1';
+import { FIREBASE_CONFIG } from './firebase-config.js?v=20261118_v6';
+import { getFirestore, initFirestore, makeDbAdapter } from './firestore.js?v=20261118_v2';
+import { getAuth, signOut, setupAuthListeners } from './auth.js?v=20261119_v5';
 import {
   esc,
   showToast,
@@ -29,10 +29,11 @@ import {
   getConcursoSubTab,
   setConcursoSubTab,
   getDeletedFichaTypeIds,
-} from './ui.js?v=20261117_v1';
+} from './ui.js?v=20261119_v5';
 
-import { renderPortalView } from './portal.js?v=20261014_v1';
-import { renderDirectorioTab } from './directorio.js?v=20261015_v1';
+import { renderPortalView } from './portal.js?v=20261118_v1';
+import { renderDirectorioTab } from './directorio.js?v=20261119_v2';
+import { openUserProfileModal, openChangePasswordModal } from './ui/perfil-modal.js?v=20261119_v5';
 import { renderAlertasTab, getAlertCount } from './alertas.js?v=20261023_v3';
 import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261103_v8';
 import { PLANTILLAS_BASE_OFICIALES, ALIAS_A_PLANTILLA_BASE } from './catalogo-plantillas-base.js?v=20261016_v4';
@@ -65,6 +66,7 @@ let connectionTimer = null;
 
 const state = {
   modulo: sessionStorage.getItem('agebre_active_modulo') || 'portal', // 'portal' | 'monitoreo' | 'concursos'
+  currentUserRoleDoc: null,
   activeTab: 'dashboard',
   fichaTypes: [],  // {id, nombre, descripcion, icono, tipoRespuesta, secciones, extras}
   submissions: [],  // {id, fichaTypeId, ...}
@@ -86,7 +88,40 @@ if (typeof window !== 'undefined') {
   window.state = state;
 }
 
-function isAdmin() { return currentRole === 'admin'; }
+function isAdmin() {
+  const email = (currentUser?.email || '').toLowerCase();
+  const uDoc = state?.currentUserRoleDoc ||
+    (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+    (() => {
+      try {
+        const uid = currentUser?.uid;
+        if (uid) {
+          const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+          if (raw) return JSON.parse(raw);
+        }
+      } catch (_) {}
+      return null;
+    })();
+
+  return currentRole === 'admin' ||
+    currentRole === 'coordinador' ||
+    uDoc?.role === 'admin' ||
+    uDoc?.role === 'coordinador' ||
+    uDoc?.userType === 'coordinador' ||
+    uDoc?.userType === 'admin' ||
+    email === 'agebre@ugel03.gob.pe' ||
+    email === 'paulmontalvo54@gmail.com';
+}
+
+if (typeof window !== 'undefined') {
+  window.isAdmin = isAdmin;
+}
+
+function canAccessConcursos() {
+  if (isAdmin()) return true;
+  if (state.currentUserRoleDoc?.userType === 'coordinador') return true;
+  return Boolean(state.currentUserRoleDoc?.accesoConcursos);
+}
 
 function getFichaType(id) {
   if (!id) return null;
@@ -104,6 +139,15 @@ function getFichaType(id) {
 
 /* ============================= SELECCIÓN DE MÓDULOS ============================= */
 function seleccionarModulo(mod) {
+  if (mod === 'concursos' && !canAccessConcursos()) {
+    showToast('🔒 Acceso restringido: El Administrador debe habilitar tu acceso al Módulo de Concursos.');
+    if (state.modulo === 'concursos' || !state.modulo) {
+      state.modulo = 'monitoreo';
+    }
+    render();
+    return;
+  }
+
   state.modulo = mod;
   const welcomeBanner = document.getElementById('welcomeBanner');
   if (mod === 'portal') {
@@ -312,13 +356,13 @@ function render() {
 
   // Si estamos en la pantalla de bienvenida/portal de aplicaciones
   if (state.modulo === 'portal') {
-    if (!c.querySelector('.portalContainer')) {
-      renderPortalView(c, {
-        onSelectModule: (selectedMod) => {
-          seleccionarModulo(selectedMod);
-        }
-      });
-    }
+    renderPortalView(c, {
+      onSelectModule: (selectedMod) => {
+        seleccionarModulo(selectedMod);
+      },
+      canAccessConcursos: canAccessConcursos(),
+      onShowToast: (msg) => showToast(msg)
+    });
     return;
   }
 
@@ -806,7 +850,8 @@ function startListeners() {
           modalidad: ESPECIALISTA_JEC_OFICIAL.modalidad,
           red: ESPECIALISTA_JEC_OFICIAL.red,
           distrito: 'UGEL 03',
-          entidad: ESPECIALISTA_JEC_OFICIAL.entidad
+          entidad: ESPECIALISTA_JEC_OFICIAL.entidad || 'UGEL 03',
+          correo: ESPECIALISTA_JEC_OFICIAL.correo || 'farias@ugel03.gob.pe'
         });
       }
       state.responsables.sort((a, b) => (a.nombresApellidos || a.especialista || '').localeCompare(b.nombresApellidos || b.especialista || ''));
@@ -889,6 +934,40 @@ function startListeners() {
     );
   }
 
+  // Listener en tiempo real del rol y permisos del usuario actual (incluso para especialistas)
+  if (currentUser?.uid && dbNs) {
+    try {
+      activeUnsubscribers.push(
+        dbNs.collection('roles').doc(currentUser.uid).onSnapshot(docSnap => {
+          if (docSnap && docSnap.exists) {
+            const data = { id: currentUser.uid, ...docSnap.data() };
+            state.currentUserRoleDoc = data;
+            try { sessionStorage.setItem('agebre_user_doc_' + currentUser.uid, JSON.stringify(data)); } catch (_) {}
+            const effectiveRole = data.role || (data.userType === 'coordinador' ? 'admin' : 'general');
+            if (effectiveRole && effectiveRole !== currentRole) {
+              currentRole = effectiveRole;
+            }
+            if (data.nombre) {
+              const topName = document.getElementById('topUserName');
+              if (topName) topName.textContent = data.nombre;
+              const menuName = document.getElementById('menuUserNombre');
+              if (menuName) menuName.textContent = data.nombre;
+            }
+            setupUserProfileDropdown(currentUser);
+            if (state.modulo === 'concursos' && !canAccessConcursos()) {
+              showToast('🔒 Tu acceso al Módulo de Concursos ha sido modificado por el Administrador.');
+              seleccionarModulo('monitoreo');
+            } else {
+              renderDebounced();
+            }
+          }
+        }, err => console.warn('Aviso al sincronizar permisos de usuario:', err))
+      );
+    } catch (e) {
+      console.warn('Aviso al iniciar listener de rol de usuario:', e);
+    }
+  }
+
   renderDebounced();
 }
 
@@ -921,8 +1000,107 @@ function setConnectionState(status) { // 'connecting' | 'online' | 'offline' | '
   }
 }
 
+/* ============================= MENÚ DE PERFIL DE USUARIO ============================= */
+function setupUserProfileDropdown(user) {
+  const profileTrigger = document.getElementById('topUserProfile');
+  const dropdownMenu = document.getElementById('userDropdownMenu');
+  if (!profileTrigger || !dropdownMenu) return;
+
+  const emailStr = user?.email || user?.displayName || 'usuario';
+  const uDoc = state?.currentUserRoleDoc || {};
+  const nombreStr = uDoc.nombre || user?.displayName || emailStr;
+  const cargoStr = isAdmin() ? 'Administrador / Coordinador' : (uDoc.cargo || 'Especialista General');
+
+  const elNombre = document.getElementById('menuUserNombre');
+  const elEmail = document.getElementById('menuUserEmail');
+  const elRole = document.getElementById('menuUserRole');
+
+  if (elNombre) elNombre.textContent = nombreStr;
+  if (elEmail) elEmail.textContent = emailStr;
+  if (elRole) {
+    elRole.textContent = isAdmin() ? 'ADMINISTRADOR' : 'ESPECIALISTA';
+    elRole.title = cargoStr;
+  }
+
+  const closeDropdown = () => {
+    dropdownMenu.style.display = 'none';
+    profileTrigger.classList.remove('active');
+    profileTrigger.setAttribute('aria-expanded', 'false');
+  };
+
+  const openDropdown = () => {
+    dropdownMenu.style.display = 'flex';
+    profileTrigger.classList.add('active');
+    profileTrigger.setAttribute('aria-expanded', 'true');
+  };
+
+  profileTrigger.onclick = (e) => {
+    if (e.target.closest('.userDropdownItem')) return;
+    if (dropdownMenu.style.display === 'flex') {
+      closeDropdown();
+    } else {
+      openDropdown();
+    }
+  };
+
+  profileTrigger.onkeydown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      if (!e.target.closest('.userDropdownItem')) {
+        e.preventDefault();
+        profileTrigger.click();
+      }
+    } else if (e.key === 'Escape') {
+      closeDropdown();
+    }
+  };
+
+  // Cerrar al hacer clic fuera
+  document.addEventListener('click', (e) => {
+    if (!profileTrigger.contains(e.target)) {
+      closeDropdown();
+    }
+  });
+
+  // Opción 1: Actualizar mis datos
+  const btnActualizar = document.getElementById('btnMenuActualizarDatos');
+  if (btnActualizar) {
+    btnActualizar.onclick = (e) => {
+      e.stopPropagation();
+      closeDropdown();
+      openUserProfileModal(state, dbNs, currentUser, () => {
+        const updatedDoc = state?.currentUserRoleDoc || {};
+        const newNombre = updatedDoc.nombre || currentUser?.displayName || emailStr;
+        if (elNombre) elNombre.textContent = newNombre;
+        const topName = document.getElementById('topUserName');
+        if (topName) topName.textContent = newNombre;
+      });
+    };
+  }
+
+  // Opción 2: Cambiar mi contraseña
+  const btnCambiarClave = document.getElementById('btnMenuCambiarClave');
+  if (btnCambiarClave) {
+    btnCambiarClave.onclick = (e) => {
+      e.stopPropagation();
+      closeDropdown();
+      openChangePasswordModal(currentUser, dbNs);
+    };
+  }
+
+  // Opción 3: Cerrar sesión
+  const btnCerrar = document.getElementById('btnMenuCerrarSesion');
+  if (btnCerrar) {
+    btnCerrar.onclick = (e) => {
+      e.stopPropagation();
+      closeDropdown();
+      const logoutBtn = document.getElementById('topLogoutBtn');
+      if (logoutBtn) logoutBtn.click();
+    };
+  }
+}
+
 /* ============================= AUTH CALLBACKS ============================= */
-function onLogin(user, role) {
+function onLogin(user, role, userRoleDoc) {
   if (connectionTimer) {
     clearTimeout(connectionTimer);
     connectionTimer = null;
@@ -932,8 +1110,24 @@ function onLogin(user, role) {
   currentUser = user;
   currentRole = role;
 
-  // Iniciar en portal si no hay módulo activo guardado
-  state.modulo = sessionStorage.getItem('agebre_active_modulo') || 'portal';
+  if (userRoleDoc) {
+    state.currentUserRoleDoc = userRoleDoc;
+    try { sessionStorage.setItem('agebre_user_doc_' + user.uid, JSON.stringify(userRoleDoc)); } catch (_) {}
+  } else {
+    try {
+      const stored = sessionStorage.getItem('agebre_user_doc_' + user.uid);
+      if (stored) state.currentUserRoleDoc = JSON.parse(stored);
+    } catch (_) {}
+  }
+
+  // Iniciar en portal si no hay módulo activo guardado o validar restricción
+  const savedMod = sessionStorage.getItem('agebre_active_modulo') || 'portal';
+  if (savedMod === 'concursos' && !canAccessConcursos()) {
+    state.modulo = 'portal';
+    sessionStorage.removeItem('agebre_active_modulo');
+  } else {
+    state.modulo = savedMod;
+  }
 
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
@@ -961,16 +1155,34 @@ function onLogin(user, role) {
       }
     };
   }
-  if (elName) elName.textContent = emailStr;
+  const uDocInit = state.currentUserRoleDoc || {};
+  if (elName) elName.textContent = uDocInit.nombre || emailStr;
   if (elBadge) elBadge.textContent = roleLabel;
+
+  setupUserProfileDropdown(user);
 
   // 2. Actualizar banner de bienvenida institucional
   const bannerInfo = document.getElementById('bannerUserInfo');
   if (bannerInfo) {
-    bannerInfo.innerHTML =
-      'Conectado como: <strong>' + esc(emailStr) + '</strong>' +
-      ' · <span class="badge ' + (isAdmin() ? 'st-logrado' : 'st-none') + '">' + (isAdmin() ? 'Administrador' : 'Especialista General') + '</span>' +
-      ' · Todos los especialistas con acceso ven la misma información consolidada.';
+    if (isAdmin()) {
+      bannerInfo.innerHTML =
+        'Conectado como: <strong>' + esc(emailStr) + '</strong>' +
+        ' · <span class="badge st-logrado">Administrador</span>' +
+        ' · Supervisión consolidada de todas las REIs y modalidades institucionales.';
+    } else {
+      const uDoc = state.currentUserRoleDoc;
+      const rawMods = uDoc?.modalidades || uDoc?.modalidad || 'EBR';
+      const modStr = Array.isArray(rawMods) ? rawMods.join(', ') : String(rawMods);
+      const rawReis = uDoc?.reis || ['01'];
+      const reisArr = Array.isArray(rawReis) ? rawReis : [rawReis];
+      const reisStr = reisArr.map(r => r === 'TODAS' ? 'Todas las REIs' : 'REI ' + String(r).padStart(2, '0')).join(', ');
+      bannerInfo.innerHTML =
+        'Conectado como: <strong>' + esc(emailStr) + '</strong>' +
+        ' · <span class="badge st-none">Especialista</span>' +
+        ' · <strong>Modalidad:</strong> ' + esc(modStr) +
+        ' · <strong>Jurisdicción:</strong> <span class="badge" style="background:#E0F2FE;color:#0369A1;font-weight:700">' + esc(reisStr) + '</span>' +
+        ' · Visualizando exclusivamente registros y fichas de su REI asignada.';
+    }
   }
 
   // 3. Listener del botón Cerrar Sesión en la barra superior con confirmación
@@ -982,6 +1194,8 @@ function onLogin(user, role) {
         isAdmin: isAdmin(),
         onConfirmLogout: async () => {
           stopListeners();
+          // Espera breve para que el WebChannel de Firestore cierre ordenadamente los canales de escucha
+          await new Promise(resolve => setTimeout(resolve, 150));
           try {
             await signOut(auth);
             showToast('✓ Sesión cerrada correctamente.');
@@ -991,6 +1205,8 @@ function onLogin(user, role) {
         },
         onSwitchUser: async () => {
           stopListeners();
+          // Espera breve para que el WebChannel de Firestore cierre ordenadamente los canales de escucha
+          await new Promise(resolve => setTimeout(resolve, 150));
           try {
             await signOut(auth);
             const emailInp = document.getElementById('loginEmail');
@@ -1013,6 +1229,11 @@ function onLogin(user, role) {
 }
 
 function onLogout() {
+  const dropdownMenu = document.getElementById('userDropdownMenu');
+  if (dropdownMenu) dropdownMenu.style.display = 'none';
+  const profileTrigger = document.getElementById('topUserProfile');
+  if (profileTrigger) profileTrigger.classList.remove('active');
+
   stopListeners();
   if (connectionTimer) {
     clearTimeout(connectionTimer);
@@ -1022,6 +1243,7 @@ function onLogout() {
 
   currentUser = null;
   currentRole = null;
+  state.currentUserRoleDoc = null;
   state.modulo = 'portal';
   try {
     sessionStorage.removeItem('agebre_active_modulo');
@@ -1029,6 +1251,14 @@ function onLogout() {
   } catch (_) { }
 
   document.getElementById('loginScreen').style.display = 'flex';
+  const loginViewSection = document.getElementById('loginViewSection');
+  if (loginViewSection) loginViewSection.style.display = 'block';
+  const registerViewSection = document.getElementById('registerViewSection');
+  if (registerViewSection) registerViewSection.style.display = 'none';
+  const forgotViewSection = document.getElementById('forgotViewSection');
+  if (forgotViewSection) forgotViewSection.style.display = 'none';
+  const verifyOtpSection = document.getElementById('verifyOtpSection');
+  if (verifyOtpSection) verifyOtpSection.style.display = 'none';
   document.getElementById('app').style.display = 'none';
 }
 
@@ -1087,6 +1317,14 @@ async function initApp() {
     console.error('No se pudo inicializar Firebase. Revisa FIREBASE_CONFIG.', e);
     setConnectionState('offline');
     document.getElementById('loginScreen').style.display = 'flex';
+  const loginViewSection = document.getElementById('loginViewSection');
+  if (loginViewSection) loginViewSection.style.display = 'block';
+  const registerViewSection = document.getElementById('registerViewSection');
+  if (registerViewSection) registerViewSection.style.display = 'none';
+  const forgotViewSection = document.getElementById('forgotViewSection');
+  if (forgotViewSection) forgotViewSection.style.display = 'none';
+  const verifyOtpSection = document.getElementById('verifyOtpSection');
+  if (verifyOtpSection) verifyOtpSection.style.display = 'none';
     document.getElementById('loginError').textContent =
       'No se pudo inicializar Firebase. Revisa la configuración (firebase-config.js).';
     return;

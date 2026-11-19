@@ -17,6 +17,7 @@ import { esc, normalizeText, showToast, genId, fmtDate as formatDate, todayStr, 
 import { clearEditMode, getRegTargetVisita, getRegSelectedColegioId } from './core/state/app-state.js';
 import { getResponsableForColegio } from './ui/scoring.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha } from './directorio.js?v=20261013_v1';
+import { getScopedColegios } from './core/user-scope.js';
 
 /**
  * Detecta si una plantilla o submission corresponde a la Ficha de Gestión Escolar PRITE
@@ -1186,7 +1187,20 @@ function bindPriteFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
         return;
       }
 
-      const colegios = state.colegios || [];
+      const isUserAdmin = (typeof window !== 'undefined' && typeof window.isAdmin === 'function') ? window.isAdmin() : false;
+      const uDoc = state?.currentUserRoleDoc ||
+        (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+        (() => {
+          try {
+            const uid = (typeof window !== 'undefined' && window.currentUser?.uid);
+            if (uid) {
+              const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+              if (raw) return JSON.parse(raw);
+            }
+          } catch (_) {}
+          return null;
+        })();
+      const colegios = (!isUserAdmin && uDoc) ? getScopedColegios(state, uDoc, false) : (state.colegios || []);
       // Priorizar PRITE pero permitir buscar cualquiera
       const matches = colegios.filter(c => {
         const nom = normalizeText(c.ie || c.nombre || '');

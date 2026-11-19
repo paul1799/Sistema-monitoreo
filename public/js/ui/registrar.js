@@ -4,7 +4,7 @@
  * UGEL 03 – AGEBRE – Fase 4 Reorganización
  */
 
-export * from '../features/registrar/index.js';
+export * from '../features/registrar/index.js?v=20261119_v1';
 
 export {
   registrarSubTab,
@@ -35,4 +35,4 @@ export {
   getFichaListFilterModalidad,
   setFichaListFilterModalidad,
   getFichaDescExpanded
-} from '../features/registrar/index.js';
+} from '../features/registrar/index.js?v=20261119_v1';

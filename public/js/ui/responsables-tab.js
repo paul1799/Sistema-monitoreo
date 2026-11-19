@@ -248,12 +248,13 @@ export function renderResponsablesTab(container, state, dbNs, isAdmin, currentUs
       modalidad: ESPECIALISTA_JEC_OFICIAL.modalidad,
       red: ESPECIALISTA_JEC_OFICIAL.red,
       distrito: 'UGEL 03',
-      entidad: ESPECIALISTA_JEC_OFICIAL.entidad
+      entidad: ESPECIALISTA_JEC_OFICIAL.entidad || 'UGEL 03',
+      correo: ESPECIALISTA_JEC_OFICIAL.correo || 'farias@ugel03.gob.pe'
     };
     if (!state.responsables) state.responsables = [];
     state.responsables.push(jecObj);
     if (isAdmin && dbNs) {
-      dbNs.collection('responsables').doc('resp_jec_fanny_arias').set({ ...jecObj, createdAt: Date.now() }).catch(() => { });
+      dbNs.collection('responsables').doc('resp_jec_fanny_arias').set(cleanForFirestore({ ...jecObj, createdAt: Date.now() })).catch(() => { });
     }
   }
 

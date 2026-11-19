@@ -29,11 +29,11 @@ import {
   ESPECIALISTA_JEC_OFICIAL
 } from '../../calcEngine.js?v=20261103_v8';
 import { syncDirectivosFromFicha } from '../../directorio.js?v=20261013_v1';
-import { isFichaCebeGestion, guardarFormularioCebe } from '../../cebe-gestion.js';
-import { isFichaPriteGestion, guardarFormularioPrite } from '../../prite-gestion.js';
-import { isFichaEbrGestionEscolar, collectEbrGestionFormData, resetEbrFormState } from '../../ebr-gestion.js?v=20261117_v1';
-import { isFichaJec, collectJecFormData, resetJecFormState } from '../../jec-monitoreo.js';
-import { collectJec1erFormData, resetJec1erFormState } from '../../jec-1er-monitoreo.js';
+import { isFichaCebeGestion, guardarFormularioCebe } from '../../cebe-gestion.js?v=20261119_v1';
+import { isFichaPriteGestion, guardarFormularioPrite } from '../../prite-gestion.js?v=20261119_v1';
+import { isFichaEbrGestionEscolar, collectEbrGestionFormData, resetEbrFormState } from '../../ebr-gestion.js?v=20261119_v1';
+import { isFichaJec, collectJecFormData, resetJecFormState } from '../../jec-monitoreo.js?v=20261119_v1';
+import { collectJec1erFormData, resetJec1erFormState } from '../../jec-1er-monitoreo.js?v=20261119_v1';
 import { getSubmissionVisitaNum } from '../../domain/fichas/index.js';
 import { normalizeExtras } from '../plantillas/index.js';
 import {

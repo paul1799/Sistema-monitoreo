@@ -21,6 +21,7 @@ import {
   resolveDirectorName,
   isFichaActiva
 } from '../../core/utils/index.js';
+import { isSubmissionInUserScope, getUserAssignedReis, getUserAssignedModalidades, isFichaTypeInUserScope, getScopedColegios } from '../../core/user-scope.js';
 import {
   setAppState,
   getAppState,
@@ -575,19 +576,40 @@ export function getFilteredColegiosForReportesSearch(state, filters, getFichaTyp
   const isCebeReport = !isAllMode && targetFt && isFichaCebeGestion(targetFt);
   const targetModality = isJecReport ? 'JEC' : (isEbrReport ? 'EBR' : (isPriteReport ? 'PRITE' : (isCebeReport ? 'CEBE' : null)));
 
-  // 2. Base de colegios según modalidad del padrón
-  const padron = (state?.colegios || []).slice();
+  // 2. Base de colegios según jurisdicción y modalidad del padrón
+  const isUserAdminCol = (typeof window !== 'undefined' && typeof window.isAdmin === 'function') ? window.isAdmin() : false;
+  const uDocCol = state?.currentUserRoleDoc ||
+    (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+    (() => {
+      try {
+        const uid = user?.uid || (typeof window !== 'undefined' && window.currentUser?.uid);
+        if (uid) {
+          const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+          if (raw) return JSON.parse(raw);
+        }
+      } catch (_) {}
+      return null;
+    })();
+  const padron = (!isUserAdminCol && uDocCol) ? getScopedColegios(state, uDocCol, false) : (state?.colegios || []).slice();
   let baseColegios = targetModality ? padron.filter(c => isModalityMatch(c, targetModality)) : padron;
 
   // Índice para mapear envíos a colegios del padrón
   const colegioIdx = buildColegioIndex(state);
   const knownColegioNames = new Set(baseColegios.map(c => normalizeText(c.ie || c.nombre || '')).filter(Boolean));
 
-  // 3. Submissions de la ficha activa (deduplicadas)
+  // 3. Submissions de la ficha activa (deduplicadas y delimitadas por jurisdicción)
   let fichaSubs = deduplicateTwinSubmissions(getSubmissionsForFichaType(state?.submissions || [], f.tipo, targetFt));
   if (isAllMode && state?.fichaTypes) {
-    const activeTypeIds = new Set(state.fichaTypes.filter(isFichaActiva).map(ft => ft.id));
+    const activeTypeIds = new Set(
+      state.fichaTypes
+        .filter(isFichaActiva)
+        .filter(ft => isFichaTypeInUserScope(ft, uDocCol, isUserAdminCol))
+        .map(ft => ft.id)
+    );
     fichaSubs = fichaSubs.filter(s => activeTypeIds.has(s.fichaTypeId));
+  }
+  if (!isUserAdminCol && uDocCol) {
+    fichaSubs = fichaSubs.filter(s => isSubmissionInUserScope(s, state, uDocCol, false, getFichaType));
   }
 
   // Incluir en baseColegios aquellas instituciones de envíos que no figuren en el padrón
@@ -748,21 +770,58 @@ export function getFilteredColegiosForReportesSearch(state, filters, getFichaTyp
   return results;
 }
 
-export function aplicarFiltrosReporte(submissions, filters, state, getFichaType, user = null) {
+export function aplicarFiltrosReporte(submissions, filters, state, getFichaType, user = null, isAdmin = null) {
   const f = filters || {};
   const isAllMode = !f.tipo || f.tipo === '__ALL__';
   const targetFt = !isAllMode ? getEnrichedFichaType(getFichaType(f.tipo)) : null;
 
   let subs = getSubmissionsForFichaType(submissions, f.tipo, targetFt);
 
-  // Si estamos en avance general (todas las fichas), considerar únicamente envíos de fichas activas
+  // Rol y jurisdicción del usuario actual
+  const isUserAdmin = (typeof isAdmin === 'boolean')
+    ? isAdmin
+    : ((typeof window !== 'undefined' && typeof window.isAdmin === 'function') ? window.isAdmin() : false);
+
+  const uDoc = state?.currentUserRoleDoc ||
+    (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+    (() => {
+      try {
+        const uid = user?.uid || (typeof window !== 'undefined' && window.currentUser?.uid);
+        if (uid) {
+          const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+          if (raw) return JSON.parse(raw);
+        }
+      } catch (_) {}
+      return null;
+    })();
+
+  // Si estamos en avance general (todas las fichas), considerar únicamente envíos de fichas activas autorizadas para el usuario
   if (isAllMode && state?.fichaTypes) {
-    const activeTypeIds = new Set(state.fichaTypes.filter(isFichaActiva).map(ft => ft.id));
+    const activeTypeIds = new Set(
+      state.fichaTypes
+        .filter(isFichaActiva)
+        .filter(ft => isFichaTypeInUserScope(ft, uDoc, isUserAdmin))
+        .map(ft => ft.id)
+    );
     subs = subs.filter(s => activeTypeIds.has(s.fichaTypeId));
   }
 
   // Deduplicación defensiva en memoria contra envíos dobles idénticos
   subs = deduplicateTwinSubmissions(subs);
+
+  // Filtrado estricto por jurisdicción (REI y modalidad) si es especialista
+  if (!isUserAdmin && uDoc) {
+    subs = subs.filter(s => isSubmissionInUserScope(s, state, uDoc, false, getFichaType));
+  }
+
+  // Garantizar bloqueo a la REI asignada si no es administrador
+  const assignedReis = (!isUserAdmin && uDoc) ? getUserAssignedReis(uDoc, false) : ['TODAS'];
+  if (!assignedReis.includes('TODAS') && assignedReis.length > 0) {
+    if (!f.red || !assignedReis.includes(normalizeReiNumber(f.red))) {
+      f.red = assignedReis[0];
+      filtrosReporte.red = assignedReis[0];
+    }
+  }
 
   // 2. Institución (nombre o código modular / local)
   if (f.institucion && f.institucion.trim()) {
@@ -932,13 +991,10 @@ export function aplicarFiltrosReporte(submissions, filters, state, getFichaType,
   return { subs, statsList, instCount, avgPct, dist, withPct, targetFt, isAllMode, hasInvalidDates };
 }
 
-export function countFichasForCard(typeId, submissions, filters, state, getFichaType, user) {
+export function countFichasForCard(typeId, submissions, filters, state, getFichaType, user = null, isAdmin = null) {
   const filterCopy = { ...filters, tipo: typeId };
-  // Al calcular el conteo de cada tarjeta en el catálogo de fichas (Sección 1),
-  // se respetan los filtros generales (institución, RED, fechas, responsable),
-  // pero NUNCA se debe arrastrar el filtro de 'visita' de una ficha particular previamente activa.
   delete filterCopy.visita;
-  const res = aplicarFiltrosReporte(submissions, filterCopy, state, getFichaType, user);
+  const res = aplicarFiltrosReporte(submissions, filterCopy, state, getFichaType, user, isAdmin);
   return res.subs.length;
 }
 
@@ -963,12 +1019,29 @@ export function getPeriodoFechas(tipo) {
   return { desde: '', hasta: '' };
 }
 
-export function renderSection1Html(state, getFichaType, user) {
+export function renderSection1Html(state, getFichaType, user, isAdmin = null) {
+  const isUserAdmin = (typeof isAdmin === 'boolean')
+    ? isAdmin
+    : ((typeof window !== 'undefined' && typeof window.isAdmin === 'function') ? window.isAdmin() : false);
+
+  const uDoc = state?.currentUserRoleDoc ||
+    (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+    (() => {
+      try {
+        const uid = user?.uid || (typeof window !== 'undefined' && window.currentUser?.uid);
+        if (uid) {
+          const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+          if (raw) return JSON.parse(raw);
+        }
+      } catch (_) {}
+      return null;
+    })();
+
   const isCollapsed = reportesHideTypes;
   const isAllMode = !filtrosReporte.tipo || filtrosReporte.tipo === '__ALL__';
   const selectedFt = !isAllMode ? getEnrichedFichaType(getFichaType(filtrosReporte.tipo)) : null;
   const selectedShortName = isAllMode ? 'Todas las fichas' : (selectedFt ? selectedFt.nombreCorto : '—');
-  const selectedCount = countFichasForCard(filtrosReporte.tipo || '__ALL__', state.submissions, filtrosReporte, state, getFichaType, user);
+  const selectedCount = countFichasForCard(filtrosReporte.tipo || '__ALL__', state.submissions, filtrosReporte, state, getFichaType, user, isUserAdmin);
 
   if (isCollapsed) {
     return `
@@ -986,11 +1059,11 @@ export function renderSection1Html(state, getFichaType, user) {
     `;
   }
 
-  const groupOrder = ['Avance general', 'Modelo JEC', 'JEC', 'EBR', 'CEBE / PRITE', 'PRONOEI'];
+  const groupOrder = ['Avance general', 'Modelo JEC', 'JEC', 'EBR', 'Docentes', 'CEBE / PRITE', 'PRONOEI'];
   const groupsMap = {};
   groupOrder.forEach(g => { groupsMap[g] = []; });
 
-  const allCardCount = countFichasForCard('__ALL__', state.submissions, filtrosReporte, state, getFichaType, user);
+  const allCardCount = countFichasForCard('__ALL__', state.submissions, filtrosReporte, state, getFichaType, user, isUserAdmin);
   groupsMap['Avance general'].push({
     id: '__ALL__',
     nombreCorto: '📊 Todas las fichas',
@@ -1004,7 +1077,10 @@ export function renderSection1Html(state, getFichaType, user) {
 
   const seenJecUnified = new Set();
   const seenEbrUnified = new Set();
-  const activeFichaTypes = (state.fichaTypes || []).filter(isFichaActiva);
+  let activeFichaTypes = (state.fichaTypes || []).filter(isFichaActiva);
+  if (!isUserAdmin && uDoc) {
+    activeFichaTypes = activeFichaTypes.filter(ft => isFichaTypeInUserScope(ft, uDoc, false));
+  }
 
   activeFichaTypes.forEach(rawFt => {
     const ft = getEnrichedFichaType(rawFt);
@@ -1016,7 +1092,7 @@ export function renderSection1Html(state, getFichaType, user) {
       if (seenJecUnified.has(gName)) return;
       seenJecUnified.add(gName);
 
-      const count = countFichasForCard('ft_msejec_2do', state.submissions, filtrosReporte, state, getFichaType, user);
+      const count = countFichasForCard('ft_msejec_2do', state.submissions, filtrosReporte, state, getFichaType, user, isUserAdmin);
       const isSelected = !isAllMode && (
         filtrosReporte.tipo === 'ft_msejec_2do' ||
         filtrosReporte.tipo === 'ft_jec' ||
@@ -1044,7 +1120,7 @@ export function renderSection1Html(state, getFichaType, user) {
       if (seenEbrUnified.has(ebrGroup)) return;
       seenEbrUnified.add(ebrGroup);
 
-      const count = countFichasForCard('ft_gestion_ugel03_ebr', state.submissions, filtrosReporte, state, getFichaType, user);
+      const count = countFichasForCard('ft_gestion_ugel03_ebr', state.submissions, filtrosReporte, state, getFichaType, user, isUserAdmin);
       const isSelected = !isAllMode && (
         filtrosReporte.tipo === 'ft_gestion_ugel03_ebr' ||
         filtrosReporte.tipo === 'ft_ebr_gestion' ||
@@ -1067,7 +1143,7 @@ export function renderSection1Html(state, getFichaType, user) {
       return;
     }
 
-    const count = countFichasForCard(ft.id, state.submissions, filtrosReporte, state, getFichaType, user);
+    const count = countFichasForCard(ft.id, state.submissions, filtrosReporte, state, getFichaType, user, isUserAdmin);
     groupsMap[gName].push({
       ...ft,
       count,
@@ -1232,14 +1308,42 @@ export function renderSection2Html(statsList, instCount, state, getFichaType, us
     const num = normalizeReiNumber(c.red || c.rei);
     if (num) redSet.add(num);
   });
-  const redOptions = Array.from(redSet).sort((a, b) => Number(a) - Number(b));
+  const isUserAdmin = (typeof isAdmin === 'boolean')
+    ? isAdmin
+    : ((typeof window !== 'undefined' && typeof window.isAdmin === 'function') ? window.isAdmin() : false);
+  const uDoc = state?.currentUserRoleDoc ||
+    (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+    (() => {
+      try {
+        const uid = user?.uid || (typeof window !== 'undefined' && window.currentUser?.uid);
+        if (uid) {
+          const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+          if (raw) return JSON.parse(raw);
+        }
+      } catch (_) {}
+      return null;
+    })();
+  const assignedReis = (!isUserAdmin && uDoc)
+    ? getUserAssignedReis(uDoc, false)
+    : ['TODAS'];
+  const isSpecialistLocked = !isUserAdmin && uDoc && !assignedReis.includes('TODAS');
+
+  let redOptions = [];
+  if (!assignedReis.includes('TODAS')) {
+    redOptions = assignedReis;
+    if (!filtrosReporte.red || !assignedReis.includes(normalizeReiNumber(filtrosReporte.red))) {
+      filtrosReporte.red = assignedReis[0];
+    }
+  } else {
+    redOptions = Array.from(redSet).sort((a, b) => Number(a) - Number(b));
+  }
 
   const activeChips = [];
   if (filtrosReporte.visita) activeChips.push({ key: 'visita', label: `Visita ${filtrosReporte.visita}` });
   if (filtrosReporte.estado) activeChips.push({ key: 'estado', label: `Estado: ${filtrosReporte.estado}` });
-  if (filtrosReporte.responsable) activeChips.push({ key: 'responsable', label: `Resp: ${filtrosReporte.responsable}` });
+  if (!isSpecialistLocked && filtrosReporte.responsable) activeChips.push({ key: 'responsable', label: `Resp: ${filtrosReporte.responsable}` });
   if (filtrosReporte.institucion) activeChips.push({ key: 'institucion', label: `IE: ${filtrosReporte.institucion}` });
-  if (filtrosReporte.red) {
+  if (!isSpecialistLocked && filtrosReporte.red) {
     const rLabel = normalizeReiNumber(filtrosReporte.red) || filtrosReporte.red;
     activeChips.push({ key: 'red', label: `RED: ${rLabel}` });
   }
@@ -1303,13 +1407,17 @@ export function renderSection2Html(statsList, instCount, state, getFichaType, us
           <label for="fil_visita">Visita / Momento ${(isEbr || isCebe) ? '<span style="color:var(--danger,#dc2626)" title="Obligatorio para esta ficha">*</span>' : ''}</label>
           ${visitaSelectHtml}
         </div>
-        <div class="field" style="margin-bottom:0">
-          <label for="fil_responsable">Especialista Responsable</label>
-          <input type="search" id="fil_responsable" list="dl_fil_responsable" value="${esc(filtrosReporte.responsable)}" placeholder="Buscar especialista..." autocomplete="off">
-          <datalist id="dl_fil_responsable">
-            ${responsableOptions.map(r => `<option value="${esc(r)}">`).join('')}
-          </datalist>
-        </div>
+        ${isSpecialistLocked ? `
+          <input type="hidden" id="fil_responsable" value="">
+        ` : `
+          <div class="field" style="margin-bottom:0">
+            <label for="fil_responsable">Especialista Responsable</label>
+            <input type="search" id="fil_responsable" list="dl_fil_responsable" value="${esc(filtrosReporte.responsable)}" placeholder="Buscar especialista..." autocomplete="off">
+            <datalist id="dl_fil_responsable">
+              ${responsableOptions.map(r => `<option value="${esc(r)}">`).join('')}
+            </datalist>
+          </div>
+        `}
       </div>
 
       <!-- 2. Institución y Estado -->
@@ -1326,16 +1434,26 @@ export function renderSection2Html(statsList, instCount, state, getFichaType, us
           </div>
         </div>
         <div class="subgroupRowFields">
-          <div class="field" style="flex:1;margin-bottom:0">
-            <label for="fil_red">RED (REI)</label>
-            <select id="fil_red">
-              <option value="">Todas</option>
-              ${redOptions.map(r => {
-    const isSel = (r === filtrosReporte.red) || (normalizeReiNumber(filtrosReporte.red) === r);
-    return `<option value="${esc(r)}"${isSel ? ' selected' : ''}>RED ${esc(r)}</option>`;
-  }).join('')}
-            </select>
-          </div>
+          ${isSpecialistLocked ? `
+            <div class="field" style="flex:1;margin-bottom:0">
+              <label>Jurisdicción asignada</label>
+              <div class="jurisdictionFixedPill" style="padding:7px 11px;background:#e0f2fe;border:1px solid #bae6fd;border-radius:6px;font-size:12px;font-weight:700;color:#0369a1;display:flex;align-items:center;gap:6px">
+                <span>📍</span> <span>REI ${esc(assignedReis.join(', '))}</span>
+              </div>
+              <input type="hidden" id="fil_red" value="${esc(assignedReis[0])}">
+            </div>
+          ` : `
+            <div class="field" style="flex:1;margin-bottom:0">
+              <label for="fil_red">RED (REI)</label>
+              <select id="fil_red">
+                ${assignedReis.includes('TODAS') ? '<option value="">Todas</option>' : (assignedReis.length > 1 ? '<option value="">Todas mis REIs (' + assignedReis.join(', ') + ')</option>' : '')}
+                ${redOptions.map(r => {
+                  const isSel = (r === filtrosReporte.red) || (normalizeReiNumber(filtrosReporte.red) === r);
+                  return `<option value="${esc(r)}"${isSel ? ' selected' : ''}>RED ${esc(r)}</option>`;
+                }).join('')}
+              </select>
+            </div>
+          `}
           <div class="field" style="flex:1;margin-bottom:0">
             <label for="fil_estado">Estado</label>
             <select id="fil_estado">
@@ -1460,13 +1578,31 @@ export function closeReportFiltersDrawer() {
 
 
 export function updateSection2DynamicParts(secFiltros, statsList, instCount, ft, state, getFichaType, dbNs, isAdmin, navigate, user) {
+  const isUserAdmin = (typeof isAdmin === 'boolean')
+    ? isAdmin
+    : ((typeof window !== 'undefined' && typeof window.isAdmin === 'function') ? window.isAdmin() : false);
+  const uDoc = state?.currentUserRoleDoc ||
+    (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+    (() => {
+      try {
+        const uid = user?.uid || (typeof window !== 'undefined' && window.currentUser?.uid);
+        if (uid) {
+          const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+          if (raw) return JSON.parse(raw);
+        }
+      } catch (_) {}
+      return null;
+    })();
+  const assignedReis = (!isUserAdmin && uDoc) ? getUserAssignedReis(uDoc, false) : ['TODAS'];
+  const isSpecialistLocked = !isUserAdmin && uDoc && !assignedReis.includes('TODAS');
+
   // 1. Actualizar chips de filtros activos
   const activeChips = [];
   if (filtrosReporte.visita) activeChips.push({ key: 'visita', label: `Visita ${filtrosReporte.visita}` });
   if (filtrosReporte.estado) activeChips.push({ key: 'estado', label: `Estado: ${filtrosReporte.estado}` });
-  if (filtrosReporte.responsable) activeChips.push({ key: 'responsable', label: `Resp: ${filtrosReporte.responsable}` });
+  if (!isSpecialistLocked && filtrosReporte.responsable) activeChips.push({ key: 'responsable', label: `Resp: ${filtrosReporte.responsable}` });
   if (filtrosReporte.institucion) activeChips.push({ key: 'institucion', label: `IE: ${filtrosReporte.institucion}` });
-  if (filtrosReporte.red) {
+  if (!isSpecialistLocked && filtrosReporte.red) {
     const rLabel = normalizeReiNumber(filtrosReporte.red) || filtrosReporte.red;
     activeChips.push({ key: 'red', label: `RED: ${rLabel}` });
   }
@@ -1518,7 +1654,7 @@ export function updateSection2DynamicParts(secFiltros, statsList, instCount, ft,
           estado: '',
           responsable: '',
           institucion: '',
-          red: '',
+          red: isSpecialistLocked ? assignedReis[0] : '',
           ugel: '',
           distrito: '',
           tipoGestion: '',
@@ -2049,6 +2185,24 @@ export function attachSection2Listeners(secFiltros, state, getFichaType, dbNs, i
 
   // Botones Limpiar filtros (en fila de filtros activos y en barra inferior de descargas)
   const onResetFiltersClick = () => {
+    const isUserAdmin = (typeof isAdmin === 'boolean')
+      ? isAdmin
+      : ((typeof window !== 'undefined' && typeof window.isAdmin === 'function') ? window.isAdmin() : false);
+    const uDoc = state?.currentUserRoleDoc ||
+      (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+      (() => {
+        try {
+          const uid = user?.uid || (typeof window !== 'undefined' && window.currentUser?.uid);
+          if (uid) {
+            const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+            if (raw) return JSON.parse(raw);
+          }
+        } catch (_) {}
+        return null;
+      })();
+    const assignedReis = (!isUserAdmin && uDoc) ? getUserAssignedReis(uDoc, false) : ['TODAS'];
+    const isSpecialistLocked = !isUserAdmin && uDoc && !assignedReis.includes('TODAS');
+
     const currentTipo = filtrosReporte.tipo;
     filtrosReporte = {
       tipo: currentTipo,
@@ -2056,7 +2210,7 @@ export function attachSection2Listeners(secFiltros, state, getFichaType, dbNs, i
       estado: '',
       responsable: '',
       institucion: '',
-      red: '',
+      red: isSpecialistLocked ? assignedReis[0] : '',
       ugel: '',
       distrito: '',
       tipoGestion: '',
