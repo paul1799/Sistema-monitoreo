@@ -3,7 +3,8 @@
    UGEL 03 · Sistema de Monitoreo y Acompañamiento Pedagógico 2026
    ========================================================================= */
 
-import { esc, showToast, lockBodyScroll, unlockBodyScroll } from './core-utils.js';
+import { esc, showToast, lockBodyScroll, unlockBodyScroll, normalizeReiNumber } from './core-utils.js';
+import { computeJurisdictionColegios } from '../core/user-scope.js?v=20261119_v9';
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
   getAuth,
@@ -12,7 +13,8 @@ import {
 
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { FIREBASE_CONFIG } from '../firebase-config.js';
-import { openAdminResetPasswordModal } from './perfil-modal.js?v=20261119_v5';
+import { openAdminResetPasswordModal } from './perfil-modal.js?v=20261119_v8';
+import { sendSecurityNotificationEmail } from '../core/email-service.js?v=20261119_v10';
 
 /* Estado local de filtros para la pestaña de usuarios */
 let userFilterState = {
@@ -595,7 +597,7 @@ export function renderUsuariosTab(container, state, dbNs, currentUser) {
       const uid = btn.dataset.uid;
       const targetUser = activeRoles.find(r => r.id === uid);
       if (!targetUser) return;
-      openEditUserJurisdictionModal(targetUser, dbNs, currentUser, () => {
+      openEditUserJurisdictionModal(targetUser, dbNs, currentUser, state, () => {
         renderUsuariosTab(container, state, dbNs, currentUser);
       });
     });
@@ -698,7 +700,7 @@ export function renderUsuariosTab(container, state, dbNs, currentUser) {
   const btnOpenModal = container.querySelector('#btnOpenCreateUserModal');
   if (btnOpenModal) {
     btnOpenModal.addEventListener('click', () => {
-      openCreateUserModal(dbNs, currentUser, () => {
+      openCreateUserModal(dbNs, currentUser, state, () => {
         renderUsuariosTab(container, state, dbNs, currentUser);
       });
     });
@@ -1198,13 +1200,149 @@ async function openHistorialRegistrosModal(dbNs, currentUser, state) {
  * Diálogo Modal para Crear Nuevo Usuario en Firebase Auth + Firestore
  */
 /**
+ * Renderiza el bloque de previsualización dinámica de instituciones educativas en la jurisdicción del especialista
+ * respetando las reglas de EBR (por REI), EBE (toda UGEL 03) y JEC (toda UGEL 03).
+ */
+/**
+ * Genera el texto resumen para el botón desplegable de REDes Educativas
+ */
+function getReisSummaryText(selectedReis) {
+  if (!selectedReis || selectedReis.length === 0) return 'Seleccionar REDes Educativas...';
+  if (selectedReis.length === 16) return 'Todas las REDes (16 REIs) ✓';
+  if (selectedReis.length <= 3) return selectedReis.map(r => `REI ${r}`).join(', ');
+  return `${selectedReis.length} REDes (${selectedReis.slice(0, 2).map(r => `REI ${r}`).join(', ')}...)`;
+}
+
+/**
+ * Renderiza el bloque de previsualización dinámica de instituciones educativas en la jurisdicción del especialista
+ * respetando las reglas de EBR (por REI), EBE (toda UGEL 03) y JEC (toda UGEL 03),
+ * con casillas (checkboxes) individuales para que el administrador pueda seleccionar
+ * específicamente qué colegios de esos REIs/modalidades estarán a cargo del especialista.
+ */
+function renderJurisdictionPreviewHtml(allColegios = [], selectedMods = [], selectedReis = [], selectedColIdsSet = null) {
+  if (!selectedMods || selectedMods.length === 0) {
+    return `
+      <div style="background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:8px;padding:12px;text-align:center;color:#64748B;font-size:12px">
+        💡 Selecciona al menos una modalidad para previsualizar los colegios asignados.
+      </div>
+    `;
+  }
+
+  const hasEbr = selectedMods.includes('EBR');
+  const hasEbe = selectedMods.includes('EBE');
+  const hasJec = selectedMods.includes('JEC');
+
+  if (hasEbr && (!selectedReis || selectedReis.length === 0)) {
+    return `
+      <div style="background:#FEF3C7;border:1px dashed #F59E0B;border-radius:8px;padding:12px;text-align:center;color:#92400E;font-size:12px">
+        ⚠️ Despliega el botón de REDes y selecciona al menos una REI para cargar los colegios EBR.
+      </div>
+    `;
+  }
+
+  const matched = computeJurisdictionColegios(allColegios, selectedMods, selectedReis);
+  const total = matched.length;
+
+  const countJec = matched.filter(c => Boolean(c.esJec || c.es_jec || String(c.modelo || '').toUpperCase() === 'JEC' || String(c.modalidad || '').toUpperCase().includes('JEC'))).length;
+  const countEbe = matched.filter(c => {
+    const mod = String(c.modalidad || '').toUpperCase();
+    const name = String(c.ie || '').toUpperCase();
+    return mod.includes('EBE') || mod.includes('CEBE') || mod.includes('PRITE') || mod.includes('ESPECIAL') || name.includes('CEBE') || name.includes('PRITE');
+  }).length;
+  const countEbr = total - countJec - countEbe;
+
+  const badges = [];
+  if (hasEbr) badges.push(`<span style="background:#E0E7FF;color:#3730A3;font-size:11px;font-weight:700;padding:2px 7px;border-radius:12px">EBR: ${Math.max(0, countEbr)} II.EE. (REI ${selectedReis.join(', ')})</span>`);
+  if (hasEbe) badges.push(`<span style="background:#FCE7F3;color:#9D174D;font-size:11px;font-weight:700;padding:2px 7px;border-radius:12px">EBE/PRITE: ${countEbe} II.EE. (Toda UGEL 03)</span>`);
+  if (hasJec) badges.push(`<span style="background:#FEF3C7;color:#92400E;font-size:11px;font-weight:700;padding:2px 7px;border-radius:12px">JEC: ${countJec} II.EE. (Toda UGEL 03)</span>`);
+
+  let itemsHtml = '';
+  let selectedCount = 0;
+
+  if (total === 0) {
+    itemsHtml = `<div style="padding:12px;text-align:center;color:#94A3B8;font-size:11.5px">No se encontraron instituciones educativas con la selección actual.</div>`;
+  } else {
+    itemsHtml = matched.map(c => {
+      const colKey = String(c.id || c.codigoLocal || c.codigoModular || c.ie);
+      const isChecked = selectedColIdsSet ? selectedColIdsSet.has(colKey) : true;
+      if (isChecked) selectedCount++;
+
+      const reiStr = normalizeReiNumber(c.rei || c.red) || '--';
+      const colMod = String(c.modalidad || '').toUpperCase();
+      const colName = String(c.ie || '').toUpperCase();
+      const isJec = Boolean(c.esJec || c.es_jec || String(c.modelo || '').toUpperCase() === 'JEC' || colMod.includes('JEC'));
+      const isEbe = Boolean(colMod.includes('EBE') || colMod.includes('CEBE') || colMod.includes('PRITE') || colMod.includes('ESPECIAL') || colName.includes('CEBE') || colName.includes('PRITE'));
+      
+      let tagLabel = 'EBR';
+      let tagBg = '#E0E7FF';
+      let tagColor = '#3730A3';
+      if (isJec) {
+        tagLabel = 'JEC';
+        tagBg = '#FEF3C7';
+        tagColor = '#92400E';
+      } else if (isEbe) {
+        tagLabel = colName.includes('PRITE') ? 'PRITE' : 'CEBE';
+        tagBg = '#FCE7F3';
+        tagColor = '#9D174D';
+      }
+
+      return `
+        <label class="jurisdictionColItemRow" style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-bottom:1px solid #F1F5F9;font-size:11.5px;cursor:pointer;background:${isChecked ? '#F8FAFC' : '#FFFFFF'};transition:background 0.15s">
+          <div style="display:flex;align-items:center;gap:7px;overflow:hidden;margin-right:6px">
+            <input type="checkbox" class="cbJurisdictionCol" data-colid="${esc(colKey)}" ${isChecked ? 'checked' : ''} style="width:15px;height:15px;accent-color:var(--primary);cursor:pointer;flex-shrink:0">
+            <span style="font-size:10px;font-weight:700;padding:2px 5px;background:#E2E8F0;border-radius:4px;color:#334155;white-space:nowrap">REI ${esc(reiStr)}</span>
+            <span style="color:#0F172A;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(c.ie)}">${esc(c.ie)}</span>
+            <span style="font-size:10.5px;color:#64748B;white-space:nowrap">(${esc(c.codigoLocal || c.codigoModular || '')})</span>
+          </div>
+          <span style="font-size:10px;padding:1px 6px;border-radius:4px;font-weight:700;background:${tagBg};color:${tagColor};white-space:nowrap">${tagLabel}</span>
+        </label>
+      `;
+    }).join('');
+  }
+
+  const isMultiScope = selectedMods.length > 1 || (hasEbr && selectedReis.length > 1);
+
+  return `
+    <div style="border:1px solid #E2E8F0;border-radius:8px;background:#FFFFFF;overflow:hidden">
+      <div style="background:#F8FAFC;padding:8px 12px;border-bottom:1px solid #E2E8F0;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+          <div style="font-size:12px;font-weight:700;color:#0F172A;display:flex;align-items:center;gap:6px">
+            <span>🏛️</span>
+            <span>Instituciones a su cargo (<span class="countColsSelected">${selectedCount}</span> de ${total})</span>
+          </div>
+          <div style="display:flex;gap:4px">
+            <button type="button" class="btnSelectAllJurisdictionCols btn secondary" style="padding:1px 6px;font-size:10.5px">Todos</button>
+            <button type="button" class="btnDeselectAllJurisdictionCols btn secondary" style="padding:1px 6px;font-size:10.5px">Ninguno</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          ${badges.join('')}
+        </div>
+        ${isMultiScope ? `
+          <div style="font-size:11px;color:#0369A1;background:#EFF6FF;padding:4px 8px;border-radius:5px;border:1px solid #BFDBFE;line-height:1.35">
+            ☑️ <strong>Asignación personalizada:</strong> Puedes marcar o desmarcar individualmente qué colegios estarán a cargo de este especialista.
+          </div>
+        ` : ''}
+      </div>
+      <div style="max-height:150px;overflow-y:auto;padding:2px 0" class="jurisdictionColsScroll">
+        ${itemsHtml}
+      </div>
+    </div>
+  `;
+}
+
+/**
  * Modal para modificar la jurisdicción (REIs y Modalidades) de un especialista desde la interfaz
  */
-export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, onComplete) {
+export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, stateOrOnComplete, onCompleteCb) {
   const existingModal = document.getElementById('editJurisdictionModalOverlay');
   if (existingModal) existingModal.remove();
 
   lockBodyScroll();
+
+  const state = (typeof stateOrOnComplete === 'object' && stateOrOnComplete !== null) ? stateOrOnComplete : (typeof window !== 'undefined' ? window.state : {});
+  const onComplete = (typeof stateOrOnComplete === 'function') ? stateOrOnComplete : onCompleteCb;
+  const allColegios = state?.colegios || (typeof window !== 'undefined' && window.state?.colegios) || [];
 
   const rawMods = userDoc.modalidades || userDoc.modalidad || 'EBR';
   const userMods = Array.isArray(rawMods) ? rawMods : String(rawMods).split(/[,\s/]+/).map(s => s.trim().toUpperCase());
@@ -1213,6 +1351,12 @@ export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, onComp
   const userReis = Array.isArray(rawReis) ? rawReis.map(normalizeReiNumber) : String(rawReis).split(/[,\s/]+/).map(normalizeReiNumber);
   const isTodas = Array.isArray(rawReis) ? rawReis.includes('TODAS') : String(rawReis).toUpperCase().includes('TODAS');
 
+  // Inicializar conjunto de colegios seleccionados si ya existían guardados
+  let selectedColIdsSet = null;
+  if (Array.isArray(userDoc.colegios) && userDoc.colegios.length > 0 && !userDoc.colegios.includes('TODAS') && !userDoc.colegios.includes('TODOS')) {
+    selectedColIdsSet = new Set(userDoc.colegios.map(String));
+  }
+
   const overlay = document.createElement('div');
   overlay.className = 'downloadModalOverlay';
   overlay.id = 'editJurisdictionModalOverlay';
@@ -1220,7 +1364,7 @@ export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, onComp
   const reisNumbers = Array.from({ length: 16 }, (_, i) => String(i + 1).padStart(2, '0'));
 
   overlay.innerHTML = `
-    <div class="downloadModalContent" style="max-width:540px;border-radius:14px;box-shadow:0 20px 40px rgba(11,27,54,0.3)">
+    <div class="downloadModalContent" style="max-width:560px;border-radius:14px;box-shadow:0 20px 40px rgba(11,27,54,0.3)">
       <div class="downloadModalHeader" style="background:var(--navy-900);color:#FFFFFF;border-top-left-radius:14px;border-top-right-radius:14px;padding:16px 20px">
         <div style="display:flex;align-items:center;gap:10px">
           <span style="font-size:22px">📍</span>
@@ -1234,8 +1378,8 @@ export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, onComp
         <button type="button" class="closeDownloadModal" id="btnCloseModalJurisdiction" style="color:#FFFFFF;opacity:0.8" title="Cerrar">✕</button>
       </div>
 
-      <div class="downloadModalBody" style="padding:20px;max-height:75vh;overflow-y:auto">
-        <form id="editJurisdictionForm" style="display:flex;flex-direction:column;gap:18px" onsubmit="return false;">
+      <div class="downloadModalBody" style="padding:20px;max-height:78vh;overflow-y:auto">
+        <form id="editJurisdictionForm" style="display:flex;flex-direction:column;gap:16px" onsubmit="return false;">
           
           <!-- Modalidad(es) -->
           <div style="display:flex;flex-direction:column;gap:8px">
@@ -1261,32 +1405,90 @@ export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, onComp
             </div>
           </div>
 
-          <!-- REDes Educativas (REI) -->
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
-              <label style="font-size:13px;font-weight:700;color:var(--navy-900)">
+          <!-- Contenedor dinámico con BOTÓN DESPLEGABLE de REDes Educativas (REI) -->
+          <div id="editReiHostContainer" style="display:flex;flex-direction:column;gap:8px">
+            <div id="editReiGridSection" style="display:flex;flex-direction:column;gap:6px">
+              <label id="editReiLabel" style="font-size:12.5px;font-weight:700;color:var(--navy-900)">
                 RED(es) Educativas asignadas <span style="color:var(--danger)">*</span>
               </label>
-              <div style="display:flex;gap:6px">
-                <button type="button" id="btnEditSelectAllReis" class="btn secondary" style="padding:2px 8px;font-size:11px">Todas</button>
-                <button type="button" id="btnEditClearAllReis" class="btn secondary" style="padding:2px 8px;font-size:11px">Limpiar</button>
+              
+              <!-- Botón desplegable flotante de selección de REIs -->
+              <div style="position:relative;width:100%" id="editReiDropdownHost">
+                <button type="button" id="btnEditToggleReiDropdown" style="
+                  width: 100%;
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 8px 12px;
+                  background: #FFFFFF;
+                  border: 1px solid var(--border);
+                  border-radius: 8px;
+                  font-size: 13px;
+                  font-weight: 600;
+                  color: var(--navy-900);
+                  cursor: pointer;
+                  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+                ">
+                  <span style="display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                    <span style="font-size:15px">📍</span>
+                    <span id="editReiSummaryText">Seleccionar REDes...</span>
+                  </span>
+                  <span id="editReiDropdownArrow" style="font-size:11px;color:#64748B;transition:transform 0.2s">▼</span>
+                </button>
+
+                <!-- Menú desplegable flotante -->
+                <div id="editReiDropdownPanel" style="
+                  display: none;
+                  position: absolute;
+                  top: calc(100% + 4px);
+                  left: 0;
+                  right: 0;
+                  background: #FFFFFF;
+                  border: 1px solid #CBD5E1;
+                  border-radius: 10px;
+                  box-shadow: 0 14px 28px rgba(11,27,54,0.18);
+                  z-index: 1050;
+                  padding: 12px;
+                  box-sizing: border-box;
+                ">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #F1F5F9">
+                    <span style="font-size:12px;font-weight:700;color:var(--navy-900)">Selección de REDes (16 REIs)</span>
+                    <div style="display:flex;gap:4px">
+                      <button type="button" id="btnEditSelectAllReis" class="btn secondary" style="padding:1px 7px;font-size:10.5px">Todas</button>
+                      <button type="button" id="btnEditClearAllReis" class="btn secondary" style="padding:1px 7px;font-size:10.5px">Limpiar</button>
+                    </div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;max-height:160px;overflow-y:auto;padding:2px" id="editReisGrid">
+                    ${reisNumbers.map(n => {
+                      const checked = isTodas || userReis.includes(n);
+                      return `
+                        <label style="display:flex;align-items:center;gap:4px;padding:5px 6px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:5px;cursor:pointer">
+                          <input type="checkbox" name="editRei" value="${n}" ${checked ? 'checked' : ''} style="accent-color:var(--primary);cursor:pointer">
+                          <span style="font-size:11px;font-weight:600;color:#1E293B">REI ${n}</span>
+                        </label>
+                      `;
+                    }).join('')}
+                  </div>
+                  <div style="display:flex;justify-content:flex-end;margin-top:8px;padding-top:6px;border-top:1px solid #F1F5F9">
+                    <button type="button" id="btnEditCloseReiDropdown" class="btn" style="padding:3px 10px;font-size:11px;background:var(--blue-600);border-color:var(--blue-600)">
+                      Listo ✓
+                    </button>
+                  </div>
+                </div>
               </div>
+              <small id="editReiHelp" style="color:var(--text-600);font-size:11px">
+                Haz clic en el botón desplegable para elegir una o varias REDes Educativas.
+              </small>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:8px;max-height:180px;overflow-y:auto;padding:6px;background:#F8FAFC;border:1px solid var(--border);border-radius:8px" id="editReisGrid">
-              ${reisNumbers.map(n => {
-                const checked = isTodas || userReis.includes(n);
-                return `
-                  <label style="display:flex;align-items:center;gap:5px;padding:6px 8px;background:#FFFFFF;border:1px solid var(--border);border-radius:6px;cursor:pointer">
-                    <input type="checkbox" name="editRei" value="${n}" ${checked ? 'checked' : ''} style="accent-color:var(--primary);cursor:pointer">
-                    <span style="font-size:12px;font-weight:600;color:var(--navy-900)">REI ${n}</span>
-                  </label>
-                `;
-              }).join('')}
+
+            <div id="editReiNoticeSection" style="display:none;background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;padding:10px 12px;font-size:12px;color:#166534;line-height:1.4">
+              <strong>✨ Cobertura total en UGEL 03:</strong>
+              <span id="editReiNoticeText">Las modalidades seleccionadas tienen acceso a nivel general sin selección manual de REI.</span>
             </div>
-            <small style="color:var(--text-600);font-size:11.5px">
-              El especialista visualizará exclusivamente los colegios y fichas pertenecientes a las REIs marcadas.
-            </small>
           </div>
+
+          <!-- Previsualización en vivo con checkboxes individuales de colegios -->
+          <div id="editPreviewHostContainer"></div>
 
           <!-- Permiso de Concursos -->
           <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#F8FAFC;border:1px solid var(--border);border-radius:8px">
@@ -1324,21 +1526,171 @@ export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, onComp
   });
 
   const reiCheckboxes = Array.from(overlay.querySelectorAll('input[name="editRei"]'));
+  const modCheckboxes = Array.from(overlay.querySelectorAll('input[name="editMod"]'));
+  const reiGridSection = overlay.querySelector('#editReiGridSection');
+  const reiNoticeSection = overlay.querySelector('#editReiNoticeSection');
+  const reiNoticeText = overlay.querySelector('#editReiNoticeText');
+  const reiLabel = overlay.querySelector('#editReiLabel');
+  const previewHost = overlay.querySelector('#editPreviewHostContainer');
+  const errorAlert = overlay.querySelector('#editJurisdictionErrorAlert');
+  const saveBtn = overlay.querySelector('#btnSaveJurisdiction');
+
+  // Control del desplegable de REIs
+  const btnToggleReiDropdown = overlay.querySelector('#btnEditToggleReiDropdown');
+  const reiDropdownPanel = overlay.querySelector('#editReiDropdownPanel');
+  const reiDropdownArrow = overlay.querySelector('#editReiDropdownArrow');
+  const reiSummaryText = overlay.querySelector('#editReiSummaryText');
+  const btnCloseReiDropdown = overlay.querySelector('#btnEditCloseReiDropdown');
+
+  const toggleReiDropdown = (forceClose = false) => {
+    if (!reiDropdownPanel) return;
+    const isVisible = reiDropdownPanel.style.display === 'block';
+    if (isVisible || forceClose) {
+      reiDropdownPanel.style.display = 'none';
+      if (reiDropdownArrow) reiDropdownArrow.style.transform = 'rotate(0deg)';
+    } else {
+      reiDropdownPanel.style.display = 'block';
+      if (reiDropdownArrow) reiDropdownArrow.style.transform = 'rotate(180deg)';
+    }
+  };
+
+  btnToggleReiDropdown?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleReiDropdown();
+  });
+  btnCloseReiDropdown?.addEventListener('click', () => toggleReiDropdown(true));
+
+  document.addEventListener('click', (e) => {
+    if (overlay.contains(e.target) && !overlay.querySelector('#editReiDropdownHost')?.contains(e.target)) {
+      toggleReiDropdown(true);
+    }
+  });
+
+  const getSelectedMods = () => modCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
+  const getSelectedReis = () => reiCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
+
+  const bindPreviewCheckboxEvents = () => {
+    if (!previewHost) return;
+
+    previewHost.querySelectorAll('.cbJurisdictionCol').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const colId = cb.dataset.colid;
+        if (!selectedColIdsSet) {
+          selectedColIdsSet = new Set(Array.from(previewHost.querySelectorAll('.cbJurisdictionCol:checked')).map(c => c.dataset.colid));
+        }
+        if (cb.checked) {
+          selectedColIdsSet.add(colId);
+          cb.closest('.jurisdictionColItemRow').style.background = '#F8FAFC';
+        } else {
+          selectedColIdsSet.delete(colId);
+          cb.closest('.jurisdictionColItemRow').style.background = '#FFFFFF';
+        }
+        const countEl = previewHost.querySelector('.countColsSelected');
+        if (countEl) countEl.textContent = String(selectedColIdsSet.size);
+      });
+    });
+
+    previewHost.querySelector('.btnSelectAllJurisdictionCols')?.addEventListener('click', () => {
+      if (!selectedColIdsSet) selectedColIdsSet = new Set();
+      previewHost.querySelectorAll('.cbJurisdictionCol').forEach(cb => {
+        cb.checked = true;
+        selectedColIdsSet.add(cb.dataset.colid);
+        cb.closest('.jurisdictionColItemRow').style.background = '#F8FAFC';
+      });
+      const countEl = previewHost.querySelector('.countColsSelected');
+      if (countEl) countEl.textContent = String(selectedColIdsSet.size);
+    });
+
+    previewHost.querySelector('.btnDeselectAllJurisdictionCols')?.addEventListener('click', () => {
+      if (!selectedColIdsSet) selectedColIdsSet = new Set();
+      previewHost.querySelectorAll('.cbJurisdictionCol').forEach(cb => {
+        cb.checked = false;
+        selectedColIdsSet.delete(cb.dataset.colid);
+        cb.closest('.jurisdictionColItemRow').style.background = '#FFFFFF';
+      });
+      const countEl = previewHost.querySelector('.countColsSelected');
+      if (countEl) countEl.textContent = '0';
+    });
+  };
+
+  const updateJurisdictionUI = (syncNewCols = false) => {
+    const selectedMods = getSelectedMods();
+    const hasEbr = selectedMods.includes('EBR');
+    const hasEbe = selectedMods.includes('EBE');
+    const hasJec = selectedMods.includes('JEC');
+    const selectedReis = getSelectedReis();
+
+    if (reiSummaryText) {
+      reiSummaryText.textContent = getReisSummaryText(selectedReis);
+    }
+
+    if (!hasEbr) {
+      if (reiGridSection) reiGridSection.style.display = 'none';
+      if (reiNoticeSection) {
+        reiNoticeSection.style.display = 'block';
+        if (hasEbe && hasJec) {
+          reiNoticeText.textContent = 'Las modalidades EBE y JEC abarcan todos los CEBE, PRITE y colegios JEC a nivel de toda la UGEL 03 automáticamente.';
+        } else if (hasEbe) {
+          reiNoticeText.textContent = 'La modalidad EBE abarca todos los colegios CEBE y programas PRITE de la UGEL 03 de forma integral.';
+        } else if (hasJec) {
+          reiNoticeText.textContent = 'La modalidad JEC abarca los 29 colegios de Jornada Escolar Completa de la UGEL 03 automáticamente.';
+        } else {
+          reiNoticeText.textContent = 'Selecciona una modalidad para delimitar el alcance del especialista.';
+        }
+      }
+    } else {
+      if (reiGridSection) reiGridSection.style.display = 'flex';
+      if (reiNoticeSection) reiNoticeSection.style.display = 'none';
+      if (reiLabel) {
+        reiLabel.innerHTML = (hasEbe || hasJec)
+          ? 'RED(es) Educativas asignadas <span style="font-weight:400;color:var(--text-600)">(para colegios EBR)</span> <span style="color:var(--danger)">*</span>'
+          : 'RED(es) Educativas asignadas <span style="color:var(--danger)">*</span>';
+      }
+    }
+
+    const currentReis = hasEbr ? selectedReis : ['TODAS'];
+
+    // Si cambian REIs o modalidades y ya teníamos selección, incorporar nuevos colegios al conjunto
+    const matched = computeJurisdictionColegios(allColegios, selectedMods, currentReis);
+    if (syncNewCols || selectedColIdsSet === null) {
+      if (selectedColIdsSet === null) {
+        selectedColIdsSet = new Set(matched.map(c => String(c.id || c.codigoLocal || c.codigoModular || c.ie)));
+      } else {
+        matched.forEach(c => {
+          const k = String(c.id || c.codigoLocal || c.codigoModular || c.ie);
+          // Si el colegio pertenece al nuevo ámbito y no estaba explícitamente en el set anterior
+          selectedColIdsSet.add(k);
+        });
+      }
+    }
+
+    if (previewHost) {
+      previewHost.innerHTML = renderJurisdictionPreviewHtml(allColegios, selectedMods, currentReis, selectedColIdsSet);
+      bindPreviewCheckboxEvents();
+    }
+  };
+
   overlay.querySelector('#btnEditSelectAllReis').addEventListener('click', () => {
     reiCheckboxes.forEach(cb => cb.checked = true);
+    updateJurisdictionUI(true);
   });
   overlay.querySelector('#btnEditClearAllReis').addEventListener('click', () => {
     reiCheckboxes.forEach(cb => cb.checked = false);
+    updateJurisdictionUI(false);
   });
 
-  const errorAlert = overlay.querySelector('#editJurisdictionErrorAlert');
-  const saveBtn = overlay.querySelector('#btnSaveJurisdiction');
+  modCheckboxes.forEach(cb => cb.addEventListener('change', () => updateJurisdictionUI(true)));
+  reiCheckboxes.forEach(cb => cb.addEventListener('change', () => updateJurisdictionUI(true)));
+
+  // Render inicial del preview y estado
+  updateJurisdictionUI(false);
 
   saveBtn.addEventListener('click', async () => {
     errorAlert.style.display = 'none';
     errorAlert.textContent = '';
 
-    const selectedMods = Array.from(overlay.querySelectorAll('input[name="editMod"]:checked')).map(cb => cb.value);
+    const selectedMods = getSelectedMods();
+    const hasEbr = selectedMods.includes('EBR');
     const selectedReis = reiCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
     const hasConcursos = overlay.querySelector('#editConcursosAccess')?.checked || false;
 
@@ -1348,8 +1700,15 @@ export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, onComp
       return;
     }
 
-    if (selectedReis.length === 0) {
-      errorAlert.textContent = 'Debes seleccionar al menos una REI a cargo del especialista.';
+    if (hasEbr && selectedReis.length === 0) {
+      errorAlert.textContent = 'Debes seleccionar al menos una REI a cargo del especialista para la modalidad EBR.';
+      errorAlert.style.display = 'block';
+      return;
+    }
+
+    const finalColegioIds = Array.from(overlay.querySelectorAll('.cbJurisdictionCol:checked')).map(cb => cb.dataset.colid);
+    if (finalColegioIds.length === 0) {
+      errorAlert.textContent = 'Debes seleccionar al menos una institución educativa a cargo del especialista en la lista de colegios.';
       errorAlert.style.display = 'block';
       return;
     }
@@ -1359,12 +1718,13 @@ export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, onComp
       saveBtn.innerHTML = '<span>⏳</span> Guardando en Firestore...';
 
       const modalidadStr = selectedMods.join(', ');
-      const reisToSave = (selectedReis.length === 16) ? ['TODAS'] : selectedReis;
+      const reisToSave = (!hasEbr || selectedReis.length === 16) ? ['TODAS'] : selectedReis;
 
       await dbNs.collection('roles').doc(userDoc.id).set({
         modalidad: modalidadStr,
         modalidades: selectedMods,
         reis: reisToSave,
+        colegios: finalColegioIds,
         accesoConcursos: hasConcursos,
         actualizadoPor: currentUser?.email || 'admin',
         actualizadoEn: Date.now()
@@ -1379,10 +1739,11 @@ export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, onComp
           modalidad: modalidadStr,
           modalidades: selectedMods,
           reis: reisToSave,
+          colegiosTotal: finalColegioIds.length,
           modificadoPor: currentUser?.email || 'admin',
           timestamp: Date.now(),
           fecha: new Date().toISOString(),
-          detalle: `Se modificó la jurisdicción de ${userDoc.email || userDoc.id}: Modalidad(es) [${modalidadStr}], REI(s) [${reisToSave.join(', ')}] por ${currentUser?.email || 'admin'}`
+          detalle: `Se modificó la jurisdicción de ${userDoc.email || userDoc.id}: Modalidad(es) [${modalidadStr}], REI(s) [${reisToSave.join(', ')}], Colegios asignados: ${finalColegioIds.length} por ${currentUser?.email || 'admin'}`
         });
       } catch (_) {}
 
@@ -1390,13 +1751,14 @@ export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, onComp
         window.state.currentUserRoleDoc.modalidad = modalidadStr;
         window.state.currentUserRoleDoc.modalidades = selectedMods;
         window.state.currentUserRoleDoc.reis = reisToSave;
+        window.state.currentUserRoleDoc.colegios = finalColegioIds;
         window.state.currentUserRoleDoc.accesoConcursos = hasConcursos;
         try {
           sessionStorage.setItem('agebre_user_doc_' + userDoc.id, JSON.stringify(window.state.currentUserRoleDoc));
         } catch (_) {}
       }
 
-      showToast(`Jurisdicción de ${userDoc.email || 'usuario'} actualizada con éxito.`);
+      showToast(`Jurisdicción de ${userDoc.email || 'usuario'} actualizada con éxito (${finalColegioIds.length} colegios).`);
       closeModal();
       if (typeof onComplete === 'function') onComplete();
     } catch (err) {
@@ -1410,20 +1772,26 @@ export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, onComp
 }
 
 
-function openCreateUserModal(dbNs, currentUser, onComplete) {
+function openCreateUserModal(dbNs, currentUser, stateOrOnComplete, onCompleteCb) {
   const existingModal = document.getElementById('modalCrearUsuario');
   if (existingModal) existingModal.remove();
 
   lockBodyScroll();
+
+  const state = (typeof stateOrOnComplete === 'object' && stateOrOnComplete !== null) ? stateOrOnComplete : (typeof window !== 'undefined' ? window.state : {});
+  const onComplete = (typeof stateOrOnComplete === 'function') ? stateOrOnComplete : onCompleteCb;
+  const allColegios = state?.colegios || (typeof window !== 'undefined' && window.state?.colegios) || [];
 
   const overlay = document.createElement('div');
   overlay.id = 'modalCrearUsuario';
   overlay.className = 'downloadModalOverlay';
 
   const defaultSuggestedPass = generateSecurePassword();
+  const reisNumbers = Array.from({ length: 16 }, (_, i) => String(i + 1).padStart(2, '0'));
+  let selectedColIdsSet = null;
 
   overlay.innerHTML = `
-    <div class="downloadModalCard" style="max-width:540px">
+    <div class="downloadModalCard" style="max-width:560px">
       <!-- Cabecera -->
       <div class="downloadModalHeader">
         <div>
@@ -1434,7 +1802,7 @@ function openCreateUserModal(dbNs, currentUser, onComplete) {
       </div>
 
       <!-- Cuerpo del Modal -->
-      <div class="downloadModalBody" id="createUserModalBody" style="gap:18px">
+      <div class="downloadModalBody" id="createUserModalBody" style="gap:16px;max-height:80vh;overflow-y:auto">
         <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:12px 14px;font-size:12.5px;color:#166534;display:flex;gap:10px;line-height:1.45">
           <span style="font-size:18px;line-height:1">⚡</span>
           <div>
@@ -1443,6 +1811,21 @@ function openCreateUserModal(dbNs, currentUser, onComplete) {
         </div>
 
         <form id="formCreateUser" style="display:flex;flex-direction:column;gap:14px">
+          <!-- Campo Nombres y Apellidos -->
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <label for="newAccNombre" style="font-size:12.5px;font-weight:700;color:var(--navy-900)">
+              Nombres y Apellidos del Especialista <span style="color:var(--danger)">*</span>
+            </label>
+            <input
+              type="text"
+              id="newAccNombre"
+              required
+              placeholder="Ej. Mg. Carlos Manuel Mendoza Ramos"
+              style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;width:100%"
+              autocomplete="name"
+            />
+          </div>
+
           <!-- Campo Correo -->
           <div style="display:flex;flex-direction:column;gap:5px">
             <label for="newAccEmail" style="font-size:12.5px;font-weight:700;color:var(--navy-900)">
@@ -1459,6 +1842,35 @@ function openCreateUserModal(dbNs, currentUser, onComplete) {
             <small style="color:var(--text-600);font-size:11.5px">
               Se creará la cuenta con este correo para que el especialista pueda iniciar sesión.
             </small>
+          </div>
+
+          <!-- Campos DNI y Teléfono -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <label for="newAccDni" style="font-size:12.5px;font-weight:700;color:var(--navy-900)">
+                DNI <small style="font-weight:400;color:var(--text-400)">(Opcional)</small>
+              </label>
+              <input
+                type="text"
+                id="newAccDni"
+                maxlength="8"
+                pattern="[0-9]*"
+                placeholder="8 dígitos"
+                style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;width:100%"
+                inputmode="numeric"
+              />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <label for="newAccTelefono" style="font-size:12.5px;font-weight:700;color:var(--navy-900)">
+                Celular / Teléfono <small style="font-weight:400;color:var(--text-400)">(Opcional)</small>
+              </label>
+              <input
+                type="tel"
+                id="newAccTelefono"
+                placeholder="Ej. 987654321"
+                style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;width:100%"
+              />
+            </div>
           </div>
 
           <!-- Campo Rol -->
@@ -1496,52 +1908,115 @@ function openCreateUserModal(dbNs, currentUser, onComplete) {
             </small>
           </div>
 
-                    <!-- Jurisdicción condicional para Especialista -->
-          <div id="newAccJurisdiccionWrap" style="display:flex;flex-direction:column;gap:12px;background:#F8FAFC;padding:12px;border:1px solid var(--border);border-radius:8px">
+          <!-- Jurisdicción condicional para Especialista -->
+          <div id="newAccJurisdiccionWrap" style="display:flex;flex-direction:column;gap:12px;background:#F8FAFC;padding:14px;border:1px solid var(--border);border-radius:8px">
             <div style="display:flex;flex-direction:column;gap:6px">
-              <label style="font-size:12.5px;font-weight:700;color:var(--navy-900)">
-                Modalidad(es) a su cargo <span style="color:var(--danger)">*</span>
-              </label>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <label style="font-size:12.5px;font-weight:700;color:var(--navy-900)">
+                  Modalidad(es) a su cargo <span style="color:var(--danger)">*</span>
+                </label>
+                <small style="color:var(--text-400);font-size:11px">Puede abarcar más de una (ej. EBR + EBE)</small>
+              </div>
               <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:6px">
-                <label style="display:flex;align-items:center;gap:5px;padding:6px 8px;background:#FFFFFF;border:1px solid var(--border);border-radius:6px;cursor:pointer">
+                <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:#FFFFFF;border:1px solid var(--border);border-radius:6px;cursor:pointer">
                   <input type="checkbox" name="newAccMod" value="EBR" checked style="accent-color:var(--primary);cursor:pointer">
                   <span style="font-size:12px;font-weight:600">EBR</span>
                 </label>
-                <label style="display:flex;align-items:center;gap:5px;padding:6px 8px;background:#FFFFFF;border:1px solid var(--border);border-radius:6px;cursor:pointer">
+                <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:#FFFFFF;border:1px solid var(--border);border-radius:6px;cursor:pointer">
                   <input type="checkbox" name="newAccMod" value="EBE" style="accent-color:var(--primary);cursor:pointer">
                   <span style="font-size:12px;font-weight:600">EBE</span>
                 </label>
-                <label style="display:flex;align-items:center;gap:5px;padding:6px 8px;background:#FFFFFF;border:1px solid var(--border);border-radius:6px;cursor:pointer">
+                <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:#FFFFFF;border:1px solid var(--border);border-radius:6px;cursor:pointer">
                   <input type="checkbox" name="newAccMod" value="JEC" style="accent-color:var(--primary);cursor:pointer">
                   <span style="font-size:12px;font-weight:600">JEC</span>
                 </label>
               </div>
             </div>
 
-            <div style="display:flex;flex-direction:column;gap:6px">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <label style="font-size:12.5px;font-weight:700;color:var(--navy-900)">
+            <!-- Contenedor dinámico con BOTÓN DESPLEGABLE de REDes Educativas para Nuevo Usuario -->
+            <div id="newAccReiHostContainer" style="display:flex;flex-direction:column;gap:6px">
+              <div id="newAccReiGridSection" style="display:flex;flex-direction:column;gap:6px">
+                <label id="newAccReiLabel" style="font-size:12.5px;font-weight:700;color:var(--navy-900)">
                   RED(es) Educativas asignadas <span style="color:var(--danger)">*</span>
                 </label>
-                <div style="display:flex;gap:4px">
-                  <button type="button" id="btnNewAccAllReis" class="btn secondary" style="padding:1px 6px;font-size:10.5px">Todas</button>
-                  <button type="button" id="btnNewAccClearReis" class="btn secondary" style="padding:1px 6px;font-size:10.5px">Limpiar</button>
+
+                <!-- Botón desplegable flotante de selección de REIs -->
+                <div style="position:relative;width:100%" id="newAccReiDropdownHost">
+                  <button type="button" id="btnNewAccToggleReiDropdown" style="
+                    width: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 8px 12px;
+                    background: #FFFFFF;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: var(--navy-900);
+                    cursor: pointer;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+                  ">
+                    <span style="display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                      <span style="font-size:15px">📍</span>
+                      <span id="newAccReiSummaryText">REI 01</span>
+                    </span>
+                    <span id="newAccReiDropdownArrow" style="font-size:11px;color:#64748B;transition:transform 0.2s">▼</span>
+                  </button>
+
+                  <!-- Menú desplegable flotante -->
+                  <div id="newAccReiDropdownPanel" style="
+                    display: none;
+                    position: absolute;
+                    top: calc(100% + 4px);
+                    left: 0;
+                    right: 0;
+                    background: #FFFFFF;
+                    border: 1px solid #CBD5E1;
+                    border-radius: 10px;
+                    box-shadow: 0 14px 28px rgba(11,27,54,0.18);
+                    z-index: 1050;
+                    padding: 12px;
+                    box-sizing: border-box;
+                  ">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #F1F5F9">
+                      <span style="font-size:12px;font-weight:700;color:var(--navy-900)">Selección de REDes (16 REIs)</span>
+                      <div style="display:flex;gap:4px">
+                        <button type="button" id="btnNewAccAllReis" class="btn secondary" style="padding:1px 7px;font-size:10.5px">Todas</button>
+                        <button type="button" id="btnNewAccClearReis" class="btn secondary" style="padding:1px 7px;font-size:10.5px">Limpiar</button>
+                      </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;max-height:160px;overflow-y:auto;padding:2px" id="newAccReisGrid">
+                      ${reisNumbers.map(n => `
+                        <label style="display:flex;align-items:center;gap:4px;padding:5px 6px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:5px;cursor:pointer">
+                          <input type="checkbox" name="newAccRei" value="${n}" ${n === '01' ? 'checked' : ''} style="accent-color:var(--primary);cursor:pointer">
+                          <span style="font-size:11px;font-weight:600;color:#1E293B">REI ${n}</span>
+                        </label>
+                      `).join('')}
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;margin-top:8px;padding-top:6px;border-top:1px solid #F1F5F9">
+                      <button type="button" id="btnNewAccCloseReiDropdown" class="btn" style="padding:3px 10px;font-size:11px;background:var(--blue-600);border-color:var(--blue-600)">
+                        Listo ✓
+                      </button>
+                    </div>
+                  </div>
                 </div>
+                <small id="newAccReiHelp" style="color:var(--text-600);font-size:11px">
+                  Haz clic en el botón desplegable para elegir una o varias REDes Educativas.
+                </small>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;max-height:120px;overflow-y:auto;padding:4px;background:#FFFFFF;border:1px solid var(--border);border-radius:6px" id="newAccReisGrid">
-                ${Array.from({length: 16}, (_, i) => String(i + 1).padStart(2, '0')).map(n => `
-                  <label style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:#F8FAFC;border:1px solid var(--border);border-radius:4px;cursor:pointer">
-                    <input type="checkbox" name="newAccRei" value="${n}" ${n === '01' ? 'checked' : ''} style="accent-color:var(--primary);cursor:pointer">
-                    <span style="font-size:11px;font-weight:600">REI ${n}</span>
-                  </label>
-                `).join('')}
+
+              <div id="newAccReiNoticeSection" style="display:none;background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;padding:10px 12px;font-size:12px;color:#166534;line-height:1.4">
+                <strong>✨ Cobertura total en UGEL 03:</strong>
+                <span id="newAccReiNoticeText">Las modalidades seleccionadas tienen acceso a nivel general sin selección manual de REI.</span>
               </div>
             </div>
+
+            <!-- Previsualización en vivo con checkboxes individuales para Nuevo Usuario -->
+            <div id="newAccPreviewHostContainer"></div>
           </div>
 
           <!-- Permiso de Concursos -->
-
-
           <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#F8FAFC;border:1px solid var(--border);border-radius:8px">
             <input type="checkbox" id="newAccConcursos" style="cursor:pointer;accent-color:var(--ok)">
             <label for="newAccConcursos" style="font-size:12.5px;font-weight:600;color:var(--navy-900);cursor:pointer">
@@ -1589,27 +2064,186 @@ function openCreateUserModal(dbNs, currentUser, onComplete) {
   const roleSelect = overlay.querySelector('#newAccRole');
   const jurisdiccionWrap = overlay.querySelector('#newAccJurisdiccionWrap');
   const newReiCbs = Array.from(overlay.querySelectorAll('input[name="newAccRei"]'));
+  const newModCbs = Array.from(overlay.querySelectorAll('input[name="newAccMod"]'));
+  const reiGridSection = overlay.querySelector('#newAccReiGridSection');
+  const reiNoticeSection = overlay.querySelector('#newAccReiNoticeSection');
+  const reiNoticeText = overlay.querySelector('#newAccReiNoticeText');
+  const reiLabel = overlay.querySelector('#newAccReiLabel');
+  const previewHost = overlay.querySelector('#newAccPreviewHostContainer');
 
-  overlay.querySelector('#btnNewAccAllReis')?.addEventListener('click', () => {
-    newReiCbs.forEach(cb => cb.checked = true);
-  });
-  overlay.querySelector('#btnNewAccClearReis')?.addEventListener('click', () => {
-    newReiCbs.forEach(cb => cb.checked = false);
-  });
+  // Control del desplegable de REIs
+  const btnToggleReiDropdown = overlay.querySelector('#btnNewAccToggleReiDropdown');
+  const reiDropdownPanel = overlay.querySelector('#newAccReiDropdownPanel');
+  const reiDropdownArrow = overlay.querySelector('#newAccReiDropdownArrow');
+  const reiSummaryText = overlay.querySelector('#newAccReiSummaryText');
+  const btnCloseReiDropdown = overlay.querySelector('#btnNewAccCloseReiDropdown');
 
-  roleSelect?.addEventListener('change', () => {
-    if (jurisdiccionWrap) {
-      jurisdiccionWrap.style.display = (roleSelect.value === 'admin') ? 'none' : 'flex';
+  const toggleReiDropdown = (forceClose = false) => {
+    if (!reiDropdownPanel) return;
+    const isVisible = reiDropdownPanel.style.display === 'block';
+    if (isVisible || forceClose) {
+      reiDropdownPanel.style.display = 'none';
+      if (reiDropdownArrow) reiDropdownArrow.style.transform = 'rotate(0deg)';
+    } else {
+      reiDropdownPanel.style.display = 'block';
+      if (reiDropdownArrow) reiDropdownArrow.style.transform = 'rotate(180deg)';
+    }
+  };
+
+  btnToggleReiDropdown?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleReiDropdown();
+  });
+  btnCloseReiDropdown?.addEventListener('click', () => toggleReiDropdown(true));
+
+  document.addEventListener('click', (e) => {
+    if (overlay.contains(e.target) && !overlay.querySelector('#newAccReiDropdownHost')?.contains(e.target)) {
+      toggleReiDropdown(true);
     }
   });
 
+  const getNewAccMods = () => newModCbs.filter(cb => cb.checked).map(cb => cb.value);
+  const getNewAccReis = () => newReiCbs.filter(cb => cb.checked).map(cb => cb.value);
+
+  const bindPreviewCheckboxEvents = () => {
+    if (!previewHost) return;
+
+    previewHost.querySelectorAll('.cbJurisdictionCol').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const colId = cb.dataset.colid;
+        if (!selectedColIdsSet) {
+          selectedColIdsSet = new Set(Array.from(previewHost.querySelectorAll('.cbJurisdictionCol:checked')).map(c => c.dataset.colid));
+        }
+        if (cb.checked) {
+          selectedColIdsSet.add(colId);
+          cb.closest('.jurisdictionColItemRow').style.background = '#F8FAFC';
+        } else {
+          selectedColIdsSet.delete(colId);
+          cb.closest('.jurisdictionColItemRow').style.background = '#FFFFFF';
+        }
+        const countEl = previewHost.querySelector('.countColsSelected');
+        if (countEl) countEl.textContent = String(selectedColIdsSet.size);
+      });
+    });
+
+    previewHost.querySelector('.btnSelectAllJurisdictionCols')?.addEventListener('click', () => {
+      if (!selectedColIdsSet) selectedColIdsSet = new Set();
+      previewHost.querySelectorAll('.cbJurisdictionCol').forEach(cb => {
+        cb.checked = true;
+        selectedColIdsSet.add(cb.dataset.colid);
+        cb.closest('.jurisdictionColItemRow').style.background = '#F8FAFC';
+      });
+      const countEl = previewHost.querySelector('.countColsSelected');
+      if (countEl) countEl.textContent = String(selectedColIdsSet.size);
+    });
+
+    previewHost.querySelector('.btnDeselectAllJurisdictionCols')?.addEventListener('click', () => {
+      if (!selectedColIdsSet) selectedColIdsSet = new Set();
+      previewHost.querySelectorAll('.cbJurisdictionCol').forEach(cb => {
+        cb.checked = false;
+        selectedColIdsSet.delete(cb.dataset.colid);
+        cb.closest('.jurisdictionColItemRow').style.background = '#FFFFFF';
+      });
+      const countEl = previewHost.querySelector('.countColsSelected');
+      if (countEl) countEl.textContent = '0';
+    });
+  };
+
+  const updateCreateJurisdictionUI = (syncNewCols = false) => {
+    if (roleSelect.value === 'admin') {
+      if (jurisdiccionWrap) jurisdiccionWrap.style.display = 'none';
+      return;
+    }
+    if (jurisdiccionWrap) jurisdiccionWrap.style.display = 'flex';
+
+    const selectedMods = getNewAccMods();
+    const hasEbr = selectedMods.includes('EBR');
+    const hasEbe = selectedMods.includes('EBE');
+    const hasJec = selectedMods.includes('JEC');
+    const selectedReis = getNewAccReis();
+
+    if (reiSummaryText) {
+      reiSummaryText.textContent = getReisSummaryText(selectedReis);
+    }
+
+    if (!hasEbr) {
+      if (reiGridSection) reiGridSection.style.display = 'none';
+      if (reiNoticeSection) {
+        reiNoticeSection.style.display = 'block';
+        if (hasEbe && hasJec) {
+          reiNoticeText.textContent = 'Las modalidades EBE y JEC abarcan todos los CEBE, PRITE y colegios JEC a nivel de toda la UGEL 03 automáticamente.';
+        } else if (hasEbe) {
+          reiNoticeText.textContent = 'La modalidad EBE abarca todos los colegios CEBE y programas PRITE de la UGEL 03 de forma integral.';
+        } else if (hasJec) {
+          reiNoticeText.textContent = 'La modalidad JEC abarca los 29 colegios de Jornada Escolar Completa de la UGEL 03 automáticamente.';
+        } else {
+          reiNoticeText.textContent = 'Selecciona una modalidad para delimitar el alcance del especialista.';
+        }
+      }
+    } else {
+      if (reiGridSection) reiGridSection.style.display = 'flex';
+      if (reiNoticeSection) reiNoticeSection.style.display = 'none';
+      if (reiLabel) {
+        reiLabel.innerHTML = (hasEbe || hasJec)
+          ? 'RED(es) Educativas asignadas <span style="font-weight:400;color:var(--text-600)">(para colegios EBR)</span> <span style="color:var(--danger)">*</span>'
+          : 'RED(es) Educativas asignadas <span style="color:var(--danger)">*</span>';
+      }
+    }
+
+    const currentReis = hasEbr ? selectedReis : ['TODAS'];
+
+    // Sincronizar selección de colegios
+    const matched = computeJurisdictionColegios(allColegios, selectedMods, currentReis);
+    if (syncNewCols || selectedColIdsSet === null) {
+      if (selectedColIdsSet === null) {
+        selectedColIdsSet = new Set(matched.map(c => String(c.id || c.codigoLocal || c.codigoModular || c.ie)));
+      } else {
+        matched.forEach(c => {
+          const k = String(c.id || c.codigoLocal || c.codigoModular || c.ie);
+          selectedColIdsSet.add(k);
+        });
+      }
+    }
+
+    if (previewHost) {
+      previewHost.innerHTML = renderJurisdictionPreviewHtml(allColegios, selectedMods, currentReis, selectedColIdsSet);
+      bindPreviewCheckboxEvents();
+    }
+  };
+
+  overlay.querySelector('#btnNewAccAllReis')?.addEventListener('click', () => {
+    newReiCbs.forEach(cb => cb.checked = true);
+    updateCreateJurisdictionUI(true);
+  });
+  overlay.querySelector('#btnNewAccClearReis')?.addEventListener('click', () => {
+    newReiCbs.forEach(cb => cb.checked = false);
+    updateCreateJurisdictionUI(false);
+  });
+
+  newModCbs.forEach(cb => cb.addEventListener('change', () => updateCreateJurisdictionUI(true)));
+  newReiCbs.forEach(cb => cb.addEventListener('change', () => updateCreateJurisdictionUI(true)));
+  roleSelect?.addEventListener('change', () => updateCreateJurisdictionUI(false));
+
+  // Inicializar UI de jurisdicción
+  updateCreateJurisdictionUI(false);
+
   const executeCreate = async () => {
+    const nombre = (overlay.querySelector('#newAccNombre')?.value || '').trim();
     const email = (emailInput.value || '').trim().toLowerCase();
+    const dni = (overlay.querySelector('#newAccDni')?.value || '').trim();
+    const telefono = (overlay.querySelector('#newAccTelefono')?.value || '').trim();
     const password = passInput.value;
     const role = roleSelect.value;
 
     errorAlert.style.display = 'none';
     errorAlert.textContent = '';
+
+    if (!nombre) {
+      errorAlert.textContent = 'Por favor, ingresa los nombres y apellidos del especialista.';
+      errorAlert.style.display = 'block';
+      overlay.querySelector('#newAccNombre')?.focus();
+      return;
+    }
 
     if (!email || !email.includes('@') || !email.includes('.')) {
       errorAlert.textContent = 'Por favor, ingresa un correo electrónico válido.';
@@ -1627,10 +2261,11 @@ function openCreateUserModal(dbNs, currentUser, onComplete) {
 
     const selectedMods = (role === 'admin')
       ? ['TODAS']
-      : Array.from(overlay.querySelectorAll('input[name="newAccMod"]:checked')).map(cb => cb.value);
+      : getNewAccMods();
+    const hasEbr = selectedMods.includes('EBR');
     const selectedReis = (role === 'admin')
       ? ['TODAS']
-      : newReiCbs.filter(cb => cb.checked).map(cb => cb.value);
+      : getNewAccReis();
 
     if (role !== 'admin') {
       if (selectedMods.length === 0) {
@@ -1638,15 +2273,25 @@ function openCreateUserModal(dbNs, currentUser, onComplete) {
         errorAlert.style.display = 'block';
         return;
       }
-      if (selectedReis.length === 0) {
-        errorAlert.textContent = 'Debes seleccionar al menos una RED Educativa a su cargo (o marcar Todas).';
+      if (hasEbr && selectedReis.length === 0) {
+        errorAlert.textContent = 'Debes seleccionar al menos una RED Educativa a su cargo para la modalidad EBR (o marcar Todas).';
         errorAlert.style.display = 'block';
         return;
       }
     }
 
+    const finalColegioIds = (role === 'admin')
+      ? ['TODAS']
+      : Array.from(overlay.querySelectorAll('.cbJurisdictionCol:checked')).map(cb => cb.dataset.colid);
+
+    if (role !== 'admin' && finalColegioIds.length === 0) {
+      errorAlert.textContent = 'Debes seleccionar al menos una institución educativa a cargo del especialista en la lista de colegios.';
+      errorAlert.style.display = 'block';
+      return;
+    }
+
     const modalidadStr = (role === 'admin') ? 'TODAS' : selectedMods.join(', ');
-    const reisToSave = (role === 'admin' || selectedReis.length === 16) ? ['TODAS'] : selectedReis;
+    const reisToSave = (role === 'admin' || !hasEbr || selectedReis.length === 16) ? ['TODAS'] : selectedReis;
 
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span>⏳</span> Creando cuenta en Firebase...';
@@ -1668,17 +2313,23 @@ function openCreateUserModal(dbNs, currentUser, onComplete) {
       try { await deleteApp(tempApp); } catch (_) {}
       tempApp = null;
 
-      // 4. Guardar rol en la colección 'roles' con Modalidad y REIs asignadas
+      // 4. Guardar rol en la colección 'roles' con Modalidad, REIs y Colegios asignados
       const hasConcursos = Boolean(document.getElementById('newAccConcursos')?.checked || role === 'admin');
 
       await dbNs.collection('roles').doc(newUid).set({
         email: email,
+        nombre: nombre,
+        nombresApellidos: nombre,
+        dni: dni || '',
+        telefono: telefono || '',
+        celular: telefono || '',
         role: role,
         accesoConcursos: hasConcursos,
         userType: role === 'admin' ? 'coordinador' : 'especialista',
         modalidad: modalidadStr,
         modalidades: (role === 'admin') ? ['TODAS'] : selectedMods,
         reis: reisToSave,
+        colegios: finalColegioIds,
         estado: 'activo',
         estadoVerificacion: 'verificado',
         createdAt: Date.now(),
@@ -1691,23 +2342,74 @@ function openCreateUserModal(dbNs, currentUser, onComplete) {
           tipo: 'CREACION_USUARIO_ADMIN',
           usuarioUid: newUid,
           usuarioEmail: email,
-          usuarioNombre: email.split('@')[0],
+          usuarioNombre: nombre,
+          dni: dni || '',
+          telefono: telefono || '',
           rolSolicitado: role === 'admin' ? 'coordinador' : 'especialista',
           modalidad: modalidadStr,
           modalidades: (role === 'admin') ? ['TODAS'] : selectedMods,
           reis: reisToSave,
+          colegiosTotal: (role === 'admin') ? 'TODAS' : finalColegioIds.length,
           creadoPor: currentUser?.email || 'admin',
           timestamp: Date.now(),
           fecha: new Date().toISOString(),
-          detalle: `Usuario creado y autorizado directamente por el administrador (${currentUser?.email || 'admin'}) con rol ${role}. Modalidad(es): [${modalidadStr}], REI(s): [${reisToSave.join(', ')}]`
+          detalle: `Usuario creado y autorizado directamente por el administrador (${currentUser?.email || 'admin'}) con rol ${role}. Especialista: ${nombre}, Modalidad(es): [${modalidadStr}], REI(s): [${reisToSave.join(', ')}], Colegios: ${finalColegioIds.length}`
         });
       } catch (logErr) {
         console.warn('Aviso al registrar log de creación:', logErr);
       }
 
-      // 6. Vista de éxito
-      renderModalSuccess(overlay, email, password, role, closeModal);
-      showToast(`Usuario ${email} creado exitosamente.`);
+      // 6. Despachar notificación oficial al correo institucional con sus credenciales de acceso
+      submitBtn.innerHTML = '<span>✉️</span> Despachando credenciales por correo...';
+      const colCountStr = (role === 'admin') ? 'Todas las instituciones de la UGEL 03' : `${finalColegioIds.length} institución(es)`;
+      const reisDesc = (role === 'admin' || !hasEbr || reisToSave.includes('TODAS')) ? 'Todas las REDes (Ámbito General)' : `REI(s): ${reisToSave.join(', ')}`;
+      const roleLabel = role === 'admin' ? 'Coordinador / Administrador (Control Total)' : 'Especialista General';
+      const platformLoginUrl = (window.location.origin && !window.location.origin.includes('localhost'))
+        ? window.location.origin
+        : 'https://sistematizacion-fichas.firebaseapp.com';
+
+      try {
+        await sendSecurityNotificationEmail({
+          to: email,
+          nombre: nombre,
+          subject: 'Bienvenido(a) al Sistema de Monitoreo - AGEBRE UGEL 03',
+          title: 'Tu Cuenta Institucional ha sido Creada',
+          message: `
+            Estimado(a) <strong>${esc(nombre)}</strong>,<br><br>
+            Te damos la bienvenida a la plataforma oficial de <strong>Sistematización de Monitoreo y Acompañamiento Pedagógico AGEBRE 2026 (UGEL 03)</strong>.<br><br>
+            La Administración del Sistema ha creado y autorizado tu cuenta con las siguientes credenciales y ámbito de responsabilidad asignado:<br><br>
+            <div style="background:#F8FAFC;border:1px solid #CBD5E1;border-radius:8px;padding:14px;margin:12px 0;">
+              <div style="font-size:12px;color:#64748B;margin-bottom:8px;font-weight:700;letter-spacing:0.5px;">TUS DATOS Y CREDENCIALES DE ACCESO:</div>
+              <div style="margin-bottom:6px;">• <strong>Especialista:</strong> <span style="font-weight:600;color:#0F172A;">${esc(nombre)}</span></div>
+              <div style="margin-bottom:6px;">• <strong>Usuario / Correo:</strong> <span style="font-weight:600;color:#0F172A;">${esc(email)}</span></div>
+              <div style="margin-bottom:6px;">• <strong>Contraseña Inicial:</strong> <span style="font-family:monospace;font-size:15px;font-weight:700;color:#0F766E;background:#FFFFFF;border:1px solid #CBD5E1;padding:4px 8px;border-radius:4px;display:inline-block;">${esc(password)}</span></div>
+              <div style="margin-bottom:4px;font-size:12.5px;color:#475569;">• <strong>Rol asignado:</strong> ${roleLabel}</div>
+              <div style="margin-bottom:4px;font-size:12.5px;color:#475569;">• <strong>Modalidad(es) a su cargo:</strong> <span style="font-weight:600;color:#0F766E;">${modalidadStr}</span></div>
+              <div style="margin-bottom:4px;font-size:12.5px;color:#475569;">• <strong>RED(es) Educativa(s):</strong> <span style="font-weight:600;color:#0F766E;">${reisDesc}</span></div>
+              <div style="margin-bottom:4px;font-size:12.5px;color:#475569;">• <strong>Instituciones en jurisdicción:</strong> ${colCountStr}</div>
+              <div style="font-size:12.5px;color:#475569;">• <strong>Módulo de Concursos:</strong> ${hasConcursos ? 'Habilitado ✓' : 'Sin acceso 🔒 (El Administrador lo habilitará cuando corresponda)'}</div>
+            </div>
+            Al ingresar al sistema visualizarás tu <strong>Panel de Monitoreo y Seguimiento</strong> con tus instituciones asignadas. Por seguridad institucional, te sugerimos guardar tus credenciales en un lugar seguro.
+          `,
+          actionUrl: platformLoginUrl,
+          actionText: 'Ingresar a la Plataforma'
+        });
+      } catch (mailErr) {
+        console.warn('Aviso al despachar correo de bienvenida con credenciales:', mailErr);
+      }
+
+      // 7. Vista de éxito
+      renderModalSuccess(overlay, {
+        email,
+        password,
+        role,
+        nombre,
+        modalidadStr,
+        reisDesc,
+        colCountStr,
+        hasConcursos
+      }, closeModal);
+      showToast(`Usuario ${email} (${nombre}) creado exitosamente.`);
     } catch (err) {
       console.error('Error al crear usuario:', err);
 
@@ -1744,7 +2446,7 @@ function openCreateUserModal(dbNs, currentUser, onComplete) {
 /**
  * Muestra la vista de éxito con las credenciales creadas y botón para copiar
  */
-function renderModalSuccess(overlay, email, password, role, onClose) {
+function renderModalSuccess(overlay, { email, password, role, nombre, modalidadStr, reisDesc, colCountStr, hasConcursos }, onClose) {
   const modalBody = overlay.querySelector('#createUserModalBody');
   const modalFooter = overlay.querySelector('#createUserModalFooter');
 
@@ -1762,21 +2464,39 @@ function renderModalSuccess(overlay, email, password, role, onClose) {
       </p>
     </div>
 
-    <!-- Tarjeta de Credenciales -->
+    <!-- Aviso de Notificación por Correo -->
+    <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#166534;display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">✉️</span>
+      <div>
+        Se envió la notificación oficial con las credenciales de acceso a <strong>${esc(email)}</strong>.
+      </div>
+    </div>
+
+    <!-- Tarjeta de Credenciales y Asignación -->
     <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #E2E8F0;padding-bottom:8px">
-        <span style="font-size:12px;color:var(--text-600);font-weight:600">DATOS DE ACCESO</span>
+        <span style="font-size:12px;color:var(--text-600);font-weight:600">DATOS DE LA CUENTA</span>
         <span class="badge" style="background:#E0F2FE;color:#0369A1;font-weight:700;font-size:11px;padding:3px 8px;border-radius:6px">${esc(roleLabel)}</span>
       </div>
       <div>
-        <div style="font-size:11.5px;color:var(--text-600);margin-bottom:2px">Correo Electrónico:</div>
-        <div style="font-size:14px;font-weight:700;color:var(--navy-900)">${esc(email)}</div>
+        <div style="font-size:11.5px;color:var(--text-600);margin-bottom:2px">Especialista:</div>
+        <div style="font-size:14px;font-weight:700;color:var(--navy-900)">${esc(nombre)}</div>
+      </div>
+      <div>
+        <div style="font-size:11.5px;color:var(--text-600);margin-bottom:2px">Correo Electrónico (Usuario):</div>
+        <div style="font-size:13.5px;font-weight:600;color:var(--navy-900)">${esc(email)}</div>
       </div>
       <div>
         <div style="font-size:11.5px;color:var(--text-600);margin-bottom:2px">Contraseña Asignada:</div>
         <div style="font-size:14.5px;font-weight:700;color:#0F766E;font-family:monospace;background:#FFFFFF;border:1px solid #CBD5E1;padding:6px 10px;border-radius:6px;display:inline-block">
           ${esc(password)}
         </div>
+      </div>
+      <div style="font-size:12px;color:var(--text-600);line-height:1.5;border-top:1px solid #E2E8F0;padding-top:8px">
+        <div>• <strong>Modalidad(es):</strong> ${esc(modalidadStr)}</div>
+        <div>• <strong>RED(es):</strong> ${esc(reisDesc)}</div>
+        <div>• <strong>Instituciones:</strong> ${esc(colCountStr)}</div>
+        <div>• <strong>Módulo de Concursos:</strong> ${hasConcursos ? 'Habilitado ✓' : 'Sin acceso 🔒'}</div>
       </div>
       <div>
         <div style="font-size:11.5px;color:var(--text-600);margin-bottom:2px">Enlace de Inicio de Sesión:</div>
@@ -1803,11 +2523,15 @@ function renderModalSuccess(overlay, email, password, role, onClose) {
       'SISTEMA DE MONITOREO Y ACOMPAÑAMIENTO 2026 — UGEL 03',
       'Acceso al Sistema Web:',
       `URL: ${loginUrl}`,
+      `Especialista: ${nombre}`,
       `Correo: ${email}`,
       `Contraseña: ${password}`,
       `Rol: ${roleLabel}`,
+      `Modalidad(es): ${modalidadStr}`,
+      `RED(es): ${reisDesc}`,
+      `Instituciones: ${colCountStr}`,
       '-------------------------------------------------------',
-      'Por seguridad, te recomendamos guardar estas credenciales en un lugar seguro.'
+      'Por seguridad institucional, te sugerimos guardar estas credenciales en un lugar seguro.'
     ].join('\n');
 
     try {

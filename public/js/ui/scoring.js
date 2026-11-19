@@ -244,8 +244,32 @@ export function getSubmissionResponsable(s, state = null, currentUser = null) {
           return (rMatch.nombresApellidos || rMatch.especialista).trim();
         }
       }
-      if (Array.isArray(appState.responsables) && col.id) {
-        const rMatchCol = appState.responsables.find(r => Array.isArray(r.colegios) && r.colegios.includes(col.id));
+      // Chequear si algún especialista tiene asignado este colegio en su rol (roles / currentUserRoleDoc)
+      const candRoles = [];
+      if (appState?.currentUserRoleDoc) candRoles.push(appState.currentUserRoleDoc);
+      if (Array.isArray(appState?.roles)) candRoles.push(...appState.roles);
+      const colIdStr = String(col.id || '');
+      const colLocStr = String(col.codigoLocal || col.codLocal || '');
+      const colModStr = String(col.codigoModular || col.codModular || '');
+      const colIeNorm = normalizeText(col.ie || col.nombre || '');
+      for (const r of candRoles) {
+        if (r && r.role !== 'admin' && r.userType !== 'coordinador' && Array.isArray(r.colegios) && r.colegios.length > 0 && !r.colegios.includes('TODAS')) {
+          const m = r.colegios.some(k => {
+            const s = String(k);
+            return s && (s === colIdStr || s === colLocStr || s === colModStr || normalizeText(s) === colIeNorm);
+          });
+          if (m) {
+            const nm = (r.nombre || r.nombresApellidos || r.displayName || '').trim();
+            if (nm && !nm.includes('@')) return nm;
+          }
+        }
+      }
+
+      if (Array.isArray(appState.responsables)) {
+        const rMatchCol = appState.responsables.find(r => Array.isArray(r.colegios) && r.colegios.some(k => {
+          const s = String(k);
+          return s && (s === colIdStr || s === colLocStr || s === colModStr || normalizeText(s) === colIeNorm);
+        }));
         if (rMatchCol && (rMatchCol.nombresApellidos || rMatchCol.especialista)) {
           return (rMatchCol.nombresApellidos || rMatchCol.especialista).trim();
         }
@@ -363,9 +387,32 @@ export function getResponsableForColegio(col, ft, state = null) {
     }
   }
 
-  // 3. PRIORIDAD 2: Si algún especialista tiene este colegio en su lista `colegios: [colId]`
-  if (appState && Array.isArray(appState.responsables) && col.id) {
-    const matchedByCol = appState.responsables.find(r => Array.isArray(r.colegios) && r.colegios.includes(col.id));
+  // 3. PRIORIDAD 2: Si algún especialista tiene este colegio en su lista `colegios` (en roles o currentUserRoleDoc)
+  const candRolesCol = [];
+  if (appState?.currentUserRoleDoc) candRolesCol.push(appState.currentUserRoleDoc);
+  if (Array.isArray(appState?.roles)) candRolesCol.push(...appState.roles);
+  const colIdStrCol = String(col.id || '');
+  const colLocStrCol = String(col.codigoLocal || col.codLocal || '');
+  const colModStrCol = String(col.codigoModular || col.codModular || '');
+  const colIeNormCol = normalizeText(col.ie || col.nombre || '');
+  for (const r of candRolesCol) {
+    if (r && r.role !== 'admin' && r.userType !== 'coordinador' && Array.isArray(r.colegios) && r.colegios.length > 0 && !r.colegios.includes('TODAS')) {
+      const m = r.colegios.some(k => {
+        const s = String(k);
+        return s && (s === colIdStrCol || s === colLocStrCol || s === colModStrCol || normalizeText(s) === colIeNormCol);
+      });
+      if (m) {
+        const nm = (r.nombre || r.nombresApellidos || r.displayName || '').trim();
+        if (nm && !nm.includes('@')) return nm;
+      }
+    }
+  }
+
+  if (appState && Array.isArray(appState.responsables)) {
+    const matchedByCol = appState.responsables.find(r => Array.isArray(r.colegios) && r.colegios.some(k => {
+      const s = String(k);
+      return s && (s === colIdStrCol || s === colLocStrCol || s === colModStrCol || normalizeText(s) === colIeNormCol);
+    }));
     if (matchedByCol && (matchedByCol.nombresApellidos || matchedByCol.especialista)) {
       return (matchedByCol.nombresApellidos || matchedByCol.especialista).trim();
     }

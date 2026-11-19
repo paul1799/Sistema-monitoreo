@@ -7,7 +7,7 @@
 const SERVICE_ACCOUNT = {
   projectId: "sistematizacion-fichas",
   clientEmail: "firebase-adminsdk-fbsvc@sistematizacion-fichas.iam.gserviceaccount.com",
-  privateKeyPem: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDEd1vU95aYkHMC\nS4ytnbrhdfVqpXiq7q4n4mW7/9sGxuLikDjGvFXjGOCqwlqbW+v+KwVqo2pfNaOm\n038l391+MSnDJBFn28gH2NnUGOcR2z16s+aedHPGPf5x+ehezhLClHWkFmqj+UDt\nh/oypkuRHRVC/itc7HxTKTahWsB5WE01TBDeIVTaNiP4cfv6IrvbP/yQuK7J4OTs\n1dwsNjT8yBVzKF1rgAcDJsauYvwg48VZXTc6Mt6oebE4rpd22GP8VRMFyEG57W7K\neKhX8lfBguttt/LtqOl6OJZyjQ1NCx3JPAURDFU11DqjtI+g9S+E9l15hOK5OAob\nO3meRB1FAgMBAAECggEAEG4d8S3Ce6BK6fR4/5T7CbtkaoaLlJnw2ReLJAGF5udv\nlnxyrxYVhbAxK76ktqzli8Q7x/sCHJO/C6bQ0ZFK8/B3GmF0DjA4ZoWZU+5ANsNT\nvST54qMBAqFxG8WHTBRmR70EKJSSVwOzjRnLz/wNwkVBH7DjXfpN/GNsNOrCwXL+\nPP1MGy3NETmy6ah4CjEQBSyvO3xKy1Q8mhtRla3XDTE/l6QgZYEAQAZgoxOIpDbn\nFUL43WZJPQz8wcyMsObmZh6I4X1sTnIfm3wU3wMTY/xgpgqbZkUNzuu7jhSsLhj7\nv1GNVpMxB/CEmKrnAXURb7UJyx4dvPlr+DTuELwG6QKBgQDnDZFyT+lvCp5e74hN\nhHQeAugVt5gGlZKbS0mXBw5pAqy/uykKTrT/DvEZGFBN98AiWAeiwwLWD8T7e2El\nMArdBprMnymHLxJXQzLIR0n6uYr3my/TbGt6Z5Hs+pcUf6oWLkg6dO7znDD4Ro8b\ncrkhI9/M+JITYDQBwCWKq5XdHQKBgQDZrcssV3TaYK6Fq01NahTyKsBw0YNLEp2U\nSnl49QaBgn6Z9DfjLhqBkjVX8pJxQ5YJUD8YaaKOtJqbzXkMtdNjBDXj4/v7HKk6\nRlmywMa0lYrhezKLGsk947fjFMOGlhdjfbLS3BTOIkhNt5Ynhq+qbsBu46wKfRpE\nyomzUPtQSQKBgG58m3+pXPwffMnzCx/eZdRwGWFBMO59GeUu5FrXIfnvMIJi0mY+\naujI0Vvpt4UBIxyJMeWQEUwhsFV9k1/AEIHPBbkxpx8g0ElwNdl11ZeSoDR1PjKA\n1whqfGpxDkvcHI6MxTdG8XkGyJgAzbAXdRW23O9cMiYXy+bGZm1gTcK1AoGBALdk\nMl4jOHGbLq2zCqeEDi2QUx05hnHDNztuGzUKyfZmqJ6wID2n4/Dx6zszRKlkFY23\nK9E3fhrYkcFdtPQ+Y99x9q0OsIZ5OSG9j2iH/WC69IzPLGABqzYXGh+YqLEzWOm\nzPfVLzoTq/K+DyUx1eGy+TDzY0ha6by3HpgSTAjxAoGAA65oq8qVNiNKBDLkbg/k\ndspsdZTVJXwDphN2zDly7kkWMmuxyTk6dfBxyX1o0YoBg6sRfL6vCyOiSLVrVfb/\ntTWK7yyNiaUYTloT8Xzr26hQ3AFDQu3bkU9Zk/j490karRc+srDu7UcHQOcN2JSR\nrtVc+HccOcuto67DPYkiLKk=\n-----END PRIVATE KEY-----\n"
+  privateKeyBase64: "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDEd1vU95aYkHMCS4ytnbrhdfVqpXiq7q4n4mW7/9sGxuLikDjGvFXjGOCqwlqbW+v+KwVqo2pfNaOm038l391+MSnDJBFn28gH2NnUGOcR2z16s+aedHPGPf5x+ehezhLClHWkFmqj+UDth/oypkuRHRVC/itc7HxTKTahWsB5WE01TBDeIVTaNiP4cfv6IrvbP/yQuK7J4OTs1dwsNjT8yBVzKF1rgAcDJsauYvwg48VZXTc6Mt6oebE4rpd22GP8VRMFyEG57W7KeKhX8lfBguttt/LtqOl6OJZyjQ1NCx3JPAURDFU11DqjtI+g9S+E9l15hOK5OAobO3meRB1FAgMBAAECggEAEG4d8S3Ce6BK6fR4/5T7CbtkaoaLlJnw2ReLJAGF5udvlnxyrxYVhbAxK76ktqzli8Q7x/sCHJO/C6bQ0ZFK8/B3GmF0DjA4ZoWZU+5ANsNTvST54qMBAqFxG8WHTBRmR70EKJSSVwOzjRnLz/wNwkVBH7DjXfpN/GNsNOrCwXL+PP1MGy3NETmy6ah4CjEQBSyvO3xKy1Q8mhtRla3XDTE/l6QgZYEAQAZgoxOIpDbnFUL43WZJPQz8wcyMsObmZh6I4X1sTnIfm3wU3wMTY/xgpgqbZkUNzuu7jhSsLhj7v1GNVpMxB/CEmKrnAXURb7UJyx4dvPlr+DTuELwG6QKBgQDnDZFyT+lvCp5e74hNhHQeAugVt5gGlZKbS0mXBw5pAqy/uykKTrT/DvEZGFBN98AiWAeiwwLWD8T7e2ElMArdBprMnymHLxJXQzLIR0n6uYr3my/TbGt6Z5Hs+pcUf6oWLkg6dO7znDD4Ro8bcrkhI9/M+JITYDQBwCWKq5XdHQKBgQDZrcssV3TaYK6Fq01NahTyKsBw0YNLEp2USnl49QaBgn6Z9DfjLhqBkjVX8pJxQ5YJUD8YaaKOtJqbzXkMtdNjBDXj4/v7HKk6RlmywMa0lYrhezKLGsk947fjFMOGlhdjfbLS3BTOIkhNt5Ynhq+qbsBu46wKfRpEyomzUPtQSQKBgG58m3+pXPwffMnzCx/eZdRwGWFBMO59GeUu5FrXIfnvMIJi0mY+aujI0Vvpt4UBIxyJMeWQEUwhsFV9k1/AEIHPBbkxpx8g0ElwNdl11ZeSoDR1PjKA1whqfGpxDkvcHI6MxTdG8XkGyJgAzbAXdRW23O9cMiYXy+bGZm1gTcK1AoGBALdkMl4jOHGbLq2zCqeEDi2QUx05hnHDNztuGzUKyfZmqJ6wID2n4/Dx6zszRKlkFY23K9E3fhrYkcFdtPQ+Y99x9q0OsIZ5OSG9j2iH/WC69IzPLGABqzYXGh+YqLpEzWOmzPfVLzoTq/K+DyUx1eGy+TDzY0ha6by3HpgSTAjxAoGAA65oq8qVNiNKBDLkbg/kdspsdZTVJXwDphN2zDly7kkWMmuxyTk6dfBxyX1o0YoBg6sRfL6vCyOiSLVrVfb/tTWK7yyNiaUYTloT8Xzr26hQ3AFDQu3bkU9Zk/j490karRc+srDu7UcHQOcN2JSRrtVc+HccOcuto67DPYkiLKk="
 };
 
 /**
@@ -30,7 +30,8 @@ function base64UrlEncode(buffer) {
  * Convierte una cadena Base64 estándar a Uint8Array
  */
 function base64ToUint8Array(base64) {
-  const binaryString = atob(base64.replace(/\s+/g, ''));
+  const clean = String(base64).replace(/[^A-Za-z0-9+/=]/g, '');
+  const binaryString = atob(clean);
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
@@ -42,18 +43,14 @@ function base64ToUint8Array(base64) {
  * Genera un token OAuth2 de Google firmado con la cuenta de servicio institucional
  */
 async function getGoogleServiceAccessToken() {
-  const cleanKey = SERVICE_ACCOUNT.privateKeyPem
-    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
-    .replace(/-----END PRIVATE KEY-----/g, '')
-    .replace(/\s+/g, '');
-  const binaryKey = base64ToUint8Array(cleanKey);
+  const binaryKey = base64ToUint8Array(SERVICE_ACCOUNT.privateKeyBase64);
 
   // Importar clave privada en formato PKCS#8 estándar con Web Crypto API
   const cryptoKey = await window.crypto.subtle.importKey(
     'pkcs8',
-    binaryKey.buffer,
+    binaryKey,
     {
-      name: 'RSASSA-PKCS1v1_5',
+      name: 'RSASSA-PKCS1-v1_5',
       hash: 'SHA-256'
     },
     false,
@@ -76,7 +73,7 @@ async function getGoogleServiceAccessToken() {
   const encodedClaim = base64UrlEncode(textEncoder.encode(JSON.stringify(claim)));
   const dataToSign = textEncoder.encode(`${encodedHeader}.${encodedClaim}`);
 
-  const signature = await window.crypto.subtle.sign('RSASSA-PKCS1v1_5', cryptoKey, dataToSign);
+  const signature = await window.crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, dataToSign);
   const encodedSignature = base64UrlEncode(new Uint8Array(signature));
   const jwt = `${encodedHeader}.${encodedClaim}.${encodedSignature}`;
 
@@ -120,26 +117,26 @@ export async function adminDirectResetPassword({ email, uid = null, newPassword 
   const accessToken = await getGoogleServiceAccessToken();
   const projectId = SERVICE_ACCOUNT.projectId;
 
-  // 2. Si no tenemos UID, buscar al usuario por correo
-  let targetUid = uid;
-  if (!targetUid) {
-    const lookupRes = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:lookup`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email: [targetEmail] })
-      }
-    );
-    const lookupData = await lookupRes.json();
-    if (lookupData.users && lookupData.users.length > 0) {
-      targetUid = lookupData.users[0].localId;
-    } else {
-      throw new Error(`No se encontró una cuenta de acceso registrada en Firebase Authentication para ${targetEmail}.`);
+  // 2. Localizar el UID oficial en Firebase Authentication por correo
+  let targetUid = null;
+  const lookupRes = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:lookup`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email: [targetEmail] })
     }
+  );
+  const lookupData = await lookupRes.json();
+  if (lookupData.users && lookupData.users.length > 0) {
+    targetUid = lookupData.users[0].localId;
+  } else if (uid) {
+    targetUid = uid;
+  } else {
+    throw new Error(`No se encontró una cuenta de acceso registrada en Firebase Authentication para ${targetEmail}.`);
   }
 
   // 3. Actualizar la contraseña directamente en Firebase Authentication

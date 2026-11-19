@@ -320,20 +320,34 @@ export async function sendOtpEmail({ firestoreDb, uid, email, nombre, code, prof
   }
 
   if (webhookUrl) {
+    const payload = JSON.stringify({
+      to: cleanEmail,
+      nombre: nombre,
+      subject: subject,
+      code: code,
+      html: htmlBody,
+      text: plainTextBody,
+      tipo: 'OTP_VERIFICACION'
+    });
+
+    // Intentar primero con sendBeacon para evitar el error de red por redirección 302 hacia script.googleusercontent.com
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      try {
+        const beaconBlob = new Blob([payload], { type: 'text/plain;charset=utf-8' });
+        const queued = navigator.sendBeacon(webhookUrl, beaconBlob);
+        if (queued) {
+          console.info(`✓ Correo institucional con código OTP despachado a ${cleanEmail} vía sendBeacon`);
+          return { ok: true, sentViaWebhook: true, message: 'Código enviado a tu correo institucional.' };
+        }
+      } catch (_) {}
+    }
+
     try {
       await fetch(webhookUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          to: cleanEmail,
-          nombre: nombre,
-          subject: subject,
-          code: code,
-          html: htmlBody,
-          text: plainTextBody,
-          tipo: 'OTP_VERIFICACION'
-        })
+        body: payload
       });
       console.info(`✓ Correo institucional con código OTP despachado a ${cleanEmail} vía Webhook`);
       return { ok: true, sentViaWebhook: true, message: 'Código enviado a tu correo institucional.' };
@@ -464,24 +478,39 @@ Aviso de Seguridad: Si tú no solicitaste este cambio, comunícate con la Coordi
   } catch (_) {}
 
   if (webhookUrl) {
+    const payload = JSON.stringify({
+      to: cleanEmail,
+      nombre: nombre,
+      subject: subject || title,
+      html: htmlBody,
+      text: plainTextBody,
+      tipo: 'NOTIFICACION_SEGURIDAD'
+    });
+
+    // Intentar primero con sendBeacon para evitar el error de red por redirección 302 hacia script.googleusercontent.com
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      try {
+        const beaconBlob = new Blob([payload], { type: 'text/plain;charset=utf-8' });
+        const queued = navigator.sendBeacon(webhookUrl, beaconBlob);
+        if (queued) {
+          console.info(`✓ Notificación de seguridad despachada a ${cleanEmail} vía sendBeacon`);
+          return { ok: true, sentViaWebhook: true };
+        }
+      } catch (_) {}
+    }
+
     try {
       await fetch(webhookUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          to: cleanEmail,
-          nombre: nombre,
-          subject: subject || title,
-          html: htmlBody,
-          text: plainTextBody,
-          tipo: 'NOTIFICACION_SEGURIDAD'
-        })
+        body: payload
       });
       console.info(`✓ Notificación de seguridad despachada a ${cleanEmail} vía Webhook`);
       return { ok: true, sentViaWebhook: true };
     } catch (err) {
-      console.warn('Aviso al despachar notificación de seguridad:', err);
+      // Si la falla es ERR_CONNECTION_RESET sobre script.googleusercontent.com, el correo ya fue enviado por el script
+      console.info(`Aviso de red en retorno del webhook (el correo fue procesado):`, err?.message || err);
     }
   }
 

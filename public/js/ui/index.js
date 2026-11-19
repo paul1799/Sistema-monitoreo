@@ -24,14 +24,14 @@ export * from './dashboard.js?v=20261119_v1';
 export * from './alertas.js?v=20261103_v8';
 
 // Administración de usuarios y roles
-export * from './usuarios.js?v=20261119_v5';
-export * from './perfil-modal.js?v=20261119_v5';
+export * from './usuarios.js?v=20261119_v11';
+export * from './perfil-modal.js?v=20261119_v8';
 
 // Directorio y gestión de directivos / responsables
 export * from './responsables-tab.js?v=20261119_v1';
 
 // Directorio y gestión de colegios / instituciones educativas
-export * from './colegios-tab.js?v=20261119_v1';
+export * from './colegios-tab.js?v=20261119_v5';
 
 // Concursos escolares y consolidados
 export * from './concursos-tab.js?v=20261103_v8';
@@ -43,7 +43,7 @@ export * from './jec-reportes.js?v=20261103_v8';
 export * from './registrar.js?v=20261119_v1';
 
 // Vista consolidada, reportes ejecutivos, filtros y pendientes
-export * from './consolidado.js?v=20261119_v1';
+export * from './consolidado.js?v=20261119_v14';
 
 // Gestor y diseñador visual de tipos de ficha y plantillas
 export * from './plantillas.js?v=20261103_v8';

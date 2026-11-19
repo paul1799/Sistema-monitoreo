@@ -14,7 +14,7 @@ import {
   showToast,
   isFichaActiva
 } from '../../core/utils/index.js';
-import { isFichaTypeInUserScope } from '../../core/user-scope.js';
+import { isFichaTypeInUserScope, getScopedColegios, getUserAssignedReis } from '../../core/user-scope.js?v=20261119_v14';
 import {
   setAppState,
   getAppState,
@@ -39,7 +39,7 @@ import {
   renderItemReportHtml,
   computeStats,
   stackedBar
-} from '../../ui/scoring.js';
+} from '../../ui/scoring.js?v=20261119_v14';
 import {
   isFichaCoordTutoriaJec,
   isFichaCoordPedagogico,
@@ -133,7 +133,7 @@ import {
   setCurrentReportFt,
   currentPendingActiveTab,
   setCurrentPendingActiveTab
-} from './filters.js?v=20261119_v1';
+} from './filters.js?v=20261119_v14';
 
 import {
   renderDistributionChartHtml,
@@ -161,7 +161,7 @@ import {
   exportarTableroEBRCompleto
 } from './export.js';
 
-export * from './filters.js?v=20261119_v1';
+export * from './filters.js?v=20261119_v14';
 export * from './kpis.js';
 export * from './item-report.js';
 export * from './table.js?v=20261110_v1';
@@ -867,7 +867,24 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
   let cardsHtml = '';
   let secPendientesHtml = '';
   if (targetModality) {
-    const padron = state.colegios || [];
+    const isUserAdmin = (typeof isAdmin === 'boolean')
+      ? isAdmin
+      : ((typeof window !== 'undefined' && typeof window.isAdmin === 'function') ? window.isAdmin() : false);
+    const uDoc = state?.currentUserRoleDoc ||
+      (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
+      (() => {
+        try {
+          const uid = user?.uid || (typeof window !== 'undefined' && window.currentUser?.uid);
+          if (uid) {
+            const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+            if (raw) return JSON.parse(raw);
+          }
+        } catch (_) {}
+        return null;
+      })();
+
+    const assignedReis = (!isUserAdmin && uDoc) ? getUserAssignedReis(uDoc, false) : ['TODAS'];
+    const padron = (!isUserAdmin && uDoc) ? getScopedColegios(state, uDoc, false) : (state.colegios || []);
 
     // 1. Filtrar padrón según modalidad
     let targetColegios = padron.filter(c => isModalityMatch(c, targetModality));
@@ -882,6 +899,11 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
           return colReiNum === filterReiNum;
         }
         return normalizeText(c.rei || c.red || '').includes(qRed);
+      });
+    } else if (!isUserAdmin && uDoc && !assignedReis.includes('TODAS')) {
+      targetColegios = targetColegios.filter(c => {
+        const colReiNum = normalizeReiNumber(c.rei || c.red);
+        return colReiNum && assignedReis.includes(colReiNum);
       });
     }
     if (filtrosReporte.distrito && filtrosReporte.distrito.trim()) {

@@ -15,7 +15,7 @@ import {
 } from './core-utils.js?v=20261015_v1';
 
 import { ESPECIALISTA_JEC_OFICIAL } from '../calcEngine.js?v=20261013_v2';
-import { openModalRedistribucionColegios } from './colegios-tab.js?v=20261019_v2';
+import { openModalRedistribucionColegios } from './colegios-tab.js?v=20261119_v5';
 
 export const RESP_FIELD_ALIASES = {
   red: ['red', 'redes', 'rei', 'reis', 'red(es)', 'red (es)', 'redes a cargo'],

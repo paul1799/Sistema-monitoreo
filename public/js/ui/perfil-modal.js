@@ -5,8 +5,8 @@
 
 import { esc, showToast, lockBodyScroll, unlockBodyScroll } from './core-utils.js';
 import { getAuth, updatePassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { sendSecurityNotificationEmail } from '../core/email-service.js?v=20261119_v5';
-import { adminDirectResetPassword } from '../core/firebase/admin-service.js?v=20261119_v5';
+import { sendSecurityNotificationEmail } from '../core/email-service.js?v=20261119_v10';
+import { adminDirectResetPassword } from '../core/firebase/admin-service.js?v=20261119_v8';
 
 /**
  * Modal para que cualquier especialista (o usuario conectado) actualice sus datos personales

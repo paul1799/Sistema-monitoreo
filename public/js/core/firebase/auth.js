@@ -24,9 +24,9 @@ import {
   validateInstitutionalEmail,
   verifyDomainDns,
   sendSecurityNotificationEmail
-} from '../email-service.js?v=20261119_v5';
+} from '../email-service.js?v=20261119_v10';
 
-import { adminDirectResetPassword } from './admin-service.js?v=20261119_v5';
+import { adminDirectResetPassword } from './admin-service.js?v=20261119_v8';
 
 export { getAuth, signOut, sendPasswordResetEmail, generateOtpCode, sendOtpEmail, sendSecurityNotificationEmail, adminDirectResetPassword };
 
@@ -714,24 +714,50 @@ export function setupAuthListeners(auth, firestoreDb, { onLogin, onLogout }) {
     });
   });
 
-  // Modalidad JEC: comportamiento especial
-  const regModalidad = document.getElementById('regModalidad');
+  // Comportamiento dinámico de Modalidades y REIs
+  const regReiSection = document.getElementById('regReiSection');
   const regReiHelp = document.getElementById('regReiHelp');
-  if (regModalidad) {
-    regModalidad.addEventListener('change', () => {
-      if (regModalidad.value === 'JEC') {
-        if (regReiHelp) {
-          regReiHelp.textContent = '⭐ Modalidad JEC: Se asociará automáticamente a todas las II.EE. JEC de la UGEL 03.';
-          regReiHelp.style.color = 'var(--blue-600)';
+  const updateRegModalidadesUI = () => {
+    const selectedMods = Array.from(document.querySelectorAll('#regModalidadGrid input[name="regModalidad"]:checked')).map(cb => cb.value);
+    const hasEbr = selectedMods.includes('EBR');
+    const hasEbe = selectedMods.includes('EBE');
+    const hasJec = selectedMods.includes('JEC');
+
+    if (!hasEbr) {
+      if (regReiSection) regReiSection.style.display = 'none';
+      if (regReiHelp) {
+        if (hasEbe && !hasJec) {
+          regReiHelp.textContent = '✓ Modalidad EBE / PRITE: Supervisa todos los centros CEBE y programas PRITE de la UGEL 03 (todas las REIs).';
+        } else if (hasJec && !hasEbe) {
+          regReiHelp.textContent = '✓ Modalidad JEC: Supervisa automáticamente todas las II.EE. JEC de la UGEL 03 (todas las REIs).';
+        } else {
+          regReiHelp.textContent = '✓ Supervisa todos los CEBE, PRITE y las 29 II.EE. JEC de la UGEL 03.';
         }
-      } else {
-        if (regReiHelp) {
-          regReiHelp.textContent = 'Selecciona una o más REDes Educativas asignadas.';
-          regReiHelp.style.color = '';
-        }
+        regReiHelp.style.color = 'var(--blue-600)';
       }
-    });
-  }
+    } else {
+      if (regReiSection) regReiSection.style.display = 'block';
+      const reiLabel = regReiSection?.querySelector('label');
+      if (reiLabel) {
+        reiLabel.textContent = (hasEbe || hasJec) ? 'REI(s) a su cargo para EBR *' : 'REI(s) a su cargo *';
+      }
+      if (regReiHelp) {
+        if (hasEbe) {
+          regReiHelp.textContent = 'Selecciona tu(s) REI para EBR. Los centros EBE y PRITE de la UGEL 03 se asignan automáticamente.';
+        } else if (hasJec) {
+          regReiHelp.textContent = 'Selecciona tu(s) REI para EBR. Las 29 II.EE. JEC se asignan automáticamente.';
+        } else {
+          regReiHelp.textContent = 'Selecciona una o más REDes Educativas asignadas.';
+        }
+        regReiHelp.style.color = '';
+      }
+    }
+  };
+
+  document.querySelectorAll('#regModalidadGrid input[name="regModalidad"]').forEach(cb => {
+    cb.addEventListener('change', updateRegModalidadesUI);
+  });
+  updateRegModalidadesUI();
 
   // Formulario 1: Inicio de sesión
   const loginForm = document.getElementById('loginForm');
@@ -875,8 +901,9 @@ export function setupAuthListeners(auth, firestoreDb, { onLogin, onLogout }) {
 
       // Checkboxes de REI
       const selectedReis = Array.from(document.querySelectorAll('#regReiGrid input[name="regRei"]:checked')).map(cb => cb.value);
-      if (selectedRole === 'especialista' && selectedReis.length === 0) {
-        if (regError) regError.textContent = 'Debes seleccionar al menos una REI a tu cargo (o marcar "Todas").';
+      const hasEbr = modalidadesArr.includes('EBR');
+      if (selectedRole === 'especialista' && hasEbr && selectedReis.length === 0) {
+        if (regError) regError.textContent = 'Debes seleccionar al menos una REI a tu cargo para EBR (o marcar "Todas").';
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.textContent = 'Crear cuenta institucional';
@@ -885,6 +912,10 @@ export function setupAuthListeners(auth, firestoreDb, { onLogin, onLogout }) {
       }
 
       const isCoordinador = (selectedRole === 'coordinador');
+      const reisToSave = isCoordinador
+        ? ['TODAS']
+        : (!hasEbr ? ['TODAS'] : ((selectedReis.length === 16 || selectedReis.includes('TODAS')) ? ['TODAS'] : (selectedReis.length ? selectedReis : ['TODAS'])));
+
       const pendingProfile = {
         email: email.toLowerCase(),
         nombre: nombre,
@@ -893,7 +924,7 @@ export function setupAuthListeners(auth, firestoreDb, { onLogin, onLogout }) {
         solicitudRol: selectedRole,
         modalidad: isCoordinador ? 'TODAS' : modalidadStr,
         modalidades: isCoordinador ? ['TODAS'] : modalidadesArr,
-        reis: isCoordinador ? ['TODAS'] : (selectedReis.length ? selectedReis : ['TODAS']),
+        reis: reisToSave,
         accesoConcursos: isCoordinador ? true : false,
         estado: 'activo',
         estadoVerificacion: 'pendiente',

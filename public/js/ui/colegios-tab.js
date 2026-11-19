@@ -559,7 +559,7 @@ export function renderColegiosTab(container, state, getFichaType, dbNs, isAdmin,
       '<div class="panel">' +
       '<h3>Padrón de instituciones</h3>' +
       '<div class="filterBar">' +
-      '<div class="field"><label>REI</label><select id="col_fil_rei">' + (assignedReis.includes('TODAS') ? '<option value="">Todas</option>' : (assignedReis.length > 1 ? '<option value="">Todas mis REIs (' + assignedReis.join(', ') + ')</option>' : '')) + reiList.map(r => {
+      '<div class="field"><label>REI</label><select id="col_fil_rei"><option value="">Todas</option>' + reiList.map(r => {
         const isSel = (r === colFilters.rei) || (normalizeReiNumber(colFilters.rei) === r);
         return '<option value="' + esc(r) + '"' + (isSel ? ' selected' : '') + '>' + esc(r) + '</option>';
       }).join('') + '</select></div>' +

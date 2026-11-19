@@ -29,11 +29,11 @@ import {
   getConcursoSubTab,
   setConcursoSubTab,
   getDeletedFichaTypeIds,
-} from './ui.js?v=20261119_v5';
+} from './ui.js?v=20261119_v14';
 
 import { renderPortalView } from './portal.js?v=20261118_v1';
 import { renderDirectorioTab } from './directorio.js?v=20261119_v2';
-import { openUserProfileModal, openChangePasswordModal } from './ui/perfil-modal.js?v=20261119_v5';
+import { openUserProfileModal, openChangePasswordModal } from './ui/perfil-modal.js?v=20261119_v8';
 import { renderAlertasTab, getAlertCount } from './alertas.js?v=20261023_v3';
 import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261103_v8';
 import { PLANTILLAS_BASE_OFICIALES, ALIAS_A_PLANTILLA_BASE } from './catalogo-plantillas-base.js?v=20261016_v4';
@@ -139,11 +139,12 @@ function getFichaType(id) {
 
 /* ============================= SELECCIÓN DE MÓDULOS ============================= */
 function seleccionarModulo(mod) {
-  if (mod === 'concursos' && !canAccessConcursos()) {
-    showToast('🔒 Acceso restringido: El Administrador debe habilitar tu acceso al Módulo de Concursos.');
-    if (state.modulo === 'concursos' || !state.modulo) {
-      state.modulo = 'monitoreo';
+  if ((mod === 'concursos' || mod === 'portal') && !canAccessConcursos()) {
+    if (mod === 'concursos') {
+      showToast('🔒 Acceso restringido: El Administrador debe habilitar tu acceso al Módulo de Concursos.');
     }
+    state.modulo = 'monitoreo';
+    sessionStorage.setItem('agebre_active_modulo', 'monitoreo');
     render();
     return;
   }
@@ -178,10 +179,15 @@ function renderSubNavBar() {
   if (!subNav) return;
 
   if (topModBtn) {
-    if (state.modulo === 'portal') {
-      topModBtn.classList.add('active');
+    if (!canAccessConcursos()) {
+      topModBtn.style.display = 'none';
     } else {
-      topModBtn.classList.remove('active');
+      topModBtn.style.display = '';
+      if (state.modulo === 'portal') {
+        topModBtn.classList.add('active');
+      } else {
+        topModBtn.classList.remove('active');
+      }
     }
   }
 
@@ -1093,10 +1099,49 @@ function setupUserProfileDropdown(user) {
     btnCerrar.onclick = (e) => {
       e.stopPropagation();
       closeDropdown();
-      const logoutBtn = document.getElementById('topLogoutBtn');
-      if (logoutBtn) logoutBtn.click();
+      triggerLogout();
     };
   }
+}
+
+/**
+ * Abre el diálogo institucional para confirmación de cierre de sesión
+ */
+function triggerLogout() {
+  openLogoutConfirmModal({
+    currentUser,
+    isAdmin: isAdmin(),
+    onConfirmLogout: async () => {
+      stopListeners();
+      // Espera breve para que el WebChannel de Firestore cierre ordenadamente los canales de escucha
+      await new Promise(resolve => setTimeout(resolve, 150));
+      try {
+        await signOut(auth);
+        showToast('✓ Sesión cerrada correctamente.');
+      } catch (err) {
+        console.warn('Aviso al cerrar sesión:', err);
+      }
+    },
+    onSwitchUser: async () => {
+      stopListeners();
+      // Espera breve para que el WebChannel de Firestore cierre ordenadamente los canales de escucha
+      await new Promise(resolve => setTimeout(resolve, 150));
+      try {
+        await signOut(auth);
+        const emailInp = document.getElementById('loginEmail');
+        const passInp = document.getElementById('loginPassword');
+        if (emailInp) {
+          emailInp.value = '';
+          emailInp.focus();
+        }
+        if (passInp) passInp.value = '';
+        showToast('Inicia sesión con otra cuenta institucional.');
+      } catch (err) {
+        console.warn('Aviso al cambiar de cuenta:', err);
+      }
+    },
+    onCancelLogout: () => {}
+  });
 }
 
 /* ============================= AUTH CALLBACKS ============================= */
@@ -1120,12 +1165,12 @@ function onLogin(user, role, userRoleDoc) {
     } catch (_) {}
   }
 
-  // Iniciar en portal si no hay módulo activo guardado o validar restricción
-  const savedMod = sessionStorage.getItem('agebre_active_modulo') || 'portal';
-  if (savedMod === 'concursos' && !canAccessConcursos()) {
-    state.modulo = 'portal';
-    sessionStorage.removeItem('agebre_active_modulo');
+  // Si el usuario no tiene acceso a concursos habilitado por el administrador, ingresa directamente a Monitoreo y Seguimiento
+  if (!canAccessConcursos()) {
+    state.modulo = 'monitoreo';
+    sessionStorage.setItem('agebre_active_modulo', 'monitoreo');
   } else {
+    const savedMod = sessionStorage.getItem('agebre_active_modulo') || 'portal';
     state.modulo = savedMod;
   }
 
@@ -1188,41 +1233,7 @@ function onLogin(user, role, userRoleDoc) {
   // 3. Listener del botón Cerrar Sesión en la barra superior con confirmación
   const logoutBtn = document.getElementById('topLogoutBtn');
   if (logoutBtn) {
-    logoutBtn.onclick = () => {
-      openLogoutConfirmModal({
-        currentUser,
-        isAdmin: isAdmin(),
-        onConfirmLogout: async () => {
-          stopListeners();
-          // Espera breve para que el WebChannel de Firestore cierre ordenadamente los canales de escucha
-          await new Promise(resolve => setTimeout(resolve, 150));
-          try {
-            await signOut(auth);
-            showToast('✓ Sesión cerrada correctamente.');
-          } catch (err) {
-            console.warn('Aviso al cerrar sesión:', err);
-          }
-        },
-        onSwitchUser: async () => {
-          stopListeners();
-          // Espera breve para que el WebChannel de Firestore cierre ordenadamente los canales de escucha
-          await new Promise(resolve => setTimeout(resolve, 150));
-          try {
-            await signOut(auth);
-            const emailInp = document.getElementById('loginEmail');
-            const passInp = document.getElementById('loginPassword');
-            if (emailInp) {
-              emailInp.value = '';
-              setTimeout(() => emailInp.focus(), 150);
-            }
-            if (passInp) passInp.value = '';
-            showToast('Sesión finalizada. Ingrese con sus nuevas credenciales.');
-          } catch (err) {
-            console.warn('Aviso al cambiar de usuario:', err);
-          }
-        }
-      });
-    };
+    logoutBtn.onclick = () => triggerLogout();
   }
 
   startListeners();

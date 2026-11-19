@@ -21,7 +21,7 @@ import {
   resolveDirectorName,
   isFichaActiva
 } from '../../core/utils/index.js';
-import { isSubmissionInUserScope, getUserAssignedReis, getUserAssignedModalidades, isFichaTypeInUserScope, getScopedColegios } from '../../core/user-scope.js';
+import { isSubmissionInUserScope, getUserAssignedReis, getUserAssignedModalidades, isFichaTypeInUserScope, getScopedColegios } from '../../core/user-scope.js?v=20261119_v14';
 import {
   setAppState,
   getAppState,
@@ -49,7 +49,7 @@ import {
   computeStats,
   computeItemAgg,
   renderItemReportHtml
-} from '../../ui/scoring.js';
+} from '../../ui/scoring.js?v=20261119_v14';
 import { openDownloadConfigModal } from '../../ui/modales.js';
 import { openModalLimpiarRegistros } from '../../ui/modales-limpieza.js?v=20261103_v8';
 import {
@@ -814,12 +814,12 @@ export function aplicarFiltrosReporte(submissions, filters, state, getFichaType,
     subs = subs.filter(s => isSubmissionInUserScope(s, state, uDoc, false, getFichaType));
   }
 
-  // Garantizar bloqueo a la REI asignada si no es administrador
+  // Garantizar que si se especificó una REI en los filtros, pertenezca a sus REIs asignadas
   const assignedReis = (!isUserAdmin && uDoc) ? getUserAssignedReis(uDoc, false) : ['TODAS'];
   if (!assignedReis.includes('TODAS') && assignedReis.length > 0) {
-    if (!f.red || !assignedReis.includes(normalizeReiNumber(f.red))) {
-      f.red = assignedReis[0];
-      filtrosReporte.red = assignedReis[0];
+    if (f.red && !assignedReis.includes(normalizeReiNumber(f.red))) {
+      f.red = '';
+      filtrosReporte.red = '';
     }
   }
 
@@ -1331,8 +1331,8 @@ export function renderSection2Html(statsList, instCount, state, getFichaType, us
   let redOptions = [];
   if (!assignedReis.includes('TODAS')) {
     redOptions = assignedReis;
-    if (!filtrosReporte.red || !assignedReis.includes(normalizeReiNumber(filtrosReporte.red))) {
-      filtrosReporte.red = assignedReis[0];
+    if (filtrosReporte.red && !assignedReis.includes(normalizeReiNumber(filtrosReporte.red))) {
+      filtrosReporte.red = '';
     }
   } else {
     redOptions = Array.from(redSet).sort((a, b) => Number(a) - Number(b));
@@ -1343,7 +1343,7 @@ export function renderSection2Html(statsList, instCount, state, getFichaType, us
   if (filtrosReporte.estado) activeChips.push({ key: 'estado', label: `Estado: ${filtrosReporte.estado}` });
   if (!isSpecialistLocked && filtrosReporte.responsable) activeChips.push({ key: 'responsable', label: `Resp: ${filtrosReporte.responsable}` });
   if (filtrosReporte.institucion) activeChips.push({ key: 'institucion', label: `IE: ${filtrosReporte.institucion}` });
-  if (!isSpecialistLocked && filtrosReporte.red) {
+  if (filtrosReporte.red) {
     const rLabel = normalizeReiNumber(filtrosReporte.red) || filtrosReporte.red;
     activeChips.push({ key: 'red', label: `RED: ${rLabel}` });
   }
@@ -1434,26 +1434,20 @@ export function renderSection2Html(statsList, instCount, state, getFichaType, us
           </div>
         </div>
         <div class="subgroupRowFields">
-          ${isSpecialistLocked ? `
-            <div class="field" style="flex:1;margin-bottom:0">
-              <label>Jurisdicción asignada</label>
-              <div class="jurisdictionFixedPill" style="padding:7px 11px;background:#e0f2fe;border:1px solid #bae6fd;border-radius:6px;font-size:12px;font-weight:700;color:#0369a1;display:flex;align-items:center;gap:6px">
-                <span>📍</span> <span>REI ${esc(assignedReis.join(', '))}</span>
-              </div>
-              <input type="hidden" id="fil_red" value="${esc(assignedReis[0])}">
-            </div>
-          ` : `
-            <div class="field" style="flex:1;margin-bottom:0">
-              <label for="fil_red">RED (REI)</label>
-              <select id="fil_red">
-                ${assignedReis.includes('TODAS') ? '<option value="">Todas</option>' : (assignedReis.length > 1 ? '<option value="">Todas mis REIs (' + assignedReis.join(', ') + ')</option>' : '')}
-                ${redOptions.map(r => {
-                  const isSel = (r === filtrosReporte.red) || (normalizeReiNumber(filtrosReporte.red) === r);
-                  return `<option value="${esc(r)}"${isSel ? ' selected' : ''}>RED ${esc(r)}</option>`;
-                }).join('')}
-              </select>
-            </div>
-          `}
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="fil_red">RED (REI)</label>
+            <select id="fil_red">
+              ${isSpecialistLocked ? (
+                assignedReis.length > 1
+                  ? `<option value="">Todas mis REIs (${esc(assignedReis.join(', '))})</option>`
+                  : `<option value="">REI ${esc(assignedReis[0])} (Todas mis IEs)</option>`
+              ) : '<option value="">Todas</option>'}
+              ${redOptions.map(r => {
+                const isSel = (r === filtrosReporte.red) || (normalizeReiNumber(filtrosReporte.red) === r);
+                return `<option value="${esc(r)}"${isSel ? ' selected' : ''}>RED ${esc(r)}</option>`;
+              }).join('')}
+            </select>
+          </div>
           <div class="field" style="flex:1;margin-bottom:0">
             <label for="fil_estado">Estado</label>
             <select id="fil_estado">
@@ -1602,7 +1596,7 @@ export function updateSection2DynamicParts(secFiltros, statsList, instCount, ft,
   if (filtrosReporte.estado) activeChips.push({ key: 'estado', label: `Estado: ${filtrosReporte.estado}` });
   if (!isSpecialistLocked && filtrosReporte.responsable) activeChips.push({ key: 'responsable', label: `Resp: ${filtrosReporte.responsable}` });
   if (filtrosReporte.institucion) activeChips.push({ key: 'institucion', label: `IE: ${filtrosReporte.institucion}` });
-  if (!isSpecialistLocked && filtrosReporte.red) {
+  if (filtrosReporte.red) {
     const rLabel = normalizeReiNumber(filtrosReporte.red) || filtrosReporte.red;
     activeChips.push({ key: 'red', label: `RED: ${rLabel}` });
   }
@@ -1638,6 +1632,9 @@ export function updateSection2DynamicParts(secFiltros, statsList, instCount, ft,
           } else if (k === 'responsable') {
             const fr = secFiltros.querySelector('#fil_responsable');
             if (fr) fr.value = '';
+          } else if (k === 'red') {
+            const frd = secFiltros.querySelector('#fil_red');
+            if (frd) frd.value = '';
           }
           renderConsBodyProxy(state, getFichaType, dbNs, isAdmin, navigate, user);
         }
@@ -1654,13 +1651,15 @@ export function updateSection2DynamicParts(secFiltros, statsList, instCount, ft,
           estado: '',
           responsable: '',
           institucion: '',
-          red: isSpecialistLocked ? assignedReis[0] : '',
+          red: '',
           ugel: '',
           distrito: '',
           tipoGestion: '',
           desde: '',
           hasta: ''
         };
+        const frd = secFiltros.querySelector('#fil_red');
+        if (frd) frd.value = '';
         syncFiltersState(filtrosReporte);
         renderConsBodyProxy(state, getFichaType, dbNs, isAdmin, navigate, user);
       });
@@ -2210,7 +2209,7 @@ export function attachSection2Listeners(secFiltros, state, getFichaType, dbNs, i
       estado: '',
       responsable: '',
       institucion: '',
-      red: isSpecialistLocked ? assignedReis[0] : '',
+      red: '',
       ugel: '',
       distrito: '',
       tipoGestion: '',
@@ -2221,6 +2220,8 @@ export function attachSection2Listeners(secFiltros, state, getFichaType, dbNs, i
     if (fi) fi.value = '';
     const fr = secFiltros.querySelector('#fil_responsable');
     if (fr) fr.value = '';
+    const frd = secFiltros.querySelector('#fil_red');
+    if (frd) frd.value = '';
     syncFiltersState(filtrosReporte);
     renderConsBodyProxy(state, getFichaType, dbNs, isAdmin, navigate, user);
   };
