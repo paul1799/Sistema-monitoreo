@@ -515,9 +515,30 @@ export function preloadJec1erFormState(submission, ft) {
 }
 
 /**
- * Calcula en tiempo real subtotales, puntaje total y nivel obtenido
+ * Resuelve las secciones e indicadores del 1er Momento JEC
+ * priorizando las ediciones en ft.seccionesPorVisita[0] realizadas desde el sistema
  */
-export function calculateJec1erScore() {
+export function getActiveJec1erSections(ft = null) {
+  if (ft?.seccionesPorVisita) {
+    const s0 = ft.seccionesPorVisita[0] ?? ft.seccionesPorVisita['0'];
+    if (Array.isArray(s0) && s0.length > 0) return s0;
+  }
+  if (Array.isArray(ft?.secciones) && ft.secciones.length > 0) {
+    const isJec1 = ft.secciones.some(s => (s.items || []).some(i => i.id?.startsWith('jec1_') || i.id?.startsWith('cond_')));
+    if (isJec1) return ft.secciones;
+  }
+  return JEC_1ER_SECCIONES;
+}
+
+/**
+ * Calcula en tiempo real subtotales, puntaje total y nivel obtenido
+ * adaptándose automáticamente si el administrador agregó o retiró ítems
+ */
+export function calculateJec1erScore(ft = null) {
+  const activeSecs = getActiveJec1erSections(ft);
+  const condSec = activeSecs.find(s => s.id?.includes('cond') || s.nombre?.toLowerCase().includes('condicion')) || activeSecs[0];
+  const rubricSecs = activeSecs.filter(s => s !== condSec);
+
   const subtotales = {
     aspecto2: 0,
     aspecto3: 0,
@@ -527,9 +548,9 @@ export function calculateJec1erScore() {
 
   let totalItemsRespondidos = 0;
 
-  JEC_1ER_SECCIONES_PUNTAJE.forEach(sec => {
+  rubricSecs.forEach((sec, sIdx) => {
     let sub = 0;
-    sec.items.forEach(it => {
+    (sec.items || []).forEach(it => {
       const val = jec1erState.puntajes[it.id];
       if (val === 1 || val === 2 || val === 3 || val === '1' || val === '2' || val === '3') {
         sub += parseInt(val, 10);
@@ -537,18 +558,21 @@ export function calculateJec1erScore() {
       }
     });
 
-    if (sec.id === 'sec_aspecto_02') subtotales.aspecto2 = sub;
-    else if (sec.id === 'sec_aspecto_03') subtotales.aspecto3 = sub;
-    else if (sec.id === 'sec_aspecto_04') subtotales.aspecto4 = sub;
-    else if (sec.id === 'sec_aspecto_05') subtotales.aspecto5 = sub;
+    if (sec.id === 'sec_aspecto_02' || sIdx === 0) subtotales.aspecto2 = sub;
+    else if (sec.id === 'sec_aspecto_03' || sIdx === 1) subtotales.aspecto3 = sub;
+    else if (sec.id === 'sec_aspecto_04' || sIdx === 2) subtotales.aspecto4 = sub;
+    else if (sec.id === 'sec_aspecto_05' || sIdx === 3) subtotales.aspecto5 = sub;
+    else subtotales[`aspecto${sIdx + 2}`] = sub;
   });
 
-  const puntajeTotal = subtotales.aspecto2 + subtotales.aspecto3 + subtotales.aspecto4 + subtotales.aspecto5;
-  const nivelInfo = getNivelJec1erMomento(puntajeTotal);
+  const puntajeTotal = Object.values(subtotales).reduce((a, b) => a + b, 0);
+  const totalItems = rubricSecs.reduce((acc, s) => acc + (s.items || []).length, 0);
+  const maxPuntos = totalItems * 3;
+  const nivelInfo = getNivelJec1erMomento(puntajeTotal, maxPuntos);
 
   let condSi = 0;
   let condNo = 0;
-  JEC_1ER_CONDICIONES_ITEMS.forEach(c => {
+  (condSec?.items || []).forEach(c => {
     const v = String(jec1erState.condiciones[c.id] || '').toUpperCase();
     if (v === 'SI') condSi++;
     else if (v === 'NO') condNo++;
@@ -557,13 +581,13 @@ export function calculateJec1erScore() {
   return {
     subtotales,
     puntajeTotal,
-    maxPuntos: 111,
+    maxPuntos: maxPuntos || 111,
     totalItemsRespondidos,
-    totalItems: 37,
+    totalItems: totalItems || 37,
     nivelInfo,
     condSi,
     condNo,
-    totalCondiciones: 7
+    totalCondiciones: (condSec?.items || []).length || 7
   };
 }
 
@@ -688,8 +712,13 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
     </tr>
   `).join('');
 
-    // Renderizar 01 Aspecto: Condiciones (7 ítems Sí / No - Botones Circulares/Pills)
-    const condicionesItemsHtml = JEC_1ER_CONDICIONES_ITEMS.map((it, idx) => {
+    // Secciones activas considerando ediciones en la plantilla
+    const activeSecs = getActiveJec1erSections(ft);
+    const condSec = activeSecs.find(s => s.id?.includes('cond') || s.nombre?.toLowerCase().includes('condicion')) || activeSecs[0];
+    const rubricSecs = activeSecs.filter(s => s !== condSec);
+
+    // Renderizar 01 Aspecto: Condiciones (ítems Sí / No - Botones Circulares/Pills)
+    const condicionesItemsHtml = (condSec?.items || JEC_1ER_CONDICIONES_ITEMS).map((it, idx) => {
       const val = String(jec1erState.condiciones[it.id] || '').toUpperCase();
       const hallazgo = jec1erState.condicionesHallazgos[it.id] || '';
       return `
@@ -718,10 +747,11 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
     `;
     }).join('');
 
-    // Renderizar 4 Aspectos con Evaluación 1, 2, 3, NA (37 ítems - Botones Circulares)
-    const aspectosPuntajeHtml = JEC_1ER_SECCIONES_PUNTAJE.map((sec) => {
-      let subtotalKey = 'aspecto2';
-      if (sec.id === 'sec_aspecto_03') subtotalKey = 'aspecto3';
+    // Renderizar Aspectos con Evaluación 1, 2, 3, NA (ítems dinámicos)
+    const aspectosPuntajeHtml = (rubricSecs.length > 0 ? rubricSecs : JEC_1ER_SECCIONES_PUNTAJE).map((sec, secIdx) => {
+      let subtotalKey = `aspecto${secIdx + 2}`;
+      if (sec.id === 'sec_aspecto_02') subtotalKey = 'aspecto2';
+      else if (sec.id === 'sec_aspecto_03') subtotalKey = 'aspecto3';
       else if (sec.id === 'sec_aspecto_04') subtotalKey = 'aspecto4';
       else if (sec.id === 'sec_aspecto_05') subtotalKey = 'aspecto5';
 
@@ -1686,13 +1716,14 @@ function updateLiveScoreUI(host) {
     badge.style.background = scoreData.nivelInfo.color;
   }
   const countText = host.querySelector('#jec1_live_count_text');
+  const maxPts = scoreData.maxPuntos || 111;
   if (countText) {
-    const pct = Math.round((scoreData.puntajeTotal / 111) * 100);
-    countText.textContent = `${scoreData.puntajeTotal} / 111 pts (${pct}%)`;
+    const pct = Math.round((scoreData.puntajeTotal / maxPts) * 100);
+    countText.textContent = `${scoreData.puntajeTotal} / ${maxPts} pts (${pct}%)`;
   }
   const progressBar = host.querySelector('#jec1_live_progress_bar');
   if (progressBar) {
-    const pct = Math.min(100, Math.round((scoreData.puntajeTotal / 111) * 100));
+    const pct = Math.min(100, Math.round((scoreData.puntajeTotal / maxPts) * 100));
     progressBar.style.width = `${pct}%`;
     progressBar.style.background = scoreData.nivelInfo.color;
   }
@@ -1710,9 +1741,9 @@ function updateLiveScoreUI(host) {
   const progBadge = host.querySelector('#regProgressBadge');
   if (progBadge) {
     const respondidos = scoreData.totalItemsRespondidos + (scoreData.condSi + scoreData.condNo);
-    const total44 = 44;
-    const pct44 = Math.round((respondidos / total44) * 100);
-    progBadge.innerHTML = `Avance: <strong>${respondidos} de ${total44}</strong> ítems respondidos (${pct44}%)`;
+    const totalItemsCount = scoreData.totalItems + scoreData.totalCondiciones;
+    const pctTotal = totalItemsCount > 0 ? Math.round((respondidos / totalItemsCount) * 100) : 0;
+    progBadge.innerHTML = `Avance: <strong>${respondidos} de ${totalItemsCount}</strong> ítems respondidos (${pctTotal}%)`;
   }
 }
 

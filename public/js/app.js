@@ -576,8 +576,23 @@ function startListeners() {
         jecDoc.tieneVisitas = true;
         jecDoc.tipoVisitas = 'items_por_visita';
         jecDoc.visitas = Array.isArray(jecDoc.visitas) && jecDoc.visitas.length > 0 ? jecDoc.visitas : officialJec.visitas;
-        jecDoc.seccionesPorVisita = jecDoc.seccionesPorVisita || officialJec.seccionesPorVisita;
-        jecDoc.secciones = Array.isArray(jecDoc.secciones) && jecDoc.secciones.length > 0 ? jecDoc.secciones : officialJec.secciones;
+        
+        // Preservar fielmente las secciones por visita editadas desde el sistema (Módulos -> Plantillas)
+        const mergedSecs = {
+          ...(officialJec.seccionesPorVisita || {}),
+          ...(jecDoc.seccionesPorVisita || {})
+        };
+        if (!mergedSecs[1] || mergedSecs[1].length === 0) mergedSecs[1] = officialJec.seccionesPorVisita[1];
+        if (!mergedSecs[2] || mergedSecs[2].length === 0) mergedSecs[2] = officialJec.seccionesPorVisita[2];
+        if (!mergedSecs[0] || mergedSecs[0].length === 0) mergedSecs[0] = officialJec.seccionesPorVisita[0];
+        jecDoc.seccionesPorVisita = mergedSecs;
+
+        // Para jecDoc.secciones: garantizar que contenga la estructura estándar de 2do Momento (31 ítems o editada)
+        // y nunca sea reemplazada por las rúbricas del 1er Momento
+        const has1erItems = Array.isArray(jecDoc.secciones) && jecDoc.secciones.some(s => (s.items || []).some(i => i.id?.startsWith('jec1_') || i.id?.startsWith('cond_')));
+        if (!jecDoc.secciones || jecDoc.secciones.length === 0 || has1erItems) {
+          jecDoc.secciones = mergedSecs[1] || officialJec.secciones;
+        }
       }
 
       // 5. Unificar Ficha de Directivo (1 sola ficha, deduplicando copias sin registros)

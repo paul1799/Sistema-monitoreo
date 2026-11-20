@@ -432,9 +432,6 @@ export async function sendSecurityNotificationEmail({
     <tr>
       <td style="padding:32px 30px 24px;">
         <h2 style="font-size:19px;color:#0B1B36;margin:0 0 12px;font-weight:700;">${title}</h2>
-        <p style="font-size:14px;color:#334155;line-height:1.6;margin:0 0 16px;">
-          Estimado(a) <strong>${nombre}</strong>,
-        </p>
         <div style="font-size:14px;color:#475569;line-height:1.6;margin:0 0 20px;">
           ${cleanMessage}
         </div>
@@ -467,7 +464,6 @@ export async function sendSecurityNotificationEmail({
 UGEL 03 • AGEBRE - Sistematización de Monitoreo 2026
 ${title}
 
-Estimado(a) ${nombre},
 ${cleanMessage}
 
 Enlace de acceso: ${actionUrl}

@@ -38,6 +38,7 @@ import {
   attachPreviewEvents
 } from './preview.js';
 import { renderPlantillasManagementView } from './list.js';
+import { PLANTILLAS_BASE_OFICIALES } from '../../catalogo-plantillas-base.js';
 
 async function verifyAdminPassword(pw, adminEmail) {
   const authModule = await import('../../core/firebase/auth.js');
@@ -198,8 +199,30 @@ export function openFichaInBuilder(ft) {
   builderActiveVisitTab = 0;
   builderState.tipoVisitas = builderState.tipoVisitas || (builderState.seccionesPorVisita && Object.keys(builderState.seccionesPorVisita).length > 0 ? 'items_por_visita' : 'mismos_items');
   builderState.seccionesPorVisita = builderState.seccionesPorVisita || {};
-  if (builderState.tipoVisitas === 'items_por_visita' && !builderState.seccionesPorVisita[0]) {
-    builderState.seccionesPorVisita[0] = JSON.parse(JSON.stringify(builderState.secciones || []));
+
+  const isJec = idLower.includes('jec') && !idLower.includes('tutoria') && !idLower.includes('pedagog');
+  const isEbr = idLower.includes('ebr') || idLower.includes('gestion_ugel03');
+
+  if (builderState.tipoVisitas === 'items_por_visita') {
+    (builderState.visitas || []).forEach((_, vIdx) => {
+      const existing = builderState.seccionesPorVisita[vIdx] || builderState.seccionesPorVisita[String(vIdx)];
+      if (Array.isArray(existing) && existing.length > 0) {
+        builderState.seccionesPorVisita[vIdx] = existing;
+      } else if (ft.seccionesPorVisita && (ft.seccionesPorVisita[vIdx] || ft.seccionesPorVisita[String(vIdx)])) {
+        builderState.seccionesPorVisita[vIdx] = JSON.parse(JSON.stringify(ft.seccionesPorVisita[vIdx] || ft.seccionesPorVisita[String(vIdx)]));
+      } else if (isJec && PLANTILLAS_BASE_OFICIALES.ft_msejec_2do?.seccionesPorVisita?.[vIdx]) {
+        builderState.seccionesPorVisita[vIdx] = JSON.parse(JSON.stringify(PLANTILLAS_BASE_OFICIALES.ft_msejec_2do.seccionesPorVisita[vIdx]));
+      } else if (isEbr && PLANTILLAS_BASE_OFICIALES.ft_gestion_ugel03_ebr?.seccionesPorVisita?.[vIdx]) {
+        builderState.seccionesPorVisita[vIdx] = JSON.parse(JSON.stringify(PLANTILLAS_BASE_OFICIALES.ft_gestion_ugel03_ebr.seccionesPorVisita[vIdx]));
+      } else if (vIdx === 0 && Array.isArray(builderState.secciones) && builderState.secciones.length > 0) {
+        builderState.seccionesPorVisita[0] = JSON.parse(JSON.stringify(builderState.secciones));
+      } else {
+        builderState.seccionesPorVisita[vIdx] = [{
+          nombre: `Sección 1`,
+          items: [{ id: genId(), texto: '', evidencia: '' }]
+        }];
+      }
+    });
   }
   builderState.regla_nivel_config = builderState.regla_nivel_config || {
     inicio: { min: 0, max: 11, label: 'Incipiente' },
@@ -1513,11 +1536,20 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       syncBuilderFromDom(container, bs);
       builderActiveVisitTab = +tab.dataset.visitaTab;
       if (!bs.seccionesPorVisita) bs.seccionesPorVisita = {};
-      if (!bs.seccionesPorVisita[builderActiveVisitTab]) {
-        bs.seccionesPorVisita[builderActiveVisitTab] = [{
-          nombre: `Sección 1`,
-          items: [{ id: genId(), texto: '', evidencia: '' }]
-        }];
+      if (!bs.seccionesPorVisita[builderActiveVisitTab] || bs.seccionesPorVisita[builderActiveVisitTab].length === 0) {
+        const idLower = String(bs.id || builderEditingId || '').toLowerCase();
+        const isJec = idLower.includes('jec') && !idLower.includes('tutoria') && !idLower.includes('pedagog');
+        const isEbr = idLower.includes('ebr') || idLower.includes('gestion_ugel03');
+        if (isJec && PLANTILLAS_BASE_OFICIALES.ft_msejec_2do?.seccionesPorVisita?.[builderActiveVisitTab]) {
+          bs.seccionesPorVisita[builderActiveVisitTab] = JSON.parse(JSON.stringify(PLANTILLAS_BASE_OFICIALES.ft_msejec_2do.seccionesPorVisita[builderActiveVisitTab]));
+        } else if (isEbr && PLANTILLAS_BASE_OFICIALES.ft_gestion_ugel03_ebr?.seccionesPorVisita?.[builderActiveVisitTab]) {
+          bs.seccionesPorVisita[builderActiveVisitTab] = JSON.parse(JSON.stringify(PLANTILLAS_BASE_OFICIALES.ft_gestion_ugel03_ebr.seccionesPorVisita[builderActiveVisitTab]));
+        } else {
+          bs.seccionesPorVisita[builderActiveVisitTab] = [{
+            nombre: `Sección 1`,
+            items: [{ id: genId(), texto: '', evidencia: '' }]
+          }];
+        }
       }
       builderIsDirty = true;
       renderSplitScreenBuilder(container, state, getFichaType, dbNs, isAdmin, currentUser, navigate, subNavHtml);
@@ -2154,8 +2186,19 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
 
       let globalNum = 0;
       const seenTemplateIds = new Set();
-      const validSections = (isDiferenciada && validSeccionesPorVisita[0] && validSeccionesPorVisita[0].length > 0)
-        ? validSeccionesPorVisita[0]
+      const idLower = String(bs.id || builderEditingId || '').toLowerCase();
+      const isJec = idLower.includes('jec') && !idLower.includes('tutoria') && !idLower.includes('pedagog');
+
+      // Para el campo general "secciones": si es JEC con visitas diferenciadas, usar la Visita 2 (31 ítems)
+      // para evitar que el 1er Momento (rúbricas) sobreescriba la estructura estándar
+      const sourceForDefaultSections = (isDiferenciada && isJec && validSeccionesPorVisita[1] && validSeccionesPorVisita[1].length > 0)
+        ? validSeccionesPorVisita[1]
+        : ((isDiferenciada && validSeccionesPorVisita[0] && validSeccionesPorVisita[0].length > 0)
+            ? validSeccionesPorVisita[0]
+            : (bs.secciones || []));
+
+      const validSections = (isDiferenciada && sourceForDefaultSections.length > 0)
+        ? sourceForDefaultSections
         : (bs.secciones || [])
           .filter(s => s.nombre.trim() || s.items.some(i => i.texto.trim()))
           .map((s, sIdx) => ({

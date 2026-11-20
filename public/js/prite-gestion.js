@@ -364,8 +364,7 @@ export const TOTAL_PRITE_ITEMS = 32;
  * e it.num (1 a 32) estén siempre definidos y nunca sean undefined.
  */
 export function getActivePriteSections(ft) {
-  const isOfficial32 = (ft && Array.isArray(ft.secciones) && ft.secciones.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0) === 32);
-  const rawSections = isOfficial32 ? ft.secciones : PRITE_SECCIONES;
+  const rawSections = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0) ? ft.secciones : PRITE_SECCIONES;
 
   let runningItemIndex = 1;
   return rawSections.map((sec, sIdx) => {
@@ -1016,11 +1015,11 @@ export function renderPriteGestionForm(host, ft, state, dbNs, currentUser, navig
           <div>
             <div class="sectionHeaderTitle" style="margin-bottom:2px">III. ASPECTOS A MONITOREAR — VISITA ${vActiva}</div>
             <p style="margin:0;font-size:12px;color:var(--text-600);max-width:850px">
-              Valore cada uno de los 32 indicadores en la escala: <strong>I</strong> (Inicio), <strong>P</strong> (Proceso), <strong>L</strong> (Logrado) o <strong>N.A.</strong> (No Aplica), y registre la evidencia verificable.
+              Valore cada uno de los ${totalItemsCount} indicadores en la escala: <strong>I</strong> (Inicio), <strong>P</strong> (Proceso), <strong>L</strong> (Logrado) o <strong>N.A.</strong> (No Aplica), y registre la evidencia verificable.
             </p>
           </div>
           <div id="priteProgressCounter" class="cebeProgressBadge">
-            0 de 32 respondidos (0%)
+            0 de ${totalItemsCount} respondidos (0%)
           </div>
         </div>
 
@@ -1120,7 +1119,7 @@ export function renderPriteGestionForm(host, ft, state, dbNs, currentUser, navig
       <!-- Barra inferior fija de avance y guardado -->
       <div class="formBottomBar">
         <div class="regProgressBadge" id="priteBottomBadge">
-          Avance: <strong>0 de 32</strong> respondidos (0%) · Puntaje: 0 / 32 pts
+          Avance: <strong>0 de ${totalItemsCount}</strong> respondidos (0%) · Puntaje: 0 / ${totalItemsCount} pts
         </div>
         <button type="button" class="btn secondary" id="btnCancelarPrite">Cancelar</button>
         <button type="submit" class="btn" id="btnGuardarPrite">${submitLabel}</button>

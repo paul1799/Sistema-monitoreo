@@ -210,9 +210,9 @@ export function getEnrichedFichaType(ft) {
         if (autoTieneVisitas === null) autoTieneVisitas = true;
       }
       if (isFichaCebeGestion(ft)) {
-        ft = { ...ft, secciones: CEBE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
+        ft = { ...ft, secciones: (ft.secciones && ft.secciones.length > 0) ? ft.secciones : CEBE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
       } else if (isFichaPriteGestion(ft)) {
-        ft = { ...ft, secciones: PRITE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
+        ft = { ...ft, secciones: (ft.secciones && ft.secciones.length > 0) ? ft.secciones : PRITE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
       }
     }
     // 7. Gestión Escolar EBR

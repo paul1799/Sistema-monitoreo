@@ -12,6 +12,9 @@ import {
   JEC_SECCIONES
 } from './jec-monitoreo.js';
 import {
+  JEC_1ER_SECCIONES
+} from './jec-1er-monitoreo.js';
+import {
   isFichaCebeGestion,
   CEBE_SECCIONES
 } from './cebe-gestion.js';
@@ -381,28 +384,51 @@ export function getHallazgosClave(statsList, ft, isEbr) {
  * Agrega y consolida el desempeño por ítem individual de una ficha o conjunto de visitas.
  * Fuente única de cálculo compartida entre la vista web y la Sección IV del PDF Oficial.
  */
-export function computeItemAgg(subs, ft) {
+export function computeItemAgg(subs, ft, targetVisita = null) {
   const escalaRaw = String(ft?.escala || '').toUpperCase();
   const tipoRespRaw = String(ft?.tipoRespuesta || '').toLowerCase();
   const isSiNo = (tipoRespRaw === 'si_no' || escalaRaw === 'SI_NO' || escalaRaw === 'SI_NO_NA' || tipoRespRaw.includes('si_no') || escalaRaw.includes('SI_NO'));
   let activeFt = ft;
-  if (!isSiNo && isFichaEbrGestionEscolar(ft)) {
+
+  // Determinar visita objetivo para fichas con momentos diferenciados (JEC, EBR, etc.)
+  let vTarget = targetVisita ? Number(targetVisita) : null;
+  if (!vTarget && subs && subs.length > 0) {
+    const vSet = new Set(subs.map(s => Number(s.visita)).filter(v => !isNaN(v) && v > 0));
+    if (vSet.size === 1) {
+      vTarget = Array.from(vSet)[0];
+    }
+  }
+
+  if (isFichaJec(ft)) {
+    const isV1 = (vTarget === 1);
+    if (isV1) {
+      const jec1Secs = (ft?.seccionesPorVisita && (ft.seccionesPorVisita[0] || ft.seccionesPorVisita['0']))
+        || (ft?.secciones && ft.secciones.length > 0 ? ft.secciones : JEC_1ER_SECCIONES);
+      activeFt = { ...ft, secciones: jec1Secs, tipoRespuesta: 'escala1_3', escala: 'ESCALA_1_3' };
+    } else {
+      const vIdx = (vTarget && vTarget >= 2) ? (vTarget - 1) : 1;
+      const jecSecs = (ft?.seccionesPorVisita && (ft.seccionesPorVisita[vIdx] || ft.seccionesPorVisita[1] || ft.seccionesPorVisita['1'] || ft.seccionesPorVisita[2] || ft.seccionesPorVisita['2']))
+        || (ft?.secciones && ft.secciones.length > 0 ? ft.secciones : JEC_SECCIONES);
+      activeFt = { ...ft, secciones: jecSecs, tipoRespuesta: 'si_no', escala: 'SI_NO_NA' };
+    }
+  } else if (!isSiNo && isFichaEbrGestionEscolar(ft)) {
     const hasV3 = (subs || []).some(s => Number(s.visita) === 3);
     const hasV2 = (subs || []).some(s => Number(s.visita) === 2);
-    const vTarget = hasV3 ? 3 : (hasV2 ? 2 : 1);
-    const seccionesEbr = getEbrSeccionesForVisita(vTarget, ft);
+    const effVTarget = vTarget || (hasV3 ? 3 : (hasV2 ? 2 : 1));
+    const seccionesEbr = getEbrSeccionesForVisita(effVTarget, ft);
     activeFt = { ...ft, secciones: seccionesEbr, tipoRespuesta: 'ips' };
-  } else if (isFichaJec(ft)) {
-    activeFt = { ...ft, secciones: (ft?.secciones?.length ? ft.secciones : JEC_SECCIONES), tipoRespuesta: 'si_no' };
   } else if (!isSiNo && isFichaCebeGestion(ft)) {
-    const isOfficialCebe = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 34);
-    activeFt = { ...ft, secciones: isOfficialCebe ? ft.secciones : CEBE_SECCIONES, tipoRespuesta: 'ips' };
+    activeFt = { ...ft, secciones: (ft?.secciones && ft.secciones.length > 0) ? ft.secciones : CEBE_SECCIONES, tipoRespuesta: 'ips' };
   } else if (!isSiNo && isFichaPriteGestion(ft)) {
-    const isOfficialPrite = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 32);
-    activeFt = { ...ft, secciones: isOfficialPrite ? ft.secciones : PRITE_SECCIONES, tipoRespuesta: 'ips' };
+    activeFt = { ...ft, secciones: (ft?.secciones && ft.secciones.length > 0) ? ft.secciones : PRITE_SECCIONES, tipoRespuesta: 'ips' };
   } else if (isFichaMaterialesCebe(ft)) {
-    const isOfficialMat = (ft?.secciones?.length === 5 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 14);
-    activeFt = { ...ft, secciones: isOfficialMat ? ft.secciones : MATERIALES_CEBE_SECCIONES, tipoRespuesta: 'si_no', escala: 'SI_NO_NA' };
+    activeFt = { ...ft, secciones: (ft?.secciones && ft.secciones.length > 0) ? ft.secciones : MATERIALES_CEBE_SECCIONES, tipoRespuesta: 'si_no', escala: 'SI_NO_NA' };
+  } else if (ft?.seccionesPorVisita && Object.keys(ft.seccionesPorVisita).length > 0) {
+    const vIdx = (vTarget && vTarget >= 1) ? (vTarget - 1) : 0;
+    const vSecs = ft.seccionesPorVisita[vIdx] || ft.seccionesPorVisita[0] || ft.seccionesPorVisita['0'] || ft.secciones;
+    if (vSecs && vSecs.length > 0) {
+      activeFt = { ...ft, secciones: vSecs };
+    }
   }
   const tipoResp = isSiNo ? 'si_no' : (activeFt?.tipoRespuesta || 'ips');
   const escala = isSiNo
@@ -435,18 +461,25 @@ export function computeItemAgg(subs, ft) {
   });
 
   return (activeFt?.secciones || []).map((sec, sIdx) => {
+    const secEscala = sec.escala
+      || (sec.tipoRespuesta === 'si_no' ? 'SI_NO_NA' : (sec.tipoRespuesta === 'escala1_3' ? 'ESCALA_1_3' : null))
+      || (sec.id === 'sec_condiciones' ? 'SI_NO_NA' : null)
+      || escala;
     const items = (sec.items || []).map((it, iIdx) => {
+      const itEscala = it.escala
+        || (it.tipoRespuesta === 'si_no' ? 'SI_NO_NA' : (it.tipoRespuesta === 'escala1_3' ? 'ESCALA_1_3' : null))
+        || secEscala;
       const counts = {};
       let scoreSum = 0, scoreCnt = 0, total = 0;
       subsWithMaps.forEach(({ s, valMap }) => {
         const v = resolveItemValue(valMap, it, sec, sIdx, iIdx, isJec);
         if (v !== undefined && v !== null && String(v).trim() !== '') {
           let vClean = String(v).trim().toLowerCase();
-          if (vClean === 'sí') vClean = 'si';
+          if (vClean === 'sí' || vClean === 'si') vClean = 'si';
           if (vClean) {
             counts[vClean] = (counts[vClean] || 0) + 1;
             total++;
-            const sc = puntajeItem(escala, vClean);
+            const sc = puntajeItem(itEscala, vClean);
             if (sc !== null) { scoreSum += sc; scoreCnt++; }
           }
         }

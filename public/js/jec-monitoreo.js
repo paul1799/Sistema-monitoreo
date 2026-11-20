@@ -271,36 +271,91 @@ export const JEC_SECCIONES = [
 ];
 
 /**
+ * Resuelve las secciones e indicadores activos correspondientes a la visita JEC (1, 2 o 3)
+ * priorizando las secciones configuradas dinámicamente desde el sistema (ft.seccionesPorVisita)
+ * para permitir flexibilidad total de agregar o quitar ítems.
+ * @param {Object} ft - Objeto de ficha técnica / plantilla JEC
+ * @param {number|string} visitaNum - Número de visita (1, 2 o 3)
+ * @returns {Array} Secciones con sus respectivos indicadores
+ */
+export function getActiveJecSections(ft, visitaNum = 2) {
+  const v = Number(visitaNum) || 2;
+  const vIdx = v - 1;
+
+  // 1. Si la plantilla tiene seccionesPorVisita configuradas (desde Firestore o plantilla unificada)
+  if (ft?.seccionesPorVisita) {
+    const secVis = ft.seccionesPorVisita[vIdx] ?? ft.seccionesPorVisita[String(vIdx)];
+    if (Array.isArray(secVis) && secVis.length > 0) {
+      return secVis;
+    }
+  }
+
+  // 2. Si es Visita 2 o 3 y ft.secciones no contiene ítems de 1er Momento (rúbricas o jec1_)
+  if (v >= 2 && Array.isArray(ft?.secciones) && ft.secciones.length > 0) {
+    const hasJec1Items = ft.secciones.some(s => (s.items || []).some(i => i.id?.startsWith('jec1_') || i.id?.startsWith('cond_')));
+    if (!hasJec1Items) {
+      return ft.secciones;
+    }
+  }
+
+  // 3. Fallback canónico oficial para visitas 2 y 3 (31 ítems de proceso/salida)
+  return JEC_SECCIONES;
+}
+
+/**
  * Calcula el Nivel de Implementación del MSE JEC según el total de respuestas "Sí"
- * Regla oficial MINEDU (Imagen 2):
+ * Soporta escala proporcional flexible si el administrador agrega o reduce indicadores en la plantilla.
+ * Regla base oficial MINEDU (31 ítems):
  * - De 24 a 31 respuestas "Sí": Implementación lograda (Logrado)
  * - De 12 a 23 respuestas "Sí": Implementación parcial (En proceso)
  * - De 0 a 11 respuestas "Sí":  Implementación incipiente (Inicio)
  */
-export function getNivelLogroJec(conteoSi) {
+export function getNivelLogroJec(conteoSi, totalItems = 31, config = null) {
   const c = Number(conteoSi) || 0;
-  if (c >= 24) {
+  const tot = Number(totalItems) || 31;
+
+  // Si existe regla_nivel_config personalizada desde la plantilla en Firestore
+  if (config) {
+    const minLog = Number(config.minLog ?? config.logrado?.min ?? 24);
+    const minProc = Number(config.minProc ?? config.proceso?.min ?? 12);
+    const lblLog = config.lblLog || config.logrado?.label || 'Implementación lograda';
+    const lblProc = config.lblProc || config.proceso?.label || 'Implementación parcial';
+    const lblIni = config.lblIni || config.inicio?.label || 'Implementación incipiente';
+    if (c >= minLog) {
+      return { nivel: lblLog, estado_panel: 'Logrado', cls: 'st-logrado', color: 'var(--ok)', badgeBg: 'var(--ok-bg)', rangoTexto: `De ${minLog} a ${tot} respuestas "Sí"`, rangoMin: minLog, rangoMax: tot };
+    }
+    if (c >= minProc) {
+      return { nivel: lblProc, estado_panel: 'En proceso', cls: 'st-proceso', color: 'var(--warn)', badgeBg: 'var(--warn-bg)', rangoTexto: `De ${minProc} a ${minLog - 1} respuestas "Sí"`, rangoMin: minProc, rangoMax: minLog - 1 };
+    }
+    return { nivel: lblIni, estado_panel: 'Inicio', cls: 'st-inicio', color: 'var(--danger)', badgeBg: 'var(--danger-bg)', rangoTexto: `De 0 a ${minProc - 1} respuestas "Sí"`, rangoMin: 0, rangoMax: minProc - 1 };
+  }
+
+  // Si no hay configuración manual y el total de ítems fue ajustado desde el sistema, escalar proporcionalmente:
+  const logThreshold = tot === 31 ? 24 : Math.round(tot * (24 / 31));
+  const procThreshold = tot === 31 ? 12 : Math.round(tot * (12 / 31));
+
+  if (c >= logThreshold) {
     return {
       nivel: 'Implementación lograda',
       estado_panel: 'Logrado',
       cls: 'st-logrado',
       color: 'var(--ok)',
       badgeBg: 'var(--ok-bg)',
-      rangoTexto: 'De 24 a 31 respuestas "Sí"',
-      rangoMin: 24,
-      rangoMax: 31
+      rangoTexto: `De ${logThreshold} a ${tot} respuestas "Sí"`,
+      rangoMin: logThreshold,
+      rangoMax: tot
     };
   }
-  if (c >= 12) {
+  if (c >= procThreshold) {
     return {
       nivel: 'Implementación parcial',
       estado_panel: 'En proceso',
       cls: 'st-proceso',
       color: 'var(--warn)',
       badgeBg: 'var(--warn-bg)',
-      rangoTexto: 'De 12 a 23 respuestas "Sí"',
-      rangoMin: 12,
-      rangoMax: 23
+      rangoTexto: `De ${procThreshold} a ${logThreshold - 1} respuestas "Sí"`,
+      rangoMin: procThreshold,
+      rangoMax: logThreshold - 1
     };
   }
   return {
@@ -309,9 +364,9 @@ export function getNivelLogroJec(conteoSi) {
     cls: 'st-inicio',
     color: 'var(--danger)',
     badgeBg: 'var(--danger-bg)',
-    rangoTexto: 'De 0 a 11 respuestas "Sí"',
+    rangoTexto: `De 0 a ${procThreshold - 1} respuestas "Sí"`,
     rangoMin: 0,
-    rangoMax: 11
+    rangoMax: procThreshold - 1
   };
 }
 
@@ -582,17 +637,15 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
 
   const activeVisitaNum = forcedVisita ? Number(forcedVisita) : (ft?.momento || 2);
 
-  // Aspectos e ítems dinámicos desde ft.secciones o catálogo canónico JEC
-  const activeSections = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0) ? ft.secciones : JEC_SECCIONES;
-  const activeItems = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0)
-    ? ft.secciones.flatMap(s => (s.items || []).map(it => ({ ...it, seccion: s.nombre })))
-    : JEC_ITEMS;
+  // Aspectos e ítems dinámicos desde ft.seccionesPorVisita o ft.secciones
+  const activeSections = getActiveJecSections(ft, activeVisitaNum);
+  const activeItems = activeSections.flatMap(s => (s.items || []).map(it => ({ ...it, seccion: s.nombre })));
 
   // Calcular conteo actual de respuestas Sí en tiempo real
   const conteoSi = Object.values(jecFormState.respuestas).filter(v => v === 'si').length;
   const conteoRespondidos = Object.values(jecFormState.respuestas).filter(v => v).length;
-  const nivelActual = getNivelLogroJec(conteoSi);
   const totalItems = activeItems.length || JEC_ITEMS.length;
+  const nivelActual = getNivelLogroJec(conteoSi, totalItems, ft?.regla_nivel_config);
   const pctAvance = Math.round((conteoSi / totalItems) * 100);
   const pctRespondidos = Math.round((conteoRespondidos / totalItems) * 100);
   const submitLabel = isEditing ? 'Actualizar registro' : 'Guardar registro';
@@ -814,7 +867,7 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
           • Registra en la columna "Hallazgos" información breve y objetiva sobre lo verificado en cada ítem.
         </div>
 
-        ${renderComponentesJecHtml(ft)}
+        ${renderComponentesJecHtml(ft, activeVisitaNum)}
       </div>
 
       <!-- ─── SECCIÓN VII: TABLA OFICIAL DE NIVEL DE IMPLEMENTACIÓN (IMAGEN 2) ─── -->
@@ -1064,8 +1117,8 @@ function renderDocentesTableJec(momentoKey, data) {
 /**
  * Renderiza los ítems organizados por componentes (dinámicos con fallback)
  */
-function renderComponentesJecHtml(ft = null) {
-  const activeSections = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0) ? ft.secciones : JEC_SECCIONES;
+function renderComponentesJecHtml(ft = null, activeVisitaNum = 2) {
+  const activeSections = getActiveJecSections(ft, activeVisitaNum);
   return activeSections.map((sec, sIdx) => `
     <div class="jecSeccionBlock" style="margin-bottom:20px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden">
       <div style="background:var(--surface-2);padding:10px 14px;font-weight:700;font-size:13.5px;color:var(--primary-dark);border-bottom:1px solid var(--line)">
@@ -1590,16 +1643,16 @@ function updateDocenteRowCalculations(momentoKey, host) {
 /**
  * Actualiza el badge superior, la barra de progreso y la tabla oficial de nivel de logro
  */
-function updateLiveNivelJec(host, ft = null) {
+function updateLiveNivelJec(host, ft = null, activeVisitaNum = null) {
+  const vNum = Number(activeVisitaNum || host?.querySelector?.('.jecVisitaBtn.active-visita')?.dataset?.visita || 2);
   const conteoSi = Object.values(jecFormState.respuestas).filter(v => v === 'si').length;
   const conteoRespondidos = Object.values(jecFormState.respuestas).filter(v => v).length;
-  const activeItems = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0)
-    ? ft.secciones.flatMap(s => s.items || [])
-    : JEC_ITEMS;
+  const activeSections = getActiveJecSections(ft, vNum);
+  const activeItems = activeSections.flatMap(s => s.items || []);
   const totalItems = activeItems.length || JEC_ITEMS.length;
   const pctAvance = Math.round((conteoSi / totalItems) * 100);
   const pctRespondidos = Math.round((conteoRespondidos / totalItems) * 100);
-  const nivel = getNivelLogroJec(conteoSi);
+  const nivel = getNivelLogroJec(conteoSi, totalItems, ft?.regla_nivel_config);
 
   // Barra sticky
   const liveBadge = host.querySelector('#jecLiveBadge');
@@ -1737,10 +1790,10 @@ export function collectJecFormData(host, ft, isEdit = false, activeVisita = null
     throw new Error('Debe consignar los Apellidos y Nombres del directivo.');
   }
 
-  // Construir array de respuestas oficial (dinámico o fallback)
-  const activeItems = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0)
-    ? ft.secciones.flatMap(s => (s.items || []).map(it => ({ ...it, seccion: s.nombre })))
-    : JEC_ITEMS;
+  // Construir array de respuestas oficial (dinámico respetando ft.seccionesPorVisita)
+  const vNum = Number(activeVisita || host?.querySelector?.('.jecVisitaBtn.active-visita')?.dataset?.visita || 2);
+  const activeSections = getActiveJecSections(ft, vNum);
+  const activeItems = activeSections.flatMap(s => (s.items || []).map(it => ({ ...it, seccion: s.nombre })));
 
   let conteoSi = 0;
   let conteoNo = 0;
@@ -1825,7 +1878,7 @@ export function collectJecFormData(host, ft, isEdit = false, activeVisita = null
     }
   }
 
-  const nivelCalculado = getNivelLogroJec(conteoSi);
+  const nivelCalculado = getNivelLogroJec(conteoSi, totalItems, ft?.regla_nivel_config);
   const pct = Math.round((conteoSi / totalItems) * 100);
 
   // Extras planos para máxima compatibilidad con exportaciones a Excel y tablas existentes

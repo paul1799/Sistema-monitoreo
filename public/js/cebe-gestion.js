@@ -183,8 +183,7 @@ export const TOTAL_CEBE_ITEMS = 34;
  * e it.num (1 a 34) estén siempre definidos y nunca sean undefined.
  */
 export function getActiveCebeSections(ft) {
-  const isOfficial34 = (ft && Array.isArray(ft.secciones) && ft.secciones.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0) === 34);
-  const rawSections = isOfficial34 ? ft.secciones : CEBE_SECCIONES;
+  const rawSections = (ft && Array.isArray(ft.secciones) && ft.secciones.length > 0) ? ft.secciones : CEBE_SECCIONES;
 
   let runningItemIndex = 1;
   return rawSections.map((sec, sIdx) => {
@@ -866,11 +865,11 @@ export function renderCebeGestionForm(host, ft, state, dbNs, currentUser, naviga
           <div>
             <div class="sectionHeaderTitle" style="margin-bottom:2px">III. ASPECTOS A MONITOREAR — VISITA ${vActiva}</div>
             <p style="margin:0;font-size:12px;color:var(--text-600)">
-              Valore cada uno de los 34 indicadores en la escala: <strong>I</strong> (Inicio), <strong>P</strong> (Proceso), <strong>L</strong> (Logrado) o <strong>N.A.</strong> (No Aplica), y registre la evidencia verificable.
+              Valore cada uno de los ${totalItemsCount} indicadores en la escala: <strong>I</strong> (Inicio), <strong>P</strong> (Proceso), <strong>L</strong> (Logrado) o <strong>N.A.</strong> (No Aplica), y registre la evidencia verificable.
             </p>
           </div>
           <div id="cebeProgressCounter" class="cebeProgressBadge">
-            0 de 34 respondidos (0%)
+            0 de ${totalItemsCount} respondidos (0%)
           </div>
         </div>
 
@@ -970,7 +969,7 @@ export function renderCebeGestionForm(host, ft, state, dbNs, currentUser, naviga
       <!-- Barra inferior fija de avance y guardado -->
       <div class="formBottomBar">
         <div class="regProgressBadge" id="cebeBottomBadge">
-          Avance: <strong>0 de 34</strong> respondidos (0%) · Puntaje: 0 / 34 pts
+          Avance: <strong>0 de ${totalItemsCount}</strong> respondidos (0%) · Puntaje: 0 / ${totalItemsCount} pts
         </div>
         <button type="button" class="btn secondary" id="btnCancelarCebe">Cancelar</button>
         <button type="submit" class="btn" id="btnGuardarCebe">${submitLabel}</button>

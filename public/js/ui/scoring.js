@@ -649,31 +649,41 @@ export function computeStats(sub, ft) {
       ftForCalc = {
         ...ft,
         id: 'ft_msejec_1er',
-        secciones: (ft?.id === 'ft_msejec_1er' && ft?.secciones?.length) ? ft.secciones : JEC_1ER_SECCIONES,
+        secciones: (ft?.seccionesPorVisita?.[0] || ft?.seccionesPorVisita?.['0'] || (ft?.id === 'ft_msejec_1er' && ft?.secciones?.length ? ft.secciones : JEC_1ER_SECCIONES)),
         tipoRespuesta: 'escala1_3',
         escala: 'ESCALA_1_3',
         regla_nivel: REGLA_NIVEL_JEC_1ER_MOMENTO
       };
     } else {
+      const vIdx = vJec - 1;
+      const secJec = (ft?.seccionesPorVisita?.[vIdx] && ft.seccionesPorVisita[vIdx].length > 0)
+        ? ft.seccionesPorVisita[vIdx]
+        : ((ft?.seccionesPorVisita?.[String(vIdx)] && ft.seccionesPorVisita[String(vIdx)].length > 0)
+            ? ft.seccionesPorVisita[String(vIdx)]
+            : ((ft?.seccionesPorVisita?.[1] && ft.seccionesPorVisita[1].length > 0)
+                ? ft.seccionesPorVisita[1]
+                : ((ft?.secciones?.length && !hasJec1Items) ? ft.secciones : JEC_SECCIONES)));
       ftForCalc = {
         ...ft,
-        secciones: (ft?.secciones?.length && ft?.id !== 'ft_msejec_1er') ? ft.secciones : JEC_SECCIONES,
+        secciones: secJec,
         tipoRespuesta: 'si_no',
         escala: 'SI_NO_NA',
         regla_nivel: ft?.regla_nivel || REGLA_NIVEL_JEC
       };
     }
+  } else if (ft?.tieneVisitas && ft?.tipoVisitas === 'items_por_visita' && ft?.seccionesPorVisita) {
+    const vNum = Number(sub?.visita || ft?.visita || 1);
+    const vIdx = vNum - 1;
+    const secVis = ft.seccionesPorVisita[vIdx] || ft.seccionesPorVisita[String(vIdx)] || ft.secciones || [];
+    ftForCalc = { ...ft, secciones: secVis };
   } else if (!isSiNo && isFichaCebeGestion(ft || sub) && respuestasArray && respuestasArray.length > 0) {
-    const isOfficialCebe = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 34);
-    ftForCalc = { ...ft, secciones: isOfficialCebe ? ft.secciones : CEBE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
+    ftForCalc = { ...ft, secciones: (ft?.secciones?.length ? ft.secciones : CEBE_SECCIONES), tipoRespuesta: 'ips', escala: 'IPL' };
   } else if (!isSiNo && isFichaPriteGestion(ft || sub) && respuestasArray && respuestasArray.length > 0) {
-    const isOfficialPrite = (ft?.secciones?.length === 7 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 32);
-    ftForCalc = { ...ft, secciones: isOfficialPrite ? ft.secciones : PRITE_SECCIONES, tipoRespuesta: 'ips', escala: 'IPL' };
+    ftForCalc = { ...ft, secciones: (ft?.secciones?.length ? ft.secciones : PRITE_SECCIONES), tipoRespuesta: 'ips', escala: 'IPL' };
   } else if (isFichaMaterialesCebe(ft || sub) && respuestasArray && respuestasArray.length > 0) {
-    const isOfficialMat = (ft?.secciones?.length === 5 && ft.secciones.reduce((acc, s) => acc + (s.items?.length || 0), 0) === 14);
     ftForCalc = {
       ...ft,
-      secciones: isOfficialMat ? ft.secciones : MATERIALES_CEBE_SECCIONES,
+      secciones: (ft?.secciones?.length ? ft.secciones : MATERIALES_CEBE_SECCIONES),
       tipoRespuesta: 'si_no',
       escala: 'SI_NO_NA',
       regla_nivel: ft?.regla_nivel || {
@@ -735,8 +745,8 @@ if (typeof window !== 'undefined') {
   window.computeStats = computeStats;
 }
 
-export function computeItemAgg(subs, ft) {
-  return RepDatos.computeItemAgg(subs, ft);
+export function computeItemAgg(subs, ft, targetVisita = null) {
+  return RepDatos.computeItemAgg(subs, ft, targetVisita);
 }
 
 export function renderItemReportHtml(itemAgg, tipoRespuesta, ft = null) {
