@@ -1,5 +1,6 @@
-import { calcScore, puntajeItem, estadoPorRegla, LEGADO_A_ESCALA, buildResponseValMap, resolveItemValue } from './calcEngine.js?v=20261103_v8';
-/*  */import { isFichaCoordPedagogico, isFichaCoordTutoriaJec, isFichaMaterialesCebe } from './calc/detectors.js?v=20261103_v8';
+import { calcScore, puntajeItem, estadoPorRegla, LEGADO_A_ESCALA, buildResponseValMap, resolveItemValue } from './calcEngine.js?v=20261120_v11';
+import { computeStats } from './ui/scoring.js';
+/*  */import { isFichaCoordPedagogico, isFichaCoordTutoriaJec, isFichaMaterialesCebe } from './calc/detectors.js?v=20261120_v11';
 import { MATERIALES_CEBE_SECCIONES } from './domain/fichas/catalogo-base.js';
 import {
   isFichaEbrGestionEscolar,
@@ -75,7 +76,7 @@ export function applyFilters(subs, filters, state, colegioIdx, getFichaType, nor
 export function buildStatsList(subs, isAllMode, selectedFt, getFichaType) {
   return subs.map(s => {
     const sFt = isAllMode ? getFichaType(s.fichaTypeId) : selectedFt;
-    return { s, st: sFt ? calcScore(s.respuestas || [], sFt) : { pct: null, secciones: [], estado: { nivel: 'Sin datos', cls: 'st-none' } } };
+    return { s, st: sFt ? computeStats(s, sFt) : { pct: null, secciones: [], estado: { nivel: 'Sin datos', cls: 'st-none' } } };
   });
 }
 
@@ -404,8 +405,13 @@ export function computeItemAgg(subs, ft, targetVisita = null) {
   if (isFichaJec(ft)) {
     const isV1 = (vTarget === 1) || (isFichaJec(ft) && (!vTarget || vTarget === 1) && (subs || []).some(s => Number(s.visita) === 1));
     if (isV1) {
-      const jec1Secs = (ft?.seccionesPorVisita && (ft.seccionesPorVisita[0] || ft.seccionesPorVisita['0']))
-        || (ft?.secciones && ft.secciones.length > 0 ? ft.secciones : JEC_1ER_SECCIONES);
+      const s0 = ft?.seccionesPorVisita ? (ft.seccionesPorVisita[0] || ft.seccionesPorVisita['0']) : null;
+      const countItems = (arr) => Array.isArray(arr) ? arr.reduce((acc, s) => acc + (s.items?.length || 0), 0) : 0;
+      const jec1Secs = (Array.isArray(s0) && s0.length > 0 && countItems(s0) !== 31 && countItems(s0) !== 26)
+        ? s0
+        : (Array.isArray(ft?.secciones) && ft.secciones.some(s => (s.items || []).some(i => i.id?.startsWith('c') || i.id?.startsWith('jec1_'))))
+            ? ft.secciones
+            : JEC_1ER_SECCIONES;
       activeFt = { ...ft, secciones: jec1Secs, tipoRespuesta: 'escala_1_3', escala: 'ESCALA_1_3' };
     } else {
       const vNum = (vTarget && vTarget >= 2) ? Number(vTarget) : 2;
@@ -475,6 +481,22 @@ export function computeItemAgg(subs, ft, targetVisita = null) {
             const val = (rVal && typeof rVal === 'object' && rVal.valor !== undefined) ? rVal.valor : rVal;
             if (!allRespList.some(r => r.id === rId)) {
               allRespList.push({ id: rId, valor: val });
+            }
+          });
+        }
+        if (s.puntajes && typeof s.puntajes === 'object') {
+          Object.entries(s.puntajes).forEach(([pId, pVal]) => {
+            const val = (pVal && typeof pVal === 'object' && pVal.valor !== undefined) ? pVal.valor : pVal;
+            if (!allRespList.some(r => r.id === pId)) {
+              allRespList.push({ id: pId, valor: val });
+            }
+          });
+        }
+        if (s.condiciones && typeof s.condiciones === 'object') {
+          Object.entries(s.condiciones).forEach(([cId, cVal]) => {
+            const val = (cVal && typeof cVal === 'object' && cVal.valor !== undefined) ? cVal.valor : cVal;
+            if (!allRespList.some(r => r.id === cId)) {
+              allRespList.push({ id: cId, valor: val });
             }
           });
         }

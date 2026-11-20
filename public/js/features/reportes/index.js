@@ -28,7 +28,7 @@ import {
   setRegTargetVisita,
   getRegTargetVisita
 } from '../../core/state/app-state.js';
-import { resetRegistrationSessionState } from '../registrar/state.js';
+import { resetRegistrationSessionState, setCurrentJecVisita } from '../registrar/state.js';
 import {
   statusFromPct,
   getSubmissionResponsable,
@@ -558,6 +558,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
       : ((s.responsable && !/^\d+$/.test(String(s.responsable).trim()) && !String(s.responsable).includes('@')) ? String(s.responsable).trim() : (subResp || '—'));
     const isCoordTutoria = isFichaCoordTutoriaJec(sFt || ft);
     const isCoordPedagogico = isFichaCoordPedagogico(sFt || ft);
+    const isJec = isFichaJec(sFt || ft || s);
     let pctDisplay = (st.pct === null ? '—' : st.pct + '%');
     if (isEbr && st.puntaje !== undefined && st.puntaje !== null) {
       const v = getMomentoVisitaEbr(s);
@@ -567,6 +568,15 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
       pctDisplay = '<strong>' + st.puntaje + '/63 pts</strong><br><small style="color:var(--text-muted);font-weight:600">(' + st.pct + '%)</small>';
     } else if (isCoordPedagogico && st.puntaje !== undefined && st.puntaje !== null) {
       pctDisplay = '<strong>' + st.puntaje + '/51 pts</strong><br><small style="color:var(--text-muted);font-weight:600">(' + st.pct + '%)</small>';
+    } else if (isJec && (vNum === 1 || isFichaJec1erMomento(s))) {
+      const pts = (st.puntaje ?? s.puntaje ?? s.puntajeTotal ?? 0);
+      pctDisplay = '<strong>' + pts + '/111 pts</strong><br><small style="color:var(--text-muted);font-weight:600">(' + (st.pct ?? s.pct ?? 0) + '%)</small>';
+    } else if (isJec && vNum === 3) {
+      const cSi = (st.conteo_si ?? s.conteo_si ?? 0);
+      pctDisplay = '<strong>' + cSi + '/26 Sí</strong><br><small style="color:var(--text-muted);font-weight:600">(' + (st.pct ?? s.pct ?? 0) + '%)</small>';
+    } else if (isJec && vNum === 2) {
+      const cSi = (st.conteo_si ?? s.conteo_si ?? 0);
+      pctDisplay = '<strong>' + cSi + '/31 Sí</strong><br><small style="color:var(--text-muted);font-weight:600">(' + (st.pct ?? s.pct ?? 0) + '%)</small>';
     }
 
     const visitaLabel = (sFt && !sFt.tieneVisitas && !s.visita) ? '—' : ('V' + vNum);
@@ -1464,9 +1474,16 @@ function attachReportHostListeners(host, state, getFichaType, dbNs, isAdmin, nav
       const subId = btn.dataset.edit;
       const sub = state.submissions.find(s => s.id === subId);
       if (!sub) return;
+      const sFt = getFichaType ? getFichaType(sub.fichaTypeId) : null;
+      const vNum = getSubmissionVisitaNum(sub, sFt);
       setEditMode(subId, sub);
       setRegSelectedTypeId(sub.fichaTypeId);
       setRegBuiltFor(null);
+      if (vNum) {
+        setRegTargetVisita(vNum);
+        setCurrentJecVisita(vNum);
+        try { sessionStorage.setItem('reg_prefill_visita', String(vNum)); } catch (_) {}
+      }
       if (navigate) navigate('registrar');
     });
   });

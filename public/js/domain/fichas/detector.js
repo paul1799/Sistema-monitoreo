@@ -39,6 +39,16 @@ export function isFichaJec(ft, state = null) {
 export function getMomentoFichaJec(ft) {
   if (!ft) return null;
   if (typeof ft === 'object') {
+    // 0. Detección por datos unívocos de 1er Momento (híbrido Sí/No + rúbricas 1-3)
+    if (ft.condicionesCumplidas !== undefined || ft.respuestasCondiciones || ft.totalCondiciones === 7 || (Number(ft.puntajeTotal) > 31) || (Number(ft.puntaje) > 31 && Number(ft.maxPuntaje) === 111)) {
+      return 1;
+    }
+    const resp = ft.respuestas || ft.items;
+    if (Array.isArray(resp) && resp.length > 0) {
+      const hasC = resp.some(r => r && (String(r.id || '').match(/^c\d+$/i) || String(r.id || '').startsWith('cond_')));
+      const hasIt = resp.some(r => r && (String(r.id || '').startsWith('it_') && (r.valor === 1 || r.valor === 2 || r.valor === 3 || r.valor === '1' || r.valor === '2' || r.valor === '3')));
+      if (hasC || hasIt) return 1;
+    }
     if (ft.visita !== undefined && ft.visita !== null && ft.visita !== '') {
       const v = Number(ft.visita);
       if (v === 1 || v === 2 || v === 3) return v;
@@ -267,6 +277,12 @@ export function getMomentoVisitaEbr(subOrFt) {
  */
 export function getSubmissionVisitaNum(subOrFt, targetFt = null) {
   if (!subOrFt) return 1;
+
+  // 0. Detección especializada para Ficha de Implementación del Modelo JEC
+  if (isFichaJec(subOrFt) || isFichaJec(targetFt)) {
+    const mJec = getMomentoFichaJec(subOrFt);
+    if (mJec === 1 || mJec === 3) return mJec;
+  }
 
   // 1. Campo explícito subOrFt.visita (Prioridad absoluta para fichas unificadas)
   if (subOrFt.visita !== undefined && subOrFt.visita !== null && subOrFt.visita !== '') {

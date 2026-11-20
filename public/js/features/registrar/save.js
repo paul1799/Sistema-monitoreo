@@ -189,10 +189,12 @@ export async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate
 
     // Interceptar guardado de Ficha Unificada de Implementación del Modelo JEC (1er, 2do y 3er momento)
     if (isFichaJec(ft) && !isFichaCoordTutoriaJec(ft) && !isFichaCoordPedagogico(ft)) {
-      const activeVis = currentJecVisita || (editingSubmissionData ? getSubmissionVisitaNum(editingSubmissionData, ft) : 2);
+      const formVis = (form && form.dataset && form.dataset.visita) ? Number(form.dataset.visita) : null;
+      const activeVis = formVis || currentJecVisita || (editingSubmissionData ? getSubmissionVisitaNum(editingSubmissionData, ft) : 1);
       let jecData;
       if (activeVis === 1) {
         jecData = collectJec1erFormData(form || document.getElementById('regFormHost'), ft, isEdit);
+        delete jecData.docentes_monitoreo;
       } else {
         jecData = collectJecFormData(form || document.getElementById('regFormHost'), ft, isEdit, activeVis);
       }
@@ -216,6 +218,11 @@ export async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate
       const cleanedDocData = cleanForFirestore(docData);
 
       if (isEdit) {
+        if (activeVis === 1) {
+          cleanedDocData.docentes_monitoreo = null;
+          cleanedDocData.conteo_si = null;
+          cleanedDocData.conteo_no = null;
+        }
         await Promise.race([
           dbNs.collection('submissions').doc(editingSubmissionId).set(cleanedDocData, { merge: true }),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado al guardar en Firestore.')), 25000))

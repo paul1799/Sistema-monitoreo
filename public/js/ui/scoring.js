@@ -26,8 +26,8 @@ import {
   getReglaNivelEbrGestion,
   getNivelEbrGestion,
   getMomentoVisitaEbr
-} from '../calcEngine.js?v=20261103_v8';
-import * as RepDatos from '../reportes-datos.js?v=20261103_v8';
+} from '../calcEngine.js?v=20261120_v11';
+import * as RepDatos from '../reportes-datos.js?v=20261120_v11';
 import { getEbrSeccionesForVisita } from '../ebr-gestion.js';
 import { isFichaJec, JEC_SECCIONES, getActiveJecSections } from '../jec-monitoreo.js';
 import { JEC_1ER_SECCIONES } from '../jec-1er-monitoreo.js';
@@ -603,6 +603,22 @@ export function computeStats(sub, ft) {
       }
     });
   }
+  if (sub.puntajes && typeof sub.puntajes === 'object') {
+    Object.entries(sub.puntajes).forEach(([pId, pVal]) => {
+      const val = (pVal && typeof pVal === 'object' && pVal.valor !== undefined) ? pVal.valor : pVal;
+      if (!respCombined.some(r => r.id === pId)) {
+        respCombined.push({ id: pId, valor: val });
+      }
+    });
+  }
+  if (sub.condiciones && typeof sub.condiciones === 'object') {
+    Object.entries(sub.condiciones).forEach(([cId, cVal]) => {
+      const val = (cVal && typeof cVal === 'object' && cVal.valor !== undefined) ? cVal.valor : cVal;
+      if (!respCombined.some(r => r.id === cId)) {
+        respCombined.push({ id: cId, valor: val });
+      }
+    });
+  }
   if (respCombined.length > 0) {
     respuestasArray = respCombined;
   }
@@ -644,14 +660,30 @@ export function computeStats(sub, ft) {
   let ftForCalc = ft;
   const escalaRaw = String(ft?.escala || sub?.escala || '').toUpperCase();
   const tipoRespRaw = String(ft?.tipoRespuesta || sub?.tipoRespuesta || '').toLowerCase();
-  const hasSiNoResponses = Array.isArray(respuestasArray) && respuestasArray.some(r => {
+
+  // Detectar si la ficha JEC es del 1er Momento ANTES de evaluar hasSiNoResponses,
+  // ya que el 1er Momento es híbrido (condiciones SI/NO + rúbricas 1-3) y NO debe tratarse como SI_NO
+  const isJec1erPrecheck = isFichaJec(ft || sub) && (() => {
+    const vj = getMomentoFichaJec(sub || ft) || Number(sub?.visita) || Number(ft?.visita);
+    if (vj === 1) return true;
+    if (sub?.condicionesCumplidas !== undefined) return true;
+    if (sub?.respuestasCondiciones && sub?.respuestasObj) return true;
+    if (Array.isArray(sub?.respuestas || []) && (sub?.puntajeTotal > 7 || sub?.maxPuntaje === 111)) return true;
+    if (Array.isArray(respuestasArray) && respuestasArray.some(r => {
+      const rid = String(r?.id || '');
+      return rid.match(/^it_\d+$/) && (r?.valor === 1 || r?.valor === 2 || r?.valor === 3 || r?.valor === '1' || r?.valor === '2' || r?.valor === '3');
+    })) return true;
+    return false;
+  })();
+
+  const hasSiNoResponses = !isJec1erPrecheck && Array.isArray(respuestasArray) && respuestasArray.some(r => {
     const v = String(r?.valor || '').trim().toLowerCase();
     return v === 'si' || v === 'sí' || v === 'no';
   }) && !respuestasArray.some(r => {
     const v = String(r?.valor || '').trim().toLowerCase();
     return v === 'logrado' || v === 'proceso' || v === 'inicio' || (Number(v) >= 2 && Number(v) <= 4);
   });
-  const isSiNo = (tipoRespRaw === 'si_no' || escalaRaw === 'SI_NO' || escalaRaw === 'SI_NO_NA' ||
+  const isSiNo = !isJec1erPrecheck && (tipoRespRaw === 'si_no' || escalaRaw === 'SI_NO' || escalaRaw === 'SI_NO_NA' ||
     tipoRespRaw.includes('si_no') || escalaRaw.includes('SI_NO') || hasSiNoResponses);
   const isEbr = !isSiNo && isFichaEbrGestionEscolar(ft || sub);
   if (isEbr && respuestasArray && (Array.isArray(respuestasArray) ? respuestasArray.length > 0 : true)) {
@@ -755,15 +787,13 @@ export function computeStats(sub, ft) {
   const isJecVisita1 = isFichaJec(ft || sub) && (getMomentoFichaJec(sub || ft) === 1 || Number(sub?.visita) === 1 || Number(ft?.visita) === 1);
   if (isJecVisita1) {
     const rawPts = (result.puntaje && result.puntaje > 0) ? result.puntaje : (sub.puntaje ?? sub.puntajeTotal ?? null);
-    if (rawPts !== null && rawPts !== undefined && (result.pct === null || result.pct === undefined || finalEstado.label === 'Sin datos' || finalEstado.estado_panel === 'Sin datos')) {
+    if (rawPts !== null && rawPts !== undefined && (result.puntaje === 0 || !result.puntaje || result.pct === null || result.pct === undefined || result.pct === 0 || finalEstado.label === 'Sin datos' || finalEstado.estado_panel === 'Sin datos' || (Number(rawPts) > 0 && (finalEstado.label === 'Inicio' || finalEstado.label === 'Implementación incipiente')))) {
       const nivJec1 = getNivelJec1erMomento(rawPts);
       finalEstado.label = nivJec1.estado_panel || nivJec1.nivel;
       finalEstado.estado_panel = nivJec1.estado_panel;
       finalEstado.cls = nivJec1.nivel === 'LOGRADO' ? 'st-logrado' : (nivJec1.nivel === 'PROCESO' ? 'st-proceso' : 'st-inicio');
       finalEstado.descripcion = nivJec1.descripcion || '';
-      if (result.pct === null || result.pct === undefined) {
-        result.pct = Math.round((Number(rawPts) / 111) * 100);
-      }
+      result.pct = Math.round((Number(rawPts) / 111) * 100);
       result.puntaje = Number(rawPts);
       result.puntaje_max = 111;
     }

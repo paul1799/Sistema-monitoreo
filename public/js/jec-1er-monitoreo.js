@@ -468,38 +468,109 @@ export function preloadJec1erFormState(submission, ft) {
   }
 
   // Respuestas condiciones Sí / No
-  if (d.respuestasCondiciones && typeof d.respuestasCondiciones === 'object') {
-    Object.keys(d.respuestasCondiciones).forEach(k => {
-      const v = d.respuestasCondiciones[k];
-      if (typeof v === 'object' && v !== null) {
-        jec1erState.condiciones[k] = v.valor || '';
-        jec1erState.condicionesHallazgos[k] = v.hallazgo || '';
-      } else {
-        jec1erState.condiciones[k] = v;
+  const condSource = d.respuestasCondiciones || d.condiciones;
+  if (condSource && typeof condSource === 'object') {
+    Object.keys(condSource).forEach(k => {
+      const v = condSource[k];
+      const valStr = typeof v === 'object' && v !== null ? (v.valor || '') : v;
+      const valHallazgo = typeof v === 'object' && v !== null ? (v.hallazgo || '') : '';
+      const cUpper = String(valStr || '').toUpperCase();
+      jec1erState.condiciones[k] = cUpper;
+      if (valHallazgo) jec1erState.condicionesHallazgos[k] = valHallazgo;
+
+      const m = k.match(/^(?:c|cond_?)(\d+)$/i);
+      if (m) {
+        const cn = parseInt(m[1], 10);
+        jec1erState.condiciones[`c${cn}`] = cUpper;
+        jec1erState.condiciones[`cond_${cn}`] = cUpper;
+        if (valHallazgo) {
+          jec1erState.condicionesHallazgos[`c${cn}`] = valHallazgo;
+          jec1erState.condicionesHallazgos[`cond_${cn}`] = valHallazgo;
+        }
       }
     });
   }
 
   // Respuestas puntajes 1, 2, 3, NA
-  if (d.respuestas && typeof d.respuestas === 'object') {
+  const rubricSource = d.respuestasObj || d.puntajes;
+  if (rubricSource && typeof rubricSource === 'object') {
+    Object.keys(rubricSource).forEach(k => {
+      const v = rubricSource[k];
+      const rVal = typeof v === 'object' && v !== null ? v.valor : v;
+      const rHall = typeof v === 'object' && v !== null ? (v.hallazgo || '') : '';
+      const parsedVal = rVal === 'NA' ? 'NA' : (rVal !== null && rVal !== undefined && !isNaN(Number(rVal)) ? Number(rVal) : rVal);
+      jec1erState.puntajes[k] = parsedVal;
+      if (rHall) jec1erState.puntajesHallazgos[k] = rHall;
+
+      const m = k.match(/^(?:it_|jec1?_)?0*(\d+)$/i);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        const pad = String(n).padStart(2, '0');
+        jec1erState.puntajes[`it_${pad}`] = parsedVal;
+        jec1erState.puntajes[`it_${n}`] = parsedVal;
+        if (rHall) {
+          jec1erState.puntajesHallazgos[`it_${pad}`] = rHall;
+          jec1erState.puntajesHallazgos[`it_${n}`] = rHall;
+        }
+      }
+    });
+  }
+
+  if (d.respuestas && typeof d.respuestas === 'object' && !Array.isArray(d.respuestas)) {
     Object.keys(d.respuestas).forEach(k => {
       const v = d.respuestas[k];
-      if (typeof v === 'object' && v !== null) {
-        jec1erState.puntajes[k] = v.valor;
-        jec1erState.puntajesHallazgos[k] = v.hallazgo || '';
+      const rVal = typeof v === 'object' && v !== null ? v.valor : v;
+      const rHall = typeof v === 'object' && v !== null ? (v.hallazgo || '') : '';
+      if (k.startsWith('c') || k.startsWith('cond_')) {
+        const cUpper = String(rVal || '').toUpperCase();
+        jec1erState.condiciones[k] = cUpper;
+        if (rHall) jec1erState.condicionesHallazgos[k] = rHall;
+        const m = k.match(/^(?:c|cond_?)(\d+)$/i);
+        if (m) {
+          const cn = parseInt(m[1], 10);
+          jec1erState.condiciones[`c${cn}`] = cUpper;
+          jec1erState.condiciones[`cond_${cn}`] = cUpper;
+        }
       } else {
-        jec1erState.puntajes[k] = v;
+        const parsedVal = rVal === 'NA' ? 'NA' : (rVal !== null && rVal !== undefined && !isNaN(Number(rVal)) ? Number(rVal) : rVal);
+        jec1erState.puntajes[k] = parsedVal;
+        if (rHall) jec1erState.puntajesHallazgos[k] = rHall;
       }
     });
   } else if (Array.isArray(d.respuestas)) {
-    d.respuestas.forEach(r => {
-      if (r && r.id) {
-        if (r.id.startsWith('c')) {
-          jec1erState.condiciones[r.id] = r.valor;
-          if (r.hallazgo) jec1erState.condicionesHallazgos[r.id] = r.hallazgo;
-        } else {
-          jec1erState.puntajes[r.id] = r.valor;
-          if (r.hallazgo) jec1erState.puntajesHallazgos[r.id] = r.hallazgo;
+    d.respuestas.forEach((r, idx) => {
+      if (!r) return;
+      const rid = String(r.id || '');
+      const rVal = r.valor !== undefined ? r.valor : (r.value !== undefined ? r.value : r.v);
+      const rHallazgo = r.hallazgo || r.evidencia || '';
+      const isCond = rid.startsWith('c') || rid.startsWith('cond_') || (idx < 7 && (String(rVal).toUpperCase() === 'SI' || String(rVal).toUpperCase() === 'NO'));
+
+      if (isCond) {
+        const cUpper = String(rVal || '').toUpperCase();
+        const m = rid.match(/^(?:c|cond_?)(\d+)$/i);
+        const cn = m ? parseInt(m[1], 10) : (idx + 1);
+        jec1erState.condiciones[`c${cn}`] = cUpper;
+        jec1erState.condiciones[`cond_${cn}`] = cUpper;
+        if (rid) jec1erState.condiciones[rid] = cUpper;
+        if (rHallazgo) {
+          jec1erState.condicionesHallazgos[`c${cn}`] = rHallazgo;
+          jec1erState.condicionesHallazgos[`cond_${cn}`] = rHallazgo;
+          if (rid) jec1erState.condicionesHallazgos[rid] = rHallazgo;
+        }
+      } else {
+        const parsedVal = rVal === 'NA' ? 'NA' : (rVal !== null && rVal !== undefined && !isNaN(Number(rVal)) ? Number(rVal) : rVal);
+        const m = rid.match(/^(?:it_|jec1?_)?0*(\d+)$/i);
+        const numVal = r.num || (m ? parseInt(m[1], 10) : (idx >= 7 ? idx - 6 : idx + 1));
+        const pad = String(numVal).padStart(2, '0');
+        if (rid) jec1erState.puntajes[rid] = parsedVal;
+        if (r.canonicalId) jec1erState.puntajes[r.canonicalId] = parsedVal;
+        jec1erState.puntajes[`it_${pad}`] = parsedVal;
+        jec1erState.puntajes[`it_${numVal}`] = parsedVal;
+        if (rHallazgo) {
+          if (rid) jec1erState.puntajesHallazgos[rid] = rHallazgo;
+          if (r.canonicalId) jec1erState.puntajesHallazgos[r.canonicalId] = rHallazgo;
+          jec1erState.puntajesHallazgos[`it_${pad}`] = rHallazgo;
+          jec1erState.puntajesHallazgos[`it_${numVal}`] = rHallazgo;
         }
       }
     });
@@ -536,7 +607,7 @@ export function getActiveJec1erSections(ft = null) {
  */
 export function calculateJec1erScore(ft = null) {
   const activeSecs = getActiveJec1erSections(ft);
-  const condSec = activeSecs.find(s => s.id?.includes('cond') || s.nombre?.toLowerCase().includes('condicion')) || activeSecs[0];
+  const condSec = activeSecs.find(s => s.id?.includes('cond') || /condici[oó]n/i.test(s.nombre || '')) || activeSecs[0];
   const rubricSecs = activeSecs.filter(s => s !== condSec);
 
   const subtotales = {
@@ -547,13 +618,24 @@ export function calculateJec1erScore(ft = null) {
   };
 
   let totalItemsRespondidos = 0;
+  let rubricItemCounter = 0;
 
   rubricSecs.forEach((sec, sIdx) => {
     let sub = 0;
     (sec.items || []).forEach(it => {
-      const val = jec1erState.puntajes[it.id];
+      rubricItemCounter++;
+      const itNum = (it.num !== undefined && it.num !== null && it.num >= 1 && it.num <= 37) ? it.num : rubricItemCounter;
+      const canonicalId = `it_${String(itNum).padStart(2, '0')}`;
+      const val = (jec1erState.puntajes[it.id] !== undefined && jec1erState.puntajes[it.id] !== null)
+        ? jec1erState.puntajes[it.id]
+        : ((jec1erState.puntajes[canonicalId] !== undefined && jec1erState.puntajes[canonicalId] !== null)
+            ? jec1erState.puntajes[canonicalId]
+            : (jec1erState.puntajes[`it_${itNum}`] !== undefined ? jec1erState.puntajes[`it_${itNum}`] : null));
+
       if (val === 1 || val === 2 || val === 3 || val === '1' || val === '2' || val === '3') {
         sub += parseInt(val, 10);
+        totalItemsRespondidos++;
+      } else if (val === 'NA') {
         totalItemsRespondidos++;
       }
     });
@@ -572,8 +654,9 @@ export function calculateJec1erScore(ft = null) {
 
   let condSi = 0;
   let condNo = 0;
-  (condSec?.items || []).forEach(c => {
-    const v = String(jec1erState.condiciones[c.id] || '').toUpperCase();
+  (condSec?.items || []).forEach((c, idx) => {
+    const condNum = idx + 1;
+    const v = String(jec1erState.condiciones[c.id] || jec1erState.condiciones[`c${condNum}`] || jec1erState.condiciones[`cond_${condNum}`] || '').toUpperCase();
     if (v === 'SI') condSi++;
     else if (v === 'NO') condNo++;
   });
@@ -719,8 +802,10 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
 
     // Renderizar 01 Aspecto: Condiciones (ítems Sí / No - Botones Circulares/Pills)
     const condicionesItemsHtml = (condSec?.items || JEC_1ER_CONDICIONES_ITEMS).map((it, idx) => {
-      const val = String(jec1erState.condiciones[it.id] || '').toUpperCase();
-      const hallazgo = jec1erState.condicionesHallazgos[it.id] || '';
+      const condNum = idx + 1;
+      const cCanonical = `c${condNum}`;
+      const val = String(jec1erState.condiciones[it.id] || jec1erState.condiciones[cCanonical] || jec1erState.condiciones[`cond_${condNum}`] || '').toUpperCase();
+      const hallazgo = jec1erState.condicionesHallazgos[it.id] || jec1erState.condicionesHallazgos[cCanonical] || jec1erState.condicionesHallazgos[`cond_${condNum}`] || '';
       return `
       <div class="jec1-item-row" data-cond-id="${it.id}">
         <div class="jec1-item-header">
@@ -761,8 +846,14 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
 
       const itemsHtml = sec.items.map((it) => {
         rubricItemCounter++;
-        const val = jec1erState.puntajes[it.id];
-        const hallazgo = jec1erState.puntajesHallazgos[it.id] || '';
+        const itNum = (it.num !== undefined && it.num !== null && it.num >= 1 && it.num <= 37) ? it.num : rubricItemCounter;
+        const canonicalId = `it_${String(itNum).padStart(2, '0')}`;
+        const val = jec1erState.puntajes[it.id] !== undefined
+          ? jec1erState.puntajes[it.id]
+          : (jec1erState.puntajes[canonicalId] !== undefined
+              ? jec1erState.puntajes[canonicalId]
+              : (jec1erState.puntajes[`it_${itNum}`] !== undefined ? jec1erState.puntajes[`it_${itNum}`] : null));
+        const hallazgo = jec1erState.puntajesHallazgos[it.id] || jec1erState.puntajesHallazgos[canonicalId] || jec1erState.puntajesHallazgos[`it_${itNum}`] || '';
         // Las opciones numéricas empiezan desde el 1 correlativamente hasta el último (01..37)
         const numVal = (it.num !== undefined && it.num !== null && it.num >= 1 && it.num <= 37 && it.num === rubricItemCounter)
           ? it.num
@@ -823,7 +914,7 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
 
     host.innerHTML = `
     <div class="jec1-wrapper">
-      <form id="regForm" autocomplete="off" class="jecFormContainer" style="max-width:1120px;margin:0 auto">
+      <form id="regForm" data-visita="1" data-momento="1" autocomplete="off" class="jecFormContainer" style="max-width:1120px;margin:0 auto">
         ${renderJecVisitaSelectorHtml(1)}
         <!-- ─── BARRA FLOTANTE DE NIVEL DE LOGRO EN TIEMPO REAL (ESTILO JEC 2DO MOMENTO) ─── -->
         <div class="panel jecLiveHeader" id="jec1_live_header" style="position:sticky;top:104px;z-index:25;background:var(--surface,#ffffff);border-left:5px solid ${scoreData.nivelInfo.color};box-shadow:var(--shadow-md, 0 4px 12px rgba(0,0,0,0.06));margin-bottom:20px;padding:12px 18px;border-radius:8px">
@@ -1845,8 +1936,44 @@ export function collectJec1erFormData(host, ft, isEdit = false) {
     // Recomendaciones
     const recomendaciones = (host.querySelector('#jec1_recomendaciones')?.value || jec1erState.recomendaciones || '').trim();
 
+    // 0. Sincronizar directamente desde los botones activos del DOM para garantizar 100% fidelidad
+    if (host && host.querySelectorAll) {
+      host.querySelectorAll('.jec1-cond-btn.active-si').forEach(b => {
+        const cid = b.dataset.condId;
+        if (cid) jec1erState.condiciones[cid] = 'SI';
+      });
+      host.querySelectorAll('.jec1-cond-btn.active-no').forEach(b => {
+        const cid = b.dataset.condId;
+        if (cid) jec1erState.condiciones[cid] = 'NO';
+      });
+      host.querySelectorAll('.jec1-circle-btn.active-1').forEach(b => {
+        const iid = b.dataset.itemId;
+        if (iid) jec1erState.puntajes[iid] = 1;
+      });
+      host.querySelectorAll('.jec1-circle-btn.active-2').forEach(b => {
+        const iid = b.dataset.itemId;
+        if (iid) jec1erState.puntajes[iid] = 2;
+      });
+      host.querySelectorAll('.jec1-circle-btn.active-3').forEach(b => {
+        const iid = b.dataset.itemId;
+        if (iid) jec1erState.puntajes[iid] = 3;
+      });
+      host.querySelectorAll('.jec1-circle-btn.active-na').forEach(b => {
+        const iid = b.dataset.itemId;
+        if (iid) jec1erState.puntajes[iid] = 'NA';
+      });
+      host.querySelectorAll('.jec1-cond-hallazgo').forEach(inp => {
+        const cid = inp.dataset.condId;
+        if (cid && inp.value.trim()) jec1erState.condicionesHallazgos[cid] = inp.value.trim();
+      });
+      host.querySelectorAll('.jec1-item-hallazgo-input').forEach(inp => {
+        const iid = inp.dataset.itemId;
+        if (iid && inp.value.trim()) jec1erState.puntajesHallazgos[iid] = inp.value.trim();
+      });
+    }
+
     // Calcular Puntajes
-    const scoreData = calculateJec1erScore();
+    const scoreData = calculateJec1erScore(ft);
 
     // Formatear respuestas para compatibilidad general del sistema
     const respuestasArray = [];
@@ -1860,12 +1987,16 @@ export function collectJec1erFormData(host, ft, isEdit = false) {
     // Condiciones Sí / No (01 al 07)
     const condItems = (condSec?.items && condSec.items.length > 0) ? condSec.items : JEC_1ER_CONDICIONES_ITEMS;
     condItems.forEach((c, idx) => {
-      const val = (jec1erState.condiciones[c.id] || jec1erState.condiciones[`c${idx + 1}`] || '').toUpperCase();
-      const hallazgo = (jec1erState.condicionesHallazgos[c.id] || jec1erState.condicionesHallazgos[`c${idx + 1}`] || '').trim();
+      const condNum = idx + 1;
+      const cCanonical = `c${condNum}`;
+      const val = (jec1erState.condiciones[c.id] || jec1erState.condiciones[cCanonical] || jec1erState.condiciones[`cond_${condNum}`] || '').toUpperCase();
+      const hallazgo = (jec1erState.condicionesHallazgos[c.id] || jec1erState.condicionesHallazgos[cCanonical] || jec1erState.condicionesHallazgos[`cond_${condNum}`] || '').trim();
       respuestasCondicionesObj[c.id] = { valor: val, hallazgo };
+      respuestasCondicionesObj[cCanonical] = { valor: val, hallazgo };
       respuestasArray.push({
         id: c.id,
-        num: idx + 1,
+        canonicalId: cCanonical,
+        num: condNum,
         texto: c.texto || '',
         valor: val,
         hallazgo,
@@ -1879,12 +2010,14 @@ export function collectJec1erFormData(host, ft, isEdit = false) {
     targetRubricSecs.forEach((sec) => {
       (sec.items || []).forEach((it) => {
         rubricCollectCounter++;
-        const itNum = rubricCollectCounter;
+        const itNum = (it.num !== undefined && it.num !== null && it.num >= 1 && it.num <= 37) ? it.num : rubricCollectCounter;
         const canonicalId = `it_${String(itNum).padStart(2, '0')}`;
-        const val = jec1erState.puntajes[it.id] !== undefined 
+        const val = (jec1erState.puntajes[it.id] !== undefined && jec1erState.puntajes[it.id] !== null)
           ? jec1erState.puntajes[it.id] 
-          : (jec1erState.puntajes[canonicalId] !== undefined ? jec1erState.puntajes[canonicalId] : null);
-        const hallazgo = (jec1erState.puntajesHallazgos[it.id] || jec1erState.puntajesHallazgos[canonicalId] || '').trim();
+          : ((jec1erState.puntajes[canonicalId] !== undefined && jec1erState.puntajes[canonicalId] !== null)
+              ? jec1erState.puntajes[canonicalId]
+              : (jec1erState.puntajes[`it_${itNum}`] !== undefined ? jec1erState.puntajes[`it_${itNum}`] : null));
+        const hallazgo = (jec1erState.puntajesHallazgos[it.id] || jec1erState.puntajesHallazgos[canonicalId] || jec1erState.puntajesHallazgos[`it_${itNum}`] || '').trim();
         respuestasObj[it.id] = { valor: val, hallazgo };
         if (it.id !== canonicalId) {
           respuestasObj[canonicalId] = { valor: val, hallazgo };

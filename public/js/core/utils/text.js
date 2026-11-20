@@ -3,9 +3,23 @@
    UGEL 03 · Sistema de Monitoreo y Acompañamiento 2026
    ========================================================================= */
 
-/** Escapa caracteres HTML para prevenir inyecciones XSS en el DOM */
+/** Repara cadenas afectadas por doble codificación UTF-8 (mojibake) */
+export function fixUtf8Mojibake(s) {
+  if (s === undefined || s === null) return '';
+  const str = String(s);
+  if (!str) return '';
+  return str
+    .replace(/Quir[Ã\u00C3\uFFFD\u00EF\u00BF\u00BD\s\S]*?[z|ź]/gi, 'Quiróz')
+    .replace(/Ã¡/g, 'á').replace(/Ã©/g, 'é').replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ãº/g, 'ú')
+    .replace(/Ã±/g, 'ñ').replace(/Ã‘/g, 'Ñ').replace(/Ã /g, 'À').replace(/Ã‰/g, 'É').replace(/Ã /g, 'Í')
+    .replace(/Ã“/g, 'Ó').replace(/Ãš/g, 'Ú').replace(/â€“/g, '–').replace(/â€”/g, '—')
+    .replace(/Â/g, '');
+}
+
+/** Escapa caracteres HTML para prevenir inyecciones XSS en el DOM y repara mojibake UTF-8 */
 export function esc(s) {
-  return String(s === undefined || s === null ? '' : s)
+  const cleaned = fixUtf8Mojibake(s);
+  return String(cleaned === undefined || cleaned === null ? '' : cleaned)
     .replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 

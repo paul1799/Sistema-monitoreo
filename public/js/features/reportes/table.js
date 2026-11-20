@@ -15,7 +15,11 @@ import {
   isFichaMonitoreoDocente,
   isFichaMaterialesCebe,
   getNivelCoordTutoriaJec,
-  getNivelCoordPedagogicoJec
+  getNivelCoordPedagogicoJec,
+  getMomentoFichaJec,
+  isFichaJec1erMomento,
+  isFichaJec3erMomento,
+  getSubmissionVisitaNum
 } from '../../domain/fichas/index.js';
 import { getDirectivosActivosForColegio } from '../../directorio.js';
 import { getNivelLogroJec } from '../../jec-monitoreo.js';
@@ -273,22 +277,105 @@ export function buildDetail(s) {
 
   let jecNivelBanner = '';
   if (isJec) {
-    const totalSi = s.conteo_si !== undefined
-      ? s.conteo_si
-      : (s.respuestas || []).filter(r => (r.valor || '').toLowerCase() === 'si' || (r.valor || '').toLowerCase() === 'sí').length;
-    const nivelObj = getNivelLogroJec(totalSi);
-    jecNivelBanner = `
-      <div style="margin-bottom:14px;padding:12px 16px;border-radius:8px;background:var(--surface-card,#ffffff);border:1px solid var(--border-soft,#e2e8f0);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <div>
-          <span style="font-size:11px;font-weight:700;color:var(--text-muted,#64748b);text-transform:uppercase;letter-spacing:0.5px">Nivel de Implementación del MSE JEC</span>
-          <div style="font-size:16px;font-weight:800;color:var(--text-main,#0f172a);margin-top:2px">${esc(nivelObj.nivel)}</div>
+    const vJec = getMomentoFichaJec(s) || Number(s.visita) || Number(s.momento) || 2;
+    const isJec1 = vJec === 1 || isFichaJec1erMomento(s);
+    const isJec3 = vJec === 3 || isFichaJec3erMomento(s);
+
+    if (isJec1) {
+      const puntaje = (s.puntajeTotal !== undefined && s.puntajeTotal !== null) ? Number(s.puntajeTotal) : (Number(s.puntaje) || 0);
+      const maxPts = s.maxPuntaje || 111;
+      const pct = (s.pct !== undefined && s.pct !== null) ? Number(s.pct) : (s.porcentaje !== undefined && s.porcentaje !== null ? Number(s.porcentaje) : (maxPts > 0 ? Math.round((puntaje / maxPts) * 100) : 0));
+      const nivelStr = s.nivel || s.estado_panel || (s.estado && s.estado.label) || (puntaje >= 84 ? 'LOGRADO' : (puntaje >= 57 ? 'PROCESO' : 'INICIO'));
+      let estadoColor = '#16a34a';
+      let estadoCls = 'st-logrado';
+      if (nivelStr === 'PROCESO' || String(nivelStr).toLowerCase().includes('proces')) { estadoColor = '#d97706'; estadoCls = 'st-proceso'; }
+      else if (nivelStr === 'INICIO' || String(nivelStr).toLowerCase().includes('inic')) { estadoColor = '#dc2626'; estadoCls = 'st-inicio'; }
+
+      const condCumplidas = (s.condicionesCumplidas !== undefined && s.condicionesCumplidas !== null)
+        ? Number(s.condicionesCumplidas)
+        : (s.respuestasCondiciones ? Object.values(s.respuestasCondiciones).filter(v => (typeof v === 'object' ? v?.valor : v) === 'SI').length : (s.respuestas || []).filter(r => (r.id?.startsWith('c') || r.id?.startsWith('cond_')) && String(r.valor).toUpperCase() === 'SI').length);
+
+      jecNivelBanner = `
+        <div style="margin-bottom:14px;padding:14px 16px;border-radius:8px;background:var(--surface-card,#ffffff);border:1px solid var(--border-soft,#e2e8f0);box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+            <div>
+              <span style="font-size:11px;font-weight:700;color:var(--text-muted,#64748b);text-transform:uppercase;letter-spacing:0.5px">Nivel de Implementación del MSE JEC · 1er Monitoreo (Inicio)</span>
+              <div style="font-size:17px;font-weight:800;color:var(--text-main,#0f172a);margin-top:2px">${esc(nivelStr)} (${puntaje} / ${maxPts} pts · ${pct}%)</div>
+              <div style="font-size:12px;color:var(--text-muted,#64748b);margin-top:2px;font-weight:600">Verificación Inicial: <strong>${condCumplidas} de 7 condiciones cumplidas</strong></div>
+            </div>
+            <div>
+              <span class="badge ${esc(estadoCls)}" style="font-size:13px;padding:6px 14px;font-weight:800;background:${estadoColor};color:#ffffff">${esc(nivelStr)}</span>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;font-size:11.5px;border-collapse:collapse;margin-top:6px">
+              <thead>
+                <tr style="background:var(--surface-sunken,#f8fafc);color:var(--text-muted,#64748b);text-align:left">
+                  <th style="padding:5px 8px;width:25%">Valoración</th>
+                  <th style="padding:5px 8px;width:25%;text-align:center">Rango de Puntos</th>
+                  <th style="padding:5px 8px;width:50%">Descripción</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="${puntaje >= 84 ? 'background:rgba(22,163,74,0.12);font-weight:700' : ''}">
+                  <td style="padding:5px 8px;color:#16a34a">LOGRADO ${puntaje >= 84 ? '✓ (Obtenido)' : ''}</td>
+                  <td style="padding:5px 8px;text-align:center">De 84 a 111 puntos</td>
+                  <td style="padding:5px 8px">La IE cumple con la mayoría de los ítems establecidos.</td>
+                </tr>
+                <tr style="${puntaje >= 57 && puntaje <= 83 ? 'background:rgba(217,119,6,0.12);font-weight:700' : ''}">
+                  <td style="padding:5px 8px;color:#d97706">PROCESO ${puntaje >= 57 && puntaje <= 83 ? '✓ (Obtenido)' : ''}</td>
+                  <td style="padding:5px 8px;text-align:center">De 57 a 83 puntos</td>
+                  <td style="padding:5px 8px">La IE cumple con más de la mitad de los ítems establecidos.</td>
+                </tr>
+                <tr style="${puntaje <= 56 ? 'background:rgba(220,38,38,0.12);font-weight:700' : ''}">
+                  <td style="padding:5px 8px;color:#dc2626">INICIO ${puntaje <= 56 ? '✓ (Obtenido)' : ''}</td>
+                  <td style="padding:5px 8px;text-align:center">De 1 a 56 puntos</td>
+                  <td style="padding:5px 8px">La IE cumple con algunos de los ítems establecidos.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div style="text-align:right">
-          <span class="badge ${esc(nivelObj.cls)}" style="font-size:12.5px;padding:5px 12px;font-weight:700">${esc(nivelObj.nivel)}</span>
-          <div style="font-size:11.5px;color:var(--text-muted,#64748b);margin-top:3px;font-weight:600">${totalSi} de 31 respuestas "Sí"</div>
+      `;
+    } else if (isJec3) {
+      const totalSi = s.conteo_si !== undefined
+        ? s.conteo_si
+        : (s.respuestas || []).filter(r => (r.valor || '').toLowerCase() === 'si' || (r.valor || '').toLowerCase() === 'sí').length;
+      let nivel = 'Implementación incipiente';
+      let cls = 'st-inicio';
+      if (totalSi >= 21) { nivel = 'Implementación lograda'; cls = 'st-logrado'; }
+      else if (totalSi >= 14) { nivel = 'Implementación parcial'; cls = 'st-proceso'; }
+
+      jecNivelBanner = `
+        <div style="margin-bottom:14px;padding:12px 16px;border-radius:8px;background:var(--surface-card,#ffffff);border:1px solid var(--border-soft,#e2e8f0);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted,#64748b);text-transform:uppercase;letter-spacing:0.5px">Nivel de Implementación del MSE JEC · 3er Monitoreo (Salida)</span>
+            <div style="font-size:16px;font-weight:800;color:var(--text-main,#0f172a);margin-top:2px">${esc(nivel)}</div>
+          </div>
+          <div style="text-align:right">
+            <span class="badge ${esc(cls)}" style="font-size:12.5px;padding:5px 12px;font-weight:700">${esc(nivel)}</span>
+            <div style="font-size:11.5px;color:var(--text-muted,#64748b);margin-top:3px;font-weight:600">${totalSi} de 26 respuestas "Sí"</div>
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    } else {
+      const totalSi = s.conteo_si !== undefined
+        ? s.conteo_si
+        : (s.respuestas || []).filter(r => (r.valor || '').toLowerCase() === 'si' || (r.valor || '').toLowerCase() === 'sí').length;
+      const nivelObj = getNivelLogroJec(totalSi);
+      jecNivelBanner = `
+        <div style="margin-bottom:14px;padding:12px 16px;border-radius:8px;background:var(--surface-card,#ffffff);border:1px solid var(--border-soft,#e2e8f0);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted,#64748b);text-transform:uppercase;letter-spacing:0.5px">Nivel de Implementación del MSE JEC · 2do Monitoreo (Proceso)</span>
+            <div style="font-size:16px;font-weight:800;color:var(--text-main,#0f172a);margin-top:2px">${esc(nivelObj.nivel)}</div>
+          </div>
+          <div style="text-align:right">
+            <span class="badge ${esc(nivelObj.cls)}" style="font-size:12.5px;padding:5px 12px;font-weight:700">${esc(nivelObj.nivel)}</span>
+            <div style="font-size:11.5px;color:var(--text-muted,#64748b);margin-top:3px;font-weight:600">${totalSi} de 31 respuestas "Sí"</div>
+          </div>
+        </div>
+      `;
+    }
   }
 
   let cebeBanner = '';
@@ -530,21 +617,83 @@ export function buildDetail(s) {
     `;
   }
 
-  const items = (s.respuestas || []).map(r => {
-    let opt = ((RESPONSE_OPTIONS && RESPONSE_OPTIONS[s.tipoRespuesta]) || []).find(o => o.v === r.valor);
-    if (!opt && RESPONSE_OPTIONS) {
-      for (const list of Object.values(RESPONSE_OPTIONS)) {
-        opt = list.find(o => o.v === r.valor);
-        if (opt) break;
+  let respList = Array.isArray(s.respuestas) && s.respuestas.length > 0 ? s.respuestas : [];
+  if (respList.length === 0 && (s.respuestasObj || s.respuestasCondiciones)) {
+    respList = [];
+    if (s.respuestasCondiciones) {
+      Object.entries(s.respuestasCondiciones).forEach(([id, val], idx) => {
+        respList.push({ id, num: idx + 1, seccion: '01 ASPECTO: CONDICIONES (VERIFICACIÓN INICIAL)', valor: (typeof val === 'object' ? val.valor : val), hallazgo: (typeof val === 'object' ? val.hallazgo : '') });
+      });
+    }
+    if (s.respuestasObj) {
+      Object.entries(s.respuestasObj).forEach(([id, val], idx) => {
+        respList.push({ id, num: idx + 1, seccion: 'Rúbricas de Evaluación', valor: (typeof val === 'object' ? val.valor : val), hallazgo: (typeof val === 'object' ? val.hallazgo : '') });
+      });
+    }
+  }
+
+  const items = respList.map((r, idx) => {
+    let rawVal = (r.valor !== undefined && r.valor !== null && r.valor !== '') ? r.valor : null;
+    const cid = r.canonicalId || r.id;
+    if (rawVal === null && s.respuestasObj) {
+      const o = s.respuestasObj[r.id] ?? s.respuestasObj[cid] ?? (r.num ? s.respuestasObj[`it_${String(r.num).padStart(2, '0')}`] : null);
+      rawVal = (o !== undefined && o !== null) ? (typeof o === 'object' ? o.valor : o) : null;
+    }
+    if (rawVal === null && s.respuestasCondiciones) {
+      const o = s.respuestasCondiciones[r.id] ?? s.respuestasCondiciones[cid] ?? (r.num ? s.respuestasCondiciones[`c${r.num}`] : null);
+      rawVal = (o !== undefined && o !== null) ? (typeof o === 'object' ? o.valor : o) : null;
+    }
+    if (rawVal === null && s.puntajes) {
+      rawVal = s.puntajes[r.id] ?? s.puntajes[cid] ?? (r.num ? s.puntajes[`it_${String(r.num).padStart(2, '0')}`] : null);
+    }
+    if (rawVal === null && s.condiciones) {
+      rawVal = s.condiciones[r.id] ?? s.condiciones[cid] ?? (r.num ? s.condiciones[`c${r.num}`] : null);
+    }
+    let valBadge = '—';
+    let badgeCls = 'st-none';
+    let badgeStyle = 'color:var(--ink)';
+
+    if (rawVal !== undefined && rawVal !== null && String(rawVal).trim() !== '') {
+      const vClean = String(rawVal).trim().toLowerCase();
+      if (vClean === 'si' || vClean === 'sí') {
+        valBadge = 'SÍ';
+        badgeCls = 'st-logrado';
+        badgeStyle = 'background:#16a34a;color:#ffffff;font-weight:700';
+      } else if (vClean === 'no') {
+        valBadge = 'NO';
+        badgeCls = 'st-inicio';
+        badgeStyle = 'background:#dc2626;color:#ffffff;font-weight:700';
+      } else if (vClean === '3' || vClean === 'logrado') {
+        valBadge = (vClean === '3') ? '3 (Logrado)' : 'Logrado';
+        badgeCls = 'st-logrado';
+        badgeStyle = 'background:#16a34a;color:#ffffff;font-weight:700';
+      } else if (vClean === '2' || vClean === 'proceso') {
+        valBadge = (vClean === '2') ? '2 (Proceso)' : 'Proceso';
+        badgeCls = 'st-proceso';
+        badgeStyle = 'background:#d97706;color:#ffffff;font-weight:700';
+      } else if (vClean === '1' || vClean === 'inicio') {
+        valBadge = (vClean === '1') ? '1 (Inicio)' : 'Inicio';
+        badgeCls = 'st-inicio';
+        badgeStyle = 'background:#dc2626;color:#ffffff;font-weight:700';
+      } else if (vClean === 'na' || vClean === 'nc') {
+        valBadge = 'N/A';
+        badgeCls = 'st-none';
+        badgeStyle = 'background:#64748b;color:#ffffff;font-weight:600';
+      } else {
+        valBadge = String(rawVal);
       }
     }
-    const evidText = r.evidencia || r.hallazgo;
+
+    const evidText = r.evidencia || r.hallazgo || s.respuestasObj?.[r.id]?.hallazgo || s.respuestasCondiciones?.[r.id]?.hallazgo;
     const hallazgoHtml = evidText ? `<div style="margin-top:6px;font-size:11.5px;color:var(--text-800,#1e293b);background:var(--surface-sunken,#f8fafc);padding:5px 10px;border-radius:4px;border-left:3px solid var(--primary,#2563eb)"><strong>${r.evidencia ? '📕 Evidencia:' : 'Hallazgo:'}</strong> ${esc(evidText)}</div>` : '';
-    return '<div class="itemRow"><div class="itxt"><strong style="font-weight:600;color:var(--ink-soft);font-size:11.5px">' + esc(r.seccion || '') + '</strong><br>' + esc(r.texto || '') + hallazgoHtml + '</div><div class="optGroup"><span class="badge st-none" style="color:var(--ink)">' + esc(opt ? opt.l : (r.valor || '—')) + '</span></div></div>';
+    const itemNum = r.num || (idx + 1);
+    const itemTitle = r.texto || (r.id ? `Ítem ${r.id}` : `Ítem ${itemNum}`);
+    return '<div class="itemRow"><div class="itxt"><strong style="font-weight:600;color:var(--ink-soft);font-size:11.5px">' + esc(r.seccion || '') + '</strong><br>' + esc(itemTitle) + hallazgoHtml + '</div><div class="optGroup"><span class="badge ' + badgeCls + '" style="' + badgeStyle + '">' + esc(valBadge) + '</span></div></div>';
   }).join('') || '<p class="helpText">Sin respuestas registradas.</p>';
 
   let docentesTableHtml = '';
-  if (s.docentes_monitoreo) {
+  const vNumJec = isJec ? (getMomentoFichaJec(s) || Number(s.visita) || Number(s.momento) || 2) : null;
+  if (s.docentes_monitoreo && vNumJec !== 1) {
     const renderMiniGrid = (title, m) => {
       if (!m) return '';
       const rubros = ['r1', 'r2', 'r3', 'r4', 'r5'];
@@ -576,9 +725,14 @@ export function buildDetail(s) {
         </div>
       `;
     };
-    docentesTableHtml = '<div class="sectionTitle" style="margin-top:14px">V. Data de docentes monitoreados a la fecha de la visita nivel secundaria</div>' +
-      renderMiniGrid('a) 1er monitoreo', s.docentes_monitoreo.m1) +
-      renderMiniGrid('b) 2do monitoreo', s.docentes_monitoreo.m2);
+    if (vNumJec === 3) {
+      docentesTableHtml = '<div class="sectionTitle" style="margin-top:14px">V. Data de docentes monitoreados a la fecha de la visita nivel secundaria</div>' +
+        renderMiniGrid('3er monitoreo (Salida)', s.docentes_monitoreo.m3 || s.docentes_monitoreo.m2 || s.docentes_monitoreo.m1);
+    } else {
+      docentesTableHtml = '<div class="sectionTitle" style="margin-top:14px">V. Data de docentes monitoreados a la fecha de la visita nivel secundaria</div>' +
+        renderMiniGrid('a) 1er monitoreo', s.docentes_monitoreo.m1) +
+        renderMiniGrid('b) 2do monitoreo', s.docentes_monitoreo.m2);
+    }
   }
 
   const extras = (s.extras || []).filter(x => x && (x.value !== undefined && x.value !== '')).map(x => {

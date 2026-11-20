@@ -140,12 +140,19 @@ export function buildRegForm(state, getFichaType, dbNs, currentUser, navigate) {
   // Reconstruir si no está construido o si el contenedor quedó vacío
   setRegBuiltFor(regSelectedTypeId);
 
-  const targetVisita = (getRegTargetVisita ? Number(getRegTargetVisita()) : null) || (function() {
-    try {
-      const v = sessionStorage.getItem('reg_prefill_visita');
-      return v ? Number(v) : null;
-    } catch (_) { return null; }
-  })();
+  let targetVisita = null;
+  if (editingSubmissionData) {
+    targetVisita = getSubmissionVisitaNum(editingSubmissionData, ft) || 1;
+    setCurrentJecVisita(targetVisita);
+    try { sessionStorage.setItem('reg_prefill_visita', String(targetVisita)); } catch (_) {}
+  } else {
+    targetVisita = (getRegTargetVisita ? Number(getRegTargetVisita()) : null) || (function() {
+      try {
+        const v = sessionStorage.getItem('reg_prefill_visita');
+        return v ? Number(v) : null;
+      } catch (_) { return null; }
+    })();
+  }
 
   const targetColId = regSelectedColegioId || (getRegSelectedColegioId ? getRegSelectedColegioId() : null) || (function() {
     try { return sessionStorage.getItem('reg_prefill_colegioid'); } catch (_) { return null; }
@@ -257,11 +264,15 @@ export function renderRegistrarTab(container, state, getFichaType, dbNs, current
   }
 
   // Si venimos en modo edición desde consolidado/reportes, preseleccionar la ficha y forzar subtab registrar
-  if (editingSubmissionData && editingSubmissionData.fichaTypeId && !regSelectedTypeId) {
-    setRegSelectedTypeIdVal(editingSubmissionData.fichaTypeId);
+  if (editingSubmissionData) {
+    if (editingSubmissionData.fichaTypeId) {
+      setRegSelectedTypeIdVal(editingSubmissionData.fichaTypeId);
+    }
     if (isFichaJec(editingSubmissionData) && !isFichaCoordTutoriaJec(editingSubmissionData) && !isFichaCoordPedagogico(editingSubmissionData)) {
       setRegSelectedTypeIdVal('ft_msejec_2do');
-      setCurrentJecVisita(getSubmissionVisitaNum(editingSubmissionData) || 2);
+      const vNum = getSubmissionVisitaNum(editingSubmissionData) || 1;
+      setCurrentJecVisita(vNum);
+      try { sessionStorage.setItem('reg_prefill_visita', String(vNum)); } catch (_) {}
     }
     setRegistrarSubTab('registrar');
   } else if (!regSelectedTypeId) {

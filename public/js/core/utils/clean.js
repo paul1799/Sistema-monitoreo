@@ -3,9 +3,14 @@
    UGEL 03 · Sistema de Monitoreo y Acompañamiento 2026
    ========================================================================= */
 
-/** Limpia recursivamente un objeto para Firestore: convierte undefined en "" y NaN en 0 */
+import { fixUtf8Mojibake } from './text.js';
+
+/** Limpia recursivamente un objeto para Firestore: convierte undefined en "", NaN en 0 y sanea mojibake UTF-8 */
 export function cleanForFirestore(val) {
   if (val === undefined) return '';
+  if (typeof val === 'string') {
+    return fixUtf8Mojibake(val);
+  }
   if (typeof val === 'number') {
     return isNaN(val) ? 0 : val;
   }

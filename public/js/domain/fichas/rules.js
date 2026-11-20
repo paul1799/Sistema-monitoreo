@@ -1,4 +1,4 @@
-﻿/**
+/**
  * public/js/calc/reglas.js
  * Reglas de nivel predefinidas para los diferentes instrumentos de monitoreo
  * UGEL 03 Â· AGEBRE
@@ -141,13 +141,13 @@ export const REGLA_NIVEL_GENERICA = {
 
 /**
  * Especialista Oficial designada para la supervisiÃ³n y monitoreo del Modelo JEC
- * (Fanny Liliana Arias QuirÃ³z - Especialista de JEC - UGEL 03)
+ * (Fanny Liliana Arias Quiróz - Especialista de JEC - UGEL 03)
  */
 export const ESPECIALISTA_JEC_OFICIAL = {
-  nombresApellidos: 'Fanny Liliana Arias QuirÃ³z',
+  nombresApellidos: 'Fanny Liliana Arias Quiróz',
   cargo: 'Especialista de JEC',
   especialidad: 'Especialista JEC',
-  area: 'AGEBRE â€“ JEC',
+  area: 'AGEBRE – JEC',
   modalidad: 'EBR',
   red: 'MSE JEC (Todas las REI)',
   distrito: 'UGEL 03',

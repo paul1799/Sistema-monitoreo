@@ -44,10 +44,16 @@ export function renderItemReportSectionHtml(ft, statsList, isAllMode = false, ta
     seccionesParaAgg = getEbrSeccionesForVisita(vTarget, ft);
   } else if (isFichaJec(ft)) {
     if (effVisita === 1) {
-      seccionesParaAgg = (ft.seccionesPorVisita && (ft.seccionesPorVisita[0] || ft.seccionesPorVisita['0'])) || ft.secciones || JEC_1ER_SECCIONES;
+      const s0 = ft?.seccionesPorVisita ? (ft.seccionesPorVisita[0] || ft.seccionesPorVisita['0']) : null;
+      seccionesParaAgg = (Array.isArray(s0) && s0.length > 0)
+        ? s0
+        : (Array.isArray(ft.secciones) && ft.secciones.some(s => (s.items || []).some(i => i.id?.startsWith('c') || i.id?.startsWith('jec1_')))
+            ? ft.secciones
+            : JEC_1ER_SECCIONES);
+    } else if (effVisita === 3) {
+      seccionesParaAgg = getActiveJecSections(ft, 3);
     } else {
-      const vNum = (effVisita && effVisita >= 2) ? Number(effVisita) : 2;
-      seccionesParaAgg = getActiveJecSections(ft, vNum);
+      seccionesParaAgg = getActiveJecSections(ft, 2);
     }
   } else if (!isSiNo && isFichaCebeGestion(ft)) {
     seccionesParaAgg = (ft.secciones && ft.secciones.length > 0) ? ft.secciones : CEBE_SECCIONES;
@@ -87,11 +93,13 @@ export function renderItemReportSectionHtml(ft, statsList, isAllMode = false, ta
     }
   });
 
-  const effectiveFt = (isFichaJec(ft) && effVisita !== 1)
-    ? { ...ft, secciones: seccionesParaAgg, tipoRespuesta: 'si_no', escala: 'SI_NO_NA' }
-    : (isFichaJec(ft) && effVisita === 1)
-      ? { ...ft, secciones: seccionesParaAgg, tipoRespuesta: 'escala_1_3', escala: 'ESCALA_1_3', visita: 1 }
-      : { ...ft, secciones: seccionesParaAgg };
+  const effectiveFt = (isFichaJec(ft) && effVisita === 1)
+    ? { ...ft, secciones: seccionesParaAgg, tipoRespuesta: 'escala_1_3', escala: 'ESCALA_1_3', visita: 1 }
+    : (isFichaJec(ft) && effVisita === 3)
+      ? { ...ft, secciones: seccionesParaAgg, tipoRespuesta: 'si_no', escala: 'SI_NO_NA', visita: 3 }
+      : (isFichaJec(ft))
+        ? { ...ft, secciones: seccionesParaAgg, tipoRespuesta: 'si_no', escala: 'SI_NO_NA', visita: 2 }
+        : { ...ft, secciones: seccionesParaAgg };
 
   return renderItemReportHtml(itemAgg, effectiveFt.tipoRespuesta, effectiveFt);
 }

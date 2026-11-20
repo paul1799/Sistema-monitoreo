@@ -15,6 +15,8 @@ import {
 import {
   isFichaJec,
   isFichaJec1erMomento,
+  isFichaJec3erMomento,
+  getMomentoFichaJec,
   isFichaCoordTutoriaJec,
   isFichaCoordPedagogico,
   isFichaEspecialistaJec,
@@ -23,7 +25,7 @@ import {
   isFichaMaterialesCebe,
   getMomentoVisitaEbr
 } from './detector.js';
-import { MATERIALES_CEBE_SECCIONES } from './catalogo-base.js';
+import { MATERIALES_CEBE_SECCIONES, JEC_1ER_SECCIONES } from './catalogo-base.js';
 import {
   estadoPorRegla,
   getReglaNivelComunEbrEbePrite,
@@ -123,8 +125,14 @@ export function calcScore(respuestas, fichaType) {
       activeSections = fichaType.seccionesPorVisita[vIdx];
     }
   }
-  if (isJec1er && (!activeSections || activeSections.length === 0 || activeSections.length === 31 || activeSections.length === 26)) {
-    activeSections = fichaType.seccionesPorVisita?.[0] || fichaType.seccionesPorVisita?.['0'] || JEC_1ER_SECCIONES;
+  if (isJec1er) {
+    const s0 = fichaType.seccionesPorVisita?.[0] ?? fichaType.seccionesPorVisita?.['0'];
+    const countItems = (arr) => Array.isArray(arr) ? arr.reduce((acc, s) => acc + (s.items?.length || 0), 0) : 0;
+    activeSections = (Array.isArray(s0) && s0.length > 0 && countItems(s0) !== 31 && countItems(s0) !== 26)
+      ? s0
+      : (Array.isArray(fichaType.secciones) && fichaType.secciones.some(s => (s.items || []).some(i => i.id?.startsWith('c') || i.id?.startsWith('it_') || i.id?.startsWith('jec1_'))))
+          ? fichaType.secciones
+          : JEC_1ER_SECCIONES;
   }
 
   const isEbr = !isSiNo && isFichaEbrGestionEscolar(fichaType);
@@ -221,7 +229,9 @@ export function calcScore(respuestas, fichaType) {
 
         if (itemPts > 0) {
           secPuntos += itemPts;
-          puntaje_total_raw += itemPts;
+          if (!isCondSec) {
+            puntaje_total_raw += itemPts;
+          }
         }
       }
       const vLower = String(v || '').trim().toLowerCase();
@@ -233,22 +243,22 @@ export function calcScore(respuestas, fichaType) {
 
     return {
       nombre:    sec.nombre,
-      pct:       secCount > 0 ? Math.round((secScore / secCount) * 100) : null,
+      pct:       secCount > 0 ? (isCondSec ? Math.round((secSi / (sec.items || []).length) * 100) : Math.round((secScore / secCount) * 100)) : null,
       answered:  secCount,
       total:     (sec.items || []).length,
       conteo_si: secSi,
-      puntaje:   isSiNo ? secSi : secPuntos,
+      puntaje:   isCondSec ? secSi : (isSiNo ? secSi : secPuntos),
     };
   });
 
   const maxPuntajeOficial = isEbr
     ? (regla_nivel?.maxPuntaje || (Number(fichaType.visita) === 2 ? 69 : 57))
-    : (isJec1er ? (regla_nivel?.maxPuntaje || 111) : (isSiNo ? (regla_nivel?.maxConteo || totalCount) : (regla_nivel?.maxPuntaje || (totalCount * 3))));
+    : (isJec1er ? 111 : (isSiNo ? (regla_nivel?.maxConteo || totalCount) : (regla_nivel?.maxPuntaje || (totalCount * 3))));
 
   const pct = isEbr
     ? ((maxPuntajeOficial > 0 && puntaje_total_raw > 0) ? Math.round((puntaje_total_raw / maxPuntajeOficial) * 100) : (totalCount > 0 ? Math.round((totalScore / totalCount) * 100) : null))
     : (isJec1er
-      ? ((maxPuntajeOficial > 0 && puntaje_total_raw > 0) ? Math.round((puntaje_total_raw / maxPuntajeOficial) * 100) : (totalCount > 0 ? Math.round((totalScore / totalCount) * 100) : null))
+      ? (maxPuntajeOficial > 0 ? Math.round((puntaje_total_raw / maxPuntajeOficial) * 100) : 0)
       : (totalCount > 0 ? Math.round((totalScore / totalCount) * 100) : null));
 
   const resultado = {

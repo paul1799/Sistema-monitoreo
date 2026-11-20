@@ -465,10 +465,11 @@ export function syncCommonJecFields(host, fromVisita, toVisita) {
  * Renderiza el formulario unificado de Modelo JEC (Permite alternar interactivamente entre 1er, 2do y 3er Monitoreo)
  */
 export function renderUnifiedJecForm(host, ft, state, dbNs, currentUser, navigate, isEditing, targetVisita = null, targetColId = null, editingSubmissionData = null) {
-  if (targetVisita) {
+  if (editingSubmissionData) {
+    const vSub = getSubmissionVisitaNum(editingSubmissionData, ft) || 1;
+    setCurrentJecVisita(targetVisita ? Number(targetVisita) : vSub);
+  } else if (targetVisita) {
     setCurrentJecVisita(Number(targetVisita));
-  } else if (editingSubmissionData) {
-    setCurrentJecVisita(getSubmissionVisitaNum(editingSubmissionData, ft) || 2);
   } else if (!currentJecVisita) {
     setCurrentJecVisita(1);
   }

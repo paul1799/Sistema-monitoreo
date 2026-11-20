@@ -253,6 +253,17 @@ export function resolveItemValue(valMap, it, sec = null, sIdx = 0, iIdx = 0, isJ
       if (valMap['c0' + cn] !== undefined) return valMap['c0' + cn];
       if (valMap['cond_0' + cn] !== undefined) return valMap['cond_0' + cn];
     }
+    const itMatch = rawId.match(/^(?:it_|jec1?_)?0*(\d+)$/i);
+    if (itMatch) {
+      const n = parseInt(itMatch[1], 10);
+      const pad = String(n).padStart(2, '0');
+      if (valMap['it_' + pad] !== undefined) return valMap['it_' + pad];
+      if (valMap['it_' + n] !== undefined) return valMap['it_' + n];
+      if (valMap['jec1_' + n] !== undefined) return valMap['jec1_' + n];
+      if (valMap['jec_' + n] !== undefined) return valMap['jec_' + n];
+      if (valMap['num_' + n] !== undefined) return valMap['num_' + n];
+      if (valMap[String(n)] !== undefined) return valMap[String(n)];
+    }
     const mcMatch = rawId.match(/^m(?:c)?_?(\d+)$/i);
     if (mcMatch) {
       const n = parseInt(mcMatch[1], 10);
