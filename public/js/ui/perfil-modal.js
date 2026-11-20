@@ -5,7 +5,7 @@
 
 import { esc, showToast, lockBodyScroll, unlockBodyScroll } from './core-utils.js';
 import { getAuth, updatePassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { sendSecurityNotificationEmail } from '../core/email-service.js?v=20261119_v10';
+import { sendSecurityNotificationEmail } from '../core/email-service.js?v=20261120_v1';
 import { adminDirectResetPassword } from '../core/firebase/admin-service.js?v=20261119_v8';
 
 /**
@@ -535,7 +535,6 @@ export function openAdminResetPasswordModal(userDoc, dbNs, currentUser, onComple
           subject: 'Restablecimiento de Contraseña - AGEBRE UGEL 03',
           title: 'Tu Contraseña ha sido Restablecida',
           message: `
-            Estimado(a) <strong>${esc(targetName)}</strong>,<br><br>
             Te informamos que tu contraseña de acceso a la plataforma de <strong>Sistematización de Monitoreo AGEBRE 2026 (UGEL 03)</strong> ha sido restablecida con éxito por la Administración del Sistema.<br><br>
             <div style="background:#F8FAFC;border:1px solid #CBD5E1;border-radius:8px;padding:14px;margin:12px 0;">
               <div style="font-size:12px;color:#64748B;margin-bottom:6px;font-weight:600;">TUS NUEVAS CREDENCIALES DE ACCESO:</div>

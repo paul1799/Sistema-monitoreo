@@ -410,6 +410,10 @@ export async function sendSecurityNotificationEmail({
   const cleanEmail = (to || '').trim().toLowerCase();
   if (!cleanEmail) return { ok: false, error: 'No email provided' };
 
+  // Evitar duplicación si message ya contiene un saludo "Estimado(a)..." al inicio
+  let cleanMessage = (message || '').trim();
+  cleanMessage = cleanMessage.replace(/^\s*(?:<p[^>]*>)?\s*Estimado\(a\)[^,:\n<]*(?:<[^>]+>[^,:\n<]*)*[,:]\s*(?:<\/p>)?(?:\s*<br\s*\/?>)*/i, '').trim();
+
   const htmlBody = `
 <!DOCTYPE html>
 <html lang="es">
@@ -431,9 +435,9 @@ export async function sendSecurityNotificationEmail({
         <p style="font-size:14px;color:#334155;line-height:1.6;margin:0 0 16px;">
           Estimado(a) <strong>${nombre}</strong>,
         </p>
-        <p style="font-size:14px;color:#475569;line-height:1.6;margin:0 0 20px;">
-          ${message}
-        </p>
+        <div style="font-size:14px;color:#475569;line-height:1.6;margin:0 0 20px;">
+          ${cleanMessage}
+        </div>
         <div style="text-align:center;margin:28px 0;">
           <a href="${actionUrl}" style="background:#2563EB;color:#FFFFFF;text-decoration:none;font-size:14px;font-weight:700;padding:12px 28px;border-radius:6px;display:inline-block;">
             ${actionText}
@@ -464,7 +468,7 @@ UGEL 03 • AGEBRE - Sistematización de Monitoreo 2026
 ${title}
 
 Estimado(a) ${nombre},
-${message}
+${cleanMessage}
 
 Enlace de acceso: ${actionUrl}
 

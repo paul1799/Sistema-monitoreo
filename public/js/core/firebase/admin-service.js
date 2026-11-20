@@ -65,7 +65,7 @@ async function getGoogleServiceAccessToken() {
     aud: 'https://oauth2.googleapis.com/token',
     iat: now,
     exp: now + 3600,
-    scope: 'https://www.googleapis.com/auth/identitytoolkit https://www.googleapis.com/auth/firebase'
+    scope: 'https://www.googleapis.com/auth/identitytoolkit https://www.googleapis.com/auth/firebase https://www.googleapis.com/auth/datastore'
   };
 
   const textEncoder = new TextEncoder();
@@ -167,4 +167,121 @@ export async function adminDirectResetPassword({ email, uid = null, newPassword 
     email: updateData.email || targetEmail,
     localId: updateData.localId || targetUid
   };
+}
+
+/**
+ * Genera el enlace oficial de restablecimiento de contraseña (oobLink) en Firebase Authentication
+ * utilizando la cuenta de servicio institucional de Google Cloud, para enviarlo vía el webhook
+ * oficial de correo institucional sin depender de los correos automáticos no autorizados de Firebase.
+ * 
+ * @param {string} email - Correo del usuario
+ * @returns {Promise<{ email: string, oobLink: string, oobCode?: string }>}
+ */
+export async function generatePasswordResetLink(email) {
+  const targetEmail = (email || '').trim().toLowerCase();
+  if (!targetEmail || !targetEmail.includes('@')) {
+    throw new Error('El correo del usuario no es válido.');
+  }
+
+  // 1. Obtener token de administración autorizado de Google Cloud
+  const accessToken = await getGoogleServiceAccessToken();
+  const projectId = SERVICE_ACCOUNT.projectId;
+
+  // 2. Solicitar enlace oficial de restablecimiento de contraseña a Identity Toolkit
+  const res = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:sendOobCode`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        requestType: 'PASSWORD_RESET',
+        email: targetEmail,
+        returnOobLink: true
+      })
+    }
+  );
+
+  const data = await res.json();
+  if (!res.ok || data.error) {
+    const errMsg = data.error?.message || 'ERROR';
+    if (errMsg.includes('EMAIL_NOT_FOUND') || errMsg.includes('USER_NOT_FOUND')) {
+      throw new Error(`No se encontró ninguna cuenta registrada en la plataforma con el correo ${targetEmail}.`);
+    }
+    throw new Error(data.error?.message || 'No se pudo generar el enlace de restablecimiento.');
+  }
+
+  return {
+    email: data.email || targetEmail,
+    oobLink: data.oobLink,
+    oobCode: data.oobCode
+  };
+}
+
+/**
+ * Guarda un registro de verificación OTP en Firestore utilizando la cuenta de servicio (sin requerir sesión activa)
+ * @param {string} docId - ID del documento en la colección 'verificaciones'
+ * @param {Object} data - Datos a guardar
+ */
+export async function saveAdminVerificationRecord(docId, data) {
+  try {
+    const accessToken = await getGoogleServiceAccessToken();
+    const projectId = SERVICE_ACCOUNT.projectId;
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/verificaciones/${encodeURIComponent(docId)}`;
+
+    const fields = {};
+    for (const [k, v] of Object.entries(data)) {
+      if (typeof v === 'string') fields[k] = { stringValue: v };
+      else if (typeof v === 'number') fields[k] = { integerValue: String(Math.floor(v)) };
+      else if (typeof v === 'boolean') fields[k] = { booleanValue: v };
+    }
+
+    await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ fields })
+    });
+  } catch (err) {
+    console.warn('Aviso al guardar verificación en Firestore con cuenta de servicio:', err);
+  }
+}
+
+/**
+ * Obtiene un registro de verificación OTP desde Firestore utilizando la cuenta de servicio
+ * @param {string} docId - ID del documento en la colección 'verificaciones'
+ * @returns {Promise<Object|null>}
+ */
+export async function getAdminVerificationRecord(docId) {
+  try {
+    const accessToken = await getGoogleServiceAccessToken();
+    const projectId = SERVICE_ACCOUNT.projectId;
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/verificaciones/${encodeURIComponent(docId)}`;
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (!json.fields) return null;
+
+    const data = {};
+    for (const [k, v] of Object.entries(json.fields)) {
+      if (v.stringValue !== undefined) data[k] = v.stringValue;
+      else if (v.integerValue !== undefined) data[k] = Number(v.integerValue);
+      else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
+    }
+    return data;
+  } catch (err) {
+    console.warn('Aviso al leer verificación en Firestore con cuenta de servicio:', err);
+    return null;
+  }
 }

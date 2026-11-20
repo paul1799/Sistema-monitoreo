@@ -17,6 +17,10 @@ import {
   doc,
   getDoc,
   setDoc,
+  collection,
+  query,
+  where,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
   generateOtpCode,
@@ -26,9 +30,14 @@ import {
   sendSecurityNotificationEmail
 } from '../email-service.js?v=20261119_v10';
 
-import { adminDirectResetPassword } from './admin-service.js?v=20261119_v8';
+import {
+  adminDirectResetPassword,
+  generatePasswordResetLink,
+  saveAdminVerificationRecord,
+  getAdminVerificationRecord
+} from './admin-service.js?v=20261120_v2';
 
-export { getAuth, signOut, sendPasswordResetEmail, generateOtpCode, sendOtpEmail, sendSecurityNotificationEmail, adminDirectResetPassword };
+export { getAuth, signOut, sendPasswordResetEmail, generateOtpCode, sendOtpEmail, sendSecurityNotificationEmail, adminDirectResetPassword, generatePasswordResetLink };
 
 /**
  * Obtiene el documento completo de perfil/rol del usuario desde Firestore
@@ -1040,9 +1049,10 @@ export function setupAuthListeners(auth, firestoreDb, { onLogin, onLogout }) {
       const forgotError = document.getElementById('forgotError');
       const forgotSuccess = document.getElementById('forgotSuccess');
       if (forgotError) forgotError.textContent = '';
-      if (forgotSuccess) forgotSuccess.textContent = '';
+      if (forgotSuccess) forgotSuccess.innerHTML = '';
 
-      const email = document.getElementById('forgotEmail')?.value.trim() || '';
+      const rawEmail = document.getElementById('forgotEmail')?.value.trim() || '';
+      const email = rawEmail.toLowerCase();
       const submitBtn = document.getElementById('forgotSubmitBtn');
 
       if (!email || !email.includes('@') || !email.includes('.')) {
@@ -1052,18 +1062,256 @@ export function setupAuthListeners(auth, firestoreDb, { onLogin, onLogout }) {
 
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Enviando enlace...';
+        submitBtn.innerHTML = '<span>⏳</span> Generando enlace institucional...';
       }
 
       try {
-        await sendPasswordResetEmail(auth, email);
-        if (forgotSuccess) {
-          forgotSuccess.innerHTML = '✓ Se ha enviado el enlace de restablecimiento a <strong>' + email + '</strong>.<br>Por favor revisa tu bandeja de entrada o spam para restablecer tu clave institucional.';
+        // 1. Obtener el nombre del usuario desde Firestore si está registrado
+        let userName = 'Especialista';
+        let targetUid = null;
+        if (firestoreDb) {
+          try {
+            const qSnap = await getDocs(query(collection(firestoreDb, 'roles'), where('email', '==', email)));
+            if (!qSnap.empty) {
+              const rDoc = qSnap.docs[0];
+              targetUid = rDoc.id;
+              const rData = rDoc.data();
+              userName = (rData.nombre || rData.nombresApellidos || rData.displayName || '').trim() || userName;
+            }
+          } catch (_) {}
         }
+
+        // 2. Generar código de seguridad OTP para permitir también el cambio directo en pantalla
+        const otpCode = generateOtpCode();
+        const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutos
+
+        const resetState = {
+          email: email,
+          code: String(otpCode).trim(),
+          expiresAt: expiresAt,
+          attemptsLeft: 3
+        };
+
+        // Guardar en almacenamiento de sesión y local para acceso inmediato sin problemas de permisos
+        try {
+          sessionStorage.setItem('agebre_pwd_reset_' + email, JSON.stringify(resetState));
+          localStorage.setItem('agebre_pwd_reset_' + email, JSON.stringify(resetState));
+        } catch (_) {}
+
+        // También respaldar en Firestore con la cuenta de servicio institucional
+        const verifKey = 'reset_' + email.replace(/[^a-z0-9_-]/g, '_');
+        saveAdminVerificationRecord(verifKey, resetState).catch(() => {});
+
+        // 3. Generar enlace oficial de restablecimiento de contraseña en Firebase Auth (oobLink)
+        let resetLink = null;
+        let adminErr = null;
+        try {
+          const resLink = await generatePasswordResetLink(email);
+          resetLink = resLink?.oobLink || null;
+        } catch (err) {
+          adminErr = err;
+          console.warn('Aviso al generar enlace oficial con cuenta de servicio:', err);
+        }
+
+        // Si el correo no existe en el sistema, avisar claramente
+        if (adminErr && (adminErr.message.includes('No se encontró') || adminErr.message.includes('EMAIL_NOT_FOUND') || adminErr.message.includes('USER_NOT_FOUND'))) {
+          if (forgotError) forgotError.textContent = 'No se encontró ninguna cuenta registrada en la plataforma con este correo institucional.';
+          return;
+        }
+
+        // Fallback: si no se generó el oobLink por error de token, disparar sendPasswordResetEmail nativo de Firebase
+        if (!resetLink) {
+          try {
+            await sendPasswordResetEmail(auth, email);
+          } catch (fbErr) {
+            console.warn('Aviso en fallback Firebase reset email:', fbErr);
+          }
+        }
+
+        // 4. Despachar correo institucional oficial vía Google Apps Script Webhook
+        const mailActionUrl = resetLink || (window.location.origin || 'https://sistematizacion-fichas.firebaseapp.com');
+        const mailActionText = resetLink ? 'Restablecer mi Contraseña' : 'Acceder a la Plataforma';
+        const mailMessage = resetLink
+          ? `Has solicitado restablecer tu contraseña para ingresar a la plataforma de <strong>Sistematización de Fichas de Monitoreo 2026</strong> de la UGEL 03.<br><br>
+             Puedes elegir cualquiera de estas 2 opciones para recuperar tu acceso:<br><br>
+             <strong>Opción 1 (Recomendada):</strong> Haz clic en el siguiente botón oficial para definir tu nueva clave de acceso:<br><br>
+             <div style="background:#F8FAFC;border:2px dashed #2563EB;border-radius:10px;padding:12px 24px;text-align:center;margin:16px 0;">
+               <span style="font-family:monospace;font-size:28px;font-weight:800;letter-spacing:6px;color:#12294D;display:block;">${otpCode}</span>
+               <span style="display:block;font-size:11px;color:#64748B;font-weight:600;margin-top:4px;">CÓDIGO DE CONFIRMACIÓN DIRECTO (15 MINUTOS)</span>
+             </div>
+             <strong>Opción 2:</strong> O si prefieres cambiarla aquí mismo sin salir del sistema, introduce el código de 5 dígitos anterior en la pantalla de recuperación.`
+          : `Has solicitado restablecer tu contraseña. Tu código de seguridad institucional es: <strong>${otpCode}</strong>. Ingrésalo en la pantalla de recuperación para asignar tu nueva clave.`;
+
+        await sendSecurityNotificationEmail({
+          to: email,
+          nombre: userName,
+          subject: 'Restablecer contraseña de acceso - AGEBRE UGEL 03',
+          title: 'Recuperación de Contraseña Institucional',
+          message: mailMessage,
+          actionUrl: mailActionUrl,
+          actionText: mailActionText
+        });
+
+        // 5. Mostrar confirmación visual en pantalla con opción para ingresar código directo
+        if (forgotSuccess) {
+          forgotSuccess.innerHTML = `
+            <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:14px;margin-top:14px;color:#166534;font-size:13px;line-height:1.5;">
+              <div style="font-weight:700;font-size:14px;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                <span>✉️</span> <span>¡Enlace de recuperación despachado con éxito!</span>
+              </div>
+              Hemos despachado la notificación oficial a <strong>${email}</strong>.<br><br>
+              <strong>Tienes 2 formas rápidas de restablecer tu acceso:</strong>
+              <div style="margin:10px 0;background:#FFFFFF;border:1px solid #DCFCE7;border-radius:6px;padding:10px 12px;font-size:12.5px;">
+                <strong>Opción A:</strong> Abre tu correo institucional y haz clic en el botón azul <em>"Restablecer mi Contraseña"</em>.<br>
+                <strong>Opción B:</strong> Si ya tienes el código de 5 dígitos enviado a tu correo, puedes escribir tu nueva clave aquí mismo:
+              </div>
+              <div style="text-align:center;margin-top:10px;">
+                <button type="button" id="btnToggleDirectResetOtp" class="btn secondary small" style="font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;">
+                  🔑 Ingresar código de 5 dígitos y definir nueva contraseña aquí
+                </button>
+              </div>
+            </div>
+            <div id="directOtpResetBox" style="display:none;background:#F8FAFC;border:1px solid #CBD5E1;border-radius:8px;padding:16px;margin-top:12px;">
+              <h4 style="margin:0 0 10px;font-size:13.5px;color:#0F172A;font-weight:700;">Cambio directo de contraseña con código</h4>
+              <div class="field" style="margin-bottom:10px;">
+                <label style="font-size:12px;font-weight:600;color:#334155;">Código de 5 dígitos recibido</label>
+                <input type="text" id="directResetCode" maxlength="5" placeholder="Ej. 12345" style="letter-spacing:4px;font-weight:700;font-size:16px;text-align:center;padding:8px;" autocomplete="off">
+              </div>
+              <div class="field" style="margin-bottom:10px;">
+                <label style="font-size:12px;font-weight:600;color:#334155;">Nueva contraseña (mínimo 6 caracteres)</label>
+                <input type="password" id="directResetNewPass" placeholder="Nueva clave de acceso" style="padding:8px;">
+              </div>
+              <div class="field" style="margin-bottom:12px;">
+                <label style="font-size:12px;font-weight:600;color:#334155;">Confirmar nueva contraseña</label>
+                <input type="password" id="directResetConfirmPass" placeholder="Repite la nueva clave" style="padding:8px;">
+              </div>
+              <button type="button" class="btn" id="btnSubmitDirectReset" style="width:100%;font-size:13px;padding:9px;">
+                Guardar Nueva Contraseña
+              </button>
+              <p id="directResetMsg" class="helpText" style="margin-top:8px;font-size:12px;"></p>
+            </div>
+          `;
+
+          // Vincular eventos del bloque de restablecimiento directo
+          const toggleBtn = forgotSuccess.querySelector('#btnToggleDirectResetOtp');
+          const directBox = forgotSuccess.querySelector('#directOtpResetBox');
+          if (toggleBtn && directBox) {
+            toggleBtn.addEventListener('click', () => {
+              const isHidden = directBox.style.display === 'none';
+              directBox.style.display = isHidden ? 'block' : 'none';
+              toggleBtn.textContent = isHidden ? '▲ Ocultar formulario de código directo' : '🔑 Ingresar código de 5 dígitos y definir nueva contraseña aquí';
+            });
+          }
+
+          const btnSubmitDirect = forgotSuccess.querySelector('#btnSubmitDirectReset');
+          if (btnSubmitDirect) {
+            btnSubmitDirect.addEventListener('click', async () => {
+              const codeInp = forgotSuccess.querySelector('#directResetCode')?.value.trim();
+              const newPass = forgotSuccess.querySelector('#directResetNewPass')?.value || '';
+              const confPass = forgotSuccess.querySelector('#directResetConfirmPass')?.value || '';
+              const msgEl = forgotSuccess.querySelector('#directResetMsg');
+              if (msgEl) { msgEl.textContent = ''; msgEl.style.color = 'var(--danger)'; }
+
+              if (!codeInp || codeInp.length !== 5) {
+                if (msgEl) msgEl.textContent = 'Por favor ingresa el código de 5 dígitos recibido.';
+                return;
+              }
+              if (!newPass || newPass.length < 6) {
+                if (msgEl) msgEl.textContent = 'La nueva contraseña debe tener al menos 6 caracteres.';
+                return;
+              }
+              if (newPass !== confPass) {
+                if (msgEl) msgEl.textContent = 'Las contraseñas no coinciden.';
+                return;
+              }
+
+              btnSubmitDirect.disabled = true;
+              btnSubmitDirect.innerHTML = '<span>⏳</span> Actualizando contraseña...';
+
+              try {
+                // 1. Obtener la solicitud activa de restablecimiento (almacenamiento local de sesión o Firestore con cuenta de servicio)
+                let vData = null;
+                try {
+                  const rawLocal = sessionStorage.getItem('agebre_pwd_reset_' + email) ||
+                                   localStorage.getItem('agebre_pwd_reset_' + email);
+                  if (rawLocal) {
+                    vData = JSON.parse(rawLocal);
+                  }
+                } catch (_) {}
+
+                if (!vData) {
+                  const verifKey = 'reset_' + email.replace(/[^a-z0-9_-]/g, '_');
+                  try {
+                    vData = await getAdminVerificationRecord(verifKey);
+                  } catch (_) {}
+                }
+
+                if (!vData) {
+                  throw new Error('No se encontró una solicitud activa de restablecimiento para este correo. Por favor solicita un nuevo código.');
+                }
+                if (vData.expiresAt && Date.now() > vData.expiresAt) {
+                  throw new Error('El código ha expirado. Por favor solicita un nuevo enlace o código de recuperación.');
+                }
+                if (String(vData.code).trim() !== String(codeInp).trim()) {
+                  vData.attemptsLeft = Math.max(0, (vData.attemptsLeft || 3) - 1);
+                  try {
+                    sessionStorage.setItem('agebre_pwd_reset_' + email, JSON.stringify(vData));
+                    localStorage.setItem('agebre_pwd_reset_' + email, JSON.stringify(vData));
+                  } catch (_) {}
+                  if (vData.attemptsLeft <= 0) {
+                    throw new Error('Has superado el número de intentos permitidos. Por favor solicita un nuevo código.');
+                  }
+                  throw new Error(`El código de 5 dígitos es incorrecto. Te quedan ${vData.attemptsLeft} intento(s).`);
+                }
+
+                // 2. Restablecer contraseña directamente en Firebase Auth
+                await adminDirectResetPassword({ email: email, newPassword: newPass });
+
+                // 3. Limpiar almacenamiento local y registrar completado
+                try {
+                  sessionStorage.removeItem('agebre_pwd_reset_' + email);
+                  localStorage.removeItem('agebre_pwd_reset_' + email);
+                } catch (_) {}
+                const verifKey = 'reset_' + email.replace(/[^a-z0-9_-]/g, '_');
+                saveAdminVerificationRecord(verifKey, { estado: 'completado', completadoEn: Date.now() }).catch(() => {});
+
+                if (msgEl) {
+                  msgEl.style.color = 'var(--ok)';
+                  msgEl.innerHTML = '✓ ¡Contraseña actualizada con éxito! Redirigiendo al inicio de sesión...';
+                }
+
+                setTimeout(() => {
+                  const loginEmailEl = document.getElementById('loginEmail');
+                  const loginPassEl = document.getElementById('loginPassword');
+                  if (loginEmailEl) loginEmailEl.value = email;
+                  if (loginPassEl) loginPassEl.value = newPass;
+                  const btnBack = document.getElementById('btnBackToLoginFromForgot');
+                  if (btnBack) btnBack.click();
+                  const loginSuccess = document.getElementById('loginSuccess');
+                  if (loginSuccess) {
+                    loginSuccess.textContent = '✓ Contraseña restablecida con éxito. Ya puedes iniciar sesión con tu nueva clave.';
+                  }
+                }, 1800);
+
+              } catch (err) {
+                console.error('Error al restablecer contraseña con código:', err);
+                if (msgEl) {
+                  msgEl.style.color = 'var(--danger)';
+                  msgEl.textContent = err.message || 'No se pudo actualizar la contraseña. Revisa el código ingresado.';
+                }
+                btnSubmitDirect.disabled = false;
+                btnSubmitDirect.textContent = 'Guardar Nueva Contraseña';
+              }
+            });
+          }
+        }
+
       } catch (err) {
-        console.error('Error al enviar correo de recuperación:', err);
+        console.error('Error al tramitar recuperación de contraseña:', err);
         let msg = 'No se pudo enviar el correo de recuperación.';
-        if (err.code === 'auth/user-not-found') {
+        if (err.message && err.message.includes('No se encontró')) {
+          msg = err.message;
+        } else if (err.code === 'auth/user-not-found') {
           msg = 'No se encontró ninguna cuenta registrada con este correo.';
         } else if (err.code === 'auth/invalid-email') {
           msg = 'El correo ingresado no es válido.';

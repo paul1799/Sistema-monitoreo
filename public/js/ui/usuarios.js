@@ -14,7 +14,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { FIREBASE_CONFIG } from '../firebase-config.js';
 import { openAdminResetPasswordModal } from './perfil-modal.js?v=20261119_v8';
-import { sendSecurityNotificationEmail } from '../core/email-service.js?v=20261119_v10';
+import { sendSecurityNotificationEmail } from '../core/email-service.js?v=20261120_v1';
 
 /* Estado local de filtros para la pestaña de usuarios */
 let userFilterState = {
@@ -2375,7 +2375,6 @@ function openCreateUserModal(dbNs, currentUser, stateOrOnComplete, onCompleteCb)
           subject: 'Bienvenido(a) al Sistema de Monitoreo - AGEBRE UGEL 03',
           title: 'Tu Cuenta Institucional ha sido Creada',
           message: `
-            Estimado(a) <strong>${esc(nombre)}</strong>,<br><br>
             Te damos la bienvenida a la plataforma oficial de <strong>Sistematización de Monitoreo y Acompañamiento Pedagógico AGEBRE 2026 (UGEL 03)</strong>.<br><br>
             La Administración del Sistema ha creado y autorizado tu cuenta con las siguientes credenciales y ámbito de responsabilidad asignado:<br><br>
             <div style="background:#F8FAFC;border:1px solid #CBD5E1;border-radius:8px;padding:14px;margin:12px 0;">

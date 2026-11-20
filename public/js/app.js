@@ -6,7 +6,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { FIREBASE_CONFIG } from './firebase-config.js?v=20261118_v6';
 import { getFirestore, initFirestore, makeDbAdapter } from './firestore.js?v=20261118_v2';
-import { getAuth, signOut, setupAuthListeners } from './auth.js?v=20261119_v5';
+import { getAuth, signOut, setupAuthListeners } from './auth.js?v=20261120_v2';
 import {
   esc,
   showToast,
@@ -29,11 +29,11 @@ import {
   getConcursoSubTab,
   setConcursoSubTab,
   getDeletedFichaTypeIds,
-} from './ui.js?v=20261119_v14';
+} from './ui.js?v=20261120_v1';
 
 import { renderPortalView } from './portal.js?v=20261118_v1';
 import { renderDirectorioTab } from './directorio.js?v=20261119_v2';
-import { openUserProfileModal, openChangePasswordModal } from './ui/perfil-modal.js?v=20261119_v8';
+import { openUserProfileModal, openChangePasswordModal } from './ui/perfil-modal.js?v=20261120_v1';
 import { renderAlertasTab, getAlertCount } from './alertas.js?v=20261023_v3';
 import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261103_v8';
 import { PLANTILLAS_BASE_OFICIALES, ALIAS_A_PLANTILLA_BASE } from './catalogo-plantillas-base.js?v=20261016_v4';

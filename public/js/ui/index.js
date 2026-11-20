@@ -24,8 +24,8 @@ export * from './dashboard.js?v=20261119_v1';
 export * from './alertas.js?v=20261103_v8';
 
 // Administración de usuarios y roles
-export * from './usuarios.js?v=20261119_v11';
-export * from './perfil-modal.js?v=20261119_v8';
+export * from './usuarios.js?v=20261120_v1';
+export * from './perfil-modal.js?v=20261120_v1';
 
 // Directorio y gestión de directivos / responsables
 export * from './responsables-tab.js?v=20261119_v1';
