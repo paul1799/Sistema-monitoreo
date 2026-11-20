@@ -206,10 +206,18 @@ export function openFichaInBuilder(ft) {
   if (builderState.tipoVisitas === 'items_por_visita') {
     (builderState.visitas || []).forEach((_, vIdx) => {
       const existing = builderState.seccionesPorVisita[vIdx] || builderState.seccionesPorVisita[String(vIdx)];
-      if (Array.isArray(existing) && existing.length > 0) {
+      const countItems = (arr) => Array.isArray(arr) ? arr.reduce((acc, s) => acc + (s.items?.length || 0), 0) : 0;
+      if (isJec && vIdx === 2 && countItems(existing) === 31 && PLANTILLAS_BASE_OFICIALES.ft_msejec_2do?.seccionesPorVisita?.[2]) {
+        builderState.seccionesPorVisita[2] = JSON.parse(JSON.stringify(PLANTILLAS_BASE_OFICIALES.ft_msejec_2do.seccionesPorVisita[2]));
+      } else if (Array.isArray(existing) && existing.length > 0) {
         builderState.seccionesPorVisita[vIdx] = existing;
       } else if (ft.seccionesPorVisita && (ft.seccionesPorVisita[vIdx] || ft.seccionesPorVisita[String(vIdx)])) {
-        builderState.seccionesPorVisita[vIdx] = JSON.parse(JSON.stringify(ft.seccionesPorVisita[vIdx] || ft.seccionesPorVisita[String(vIdx)]));
+        const rawSecs = ft.seccionesPorVisita[vIdx] || ft.seccionesPorVisita[String(vIdx)];
+        if (isJec && vIdx === 2 && countItems(rawSecs) === 31 && PLANTILLAS_BASE_OFICIALES.ft_msejec_2do?.seccionesPorVisita?.[2]) {
+          builderState.seccionesPorVisita[2] = JSON.parse(JSON.stringify(PLANTILLAS_BASE_OFICIALES.ft_msejec_2do.seccionesPorVisita[2]));
+        } else {
+          builderState.seccionesPorVisita[vIdx] = JSON.parse(JSON.stringify(rawSecs));
+        }
       } else if (isJec && PLANTILLAS_BASE_OFICIALES.ft_msejec_2do?.seccionesPorVisita?.[vIdx]) {
         builderState.seccionesPorVisita[vIdx] = JSON.parse(JSON.stringify(PLANTILLAS_BASE_OFICIALES.ft_msejec_2do.seccionesPorVisita[vIdx]));
       } else if (isEbr && PLANTILLAS_BASE_OFICIALES.ft_gestion_ugel03_ebr?.seccionesPorVisita?.[vIdx]) {
@@ -2154,40 +2162,76 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       }
 
       const isDiferenciada = !!(bs.tieneVisitas && bs.tipoVisitas === 'items_por_visita');
+      const idLower = String(bs.id || builderEditingId || '').toLowerCase();
+      const isJec = idLower.includes('jec') && !idLower.includes('tutoria') && !idLower.includes('pedagog');
       let validSeccionesPorVisita = {};
       if (isDiferenciada && bs.seccionesPorVisita) {
         Object.keys(bs.seccionesPorVisita).forEach(k => {
           let globalVisitaNum = 0;
+          let condVisitaNum = 0;
+          let rubricVisitaNum = 0;
           const seenVisitaIds = new Set();
+          const isJecVisita1 = isJec && (k === '0' || k === 0);
+
           validSeccionesPorVisita[k] = (bs.seccionesPorVisita[k] || [])
             .filter(s => s.nombre.trim() || (s.items && s.items.some(i => i.texto && i.texto.trim())))
-            .map((s, sIdx) => ({
-              nombre: s.nombre.trim() || 'Sección',
-              items: (s.items || []).filter(i => i.texto && i.texto.trim()).map((i, iIdx) => {
-                const rawId = (i.id || '').trim();
-                const uniqueId = (!rawId || seenVisitaIds.has(rawId) || /^\d+$/.test(rawId)) 
-                  ? `v${k}_s${sIdx + 1}_it${iIdx + 1}_${genId()}` 
-                  : rawId;
-                seenVisitaIds.add(uniqueId);
-                globalVisitaNum++;
-                return {
-                  id: uniqueId,
-                  num: globalVisitaNum,
-                  globalIdx: globalVisitaNum - 1,
-                  seccionIdx: sIdx,
-                  itemIdx: iIdx,
-                  texto: i.texto.trim(),
-                  evidencia: (i.evidencia || '').trim()
-                };
-              })
-            }));
+            .map((s, sIdx) => {
+              const isCondSec = isJecVisita1 && (sIdx === 0 || s.id?.includes('cond') || /condici[oó]n/i.test(s.nombre || ''));
+              return {
+                nombre: s.nombre.trim() || 'Sección',
+                tipo: isJecVisita1 ? (isCondSec ? 'si_no' : 'escala1_3') : (s.tipo || bs.tipoRespuesta || 'si_no'),
+                tipoRespuesta: isJecVisita1 ? (isCondSec ? 'si_no' : 'escala1_3') : (s.tipoRespuesta || s.tipo || bs.tipoRespuesta || 'si_no'),
+                escala: isJecVisita1 ? (isCondSec ? 'SI_NO_NA' : 'ESCALA_1_3') : (s.escala || (s.tipo === 'escala1_3' ? 'ESCALA_1_3' : 'SI_NO_NA')),
+                items: (s.items || []).filter(i => i.texto && i.texto.trim()).map((i, iIdx) => {
+                  const rawId = (i.id || '').trim();
+                  let itNum;
+                  if (isJecVisita1) {
+                    if (isCondSec) {
+                      condVisitaNum++;
+                      itNum = condVisitaNum;
+                    } else {
+                      rubricVisitaNum++;
+                      itNum = rubricVisitaNum;
+                    }
+                  } else {
+                    globalVisitaNum++;
+                    itNum = globalVisitaNum;
+                  }
+
+                  let uniqueId = rawId;
+                  if (isJecVisita1) {
+                    if (isCondSec) {
+                      if (!uniqueId || seenVisitaIds.has(uniqueId) || /^\d+$/.test(uniqueId)) uniqueId = `c${itNum}`;
+                    } else {
+                      if (!uniqueId || seenVisitaIds.has(uniqueId) || /^\d+$/.test(uniqueId)) uniqueId = `it_${String(itNum).padStart(2, '0')}`;
+                    }
+                  } else {
+                    if (!uniqueId || seenVisitaIds.has(uniqueId) || /^\d+$/.test(uniqueId)) {
+                      uniqueId = `v${k}_s${sIdx + 1}_it${iIdx + 1}_${genId()}`;
+                    }
+                  }
+                  seenVisitaIds.add(uniqueId);
+
+                  return {
+                    id: uniqueId,
+                    num: itNum,
+                    globalIdx: isJecVisita1 ? (itNum - 1) : (globalVisitaNum - 1),
+                    seccionIdx: sIdx,
+                    itemIdx: iIdx,
+                    texto: i.texto.trim(),
+                    tipo: isJecVisita1 ? (isCondSec ? 'si_no' : 'escala1_3') : (i.tipo || s.tipo || bs.tipoRespuesta || 'si_no'),
+                    tipoRespuesta: isJecVisita1 ? (isCondSec ? 'si_no' : 'escala1_3') : (i.tipoRespuesta || i.tipo || s.tipoRespuesta || s.tipo || bs.tipoRespuesta || 'si_no'),
+                    escala: isJecVisita1 ? (isCondSec ? 'SI_NO_NA' : 'ESCALA_1_3') : (i.escala || s.escala || 'SI_NO_NA'),
+                    evidencia: (i.evidencia || '').trim()
+                  };
+                })
+              };
+            });
         });
       }
 
       let globalNum = 0;
       const seenTemplateIds = new Set();
-      const idLower = String(bs.id || builderEditingId || '').toLowerCase();
-      const isJec = idLower.includes('jec') && !idLower.includes('tutoria') && !idLower.includes('pedagog');
 
       // Para el campo general "secciones": si es JEC con visitas diferenciadas, usar la Visita 2 (31 ítems)
       // para evitar que el 1er Momento (rúbricas) sobreescriba la estructura estándar

@@ -9,7 +9,9 @@ import {
 } from './ebr-gestion.js';
 import {
   isFichaJec,
-  JEC_SECCIONES
+  JEC_SECCIONES,
+  JEC_3ER_SECCIONES,
+  getActiveJecSections
 } from './jec-monitoreo.js';
 import {
   JEC_1ER_SECCIONES
@@ -400,15 +402,14 @@ export function computeItemAgg(subs, ft, targetVisita = null) {
   }
 
   if (isFichaJec(ft)) {
-    const isV1 = (vTarget === 1);
+    const isV1 = (vTarget === 1) || (isFichaJec(ft) && (!vTarget || vTarget === 1) && (subs || []).some(s => Number(s.visita) === 1));
     if (isV1) {
       const jec1Secs = (ft?.seccionesPorVisita && (ft.seccionesPorVisita[0] || ft.seccionesPorVisita['0']))
         || (ft?.secciones && ft.secciones.length > 0 ? ft.secciones : JEC_1ER_SECCIONES);
-      activeFt = { ...ft, secciones: jec1Secs, tipoRespuesta: 'escala1_3', escala: 'ESCALA_1_3' };
+      activeFt = { ...ft, secciones: jec1Secs, tipoRespuesta: 'escala_1_3', escala: 'ESCALA_1_3' };
     } else {
-      const vIdx = (vTarget && vTarget >= 2) ? (vTarget - 1) : 1;
-      const jecSecs = (ft?.seccionesPorVisita && (ft.seccionesPorVisita[vIdx] || ft.seccionesPorVisita[1] || ft.seccionesPorVisita['1'] || ft.seccionesPorVisita[2] || ft.seccionesPorVisita['2']))
-        || (ft?.secciones && ft.secciones.length > 0 ? ft.secciones : JEC_SECCIONES);
+      const vNum = (vTarget && vTarget >= 2) ? Number(vTarget) : 2;
+      const jecSecs = getActiveJecSections(ft, vNum);
       activeFt = { ...ft, secciones: jecSecs, tipoRespuesta: 'si_no', escala: 'SI_NO_NA' };
     }
   } else if (!isSiNo && isFichaEbrGestionEscolar(ft)) {
@@ -430,12 +431,15 @@ export function computeItemAgg(subs, ft, targetVisita = null) {
       activeFt = { ...ft, secciones: vSecs };
     }
   }
-  const tipoResp = isSiNo ? 'si_no' : (activeFt?.tipoRespuesta || 'ips');
-  const escala = isSiNo
+  const isJecVisita1 = isFichaJec(ft) && (vTarget === 1 || activeFt?.tipoRespuesta === 'escala_1_3' || activeFt?.tipoRespuesta === 'escala1_3');
+  const tipoResp = isJecVisita1 ? 'escala_1_3' : (isSiNo ? 'si_no' : (activeFt?.tipoRespuesta || 'ips'));
+  const escala = isJecVisita1
+    ? 'ESCALA_1_3'
+    : (isSiNo
     ? 'SI_NO_NA'
     : (activeFt?.escala
       || LEGADO_A_ESCALA[tipoResp]
-      || ((isFichaCoordPedagogico(ft) || isFichaCoordTutoriaJec(ft)) ? 'ESCALA_1_3' : 'IPL'));
+      || ((isFichaCoordPedagogico(ft) || isFichaCoordTutoriaJec(ft)) ? 'ESCALA_1_3' : 'IPL')));
 
   const isJec = isFichaJec(ft) || isFichaCoordTutoriaJec(ft) || isFichaCoordPedagogico(ft);
 
@@ -456,19 +460,40 @@ export function computeItemAgg(subs, ft, targetVisita = null) {
     }
     return {
       s,
-      valMap: buildResponseValMap(resp || [], isJec)
+      valMap: (() => {
+        let allRespList = Array.isArray(resp) ? [...resp] : [];
+        if (s.respuestasCondiciones && typeof s.respuestasCondiciones === 'object') {
+          Object.entries(s.respuestasCondiciones).forEach(([cId, cVal]) => {
+            const val = (cVal && typeof cVal === 'object' && cVal.valor !== undefined) ? cVal.valor : cVal;
+            if (!allRespList.some(r => r.id === cId)) {
+              allRespList.push({ id: cId, valor: val });
+            }
+          });
+        }
+        if (s.respuestasObj && typeof s.respuestasObj === 'object') {
+          Object.entries(s.respuestasObj).forEach(([rId, rVal]) => {
+            const val = (rVal && typeof rVal === 'object' && rVal.valor !== undefined) ? rVal.valor : rVal;
+            if (!allRespList.some(r => r.id === rId)) {
+              allRespList.push({ id: rId, valor: val });
+            }
+          });
+        }
+        return buildResponseValMap(allRespList, isJec);
+      })()
     };
   });
 
   return (activeFt?.secciones || []).map((sec, sIdx) => {
-    const secEscala = sec.escala
+    const isCondSec = isJecVisita1 && (sIdx === 0 || sec.id?.includes('cond') || /condici[oó]n/i.test(sec.nombre || ''));
+    const isRubricSec = isJecVisita1 && !isCondSec;
+    const secEscala = isCondSec ? 'SI_NO_NA' : (isRubricSec ? 'ESCALA_1_3' : (sec.escala
       || (sec.tipoRespuesta === 'si_no' ? 'SI_NO_NA' : (sec.tipoRespuesta === 'escala1_3' ? 'ESCALA_1_3' : null))
       || (sec.id === 'sec_condiciones' ? 'SI_NO_NA' : null)
-      || escala;
+      || escala));
     const items = (sec.items || []).map((it, iIdx) => {
-      const itEscala = it.escala
+      const itEscala = isCondSec ? 'SI_NO_NA' : (isRubricSec ? 'ESCALA_1_3' : (it.escala
         || (it.tipoRespuesta === 'si_no' ? 'SI_NO_NA' : (it.tipoRespuesta === 'escala1_3' ? 'ESCALA_1_3' : null))
-        || secEscala;
+        || secEscala));
       const counts = {};
       let scoreSum = 0, scoreCnt = 0, total = 0;
       subsWithMaps.forEach(({ s, valMap }) => {

@@ -172,8 +172,16 @@ export function buildResponseValMap(respuestas = [], isJec = false) {
       }
     }
 
-    // 6. Variantes oficiales JEC (con numeración correlativa global 1..31)
+    // 6. Variantes oficiales JEC (con numeración correlativa global 1..31 o rúbricas 1..37 y condiciones c1..c7)
     if (isJec) {
+      const condMatch = String(r.id || '').match(/^(?:c|cond_?)0*(\d+)$/i);
+      if (condMatch) {
+        const cn = parseInt(condMatch[1], 10);
+        if (valMap['c' + cn] === undefined) valMap['c' + cn] = v;
+        if (valMap['cond_' + cn] === undefined) valMap['cond_' + cn] = v;
+        if (valMap['c0' + cn] === undefined) valMap['c0' + cn] = v;
+        if (valMap['cond_0' + cn] === undefined) valMap['cond_0' + cn] = v;
+      }
       const jecNumMatch = String(r.id || '').match(/^(?:it_|jec1?_)?0*(\d+)$/i);
       if (jecNumMatch) {
         const n = parseInt(jecNumMatch[1], 10);
@@ -183,6 +191,9 @@ export function buildResponseValMap(respuestas = [], isJec = false) {
         if (valMap['jec1_' + n] === undefined) valMap['jec1_' + n] = v;
         if (valMap['jec_' + n] === undefined) valMap['jec_' + n] = v;
         if (valMap['num_' + n] === undefined) valMap['num_' + n] = v;
+      }
+      if (r.canonicalId && valMap[r.canonicalId] === undefined) {
+        valMap[r.canonicalId] = v;
       }
       if (r.num !== undefined && r.num !== null && valMap['num_' + r.num] === undefined) {
         valMap['num_' + r.num] = v;
@@ -229,10 +240,18 @@ export function resolveItemValue(valMap, it, sec = null, sIdx = 0, iIdx = 0, isJ
     return valMap[it.domKey];
   }
 
-  // 2) ID del ítem (directo o alias mc_ / m_)
+  // 2) ID del ítem (directo o alias mc_ / m_ / c_ / cond_)
   if (hasValidId) {
     if (valMap[rawId] !== undefined) {
       return valMap[rawId];
+    }
+    const condMatch = rawId.match(/^(?:c|cond_?)0*(\d+)$/i);
+    if (condMatch) {
+      const cn = parseInt(condMatch[1], 10);
+      if (valMap['c' + cn] !== undefined) return valMap['c' + cn];
+      if (valMap['cond_' + cn] !== undefined) return valMap['cond_' + cn];
+      if (valMap['c0' + cn] !== undefined) return valMap['c0' + cn];
+      if (valMap['cond_0' + cn] !== undefined) return valMap['cond_0' + cn];
     }
     const mcMatch = rawId.match(/^m(?:c)?_?(\d+)$/i);
     if (mcMatch) {
@@ -296,12 +315,17 @@ export function resolveItemValue(valMap, it, sec = null, sIdx = 0, iIdx = 0, isJ
   }
 
   // 8) Patrones de numeración JEC oficial
-  if (isJec && it.num) {
-    return valMap['num_' + it.num]
-      ?? valMap['it_' + String(it.num).padStart(2, '0')]
-      ?? valMap['it_' + it.num]
-      ?? valMap['jec1_' + it.num]
-      ?? valMap['jec_' + it.num];
+  if (isJec) {
+    if (it.canonicalId && valMap[it.canonicalId] !== undefined) {
+      return valMap[it.canonicalId];
+    }
+    if (it.num) {
+      return valMap['num_' + it.num]
+        ?? valMap['it_' + String(it.num).padStart(2, '0')]
+        ?? valMap['it_' + it.num]
+        ?? valMap['jec1_' + it.num]
+        ?? valMap['jec_' + it.num];
+    }
   }
 
   return undefined;

@@ -271,6 +271,218 @@ export const JEC_SECCIONES = [
 ];
 
 /**
+ * Los 26 ítems oficiales del instrumento MSE JEC para el 3er Momento (Salida / Cierre)
+ * Excluye los ítems de diagnóstico y sensibilización inicial (jec_2, jec_21, jec_22, jec_26, jec_27)
+ */
+export const JEC_3ER_ITEMS = [
+  // ─── Componente pedagógico (Implementación TOECE) (8 ítems) ───
+  {
+    id: 'jec3_1',
+    num: 1,
+    seccion: 'Componente pedagógico (Implementación TOECE)',
+    texto: 'El horario institucional evidencia la organización de la jornada escolar en 9 horas pedagógicas diarias de 45 minutos, conforme al plan de estudios MSE JEC',
+    evidencia: 'Horario institucional, horarios de aula y registro en SIAGIE.'
+  },
+  {
+    id: 'jec3_2',
+    num: 2,
+    seccion: 'Componente pedagógico (Implementación TOECE)',
+    texto: 'La IE cuenta con Plan TOECE actualizado, aprobado y coherente con las necesidades socioemocionales identificadas',
+    evidencia: 'Plan TOECE aprobado con RD institucional y coherente al diagnóstico.'
+  },
+  {
+    id: 'jec3_3',
+    num: 3,
+    seccion: 'Componente pedagógico (Implementación TOECE)',
+    texto: 'La IE cuenta con informes, actas, registros o acuerdos que evidencian el seguimiento a la implementación del Plan TOECE',
+    evidencia: 'Actas de reunión, acuerdos o informes del comité de gestión del bienestar.'
+  },
+  {
+    id: 'jec3_4',
+    num: 4,
+    seccion: 'Componente pedagógico (Implementación TOECE)',
+    texto: 'La IE cuenta con sesiones de tutoría grupal que evidencian coherencia con el Plan TOECE y las necesidades socioemocionales identificadas',
+    evidencia: 'Sesiones de tutoría grupal en carpetas pedagógicas de los tutores.'
+  },
+  {
+    id: 'jec3_5',
+    num: 5,
+    seccion: 'Componente pedagógico (Implementación TOECE)',
+    texto: 'La IE cuenta con registros de atención tutorial individual que evidencian seguimiento a estudiantes con necesidades específicas',
+    evidencia: 'Fichas de atención individualizada y compromisos con las familias.'
+  },
+  {
+    id: 'jec3_6',
+    num: 6,
+    seccion: 'Componente pedagógico (Implementación TOECE)',
+    texto: 'La IE cuenta con el plan de trabajo del psicólogo(a) actualizado, con actividades para estudiantes, orientación a familias y acciones formativas con docentes',
+    evidencia: 'Plan de trabajo del psicólogo(a) con actividades calendarizadas.'
+  },
+  {
+    id: 'jec3_7',
+    num: 7,
+    seccion: 'Componente pedagógico (Implementación TOECE)',
+    texto: 'La IE cuenta con informes, registros, actas u otros documentos que evidencian que el psicólogo(a) desarrolla acciones dirigidas a estudiantes, docentes y familias',
+    evidencia: 'Informes mensuales, fichas de atención, talleres o actas de reuniones.'
+  },
+  {
+    id: 'jec3_8',
+    num: 8,
+    seccion: 'Componente pedagógico (Implementación TOECE)',
+    texto: 'Las sesiones de aprendizaje revisadas evidencian que responden a las necesidades de aprendizaje identificadas en los estudiantes',
+    evidencia: 'Muestra de sesiones de aprendizaje de diferentes áreas con criterios formativos.'
+  },
+
+  // ─── Componente de gestión (11 ítems) ───
+  {
+    id: 'jec3_9',
+    num: 9,
+    seccion: 'Componente de gestión',
+    texto: 'La IE cuenta con un Plan Anual de Trabajo (PAT) que incorpora acciones del MSE JEC relacionadas con tutoría, acompañamiento, trabajo colegiado y CIST',
+    evidencia: 'PAT aprobado con metas y actividades articuladas a los componentes JEC.'
+  },
+  {
+    id: 'jec3_10',
+    num: 10,
+    seccion: 'Componente de gestión',
+    texto: 'La IE cuenta con actas, acuerdos u otros registros que evidencian la organización de la comunidad educativa para asegurar el refrigerio escolar y recreos',
+    evidencia: 'Protocolos de convivencia en recreos, turnos y comisiones de refrigerio escolar.'
+  },
+  {
+    id: 'jec3_11',
+    num: 11,
+    seccion: 'Componente de gestión',
+    texto: 'La IE cuenta con actas, comunicados, informes o registros que evidencian acciones de información y orientación a las familias',
+    evidencia: 'Escuelas de familias, asambleas y comunicados oficiales.'
+  },
+  {
+    id: 'jec3_12',
+    num: 12,
+    seccion: 'Componente de gestión',
+    texto: 'La IE cuenta con actas, informes o registros que evidencian la promoción de espacios de participación estudiantil',
+    evidencia: 'Municipio Escolar, brigadas escolares y asambleas de aula.'
+  },
+  {
+    id: 'jec3_13',
+    num: 13,
+    seccion: 'Componente de gestión',
+    texto: 'La IE cuenta con fichas, actas, registros u otros documentos que evidencian acciones de acompañamiento del director y subdirector a docentes y coordinadores',
+    evidencia: 'Fichas de monitoreo y cuadernos de diálogo reflexivo de directivos.'
+  },
+  {
+    id: 'jec3_14',
+    num: 14,
+    seccion: 'Componente de gestión',
+    texto: 'La IE organiza las evidencias de la implementación del PEAI de acuerdo a la matriz de logros ambientales',
+    evidencia: 'Matriz de logros ambientales y proyectos integrados PEAI.'
+  },
+  {
+    id: 'jec3_15',
+    num: 15,
+    seccion: 'Componente de gestión',
+    texto: 'Los directivos monitorean la ejecución de las acciones del Plan Lector para la toma de decisiones y mejoras',
+    evidencia: 'Plan Lector, cronograma de lectura e informes de avance.'
+  },
+  {
+    id: 'jec3_16',
+    num: 16,
+    seccion: 'Componente de gestión',
+    texto: 'Se identifican buenas prácticas/proyectos de innovación y se promueven espacios de intercambio de experiencias',
+    evidencia: 'Proyectos de innovación pedagógica registrados y actas de difusión.'
+  },
+  {
+    id: 'jec3_17',
+    num: 17,
+    seccion: 'Componente de gestión',
+    texto: 'El equipo directivo realiza el monitoreo y seguimiento al uso pedagógico de textos escolares y material concreto',
+    evidencia: 'Padrón de textos y evidencias del uso de materiales en aula.'
+  },
+  {
+    id: 'jec3_18',
+    num: 18,
+    seccion: 'Componente de gestión',
+    texto: 'El directivo realiza el seguimiento a la participación de los docentes en las acciones formativas MINEDU (DIFODS-JEC)',
+    evidencia: 'Reportes de matrícula y culminación de cursos DIFODS.'
+  },
+  {
+    id: 'jec3_19',
+    num: 19,
+    seccion: 'Componente de gestión',
+    texto: 'Los directivos han socializado los oficios múltiples correspondientes, asegurando su conocimiento e implementación',
+    evidencia: 'Actas de reuniones colegiadas de socialización normativa.'
+  },
+
+  // ─── Componente de soporte (7 ítems) ───
+  {
+    id: 'jec3_20',
+    num: 20,
+    seccion: 'Componente de soporte',
+    texto: 'El CP cuenta con registros que evidencian, de manera objetiva, la práctica pedagógica observada del docente en las visitas de aula',
+    evidencia: 'Instrumentos de observación de aula completados objetivamente.'
+  },
+  {
+    id: 'jec3_21',
+    num: 21,
+    seccion: 'Componente de soporte',
+    texto: 'El CP cuenta con matrices, planificador semanal, fichas u otros registros que evidencian el desarrollo del diálogo reflexivo con los docentes acompañados',
+    evidencia: 'Cuadernos de campo y actas de asesoría pedagógica individual.'
+  },
+  {
+    id: 'jec3_22',
+    num: 22,
+    seccion: 'Componente de soporte',
+    texto: 'El CP cuenta con actas, guías u otros registros que evidencian que las reuniones de trabajo colegiado responden a las necesidades formativas identificadas',
+    evidencia: 'Agendas, actas y productos de las sesiones semanales de colegiado.'
+  },
+  {
+    id: 'jec3_23',
+    num: 23,
+    seccion: 'Componente de soporte',
+    texto: 'El CT cuenta con registros que evidencian, de manera objetiva, la práctica pedagógica observada del docente tutor posterior a la visita diagnóstica',
+    evidencia: 'Fichas de seguimiento a sesiones y atenciones tutoriales.'
+  },
+  {
+    id: 'jec3_24',
+    num: 24,
+    seccion: 'Componente de soporte',
+    texto: 'El CT cuenta con matrices, fichas u otros registros que evidencian el desarrollo del diálogo reflexivo con los docentes tutores acompañados',
+    evidencia: 'Actas de diálogo reflexivo y compromisos tutoriales.'
+  },
+  {
+    id: 'jec3_25',
+    num: 25,
+    seccion: 'Componente de soporte',
+    texto: 'El CT cuenta con actas, materiales u otros registros que evidencian las acciones formativas desarrolladas con docentes tutores en las reuniones colegiadas',
+    evidencia: 'Actas de reuniones colegiadas de tutores y temas trabajados.'
+  },
+  {
+    id: 'jec3_26',
+    num: 26,
+    seccion: 'Componente de soporte',
+    texto: 'El CIST cuenta con planificador semanal, informes u otros registros que evidencian acciones de fortalecimiento de competencias digitales y mantenimiento de equipos',
+    evidencia: 'Planificador semanal, inventario operativo y bitácoras de mantenimiento del aula de innovación/CIST.'
+  }
+];
+
+export const JEC_3ER_SECCIONES = [
+  {
+    nombre: 'Componente pedagógico (Implementación TOECE)',
+    numRomano: '6.1',
+    items: JEC_3ER_ITEMS.filter(it => it.seccion === 'Componente pedagógico (Implementación TOECE)')
+  },
+  {
+    nombre: 'Componente de gestión',
+    numRomano: '6.2',
+    items: JEC_3ER_ITEMS.filter(it => it.seccion === 'Componente de gestión')
+  },
+  {
+    nombre: 'Componente de soporte',
+    numRomano: '6.3',
+    items: JEC_3ER_ITEMS.filter(it => it.seccion === 'Componente de soporte')
+  }
+];
+
+/**
  * Resuelve las secciones e indicadores activos correspondientes a la visita JEC (1, 2 o 3)
  * priorizando las secciones configuradas dinámicamente desde el sistema (ft.seccionesPorVisita)
  * para permitir flexibilidad total de agregar o quitar ítems.
@@ -290,72 +502,121 @@ export function getActiveJecSections(ft, visitaNum = 2) {
     }
   }
 
-  // 2. Si es Visita 2 o 3 y ft.secciones no contiene ítems de 1er Momento (rúbricas o jec1_)
-  if (v >= 2 && Array.isArray(ft?.secciones) && ft.secciones.length > 0) {
+  // 2. Si es Visita 3 y no hay configuración específica en la plantilla, retornar los 26 ítems oficiales
+  if (v === 3) {
+    return JEC_3ER_SECCIONES;
+  }
+
+  // 3. Si es Visita 2 y ft.secciones no contiene ítems de 1er Momento (rúbricas o jec1_)
+  if (v === 2 && Array.isArray(ft?.secciones) && ft.secciones.length > 0) {
     const hasJec1Items = ft.secciones.some(s => (s.items || []).some(i => i.id?.startsWith('jec1_') || i.id?.startsWith('cond_')));
     if (!hasJec1Items) {
       return ft.secciones;
     }
   }
 
-  // 3. Fallback canónico oficial para visitas 2 y 3 (31 ítems de proceso/salida)
+  // 4. Fallback canónico oficial para visita 2 (31 ítems de proceso)
   return JEC_SECCIONES;
 }
 
 /**
  * Calcula el Nivel de Implementación del MSE JEC según el total de respuestas "Sí"
  * Soporta escala proporcional flexible si el administrador agrega o reduce indicadores en la plantilla.
- * Regla base oficial MINEDU (31 ítems):
- * - De 24 a 31 respuestas "Sí": Implementación lograda (Logrado)
- * - De 12 a 23 respuestas "Sí": Implementación parcial (En proceso)
- * - De 0 a 11 respuestas "Sí":  Implementación incipiente (Inicio)
+ * Regla base oficial MINEDU:
+ * - 2do Momento (31 ítems):
+ *     * Implementación lograda:    De 24 a 31 respuestas "Sí" (Logrado)
+ *     * Implementación parcial:    De 12 a 23 respuestas "Sí" (En proceso)
+ *     * Implementación incipiente: De 0 a 11 respuestas "Sí"  (Inicio)
+ * - 3er Momento (26 ítems):
+ *     * Implementación lograda:    De 21 a 26 respuestas "Sí" (Logrado)
+ *     * Implementación parcial:    De 14 a 20 respuestas "Sí" (En proceso)
+ *     * Implementación incipiente: De 0 a 13 respuestas "Sí"  (Inicio)
  */
-export function getNivelLogroJec(conteoSi, totalItems = 31, config = null) {
+export function getNivelLogroJec(conteoSi, totalItems = 31, config = null, visitaNum = null) {
   const c = Number(conteoSi) || 0;
   const tot = Number(totalItems) || 31;
+  const v = visitaNum ? Number(visitaNum) : (tot === 26 ? 3 : 2);
 
   // Si existe regla_nivel_config personalizada desde la plantilla en Firestore
   if (config) {
-    const minLog = Number(config.minLog ?? config.logrado?.min ?? 24);
-    const minProc = Number(config.minProc ?? config.proceso?.min ?? 12);
+    const minLog = Number(config.minLog ?? config.logrado?.min ?? (v === 3 ? 21 : 24));
+    const minProc = Number(config.minProc ?? config.proceso?.min ?? (v === 3 ? 14 : 12));
+    const maxLog = tot;
+    const maxProc = Math.max(0, minLog - 1);
+    const maxIni = Math.max(0, minProc - 1);
     const lblLog = config.lblLog || config.logrado?.label || 'Implementación lograda';
     const lblProc = config.lblProc || config.proceso?.label || 'Implementación parcial';
     const lblIni = config.lblIni || config.inicio?.label || 'Implementación incipiente';
     if (c >= minLog) {
-      return { nivel: lblLog, estado_panel: 'Logrado', cls: 'st-logrado', color: 'var(--ok)', badgeBg: 'var(--ok-bg)', rangoTexto: `De ${minLog} a ${tot} respuestas "Sí"`, rangoMin: minLog, rangoMax: tot };
+      return {
+        nivel: lblLog, estado_panel: 'Logrado', cls: 'st-logrado', color: 'var(--ok)', badgeBg: 'var(--ok-bg)',
+        rangoTexto: `De ${minLog} a ${maxLog} respuestas "Sí"`, rangoMin: minLog, rangoMax: maxLog,
+        rangoMinIni: 0, rangoMaxIni: maxIni, rangoMinProc: minProc, rangoMaxProc: maxProc, rangoMinLog: minLog, rangoMaxLog: maxLog
+      };
     }
     if (c >= minProc) {
-      return { nivel: lblProc, estado_panel: 'En proceso', cls: 'st-proceso', color: 'var(--warn)', badgeBg: 'var(--warn-bg)', rangoTexto: `De ${minProc} a ${minLog - 1} respuestas "Sí"`, rangoMin: minProc, rangoMax: minLog - 1 };
+      return {
+        nivel: lblProc, estado_panel: 'En proceso', cls: 'st-proceso', color: 'var(--warn)', badgeBg: 'var(--warn-bg)',
+        rangoTexto: `De ${minProc} a ${maxProc} respuestas "Sí"`, rangoMin: minProc, rangoMax: maxProc,
+        rangoMinIni: 0, rangoMaxIni: maxIni, rangoMinProc: minProc, rangoMaxProc: maxProc, rangoMinLog: minLog, rangoMaxLog: maxLog
+      };
     }
-    return { nivel: lblIni, estado_panel: 'Inicio', cls: 'st-inicio', color: 'var(--danger)', badgeBg: 'var(--danger-bg)', rangoTexto: `De 0 a ${minProc - 1} respuestas "Sí"`, rangoMin: 0, rangoMax: minProc - 1 };
+    return {
+      nivel: lblIni, estado_panel: 'Inicio', cls: 'st-inicio', color: 'var(--danger)', badgeBg: 'var(--danger-bg)',
+      rangoTexto: `De 0 a ${maxIni} respuestas "Sí"`, rangoMin: 0, rangoMax: maxIni,
+      rangoMinIni: 0, rangoMaxIni: maxIni, rangoMinProc: minProc, rangoMaxProc: maxProc, rangoMinLog: minLog, rangoMaxLog: maxLog
+    };
   }
 
-  // Si no hay configuración manual y el total de ítems fue ajustado desde el sistema, escalar proporcionalmente:
-  const logThreshold = tot === 31 ? 24 : Math.round(tot * (24 / 31));
-  const procThreshold = tot === 31 ? 12 : Math.round(tot * (12 / 31));
+  // Reglas oficiales según Momento / Total de ítems:
+  // 3er Momento (26 ítems): Lograda: 21-26, Parcial: 14-20, Incipiente: 0-13
+  // 2do Momento (31 ítems): Lograda: 24-31, Parcial: 12-23, Incipiente: 0-11
+  let minLog, minProc;
+  if (v === 3 || tot === 26) {
+    minLog = tot === 26 ? 21 : Math.round(tot * (21 / 26));
+    minProc = tot === 26 ? 14 : Math.round(tot * (14 / 26));
+  } else {
+    minLog = tot === 31 ? 24 : Math.round(tot * (24 / 31));
+    minProc = tot === 31 ? 12 : Math.round(tot * (12 / 31));
+  }
+  const maxLog = tot;
+  const maxProc = Math.max(0, minLog - 1);
+  const maxIni = Math.max(0, minProc - 1);
 
-  if (c >= logThreshold) {
+  if (c >= minLog) {
     return {
       nivel: 'Implementación lograda',
       estado_panel: 'Logrado',
       cls: 'st-logrado',
       color: 'var(--ok)',
       badgeBg: 'var(--ok-bg)',
-      rangoTexto: `De ${logThreshold} a ${tot} respuestas "Sí"`,
-      rangoMin: logThreshold,
-      rangoMax: tot
+      rangoTexto: `De ${minLog} a ${maxLog} respuestas "Sí"`,
+      rangoMin: minLog,
+      rangoMax: maxLog,
+      rangoMinIni: 0,
+      rangoMaxIni: maxIni,
+      rangoMinProc: minProc,
+      rangoMaxProc: maxProc,
+      rangoMinLog: minLog,
+      rangoMaxLog: maxLog
     };
   }
-  if (c >= procThreshold) {
+  if (c >= minProc) {
     return {
       nivel: 'Implementación parcial',
       estado_panel: 'En proceso',
       cls: 'st-proceso',
       color: 'var(--warn)',
       badgeBg: 'var(--warn-bg)',
-      rangoTexto: `De ${procThreshold} a ${logThreshold - 1} respuestas "Sí"`,
-      rangoMin: procThreshold,
-      rangoMax: logThreshold - 1
+      rangoTexto: `De ${minProc} a ${maxProc} respuestas "Sí"`,
+      rangoMin: minProc,
+      rangoMax: maxProc,
+      rangoMinIni: 0,
+      rangoMaxIni: maxIni,
+      rangoMinProc: minProc,
+      rangoMaxProc: maxProc,
+      rangoMinLog: minLog,
+      rangoMaxLog: maxLog
     };
   }
   return {
@@ -364,9 +625,15 @@ export function getNivelLogroJec(conteoSi, totalItems = 31, config = null) {
     cls: 'st-inicio',
     color: 'var(--danger)',
     badgeBg: 'var(--danger-bg)',
-    rangoTexto: `De 0 a ${procThreshold - 1} respuestas "Sí"`,
+    rangoTexto: `De 0 a ${maxIni} respuestas "Sí"`,
     rangoMin: 0,
-    rangoMax: procThreshold - 1
+    rangoMax: maxIni,
+    rangoMinIni: 0,
+    rangoMaxIni: maxIni,
+    rangoMinProc: minProc,
+    rangoMaxProc: maxProc,
+    rangoMinLog: minLog,
+    rangoMaxLog: maxLog
   };
 }
 
@@ -395,7 +662,8 @@ export let jecFormState = {
   },
   docentes: {
     momento1: createDocenteMomentoRow(),
-    momento2: createDocenteMomentoRow()
+    momento2: createDocenteMomentoRow(),
+    momento3: createDocenteMomentoRow()
   },
   respuestas: {},
   hallazgos: {},
@@ -440,7 +708,8 @@ export function resetJecFormState() {
     },
     docentes: {
       momento1: createDocenteMomentoRow(),
-      momento2: createDocenteMomentoRow()
+      momento2: createDocenteMomentoRow(),
+      momento3: createDocenteMomentoRow()
     },
     respuestas: {},
     hallazgos: {},
@@ -501,16 +770,19 @@ export function preloadJecFormState(sub, ft) {
     jecFormState.director.correo = sub.directorCorreo || '';
   }
 
-  // Docentes monitoreo 1er y 2do momento
-  if (sub.docentes && (sub.docentes.momento1 || sub.docentes.momento2)) {
-    const m1 = sub.docentes.momento1;
-    const m2 = sub.docentes.momento2;
+  // Docentes monitoreo (1er, 2do y 3er momento)
+  const dSource = sub.docentes || sub.docentesMonitoreo || {};
+  const isV3 = Number(sub.visita || sub.momento) === 3;
+  if (dSource.momento1 || dSource.momento2 || dSource.momento3 || sub.docentes_monitoreo) {
+    const m1 = dSource.momento1 || sub.docentes_monitoreo?.m1;
+    const m2 = dSource.momento2 || sub.docentes_monitoreo?.m2;
+    const m3 = dSource.momento3 || sub.docentes_monitoreo?.m3 || (isV3 ? (m1 || m2) : null);
     if (m1) {
       // Puede venir como array de niveles (EBR) o como objeto único de secundaria (JEC)
       const row1 = Array.isArray(m1) ? (m1.find(r => r.nivel === 'Secundaria') || m1[0] || {}) : m1;
       jecFormState.docentes.momento1 = {
-        total: row1.total || '',
-        monitoreados: row1.monitoreados || '',
+        total: row1.total ?? row1.total_docentes ?? '',
+        monitoreados: row1.monitoreados ?? row1.docentes_monitoreados ?? '',
         noMonitoreados: row1.noMonitoreados !== undefined ? row1.noMonitoreados : (Number(row1.total || 0) - Number(row1.monitoreados || 0)),
         R1: row1.R1 || ['', '', '', ''],
         R2: row1.R2 || ['', '', '', ''],
@@ -522,14 +794,27 @@ export function preloadJecFormState(sub, ft) {
     if (m2) {
       const row2 = Array.isArray(m2) ? (m2.find(r => r.nivel === 'Secundaria') || m2[0] || {}) : m2;
       jecFormState.docentes.momento2 = {
-        total: row2.total || '',
-        monitoreados: row2.monitoreados || '',
+        total: row2.total ?? row2.total_docentes ?? '',
+        monitoreados: row2.monitoreados ?? row2.docentes_monitoreados ?? '',
         noMonitoreados: row2.noMonitoreados !== undefined ? row2.noMonitoreados : (Number(row2.total || 0) - Number(row2.monitoreados || 0)),
         R1: row2.R1 || ['', '', '', ''],
         R2: row2.R2 || ['', '', '', ''],
         R3: row2.R3 || ['', '', '', ''],
         R4: row2.R4 || ['', '', '', ''],
         R5: row2.R5 || ['', '', '', '']
+      };
+    }
+    if (m3) {
+      const row3 = Array.isArray(m3) ? (m3.find(r => r.nivel === 'Secundaria') || m3[0] || {}) : m3;
+      jecFormState.docentes.momento3 = {
+        total: row3.total ?? row3.total_docentes ?? '',
+        monitoreados: row3.monitoreados ?? row3.docentes_monitoreados ?? '',
+        noMonitoreados: row3.noMonitoreados !== undefined ? row3.noMonitoreados : (Number(row3.total || 0) - Number(row3.monitoreados || 0)),
+        R1: row3.R1 || ['', '', '', ''],
+        R2: row3.R2 || ['', '', '', ''],
+        R3: row3.R3 || ['', '', '', ''],
+        R4: row3.R4 || ['', '', '', ''],
+        R5: row3.R5 || ['', '', '', '']
       };
     }
   }
@@ -644,8 +929,8 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
   // Calcular conteo actual de respuestas Sí en tiempo real
   const conteoSi = Object.values(jecFormState.respuestas).filter(v => v === 'si').length;
   const conteoRespondidos = Object.values(jecFormState.respuestas).filter(v => v).length;
-  const totalItems = activeItems.length || JEC_ITEMS.length;
-  const nivelActual = getNivelLogroJec(conteoSi, totalItems, ft?.regla_nivel_config);
+  const totalItems = activeItems.length || (activeVisitaNum === 3 ? 26 : JEC_ITEMS.length);
+  const nivelActual = getNivelLogroJec(conteoSi, totalItems, ft?.regla_nivel_config, activeVisitaNum);
   const pctAvance = Math.round((conteoSi / totalItems) * 100);
   const pctRespondidos = Math.round((conteoRespondidos / totalItems) * 100);
   const submitLabel = isEditing ? 'Actualizar registro' : 'Guardar registro';
@@ -686,10 +971,10 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
               <div class="barTrack" style="height:10px;border-radius:5px" title="${conteoSi} de ${totalItems} ítems Sí">
                 <div class="barFill ${nivelActual.cls}" id="jecLiveProgressBar" style="width:${pctAvance}%;height:10px;border-radius:5px"></div>
               </div>
-              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft);margin-top:2px">
-                <span>0-11 Incipiente</span>
-                <span>12-23 Parcial</span>
-                <span>24-31 Lograda</span>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft);margin-top:2px" id="jecLiveLegendRanges">
+                <span id="jecLegendIni">${nivelActual.rangoMinIni}-${nivelActual.rangoMaxIni} Incipiente</span>
+                <span id="jecLegendProc">${nivelActual.rangoMinProc}-${nivelActual.rangoMaxProc} Parcial</span>
+                <span id="jecLegendLog">${nivelActual.rangoMinLog}-${nivelActual.rangoMaxLog} Lograda</span>
               </div>
             </div>
           </div>
@@ -815,26 +1100,36 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
           Consigne el total de docentes, docentes monitoreados y los resultados de las 5 rúbricas de aula (I, II, III y IV). Los porcentajes (%) y los <strong>no monitoreados</strong> se calculan de manera automática en tiempo real.
         </p>
 
-        <!-- a) 1er monitoreo -->
-        <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px">
-          <div style="font-weight:700;font-size:13.5px;color:var(--primary);margin-bottom:10px">
-            a) 1er monitoreo
-          </div>
-          ${renderDocentesTableJec('momento1', jecFormState.docentes.momento1)}
-        </div>
-
-        <!-- b) 2do monitoreo -->
-        <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div style="font-weight:700;font-size:13.5px;color:var(--primary)">
-              b) 2do monitoreo
+        ${activeVisitaNum === 3 ? `
+          <!-- a) 3er monitoreo (Única tabla requerida en el 3er momento de salida) -->
+          <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px">
+            <div style="font-weight:700;font-size:13.5px;color:var(--primary);margin-bottom:10px">
+              a) 3er monitoreo
             </div>
-            <button type="button" class="btn secondary small" id="btnCopiarDocentesM1" title="Copia el Total de Docentes desde el 1er monitoreo">
-              📋 Copiar total del 1er monitoreo
-            </button>
+            ${renderDocentesTableJec('momento3', jecFormState.docentes.momento3)}
           </div>
-          ${renderDocentesTableJec('momento2', jecFormState.docentes.momento2)}
-        </div>
+        ` : `
+          <!-- a) 1er monitoreo -->
+          <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px">
+            <div style="font-weight:700;font-size:13.5px;color:var(--primary);margin-bottom:10px">
+              a) 1er monitoreo
+            </div>
+            ${renderDocentesTableJec('momento1', jecFormState.docentes.momento1)}
+          </div>
+
+          <!-- b) 2do monitoreo -->
+          <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+              <div style="font-weight:700;font-size:13.5px;color:var(--primary)">
+                b) 2do monitoreo
+              </div>
+              <button type="button" class="btn secondary small" id="btnCopiarDocentesM1" title="Copia el Total de Docentes desde el 1er monitoreo">
+                📋 Copiar total del 1er monitoreo
+              </button>
+            </div>
+            ${renderDocentesTableJec('momento2', jecFormState.docentes.momento2)}
+          </div>
+        `}
 
         <!-- Leyenda explicativa de rúbricas R1 a R5 -->
         <details style="background:var(--surface-2);border:1px solid var(--line);padding:8px 12px;border-radius:6px;font-size:11.5px">
@@ -855,7 +1150,7 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
       <div class="panel" style="margin-bottom:18px">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;border-bottom:1.5px solid var(--line);padding-bottom:8px;margin-bottom:14px">
           <div class="sectionHeaderTitle" style="margin:0">
-            VI. COMPONENTES E INDICADORES DE MONITOREO JEC (31 ÍTEMS)
+            VI. COMPONENTES E INDICADORES DE MONITOREO JEC (${totalItems} ÍTEMS)
           </div>
           <div class="badge st-none" style="font-size:12px;padding:4px 8px">
             Escala: Sí / No · 9 horas diarias
@@ -889,34 +1184,34 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
               </tr>
             </thead>
             <tbody>
-              <tr id="rowNivelLograda" style="border-bottom:1px solid var(--line);${conteoSi >= 24 ? 'background:rgba(22, 163, 74, 0.12);font-weight:700' : ''}">
+              <tr id="rowNivelLograda" style="border-bottom:1px solid var(--line);${conteoSi >= nivelActual.rangoMinLog ? 'background:rgba(22, 163, 74, 0.12);font-weight:700' : ''}">
                 <td style="padding:10px 14px;color:#15803D">
                   <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#16A34A;margin-right:6px"></span>
                   <strong>Implementación lograda</strong>
                 </td>
-                <td style="padding:10px 14px;text-align:center">De 24 a 31 respuestas "Sí"</td>
+                <td style="padding:10px 14px;text-align:center">De ${nivelActual.rangoMinLog} a ${nivelActual.rangoMaxLog} respuestas "Sí"</td>
                 <td style="padding:10px 14px;text-align:center">
-                  ${conteoSi >= 24 ? '<span class="badge st-logrado" style="font-weight:700">✓ NIVEL ALCANZADO</span>' : '—'}
+                  ${conteoSi >= nivelActual.rangoMinLog ? '<span class="badge st-logrado" style="font-weight:700">✓ NIVEL ALCANZADO</span>' : '—'}
                 </td>
               </tr>
-              <tr id="rowNivelParcial" style="border-bottom:1px solid var(--line);${conteoSi >= 12 && conteoSi <= 23 ? 'background:rgba(217, 119, 6, 0.12);font-weight:700' : ''}">
+              <tr id="rowNivelParcial" style="border-bottom:1px solid var(--line);${conteoSi >= nivelActual.rangoMinProc && conteoSi <= nivelActual.rangoMaxProc ? 'background:rgba(217, 119, 6, 0.12);font-weight:700' : ''}">
                 <td style="padding:10px 14px;color:#B45309">
                   <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#D97706;margin-right:6px"></span>
                   <strong>Implementación parcial</strong>
                 </td>
-                <td style="padding:10px 14px;text-align:center">De 12 a 23 respuestas "Sí"</td>
+                <td style="padding:10px 14px;text-align:center">De ${nivelActual.rangoMinProc} a ${nivelActual.rangoMaxProc} respuestas "Sí"</td>
                 <td style="padding:10px 14px;text-align:center">
-                  ${conteoSi >= 12 && conteoSi <= 23 ? '<span class="badge st-proceso" style="font-weight:700">✓ NIVEL ALCANZADO</span>' : '—'}
+                  ${conteoSi >= nivelActual.rangoMinProc && conteoSi <= nivelActual.rangoMaxProc ? '<span class="badge st-proceso" style="font-weight:700">✓ NIVEL ALCANZADO</span>' : '—'}
                 </td>
               </tr>
-              <tr id="rowNivelIncipiente" style="${conteoSi <= 11 ? 'background:rgba(220, 38, 38, 0.12);font-weight:700' : ''}">
+              <tr id="rowNivelIncipiente" style="${conteoSi <= nivelActual.rangoMaxIni ? 'background:rgba(220, 38, 38, 0.12);font-weight:700' : ''}">
                 <td style="padding:10px 14px;color:#B91C1C">
                   <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#DC2626;margin-right:6px"></span>
                   <strong>Implementación incipiente</strong>
                 </td>
-                <td style="padding:10px 14px;text-align:center">De 0 a 11 respuestas "Sí"</td>
+                <td style="padding:10px 14px;text-align:center">De ${nivelActual.rangoMinIni} a ${nivelActual.rangoMaxIni} respuestas "Sí"</td>
                 <td style="padding:10px 14px;text-align:center">
-                  ${conteoSi <= 11 ? '<span class="badge st-inicio" style="font-weight:700">✓ NIVEL ALCANZADO</span>' : '—'}
+                  ${conteoSi <= nivelActual.rangoMaxIni ? '<span class="badge st-inicio" style="font-weight:700">✓ NIVEL ALCANZADO</span>' : '—'}
                 </td>
               </tr>
             </tbody>
@@ -957,9 +1252,13 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
   `;
 
   attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEditing);
-  updateDocenteRowCalculations('momento1', host);
-  updateDocenteRowCalculations('momento2', host);
-  updateLiveNivelJec(host);
+  if (activeVisitaNum === 3) {
+    updateDocenteRowCalculations('momento3', host);
+  } else {
+    updateDocenteRowCalculations('momento1', host);
+    updateDocenteRowCalculations('momento2', host);
+  }
+  updateLiveNivelJec(host, ft, activeVisitaNum);
 }
 
 /**
@@ -1649,10 +1948,10 @@ function updateLiveNivelJec(host, ft = null, activeVisitaNum = null) {
   const conteoRespondidos = Object.values(jecFormState.respuestas).filter(v => v).length;
   const activeSections = getActiveJecSections(ft, vNum);
   const activeItems = activeSections.flatMap(s => s.items || []);
-  const totalItems = activeItems.length || JEC_ITEMS.length;
+  const totalItems = activeItems.length || (vNum === 3 ? 26 : JEC_ITEMS.length);
   const pctAvance = Math.round((conteoSi / totalItems) * 100);
   const pctRespondidos = Math.round((conteoRespondidos / totalItems) * 100);
-  const nivel = getNivelLogroJec(conteoSi, totalItems, ft?.regla_nivel_config);
+  const nivel = getNivelLogroJec(conteoSi, totalItems, ft?.regla_nivel_config, vNum);
 
   // Barra sticky
   const liveBadge = host.querySelector('#jecLiveBadge');
@@ -1677,29 +1976,48 @@ function updateLiveNivelJec(host, ft = null, activeVisitaNum = null) {
     liveHeader.style.borderLeftColor = nivel.color;
   }
 
+  // Actualizar leyenda de rangos bajo la barra sticky
+  const legendIni = host.querySelector('#jecLegendIni');
+  if (legendIni) legendIni.textContent = `${nivel.rangoMinIni}-${nivel.rangoMaxIni} Incipiente`;
+  const legendProc = host.querySelector('#jecLegendProc');
+  if (legendProc) legendProc.textContent = `${nivel.rangoMinProc}-${nivel.rangoMaxProc} Parcial`;
+  const legendLog = host.querySelector('#jecLegendLog');
+  if (legendLog) legendLog.textContent = `${nivel.rangoMinLog}-${nivel.rangoMaxLog} Lograda`;
+
   // Barra inferior sticky (estilo Gestión Escolar)
   const progressBadge = host.querySelector('#regProgressBadge');
   if (progressBadge) {
     progressBadge.innerHTML = `Avance: <strong>${conteoRespondidos} de ${totalItems}</strong> ítems respondidos (${pctRespondidos}%)`;
   }
 
-  // Tabla oficial (resaltar fila correspondiente)
+  // Tabla oficial (resaltar fila correspondiente con rangos dinámicos)
   const rowLog = host.querySelector('#rowNivelLograda');
   const rowPar = host.querySelector('#rowNivelParcial');
   const rowInc = host.querySelector('#rowNivelIncipiente');
 
   if (rowLog && rowPar && rowInc) {
-    rowLog.style.background = conteoSi >= 24 ? 'rgba(22, 163, 74, 0.12)' : '';
-    rowLog.style.fontWeight = conteoSi >= 24 ? '700' : 'normal';
-    rowLog.querySelector('td:last-child').innerHTML = conteoSi >= 24 ? '<span class="badge st-logrado" style="font-weight:700">✓ NIVEL ALCANZADO</span>' : '—';
+    const isLog = conteoSi >= nivel.rangoMinLog;
+    const isPar = conteoSi >= nivel.rangoMinProc && conteoSi <= nivel.rangoMaxProc;
+    const isInc = conteoSi <= nivel.rangoMaxIni;
 
-    rowPar.style.background = (conteoSi >= 12 && conteoSi <= 23) ? 'rgba(217, 119, 6, 0.12)' : '';
-    rowPar.style.fontWeight = (conteoSi >= 12 && conteoSi <= 23) ? '700' : 'normal';
-    rowPar.querySelector('td:last-child').innerHTML = (conteoSi >= 12 && conteoSi <= 23) ? '<span class="badge st-proceso" style="font-weight:700">✓ NIVEL ALCANZADO</span>' : '—';
+    const tdLog = rowLog.querySelector('td:nth-child(2)');
+    if (tdLog) tdLog.textContent = `De ${nivel.rangoMinLog} a ${nivel.rangoMaxLog} respuestas "Sí"`;
+    const tdPar = rowPar.querySelector('td:nth-child(2)');
+    if (tdPar) tdPar.textContent = `De ${nivel.rangoMinProc} a ${nivel.rangoMaxProc} respuestas "Sí"`;
+    const tdInc = rowInc.querySelector('td:nth-child(2)');
+    if (tdInc) tdInc.textContent = `De ${nivel.rangoMinIni} a ${nivel.rangoMaxIni} respuestas "Sí"`;
 
-    rowInc.style.background = conteoSi <= 11 ? 'rgba(220, 38, 38, 0.12)' : '';
-    rowInc.style.fontWeight = conteoSi <= 11 ? '700' : 'normal';
-    rowInc.querySelector('td:last-child').innerHTML = conteoSi <= 11 ? '<span class="badge st-inicio" style="font-weight:700">✓ NIVEL ALCANZADO</span>' : '—';
+    rowLog.style.background = isLog ? 'rgba(22, 163, 74, 0.12)' : '';
+    rowLog.style.fontWeight = isLog ? '700' : 'normal';
+    rowLog.querySelector('td:last-child').innerHTML = isLog ? '<span class="badge st-logrado" style="font-weight:700">✓ NIVEL ALCANZADO</span>' : '—';
+
+    rowPar.style.background = isPar ? 'rgba(217, 119, 6, 0.12)' : '';
+    rowPar.style.fontWeight = isPar ? '700' : 'normal';
+    rowPar.querySelector('td:last-child').innerHTML = isPar ? '<span class="badge st-proceso" style="font-weight:700">✓ NIVEL ALCANZADO</span>' : '—';
+
+    rowInc.style.background = isInc ? 'rgba(220, 38, 38, 0.12)' : '';
+    rowInc.style.fontWeight = isInc ? '700' : 'normal';
+    rowInc.querySelector('td:last-child').innerHTML = isInc ? '<span class="badge st-inicio" style="font-weight:700">✓ NIVEL ALCANZADO</span>' : '—';
   }
 }
 
@@ -1727,8 +2045,8 @@ function syncJecStateFromDom(host) {
   jecFormState.director.telefono = cleanTextCode(host.querySelector('#jec_dir_tel')?.value || '');
   jecFormState.director.correo = (host.querySelector('#jec_dir_correo')?.value || '').trim();
 
-  // Docentes monitoreo 1er y 2do momento
-  ['momento1', 'momento2'].forEach(m => {
+  // Docentes monitoreo 1er, 2do y 3er momento
+  ['momento1', 'momento2', 'momento3'].forEach(m => {
     const totInp = host.querySelector(`.jecDocTotalInp[data-momento="${m}"]`);
     const monitInp = host.querySelector(`.jecDocMonitInp[data-momento="${m}"]`);
     const t = Number(totInp?.value) || 0;
@@ -1819,7 +2137,7 @@ export function collectJecFormData(host, ft, isEdit = false, activeVisita = null
     };
   });
 
-  const totalItems = activeItems.length || JEC_ITEMS.length;
+  const totalItems = activeItems.length || (vNum === 3 ? 26 : JEC_ITEMS.length);
   const esBorrador = conteoTotal < totalItems;
 
   if (esBorrador) {
@@ -1829,8 +2147,11 @@ export function collectJecFormData(host, ft, isEdit = false, activeVisita = null
 
   // Validar coherencia en rúbricas si se consignaron docentes monitoreados (que sumen 100%)
   const momentErrors = [];
-  ['momento1', 'momento2'].forEach(mKey => {
-    const mLabel = mKey === 'momento1' ? '1.er monitoreo' : '2.do monitoreo';
+  const activeMomentsToValidate = vNum === 3
+    ? [{ key: 'momento3', label: '3.er monitoreo' }]
+    : [{ key: 'momento1', label: '1.er monitoreo' }, { key: 'momento2', label: '2.do monitoreo' }];
+
+  activeMomentsToValidate.forEach(({ key: mKey, label: mLabel }) => {
     const rowData = jecFormState.docentes[mKey] || {};
     const t = Number(rowData.total) || 0;
     const m = Number(rowData.monitoreados) || 0;
@@ -1878,7 +2199,7 @@ export function collectJecFormData(host, ft, isEdit = false, activeVisita = null
     }
   }
 
-  const nivelCalculado = getNivelLogroJec(conteoSi, totalItems, ft?.regla_nivel_config);
+  const nivelCalculado = getNivelLogroJec(conteoSi, totalItems, ft?.regla_nivel_config, vNum);
   const pct = Math.round((conteoSi / totalItems) * 100);
 
   // Extras planos para máxima compatibilidad con exportaciones a Excel y tablas existentes
@@ -1896,10 +2217,15 @@ export function collectJecFormData(host, ft, isEdit = false, activeVisita = null
     { label: 'DNI Directivo', value: jecFormState.director.dni },
     { label: 'Teléfono Directivo', value: jecFormState.director.telefono },
     { label: 'Correo Directivo', value: jecFormState.director.correo },
-    { label: 'Total docentes 1er monitoreo', value: jecFormState.docentes.momento1.total || 0 },
-    { label: 'Docentes monitoreados 1er monitoreo', value: jecFormState.docentes.momento1.monitoreados || 0 },
-    { label: 'Total docentes 2do monitoreo', value: jecFormState.docentes.momento2.total || 0 },
-    { label: 'Docentes monitoreados 2do monitoreo', value: jecFormState.docentes.momento2.monitoreados || 0 },
+    ...(vNum === 3 ? [
+      { label: 'Total docentes 3er monitoreo', value: jecFormState.docentes.momento3?.total || 0 },
+      { label: 'Docentes monitoreados 3er monitoreo', value: jecFormState.docentes.momento3?.monitoreados || 0 }
+    ] : [
+      { label: 'Total docentes 1er monitoreo', value: jecFormState.docentes.momento1.total || 0 },
+      { label: 'Docentes monitoreados 1er monitoreo', value: jecFormState.docentes.momento1.monitoreados || 0 },
+      { label: 'Total docentes 2do monitoreo', value: jecFormState.docentes.momento2.total || 0 },
+      { label: 'Docentes monitoreados 2do monitoreo', value: jecFormState.docentes.momento2.monitoreados || 0 }
+    ]),
     { label: 'Total respuestas Sí', value: conteoSi },
     { label: 'Nivel de Implementación', value: nivelCalculado.nivel }
   ];
@@ -1937,7 +2263,8 @@ export function collectJecFormData(host, ft, isEdit = false, activeVisita = null
 
   const docentesMonitoreoCompat = {
     m1: buildMomentoSummary('momento1'),
-    m2: buildMomentoSummary('momento2')
+    m2: buildMomentoSummary('momento2'),
+    m3: buildMomentoSummary('momento3')
   };
 
   const jecMomento = activeVisita ? Number(activeVisita) : (ft?.momento || (ft?.id && ft.id.includes('1er') ? 1 : (ft?.id && ft.id.includes('3er') ? 3 : 2)));

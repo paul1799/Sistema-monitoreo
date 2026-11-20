@@ -748,6 +748,7 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
     }).join('');
 
     // Renderizar Aspectos con Evaluación 1, 2, 3, NA (ítems dinámicos)
+    let rubricItemCounter = 0;
     const aspectosPuntajeHtml = (rubricSecs.length > 0 ? rubricSecs : JEC_1ER_SECCIONES_PUNTAJE).map((sec, secIdx) => {
       let subtotalKey = `aspecto${secIdx + 2}`;
       if (sec.id === 'sec_aspecto_02') subtotalKey = 'aspecto2';
@@ -759,9 +760,13 @@ export function renderJec1erForm(host, ft, state, dbNs, currentUser, navigate, i
       const maxSec = sec.items.length * 3;
 
       const itemsHtml = sec.items.map((it) => {
+        rubricItemCounter++;
         const val = jec1erState.puntajes[it.id];
         const hallazgo = jec1erState.puntajesHallazgos[it.id] || '';
-        const numVal = (it.num !== undefined && it.num !== null && it.num !== '') ? it.num : (sec.items.indexOf(it) + 1);
+        // Las opciones numéricas empiezan desde el 1 correlativamente hasta el último (01..37)
+        const numVal = (it.num !== undefined && it.num !== null && it.num >= 1 && it.num <= 37 && it.num === rubricItemCounter)
+          ? it.num
+          : rubricItemCounter;
         return `
         <div class="jec1-item-row" data-item-id="${it.id}">
           <div class="jec1-item-header">
@@ -1848,33 +1853,56 @@ export function collectJec1erFormData(host, ft, isEdit = false) {
     const respuestasObj = {};
     const respuestasCondicionesObj = {};
 
-    // Condiciones Sí / No
-    JEC_1ER_CONDICIONES_ITEMS.forEach(c => {
-      const val = (jec1erState.condiciones[c.id] || '').toUpperCase();
-      const hallazgo = (jec1erState.condicionesHallazgos[c.id] || '').trim();
+    const activeSecs = getActiveJec1erSections(ft);
+    const condSec = activeSecs.find(s => s.id?.includes('cond') || /condici[oó]n/i.test(s.nombre || '')) || activeSecs[0];
+    const rubricSecs = activeSecs.filter(s => s !== condSec);
+
+    // Condiciones Sí / No (01 al 07)
+    const condItems = (condSec?.items && condSec.items.length > 0) ? condSec.items : JEC_1ER_CONDICIONES_ITEMS;
+    condItems.forEach((c, idx) => {
+      const val = (jec1erState.condiciones[c.id] || jec1erState.condiciones[`c${idx + 1}`] || '').toUpperCase();
+      const hallazgo = (jec1erState.condicionesHallazgos[c.id] || jec1erState.condicionesHallazgos[`c${idx + 1}`] || '').trim();
       respuestasCondicionesObj[c.id] = { valor: val, hallazgo };
       respuestasArray.push({
         id: c.id,
+        num: idx + 1,
+        texto: c.texto || '',
         valor: val,
         hallazgo,
-        seccion: '01 ASPECTO: CONDICIONES'
+        seccion: condSec?.nombre || '01 ASPECTO: CONDICIONES'
       });
     });
 
-    // Ítems de Puntaje
-    JEC_1ER_SECCIONES_PUNTAJE.forEach(sec => {
-      sec.items.forEach(it => {
-        const val = jec1erState.puntajes[it.id] !== undefined ? jec1erState.puntajes[it.id] : null;
-        const hallazgo = (jec1erState.puntajesHallazgos[it.id] || '').trim();
+    // Ítems de Puntaje (01 al 37 correlativos)
+    let rubricCollectCounter = 0;
+    const targetRubricSecs = (rubricSecs.length > 0) ? rubricSecs : JEC_1ER_SECCIONES_PUNTAJE;
+    targetRubricSecs.forEach((sec) => {
+      (sec.items || []).forEach((it) => {
+        rubricCollectCounter++;
+        const itNum = rubricCollectCounter;
+        const canonicalId = `it_${String(itNum).padStart(2, '0')}`;
+        const val = jec1erState.puntajes[it.id] !== undefined 
+          ? jec1erState.puntajes[it.id] 
+          : (jec1erState.puntajes[canonicalId] !== undefined ? jec1erState.puntajes[canonicalId] : null);
+        const hallazgo = (jec1erState.puntajesHallazgos[it.id] || jec1erState.puntajesHallazgos[canonicalId] || '').trim();
         respuestasObj[it.id] = { valor: val, hallazgo };
+        if (it.id !== canonicalId) {
+          respuestasObj[canonicalId] = { valor: val, hallazgo };
+        }
         respuestasArray.push({
           id: it.id,
+          canonicalId,
+          num: itNum,
+          texto: it.texto || '',
           valor: val,
           hallazgo,
           seccion: sec.nombre
         });
       });
     });
+
+    const maxPtsOficial = scoreData.maxPuntos || 111;
+    const pctOficial = maxPtsOficial > 0 ? Math.round((scoreData.puntajeTotal / maxPtsOficial) * 100) : 0;
 
     return {
       fichaTypeId: ft?.id || 'ft_msejec_2do',
@@ -1919,10 +1947,18 @@ export function collectJec1erFormData(host, ft, isEdit = false) {
       respuestas: respuestasArray,
       respuestasObj,
       subtotales: scoreData.subtotales,
+      puntaje: scoreData.puntajeTotal,
       puntajeTotal: scoreData.puntajeTotal,
-      maxPuntaje: 111,
+      maxPuntaje: maxPtsOficial,
+      pct: pctOficial,
+      porcentaje: pctOficial,
       nivel: scoreData.nivelInfo.nivel,
       estado_panel: scoreData.nivelInfo.estado_panel,
+      estado: {
+        label: scoreData.nivelInfo.nivel,
+        estado_panel: scoreData.nivelInfo.estado_panel,
+        cls: scoreData.nivelInfo.nivel === 'LOGRADO' ? 'st-logrado' : (scoreData.nivelInfo.nivel === 'PROCESO' ? 'st-proceso' : 'st-inicio')
+      },
       nivelColor: scoreData.nivelInfo.color,
       nivelDescripcion: scoreData.nivelInfo.descripcion,
       condicionesCumplidas: scoreData.condSi,

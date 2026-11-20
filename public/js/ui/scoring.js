@@ -8,7 +8,9 @@ import {
   calcScore,
   estadoPorRegla,
   REGLA_NIVEL_JEC,
+  REGLA_NIVEL_JEC_3ER_MOMENTO,
   REGLA_NIVEL_JEC_1ER_MOMENTO,
+  getNivelJec1erMomento,
   REGLA_NIVEL_COORD_TUTORIA_JEC,
   isFichaCoordTutoriaJec,
   isFichaCoordPedagogico,
@@ -27,7 +29,7 @@ import {
 } from '../calcEngine.js?v=20261103_v8';
 import * as RepDatos from '../reportes-datos.js?v=20261103_v8';
 import { getEbrSeccionesForVisita } from '../ebr-gestion.js';
-import { isFichaJec, JEC_SECCIONES } from '../jec-monitoreo.js';
+import { isFichaJec, JEC_SECCIONES, getActiveJecSections } from '../jec-monitoreo.js';
 import { JEC_1ER_SECCIONES } from '../jec-1er-monitoreo.js';
 import { isFichaCebeGestion, CEBE_SECCIONES } from '../cebe-gestion.js';
 import { isFichaPriteGestion, PRITE_SECCIONES } from '../prite-gestion.js';
@@ -52,6 +54,8 @@ export const OPTION_COLORS = {
   nivel_1_4: { '1': 'var(--danger)', '2': 'var(--warn)', '3': '#34D399', '4': 'var(--ok)', na: 'var(--neutral)' },
   ips: { inicio: 'var(--danger)', proceso: 'var(--warn)', logrado: 'var(--ok)', na: 'var(--neutral)' },
 };
+RESPONSE_OPTIONS.escala1_3 = RESPONSE_OPTIONS.escala_1_3;
+OPTION_COLORS.escala1_3 = OPTION_COLORS.escala_1_3;
 
 export const DESCRIPTORES_NIVEL_1_4 = {
   '4': {
@@ -582,6 +586,26 @@ export function computeStats(sub, ft) {
       valor: (val && typeof val === 'object' && val.valor !== undefined) ? val.valor : (val && typeof val === 'object' && val.value !== undefined ? val.value : val)
     }));
   }
+  let respCombined = Array.isArray(respuestasArray) ? [...respuestasArray] : [];
+  if (sub.respuestasCondiciones && typeof sub.respuestasCondiciones === 'object') {
+    Object.entries(sub.respuestasCondiciones).forEach(([cId, cVal]) => {
+      const val = (cVal && typeof cVal === 'object' && cVal.valor !== undefined) ? cVal.valor : cVal;
+      if (!respCombined.some(r => r.id === cId)) {
+        respCombined.push({ id: cId, valor: val });
+      }
+    });
+  }
+  if (sub.respuestasObj && typeof sub.respuestasObj === 'object') {
+    Object.entries(sub.respuestasObj).forEach(([rId, rVal]) => {
+      const val = (rVal && typeof rVal === 'object' && rVal.valor !== undefined) ? rVal.valor : rVal;
+      if (!respCombined.some(r => r.id === rId)) {
+        respCombined.push({ id: rId, valor: val });
+      }
+    });
+  }
+  if (respCombined.length > 0) {
+    respuestasArray = respCombined;
+  }
 
   // Fallback si la ficha no trae respuestas desagregadas pero tiene métricas oficiales guardadas
   if (!respuestasArray || !Array.isArray(respuestasArray) || respuestasArray.length === 0) {
@@ -649,26 +673,22 @@ export function computeStats(sub, ft) {
       ftForCalc = {
         ...ft,
         id: 'ft_msejec_1er',
+        visita: 1,
+        momento: 1,
         secciones: (ft?.seccionesPorVisita?.[0] || ft?.seccionesPorVisita?.['0'] || (ft?.id === 'ft_msejec_1er' && ft?.secciones?.length ? ft.secciones : JEC_1ER_SECCIONES)),
-        tipoRespuesta: 'escala1_3',
+        tipoRespuesta: 'escala_1_3',
         escala: 'ESCALA_1_3',
         regla_nivel: REGLA_NIVEL_JEC_1ER_MOMENTO
       };
+      delete ftForCalc.regla_nivel_config;
     } else {
-      const vIdx = vJec - 1;
-      const secJec = (ft?.seccionesPorVisita?.[vIdx] && ft.seccionesPorVisita[vIdx].length > 0)
-        ? ft.seccionesPorVisita[vIdx]
-        : ((ft?.seccionesPorVisita?.[String(vIdx)] && ft.seccionesPorVisita[String(vIdx)].length > 0)
-            ? ft.seccionesPorVisita[String(vIdx)]
-            : ((ft?.seccionesPorVisita?.[1] && ft.seccionesPorVisita[1].length > 0)
-                ? ft.seccionesPorVisita[1]
-                : ((ft?.secciones?.length && !hasJec1Items) ? ft.secciones : JEC_SECCIONES)));
+      const secJec = getActiveJecSections(ft, vJec);
       ftForCalc = {
         ...ft,
         secciones: secJec,
         tipoRespuesta: 'si_no',
         escala: 'SI_NO_NA',
-        regla_nivel: ft?.regla_nivel || REGLA_NIVEL_JEC
+        regla_nivel: ft?.regla_nivel || (vJec === 3 ? REGLA_NIVEL_JEC_3ER_MOMENTO : REGLA_NIVEL_JEC)
       };
     }
   } else if (ft?.tieneVisitas && ft?.tipoVisitas === 'items_por_visita' && ft?.seccionesPorVisita) {
@@ -731,6 +751,35 @@ export function computeStats(sub, ft) {
       finalEstado.cls = 'st-inicio';
     }
   }
+
+  const isJecVisita1 = isFichaJec(ft || sub) && (getMomentoFichaJec(sub || ft) === 1 || Number(sub?.visita) === 1 || Number(ft?.visita) === 1);
+  if (isJecVisita1) {
+    const rawPts = (result.puntaje && result.puntaje > 0) ? result.puntaje : (sub.puntaje ?? sub.puntajeTotal ?? null);
+    if (rawPts !== null && rawPts !== undefined && (result.pct === null || result.pct === undefined || finalEstado.label === 'Sin datos' || finalEstado.estado_panel === 'Sin datos')) {
+      const nivJec1 = getNivelJec1erMomento(rawPts);
+      finalEstado.label = nivJec1.estado_panel || nivJec1.nivel;
+      finalEstado.estado_panel = nivJec1.estado_panel;
+      finalEstado.cls = nivJec1.nivel === 'LOGRADO' ? 'st-logrado' : (nivJec1.nivel === 'PROCESO' ? 'st-proceso' : 'st-inicio');
+      finalEstado.descripcion = nivJec1.descripcion || '';
+      if (result.pct === null || result.pct === undefined) {
+        result.pct = Math.round((Number(rawPts) / 111) * 100);
+      }
+      result.puntaje = Number(rawPts);
+      result.puntaje_max = 111;
+    }
+  }
+
+  if (result.pct === null && sub.pct !== undefined && sub.pct !== null) {
+    result.pct = Number(sub.pct);
+  }
+  if ((finalEstado.label === 'Sin datos' || finalEstado.estado_panel === 'Sin datos') && (sub.estado_panel || sub.nivel)) {
+    const subNiv = sub.estado_panel || sub.nivel;
+    finalEstado.label = subNiv;
+    finalEstado.estado_panel = subNiv;
+    finalEstado.cls = (String(subNiv).toLowerCase().includes('lograd') || String(subNiv).toLowerCase().includes('cumple')) ? 'st-logrado'
+      : ((String(subNiv).toLowerCase().includes('proces') || String(subNiv).toLowerCase().includes('parcial')) ? 'st-proceso' : 'st-inicio');
+  }
+
   return {
     pct: result.pct,
     puntaje: result.puntaje,
@@ -751,8 +800,10 @@ export function computeItemAgg(subs, ft, targetVisita = null) {
 
 export function renderItemReportHtml(itemAgg, tipoRespuesta, ft = null) {
   const isJec = isFichaJec(ft) || isFichaCoordTutoriaJec(ft) || isFichaCoordPedagogico(ft) || isFichaEspecialistaJec(ft);
-  const isSiNo = (tipoRespuesta === 'si_no' || ft?.tipoRespuesta === 'si_no' || ft?.escala === 'SI_NO' || ft?.escala === 'SI_NO_NA' || String(ft?.tipoRespuesta || '').includes('si_no') || String(ft?.escala || '').toUpperCase().includes('SI_NO'));
-  const effectiveTipoResp = isSiNo ? 'si_no' : (tipoRespuesta || 'ips');
+  const isJecVisita1 = isFichaJec(ft) && (Number(ft?.visita) === 1 || getMomentoFichaJec(ft) === 1 || String(tipoRespuesta).includes('1_3'));
+  const isSiNo = !isJecVisita1 && (tipoRespuesta === 'si_no' || ft?.tipoRespuesta === 'si_no' || ft?.escala === 'SI_NO' || ft?.escala === 'SI_NO_NA' || String(ft?.tipoRespuesta || '').includes('si_no') || String(ft?.escala || '').toUpperCase().includes('SI_NO'));
+  let effectiveTipoResp = isJecVisita1 ? 'escala_1_3' : (isSiNo ? 'si_no' : (tipoRespuesta || 'ips'));
+  if (effectiveTipoResp === 'escala1_3') effectiveTipoResp = 'escala_1_3';
   const isEbr = !isJec && !isSiNo && (isFichaEbrGestionEscolar(ft) || isFichaEbrEbePrite(ft) || isFichaCebeGestion(ft) || isFichaPriteGestion(ft));
   const logCut = (isEbr || isSiNo) ? 67 : 85;
   const procCut = (isEbr || isSiNo) ? 34 : 70;
@@ -779,13 +830,25 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta, ft = null) {
     ? (RESPONSE_OPTIONS.nivel_1_4 || []).filter(o => o.v !== 'na')
     : (RESPONSE_OPTIONS[effectiveTipoResp] || []);
 
-  const legend = activeOpts.map(o => {
+  const legend = isJecVisita1 ? (
+    '<span><span class="dot" style="background:var(--ok)"></span>3 = Logrado</span>' +
+    '<span><span class="dot" style="background:var(--warn)"></span>2 = En proceso</span>' +
+    '<span><span class="dot" style="background:var(--danger)"></span>1 = No logrado / Inicio</span>' +
+    '<span><span class="dot" style="background:var(--neutral)"></span>N/A = No aplica</span>' +
+    '<span style="display:inline-flex;align-items:center;margin-left:12px;padding-left:12px;border-left:1px solid var(--line-light, #cbd5e1);gap:10px">' +
+    '<span><span class="dot" style="background:var(--ok)"></span>Sí = Cumple</span>' +
+    '<span><span class="dot" style="background:var(--danger)"></span>No = No cumple</span>' +
+    '</span>'
+  ) : activeOpts.map(o => {
     const text = legendMap[o.v] || o.l;
     const col = (OPTION_COLORS[effectiveTipoResp] && OPTION_COLORS[effectiveTipoResp][o.v]) || 'var(--neutral)';
     return '<span><span class="dot" style="background:' + col + '"></span>' + esc(text) + '</span>';
   }).join('');
 
   const sections = itemAgg.map((sec, si) => {
+    const isCondSec = isJecVisita1 && (si === 0 || sec.nombre?.toLowerCase().includes('condicion'));
+    const secTipoResp = isCondSec ? 'si_no' : (isJecVisita1 ? 'escala_1_3' : effectiveTipoResp);
+
     const secStatus = statusFromPct(sec.avg, ft);
     const pctVal = sec.avg === null || sec.avg === undefined ? 0 : Math.min(Math.max(sec.avg, 0), 100);
     const barCls = sec.avg === null || sec.avg === undefined ? 'none' : (sec.avg >= logCut ? 'ok' : (sec.avg >= procCut ? 'warn' : 'danger'));
@@ -796,7 +859,7 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta, ft = null) {
       const itStatus = statusFromPct(it.pct, ft);
 
       // Calcular porcentajes por nivel asegurando que la sumatoria alcance exactamente el 100%
-      const activeOptions = (RESPONSE_OPTIONS[effectiveTipoResp] || []).filter(o => (it.counts[o.v] || 0) > 0);
+      const activeOptions = (RESPONSE_OPTIONS[secTipoResp] || []).filter(o => (it.counts[o.v] || 0) > 0);
       const totalItem = it.total || 0;
       const pctMap = {};
       if (totalItem > 0) {
@@ -816,18 +879,19 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta, ft = null) {
         });
       }
 
-      const respPills = (RESPONSE_OPTIONS[effectiveTipoResp] || []).map(o => {
+      const isSecSiNo = secTipoResp === 'si_no';
+      const respPills = (RESPONSE_OPTIONS[secTipoResp] || []).map(o => {
         const cnt = it.counts[o.v] || 0;
         // Para plantillas de Sí / No, mostrar siempre Sí y No (incluso con 0%) para máxima claridad
         if (!cnt) {
-          if (isSiNo && (o.v === 'si' || o.v === 'no')) {
+          if (isSecSiNo && (o.v === 'si' || o.v === 'no')) {
             // Permitir mostrar conteo 0
           } else {
             return '';
           }
         }
         const pct = pctMap[o.v] !== undefined ? pctMap[o.v] : (totalItem > 0 ? Math.round((cnt / totalItem) * 100) : 0);
-        const col = (OPTION_COLORS[effectiveTipoResp] && OPTION_COLORS[effectiveTipoResp][o.v]) || 'var(--neutral)';
+        const col = (OPTION_COLORS[secTipoResp] && OPTION_COLORS[secTipoResp][o.v]) || 'var(--neutral)';
         return '<span style="display:inline-flex;align-items:center;gap:3px;margin-right:6px;font-size:11px"><span class="dot" style="width:8px;height:8px;background:' + col + '"></span>' + esc(o.l) + ': <strong>' + cnt + ' (' + pct + '%)</strong></span>';
       }).join('');
 
@@ -835,7 +899,7 @@ export function renderItemReportHtml(itemAgg, tipoRespuesta, ft = null) {
         '<td style="text-align:center;font-weight:700;color:var(--primary)">' + (idx + 1) + '</td>' +
         '<td><strong>' + esc(it.texto) + '</strong></td>' +
         '<td style="text-align:center"><span class="badge ' + itStatus.cls + '">' + itStatus.label + '</span></td>' +
-        '<td><div style="margin-bottom:3px">' + stackedBar(it.counts, it.total, effectiveTipoResp) + '</div>' + respPills + '</td>' +
+        '<td><div style="margin-bottom:3px">' + stackedBar(it.counts, it.total, secTipoResp) + '</div>' + respPills + '</td>' +
         '<td style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums">' + (it.pct === null ? '—' : it.pct + '%') + '</td>' +
         '</tr>';
     }).join('');

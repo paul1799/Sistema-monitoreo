@@ -7,6 +7,7 @@
 import { puntajeItem, LEGADO_A_ESCALA } from './scales.js';
 import {
   REGLA_NIVEL_JEC,
+  REGLA_NIVEL_JEC_3ER_MOMENTO,
   REGLA_NIVEL_JEC_1ER_MOMENTO,
   REGLA_NIVEL_COORD_TUTORIA_JEC,
   REGLA_NIVEL_COORD_PEDAGOGICO
@@ -91,17 +92,49 @@ export function calcScore(respuestas, fichaType) {
     return v === 'logrado' || v === 'proceso' || v === 'inicio' || (Number(v) >= 2 && Number(v) <= 4);
   });
 
-  const isSiNo = (tipoRespRaw === 'si_no' || escalaRaw === 'SI_NO' || escalaRaw === 'SI_NO_NA' ||
+  const isJec = isFichaJec(fichaType) || isFichaCoordTutoriaJec(fichaType) || isFichaCoordPedagogico(fichaType) || isFichaEspecialistaJec(fichaType);
+  const vJec = isFichaJec(fichaType) ? (getMomentoFichaJec(fichaType) || Number(fichaType.visita) || Number(fichaType.momento) || null) : null;
+  const isJec1er = isFichaJec(fichaType) && (vJec === 1 || isFichaJec1erMomento(fichaType));
+  const isJec3er = isFichaJec(fichaType) && (vJec === 3 || isFichaJec3erMomento(fichaType));
+
+  const isSiNo = !isJec1er && (tipoRespRaw === 'si_no' || escalaRaw === 'SI_NO' || escalaRaw === 'SI_NO_NA' ||
     tipoRespRaw.includes('si_no') || escalaRaw.includes('SI_NO') || hasSiNoResponses);
 
   // Resolver escala: preferir el campo 'escala' (v2) o traducir 'tipoRespuesta' (legacy)
-  const escala = isSiNo ? 'SI_NO_NA' : (fichaType.escala
+  const escala = isJec1er ? 'ESCALA_1_3' : (isSiNo ? 'SI_NO_NA' : (fichaType.escala
     || LEGADO_A_ESCALA[fichaType.tipoRespuesta]
-    || ((isFichaCoordPedagogico(fichaType) || isFichaCoordTutoriaJec(fichaType)) ? 'ESCALA_1_3' : 'SI_NO_NA'));
-  const isJec = isFichaJec(fichaType) || isFichaCoordTutoriaJec(fichaType) || isFichaCoordPedagogico(fichaType) || isFichaEspecialistaJec(fichaType);
+    || ((isFichaCoordPedagogico(fichaType) || isFichaCoordTutoriaJec(fichaType)) ? 'ESCALA_1_3' : 'SI_NO_NA')));
+
+  // Resolver secciones activas considerando multi-visita con indicadores diferenciados
+  let activeSections = fichaType.secciones || [];
+  if (isFichaMaterialesCebe(fichaType) && (!activeSections || activeSections.length < 5 || activeSections.reduce((acc, s) => acc + (s.items?.length || 0), 0) < 14)) {
+    activeSections = MATERIALES_CEBE_SECCIONES;
+  }
+  let vIdx = 0;
+  if (fichaType.visita !== undefined && fichaType.visita !== null) {
+    if (typeof fichaType.visita === 'number') vIdx = fichaType.visita - 1;
+    else if (typeof fichaType.visita === 'string') {
+      const m = fichaType.visita.match(/\d+/);
+      if (m) vIdx = parseInt(m[0], 10) - 1;
+    }
+  }
+  if (fichaType.tieneVisitas && fichaType.tipoVisitas === 'items_por_visita' && fichaType.seccionesPorVisita) {
+    if (vIdx >= 0 && fichaType.seccionesPorVisita[vIdx] && fichaType.seccionesPorVisita[vIdx].length > 0) {
+      activeSections = fichaType.seccionesPorVisita[vIdx];
+    }
+  }
+  if (isJec1er && (!activeSections || activeSections.length === 0 || activeSections.length === 31 || activeSections.length === 26)) {
+    activeSections = fichaType.seccionesPorVisita?.[0] || fichaType.seccionesPorVisita?.['0'] || JEC_1ER_SECCIONES;
+  }
+
   const isEbr = !isSiNo && isFichaEbrGestionEscolar(fichaType);
   let regla_nivel = fichaType.regla_nivel || null;
-  if (fichaType.regla_nivel === 'conteo_rangos' || fichaType.regla_nivel_config) {
+
+  if (isJec1er) {
+    regla_nivel = REGLA_NIVEL_JEC_1ER_MOMENTO;
+  } else if (isJec3er || (isFichaJec(fichaType) && (vIdx === 2 || (activeSections && activeSections.reduce((a, s) => a + (s.items?.length || 0), 0) === 26)))) {
+    regla_nivel = REGLA_NIVEL_JEC_3ER_MOMENTO;
+  } else if (fichaType.regla_nivel === 'conteo_rangos' || fichaType.regla_nivel_config) {
     const cfg = fichaType.regla_nivel_config || {};
     regla_nivel = {
       tipo: 'conteo',
@@ -130,11 +163,7 @@ export function calcScore(respuestas, fichaType) {
     const totalItems = (fichaType.secciones || []).reduce((acc, s) => acc + (s.items || []).length, 0) || 25;
     regla_nivel = getReglaNivelComunEbrEbePrite(totalItems);
   } else if (!regla_nivel && isFichaJec(fichaType)) {
-    if (isFichaJec1erMomento(fichaType)) {
-      regla_nivel = REGLA_NIVEL_JEC_1ER_MOMENTO;
-    } else {
-      regla_nivel = REGLA_NIVEL_JEC;
-    }
+    regla_nivel = REGLA_NIVEL_JEC;
   } else if (isFichaCoordPedagogico(fichaType)) {
     // Proteger contra plantillas que hayan heredado erróneamente la regla de Tutoría (63 puntos)
     if (!regla_nivel || regla_nivel.maxPuntaje === 63 || (regla_nivel.rangos && regla_nivel.rangos.some(r => r.max === 63 || r.min === 53))) {
@@ -142,25 +171,6 @@ export function calcScore(respuestas, fichaType) {
     }
   } else if (!regla_nivel && isFichaCoordTutoriaJec(fichaType)) {
     regla_nivel = REGLA_NIVEL_COORD_TUTORIA_JEC;
-  }
-
-  // Resolver secciones activas considerando multi-visita con indicadores diferenciados
-  let activeSections = fichaType.secciones || [];
-  if (isFichaMaterialesCebe(fichaType) && (!activeSections || activeSections.length < 5 || activeSections.reduce((acc, s) => acc + (s.items?.length || 0), 0) < 14)) {
-    activeSections = MATERIALES_CEBE_SECCIONES;
-  }
-  if (fichaType.tieneVisitas && fichaType.tipoVisitas === 'items_por_visita' && fichaType.seccionesPorVisita) {
-    let vIdx = 0;
-    if (fichaType.visita !== undefined && fichaType.visita !== null) {
-      if (typeof fichaType.visita === 'number') vIdx = fichaType.visita - 1;
-      else if (typeof fichaType.visita === 'string') {
-        const m = fichaType.visita.match(/\d+/);
-        if (m) vIdx = parseInt(m[0], 10) - 1;
-      }
-    }
-    if (vIdx >= 0 && fichaType.seccionesPorVisita[vIdx] && fichaType.seccionesPorVisita[vIdx].length > 0) {
-      activeSections = fichaType.seccionesPorVisita[vIdx];
-    }
   }
 
   const valMap = buildResponseValMap(respuestas, isJec);
@@ -180,7 +190,11 @@ export function calcScore(respuestas, fichaType) {
       const it = sec.items[iIdx];
       const v = resolveItemValue(valMap, it, sec, sIdx, iIdx, isJec);
 
-      const secEscala = isSiNo ? 'SI_NO_NA' : (sec.escala || (sec.tipo ? (LEGADO_A_ESCALA[sec.tipo] || sec.tipo) : null) || escala);
+      const isCondSec = isJec1er && (sIdx === 0 || sec.id?.includes('cond') || /condici[oó]n/i.test(sec.nombre || ''));
+      const isRubricSec = isJec1er && !isCondSec;
+      const secEscala = isCondSec
+        ? 'SI_NO_NA'
+        : (isRubricSec ? 'ESCALA_1_3' : (isSiNo ? 'SI_NO_NA' : (sec.escala || (sec.tipo ? (LEGADO_A_ESCALA[sec.tipo] || sec.tipo) : null) || escala)));
       const sc = puntajeItem(secEscala, v);
       if (sc !== null) {
         secScore += sc;
@@ -229,11 +243,13 @@ export function calcScore(respuestas, fichaType) {
 
   const maxPuntajeOficial = isEbr
     ? (regla_nivel?.maxPuntaje || (Number(fichaType.visita) === 2 ? 69 : 57))
-    : (isSiNo ? (regla_nivel?.maxConteo || totalCount) : (regla_nivel?.maxPuntaje || (totalCount * 3)));
+    : (isJec1er ? (regla_nivel?.maxPuntaje || 111) : (isSiNo ? (regla_nivel?.maxConteo || totalCount) : (regla_nivel?.maxPuntaje || (totalCount * 3))));
 
   const pct = isEbr
     ? ((maxPuntajeOficial > 0 && puntaje_total_raw > 0) ? Math.round((puntaje_total_raw / maxPuntajeOficial) * 100) : (totalCount > 0 ? Math.round((totalScore / totalCount) * 100) : null))
-    : (totalCount > 0 ? Math.round((totalScore / totalCount) * 100) : null);
+    : (isJec1er
+      ? ((maxPuntajeOficial > 0 && puntaje_total_raw > 0) ? Math.round((puntaje_total_raw / maxPuntajeOficial) * 100) : (totalCount > 0 ? Math.round((totalScore / totalCount) * 100) : null))
+      : (totalCount > 0 ? Math.round((totalScore / totalCount) * 100) : null));
 
   const resultado = {
     pct,

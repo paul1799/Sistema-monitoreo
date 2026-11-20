@@ -9,7 +9,7 @@ import { isFichaEbrGestionEscolar, isFichaMaterialesCebe } from '../../domain/fi
 import { MATERIALES_CEBE_SECCIONES } from '../../domain/fichas/catalogo-base.js';
 import { isFichaCebeGestion, CEBE_SECCIONES } from '../../cebe-gestion.js';
 import { isFichaPriteGestion, PRITE_SECCIONES } from '../../prite-gestion.js';
-import { isFichaJec, JEC_SECCIONES } from '../../jec-monitoreo.js';
+import { isFichaJec, JEC_SECCIONES, getActiveJecSections } from '../../jec-monitoreo.js';
 import { JEC_1ER_SECCIONES } from '../../jec-1er-monitoreo.js';
 
 /**
@@ -46,8 +46,8 @@ export function renderItemReportSectionHtml(ft, statsList, isAllMode = false, ta
     if (effVisita === 1) {
       seccionesParaAgg = (ft.seccionesPorVisita && (ft.seccionesPorVisita[0] || ft.seccionesPorVisita['0'])) || ft.secciones || JEC_1ER_SECCIONES;
     } else {
-      const vIdx = (effVisita && effVisita >= 2) ? (effVisita - 1) : 1;
-      seccionesParaAgg = (ft.seccionesPorVisita && (ft.seccionesPorVisita[vIdx] || ft.seccionesPorVisita[1] || ft.seccionesPorVisita['1'] || ft.seccionesPorVisita[2] || ft.seccionesPorVisita['2'])) || ft.secciones || JEC_SECCIONES;
+      const vNum = (effVisita && effVisita >= 2) ? Number(effVisita) : 2;
+      seccionesParaAgg = getActiveJecSections(ft, vNum);
     }
   } else if (!isSiNo && isFichaCebeGestion(ft)) {
     seccionesParaAgg = (ft.secciones && ft.secciones.length > 0) ? ft.secciones : CEBE_SECCIONES;
@@ -89,7 +89,9 @@ export function renderItemReportSectionHtml(ft, statsList, isAllMode = false, ta
 
   const effectiveFt = (isFichaJec(ft) && effVisita !== 1)
     ? { ...ft, secciones: seccionesParaAgg, tipoRespuesta: 'si_no', escala: 'SI_NO_NA' }
-    : { ...ft, secciones: seccionesParaAgg };
+    : (isFichaJec(ft) && effVisita === 1)
+      ? { ...ft, secciones: seccionesParaAgg, tipoRespuesta: 'escala_1_3', escala: 'ESCALA_1_3', visita: 1 }
+      : { ...ft, secciones: seccionesParaAgg };
 
   return renderItemReportHtml(itemAgg, effectiveFt.tipoRespuesta, effectiveFt);
 }

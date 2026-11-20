@@ -582,9 +582,45 @@ function startListeners() {
           ...(officialJec.seccionesPorVisita || {}),
           ...(jecDoc.seccionesPorVisita || {})
         };
+        const countSecItems = (secs) => Array.isArray(secs) ? secs.reduce((acc, s) => acc + (s.items?.length || 0), 0) : 0;
         if (!mergedSecs[1] || mergedSecs[1].length === 0) mergedSecs[1] = officialJec.seccionesPorVisita[1];
-        if (!mergedSecs[2] || mergedSecs[2].length === 0) mergedSecs[2] = officialJec.seccionesPorVisita[2];
+        if (!mergedSecs[2] || mergedSecs[2].length === 0 || countSecItems(mergedSecs[2]) === 31) {
+          mergedSecs[2] = officialJec.seccionesPorVisita[2];
+        }
         if (!mergedSecs[0] || mergedSecs[0].length === 0) mergedSecs[0] = officialJec.seccionesPorVisita[0];
+
+        // Normalización canónica de numeración e IDs en 1er Momento JEC (Visita 1):
+        // Bloque Sí/No (Condiciones): 01 al 07
+        // Bloque Rúbricas numéricas (Aspectos 2 al 5): 01 al 37 correlativos continuos
+        if (Array.isArray(mergedSecs[0]) && mergedSecs[0].length > 0) {
+          const condSec = mergedSecs[0].find(s => s.id?.includes('cond') || /condici[oó]n/i.test(s.nombre || '')) || mergedSecs[0][0];
+          const rubricSecs = mergedSecs[0].filter(s => s !== condSec);
+
+          if (condSec) {
+            condSec.id = condSec.id || 'sec_condiciones';
+            condSec.tipo = 'si_no';
+            condSec.tipoRespuesta = 'si_no';
+            condSec.escala = 'SI_NO_NA';
+            (condSec.items || []).forEach((it, idx) => {
+              it.num = idx + 1;
+              if (!it.id || /^\d+$/.test(it.id)) it.id = `c${idx + 1}`;
+            });
+          }
+
+          let rubricCounter = 0;
+          rubricSecs.forEach((sec, sIdx) => {
+            sec.id = sec.id || `sec_aspecto_0${sIdx + 2}`;
+            sec.tipo = 'escala1_3';
+            sec.tipoRespuesta = 'escala1_3';
+            sec.escala = 'ESCALA_1_3';
+            (sec.items || []).forEach((it) => {
+              rubricCounter++;
+              it.num = rubricCounter; // 01 al 37 correlativos
+              if (!it.id || /^\d+$/.test(it.id)) it.id = `it_${String(rubricCounter).padStart(2, '0')}`;
+            });
+          });
+        }
+
         jecDoc.seccionesPorVisita = mergedSecs;
 
         // Para jecDoc.secciones: garantizar que contenga la estructura estándar de 2do Momento (31 ítems o editada)

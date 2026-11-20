@@ -14,10 +14,10 @@ import {
   EBR_GESTION_VISITA_2_SECCIONES,
   EBR_GESTION_VISITA_3_SECCIONES
 } from '../../ebr-gestion.js?v=20261015_v1';
-import { JEC_SECCIONES } from '../../jec-monitoreo.js?v=20261015_v1';
+import { JEC_SECCIONES, JEC_3ER_SECCIONES } from '../../jec-monitoreo.js?v=20261120_v7';
 import { JEC_1ER_SECCIONES } from '../../jec-1er-monitoreo.js?v=20261016_v4';
 
-export { EBR_GESTION_VISITA_3_SECCIONES, JEC_1ER_SECCIONES };
+export { EBR_GESTION_VISITA_3_SECCIONES, JEC_1ER_SECCIONES, JEC_3ER_SECCIONES };
 
 /**
  * 8. Secciones oficiales de Monitoreo de Materiales Educativos (CEBE/PRITE)
@@ -154,7 +154,7 @@ export const PLANTILLAS_BASE_OFICIALES = {
     seccionesPorVisita: {
       0: JEC_1ER_SECCIONES,
       1: JEC_SECCIONES,
-      2: JEC_SECCIONES
+      2: JEC_3ER_SECCIONES
     },
     secciones: JEC_SECCIONES,
     extras: [
