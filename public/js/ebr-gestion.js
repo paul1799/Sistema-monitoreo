@@ -1156,15 +1156,25 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
     const btnCopiarTitle = isV3
       ? 'Copia el Total de Docentes por nivel desde el segundo momento'
       : 'Copia el Total de Docentes por nivel desde el primer momento';
+    const btnJalarId = isV3 ? 'btnJalarDocentesM2' : 'btnJalarDocentesM1';
+    const btnJalarText = isV3 ? '📥 Jalar datos del segundo momento' : '📥 Jalar datos del primer momento';
+    const btnJalarTitle = isV3
+      ? 'Jalar los datos de los docentes registrados en la Visita 2 (Segundo momento)'
+      : 'Jalar los datos de los docentes registrados en la Visita 1 (Primer momento)';
     const t5Ayuda = isV3
       ? 'Resultados correspondientes al tercer momento (salida y balance anual) de monitoreo a la práctica pedagógica.'
       : 'Resultados acumulados o correspondientes al segundo momento de monitoreo a la práctica pedagógica.';
 
     tablasDocentesHtml = `
-      <!-- TABLA IV: PRIMER MOMENTO -->
+      <!-- TABLA IV: SEGUNDO MOMENTO (V3) O PRIMER MOMENTO (V2) -->
       <div class="panel ebrDocentesPanel" id="panelDocentes${isV3 ? 'M2' : 'M1'}">
-        <div class="sectionHeaderTitle">
-          ${t4Titulo}
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+          <div class="sectionHeaderTitle" style="margin:0">
+            ${t4Titulo}
+          </div>
+          <button type="button" class="btn secondary small" id="${btnJalarId}" title="${btnJalarTitle}" style="display:inline-flex;align-items:center;gap:6px;font-weight:600">
+            ${btnJalarText}
+          </button>
         </div>
         <p class="helpText" style="margin-top:0">
           Registre los docentes monitoreados y los resultados de las 5 rúbricas de aula (I, II, III y IV). La fila <strong>Total</strong> y los <strong>no monitoreados</strong> se calculan automáticamente.
@@ -2459,6 +2469,168 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       };
     }
 
+    // Jalar datos de docentes registrados de visita previa (ej: Visita 2 en Visita 3)
+    const btnJalarM2 = host.querySelector('#btnJalarDocentesM2');
+    const btnJalarM1 = host.querySelector('#btnJalarDocentesM1');
+    const btnJalar = btnJalarM2 || btnJalarM1;
+    if (btnJalar) {
+      btnJalar.onclick = async () => {
+        syncAllEbrFormDataFromDom(host);
+        const activeV = getActiveVisita();
+        const isV3Active = activeV === 3;
+        const targetV = isV3Active ? 2 : 1;
+        const targetVLabel = isV3Active ? 'segundo momento (Visita 2)' : 'primer momento (Visita 1)';
+        const destKey = isV3Active ? 'docentesMomento2' : 'docentesMomento1';
+
+        let colId = ebrFormState.colegioId;
+        const codLocal = (ebrFormState.codigoLocal || '').trim();
+        const instName = (ebrFormState.institucion || '').trim();
+        const instNorm = normalizeText(instName);
+
+        // Si colId no está definido, intentar resolver desde state.colegios
+        if (!colId && (codLocal || instNorm)) {
+          const matchedCol = (state?.colegios || []).find(c => {
+            if (codLocal && (c.codigoLocal === codLocal || c.codLocal === codLocal)) return true;
+            if (instNorm && normalizeText(c.ie || '') === instNorm) return true;
+            return false;
+          });
+          if (matchedCol) {
+            colId = matchedCol.id;
+            ebrFormState.colegioId = matchedCol.id;
+          }
+        }
+
+        if (!colId && !codLocal && !instName) {
+          showToast('⚠️ Seleccione o ingrese primero la Institución Educativa en la Sección I.');
+          const instEl = host.querySelector('#f_institucion');
+          if (instEl) instEl.focus();
+          return;
+        }
+
+        // Buscar en state.submissions
+        const allSubs = (state && Array.isArray(state.submissions)) ? state.submissions : [];
+        const candidateSubs = allSubs.filter(s => {
+          if (!isFichaEbrGestionEscolar(s)) return false;
+          if (Number(s.visita) !== targetV) return false;
+          if (colId && s.colegioId === colId) return true;
+          if (codLocal && ((s.ie && s.ie.codigoLocal === codLocal) || s.codigoLocal === codLocal || (s.ie && s.ie.codLocal === codLocal))) return true;
+          if (instNorm && normalizeText(s.institucion || '') === instNorm) return true;
+          return false;
+        });
+
+        // Ordenar por fecha descendente
+        candidateSubs.sort((a, b) => {
+          const dateA = a.fecha || a.createdAt || '';
+          const dateB = b.fecha || b.createdAt || '';
+          return String(dateB).localeCompare(String(dateA));
+        });
+
+        let prevSub = candidateSubs[0] || null;
+
+        // Fallback a Firestore si dbNs está disponible
+        if (!prevSub && dbNs) {
+          try {
+            const subsCol = dbNs.collection('submissions');
+            if (colId) {
+              const snap = await subsCol.where('colegioId', '==', colId).where('visita', '==', targetV).get();
+              if (!snap.empty) {
+                const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                docs.sort((a, b) => String(b.fecha || b.createdAt || '').localeCompare(String(a.fecha || a.createdAt || '')));
+                prevSub = docs[0];
+              }
+            }
+            if (!prevSub && codLocal) {
+              const snap = await subsCol.where('codigoLocal', '==', codLocal).where('visita', '==', targetV).get();
+              if (!snap.empty) {
+                const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                docs.sort((a, b) => String(b.fecha || b.createdAt || '').localeCompare(String(a.fecha || a.createdAt || '')));
+                prevSub = docs[0];
+              }
+            }
+          } catch (e) {
+            console.warn('Error al consultar visita previa en Firestore:', e);
+          }
+        }
+
+        if (!prevSub) {
+          showToast(`⚠️ No se encontró la ${targetVLabel} registrada para ${instName || codLocal || 'esta I.E.'}.`);
+          return;
+        }
+
+        // Extraer los datos de docentes de la visita previa
+        let sourceRows = null;
+        if (prevSub.docentes) {
+          if (isV3Active) {
+            const m2List = Array.isArray(prevSub.docentes.momento2) ? prevSub.docentes.momento2 : [];
+            const m2HasData = m2List.some(r => Number(r.monitoreados) > 0 || Number(r.total) > 0);
+            if (m2HasData) {
+              sourceRows = m2List;
+            } else {
+              const m1List = Array.isArray(prevSub.docentes.momento1) ? prevSub.docentes.momento1 : [];
+              const m1HasData = m1List.some(r => Number(r.monitoreados) > 0 || Number(r.total) > 0);
+              if (m1HasData) {
+                sourceRows = m1List;
+              } else if (m2List.length) {
+                sourceRows = m2List;
+              }
+            }
+          } else {
+            sourceRows = (Array.isArray(prevSub.docentes.momento1) && prevSub.docentes.momento1.length)
+              ? prevSub.docentes.momento1
+              : prevSub.docentes.momento2;
+          }
+        }
+
+        if (!sourceRows || !sourceRows.length) {
+          const migrated = migrateLegacyEbrTotals(prevSub);
+          if (migrated) {
+            sourceRows = isV3Active ? (migrated.momento2 || migrated.momento1) : migrated.momento1;
+          }
+        }
+
+        if (!Array.isArray(sourceRows) || sourceRows.length === 0) {
+          showToast(`⚠️ La ${targetVLabel} registrada no contiene datos de docentes.`);
+          return;
+        }
+
+        const parseRubArr = (arr) => {
+          if (Array.isArray(arr)) {
+            return [0, 1, 2, 3].map(i => (arr[i] !== undefined && arr[i] !== null && arr[i] !== '') ? arr[i] : '');
+          }
+          return ['', '', '', ''];
+        };
+
+        // Copiar a ebrFormState preservando estructura completa
+        ebrFormState[destKey] = sourceRows.map(r => ({
+          id: genId(),
+          nivel: r.nivel || '',
+          noAplica: !!r.noAplica,
+          total: (r.total !== undefined && r.total !== null) ? r.total : '',
+          monitoreados: (r.monitoreados !== undefined && r.monitoreados !== null) ? r.monitoreados : '',
+          noMonitoreados: (r.noMonitoreados !== undefined && r.noMonitoreados !== null)
+            ? r.noMonitoreados
+            : Math.max(0, (Number(r.total) || 0) - (Number(r.monitoreados) || 0)),
+          R1: parseRubArr(r.R1),
+          R2: parseRubArr(r.R2),
+          R3: parseRubArr(r.R3),
+          R4: parseRubArr(r.R4),
+          R5: parseRubArr(r.R5)
+        }));
+
+        const scrollY = window.scrollY;
+        try { sessionStorage.setItem('reg_prefill_visita', String(activeV)); } catch (_) { }
+        renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: activeV });
+        window.scrollTo({ top: scrollY, behavior: 'instant' });
+
+        const hasAnyTeacherData = sourceRows.some(r => Number(r.monitoreados) > 0 || Number(r.total) > 0);
+        if (hasAnyTeacherData) {
+          showToast(`✓ Se jalaron los datos de docentes del ${targetVLabel} (${sourceRows.length} niveles cargados).`);
+        } else {
+          showToast(`ℹ️ Se cargaron los niveles del ${targetVLabel}, pero los valores de docentes estaban vacíos o en 0.`);
+        }
+      };
+    }
+
     // Agregar fila personalizada a la tabla de docentes
     host.querySelectorAll('.btnAddFilaDocente').forEach(btn => {
       btn.onclick = () => {
@@ -2774,6 +2946,11 @@ function checkExistingVisitasEbr(colegio, host, state, ft, dbNs = null, currentU
         ebrFormState.visita = 3;
         try { sessionStorage.setItem('reg_prefill_visita', '3'); } catch (_) { }
         renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: 3 });
+      } else if (ebrFormState.visita === 3) {
+        const scrollY = window.scrollY;
+        try { sessionStorage.setItem('reg_prefill_visita', '3'); } catch (_) { }
+        renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigate, isEditing, { visita: 3 });
+        window.scrollTo({ top: scrollY, behavior: 'instant' });
       }
     } else if (hasV3) {
       // Ya tiene Visita 3

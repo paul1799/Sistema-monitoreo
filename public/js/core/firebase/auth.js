@@ -1335,7 +1335,20 @@ export function setupAuthListeners(auth, firestoreDb, { onLogin, onLogout }) {
       let userRoleDoc = null;
       try {
         role = await resolveRole(user, firestoreDb);
-        userRoleDoc = await getUserRoleDoc(user.uid, firestoreDb);
+        try {
+          const cachedDocRaw = sessionStorage.getItem('agebre_user_doc_' + user.uid);
+          if (cachedDocRaw) {
+            const parsedDoc = JSON.parse(cachedDocRaw);
+            const em = (user.email || '').toLowerCase();
+            const isMstr = (em === 'agebre@ugel03.gob.pe' || em === 'paulmontalvo54@gmail.com');
+            if (parsedDoc && (parsedDoc.estadoVerificacion === 'verificado' || isMstr)) {
+              userRoleDoc = parsedDoc;
+            }
+          }
+        } catch (_) {}
+        if (!userRoleDoc) {
+          userRoleDoc = await getUserRoleDoc(user.uid, firestoreDb);
+        }
       } catch (e) {
         console.error('No se pudo resolver el rol del usuario', e);
         document.getElementById('loginScreen').style.display = 'flex';

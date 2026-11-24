@@ -1,4 +1,4 @@
-﻿/* =========================================================================
+/* =========================================================================
    app.js — Archivo principal que importa los demás módulos e inicializa
    el flujo completo de la aplicación.
    ========================================================================= */
@@ -6,7 +6,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { FIREBASE_CONFIG } from './firebase-config.js?v=20261118_v6';
 import { getFirestore, initFirestore, makeDbAdapter } from './firestore.js?v=20261123_v10';
-import { getAuth, signOut, setupAuthListeners } from './auth.js?v=20261120_v2';
+import { getAuth, signOut, setupAuthListeners } from './auth.js?v=20261124_v5';
 import {
   esc,
   showToast,
@@ -38,7 +38,7 @@ import { openUserProfileModal, openChangePasswordModal } from './ui/perfil-modal
 import { renderAlertasTab, getAlertCount } from './alertas.js?v=20261023_v3';
 import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261123_v10';
 import { safeSessionGet, safeSessionSet, safeSessionRemove } from './core/utils/storage.js?v=20261123_v10';
-import { PLANTILLAS_BASE_OFICIALES, ALIAS_A_PLANTILLA_BASE } from './catalogo-plantillas-base.js?v=20261016_v4';
+import { PLANTILLAS_BASE_OFICIALES, ALIAS_A_PLANTILLA_BASE } from './catalogo-plantillas-base.js?v=20261124_v5';
 import { isFichaEbrGestionEscolar, isFichaCoordTutoriaJec } from './calc/detectors.js?v=20261103_v8';
 import { cleanForFirestore } from './ui/core-utils.js?v=20261103_v8';
 
@@ -73,17 +73,155 @@ let currentUser = null;
 let currentRole = null; // 'admin' | 'general'
 let connectionTimer = null;
 
-// Carga instantánea de catálogo base oficial y plantillas locales (0ms de latencia)
+// Almacenamiento asíncrono seguro en IndexedDB para caché completa sin recortes
+const AGEBRE_IDB_NAME = 'agebre_local_cache_v1';
+const AGEBRE_IDB_STORE = 'kv';
+
+function openCacheIdb() {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === 'undefined') return reject(new Error('No IDB'));
+    try {
+      const req = indexedDB.open(AGEBRE_IDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(AGEBRE_IDB_STORE)) {
+          db.createObjectStore(AGEBRE_IDB_STORE);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+async function saveIdbCache(key, value) {
+  try {
+    const db = await openCacheIdb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(AGEBRE_IDB_STORE, 'readwrite');
+      tx.objectStore(AGEBRE_IDB_STORE).put(value, key);
+      tx.oncomplete = () => { try { db.close(); } catch (_) {} resolve(); };
+      tx.onerror = () => { try { db.close(); } catch (_) {} reject(tx.error); };
+    });
+  } catch (_) {}
+}
+
+async function loadIdbCache(key) {
+  try {
+    const db = await openCacheIdb();
+    return await new Promise((resolve) => {
+      const tx = db.transaction(AGEBRE_IDB_STORE, 'readonly');
+      const req = tx.objectStore(AGEBRE_IDB_STORE).get(key);
+      req.onsuccess = () => { try { db.close(); } catch (_) {} resolve(req.result || null); };
+      req.onerror = () => { try { db.close(); } catch (_) {} resolve(null); };
+    });
+  } catch (_) {
+    return null;
+  }
+}
+
+function compactItemForCache(r) {
+  if (!r || typeof r !== 'object') return r;
+  const out = {};
+  if (r.id !== undefined) out.id = r.id;
+  if (r.num !== undefined) out.num = r.num;
+  if (r.seccion !== undefined) out.seccion = r.seccion;
+  if (r.valor !== undefined) out.valor = r.valor;
+  if (r.respuesta !== undefined) out.respuesta = r.respuesta;
+  if (r.puntos !== undefined) out.puntos = r.puntos;
+  if (r.puntaje !== undefined) out.puntaje = r.puntaje;
+  if (r.aplica !== undefined) out.aplica = r.aplica;
+  if (r.observaciones) out.observaciones = r.observaciones;
+  return out;
+}
+
+function compactSubmissionForCache(s) {
+  if (!s || typeof s !== 'object') return s;
+  const copy = { ...s };
+  if (Array.isArray(s.respuestas)) copy.respuestas = s.respuestas.map(compactItemForCache);
+  if (Array.isArray(s.items)) copy.items = s.items.map(compactItemForCache);
+  return copy;
+}
+
+function saveArrayCache(key, arr, compactFn = null) {
+  if (!Array.isArray(arr)) return;
+  let jsonStr = null;
+  try {
+    const fullStr = JSON.stringify(arr);
+    if (fullStr.length <= 2800000 || !compactFn) {
+      jsonStr = fullStr;
+    } else {
+      jsonStr = JSON.stringify(arr.map(compactFn));
+    }
+  } catch (_) {
+    if (compactFn) {
+      try { jsonStr = JSON.stringify(arr.map(compactFn)); } catch (__) {}
+    }
+  }
+  if (!jsonStr) return;
+  try {
+    sessionStorage.setItem(key, jsonStr);
+  } catch (_) {
+    if (compactFn) {
+      try { sessionStorage.setItem(key, JSON.stringify(arr.map(compactFn))); } catch (__) {}
+    }
+  }
+  try {
+    localStorage.setItem(key, jsonStr);
+  } catch (_) {
+    if (compactFn) {
+      try { localStorage.setItem(key, JSON.stringify(arr.map(compactFn))); } catch (__) {}
+    }
+  }
+}
+
+// Carga segura desde caché local (sessionStorage o localStorage) para evitar pantallas incompletas
+function getCachedArray(key) {
+  for (const store of [sessionStorage, localStorage]) {
+    try {
+      const raw = store.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (_) {}
+  }
+  return [];
+}
+
+// Carga instantánea de tipos de ficha desde caché completa o catálogo base oficial (0ms de latencia)
 function getInitialFichaTypes() {
   const initial = [];
   try {
     const deletedIds = typeof getDeletedFichaTypeIds === 'function' ? getDeletedFichaTypeIds() : new Set();
+
+    // 1. Priorizar última caché completa sincronizada desde Firestore (incluye todas las plantillas activas)
+    const cachedFts = getCachedArray('agebre_cache_ficha_types');
+    if (Array.isArray(cachedFts) && cachedFts.length > 0) {
+      cachedFts.forEach(ft => {
+        if (ft && ft.id && !deletedIds.has(ft.id)) {
+          const baseMatch = typeof PLANTILLAS_BASE_OFICIALES === 'object' ? PLANTILLAS_BASE_OFICIALES[ft.id] : null;
+          if (baseMatch && baseMatch.icono && (!ft.icono || /ðŸ|\?\?/.test(String(ft.icono)))) {
+            ft = { ...ft, icono: baseMatch.icono };
+          }
+          initial.push(ft);
+        }
+      });
+    }
+
+    // 2. Complementar con plantillas personalizadas guardadas localmente
     const localCustoms = JSON.parse(localStorage.getItem('agebre_local_custom_ficha_types') || '[]');
     if (Array.isArray(localCustoms)) {
       localCustoms.forEach(lc => {
-        if (lc && lc.id && !deletedIds.has(lc.id)) initial.push(lc);
+        if (lc && lc.id && !deletedIds.has(lc.id) && !initial.some(x => x.id === lc.id)) {
+          initial.push(lc);
+        }
       });
     }
+
+    // 3. Complementar con plantillas oficiales base si aún no están presentes
     if (typeof PLANTILLAS_BASE_OFICIALES === 'object' && PLANTILLAS_BASE_OFICIALES) {
       Object.entries(PLANTILLAS_BASE_OFICIALES).forEach(([id, baseFt]) => {
         if (!deletedIds.has(id) && (!ALIAS_A_PLANTILLA_BASE || !ALIAS_A_PLANTILLA_BASE[id])) {
@@ -98,23 +236,11 @@ function getInitialFichaTypes() {
   return initial;
 }
 
-// Carga segura desde caché local de sesión para evitar pantallas en blanco
-function getCachedArray(key) {
-  try {
-    const raw = sessionStorage.getItem(key);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch (_) {}
-  return [];
-}
-
 const state = {
   modulo: sessionStorage.getItem('agebre_active_modulo') || 'portal', // 'portal' | 'monitoreo' | 'concursos'
   currentUserRoleDoc: null,
   activeTab: 'dashboard',
-  fichaTypes: getInitialFichaTypes(),  // Pre-poblado de inmediato (14 plantillas oficiales listas al instante)
+  fichaTypes: getInitialFichaTypes(),
   submissions: getCachedArray('agebre_cache_submissions'),
   roles: getCachedArray('agebre_cache_roles'),  // {id(=uid), email, role, createdAt}  — con respaldo en caché
   colegios: getCachedArray('agebre_cache_colegios'),
@@ -298,11 +424,11 @@ function renderSubNavBar() {
       <button type="button" class="navbtn ${state.activeTab === 'dashboard' ? 'active' : ''}" data-tab="dashboard">
         <span class="ic">📊</span> Resumen
       </button>
-      <button type="button" class="navbtn ${state.activeTab === 'registrar' ? 'active' : ''}" data-tab="registrar">
-        <span class="ic">＋</span> Registrar ficha
-      </button>
       <button type="button" class="navbtn ${state.activeTab === 'consolidado' ? 'active' : ''}" data-tab="consolidado">
         <span class="ic">▤</span> Reportes
+      </button>
+      <button type="button" class="navbtn ${state.activeTab === 'registrar' ? 'active' : ''}" data-tab="registrar">
+        <span class="ic">＋</span> Registrar ficha
       </button>
       <button type="button" class="navbtn ${state.activeTab === 'colegios' ? 'active' : ''}" data-tab="colegios">
         <span class="ic">🏫</span> Colegios
@@ -583,10 +709,47 @@ function healCoordTutoriaSubmissions(subs, dbNs) {
 }
 
 
+let liveSyncState = { fichaTypes: false, submissions: false };
+
+function markLiveSync(key) {
+  liveSyncState[key] = true;
+  if (liveSyncState.fichaTypes && liveSyncState.submissions) {
+    setConnectionState('online');
+  }
+}
+
+async function hydrateCacheFromIdb() {
+  try {
+    const [idbFts, idbSubs, idbCols] = await Promise.all([
+      loadIdbCache('fichaTypes_full'),
+      loadIdbCache('submissions_full'),
+      loadIdbCache('colegios_full')
+    ]);
+    let changed = false;
+    if (!liveSyncState.fichaTypes && Array.isArray(idbFts) && idbFts.length > (state.fichaTypes?.length || 0)) {
+      state.fichaTypes = idbFts;
+      changed = true;
+    }
+    if (!liveSyncState.submissions && Array.isArray(idbSubs) && idbSubs.length >= (state.submissions?.length || 0) && idbSubs.length > 0) {
+      state.submissions = idbSubs;
+      changed = true;
+    }
+    if (Array.isArray(idbCols) && idbCols.length > (state.colegios?.length || 0)) {
+      state.colegios = idbCols;
+      changed = true;
+    }
+    if (changed && state.activeTab !== 'registrar') {
+      renderDebounced();
+    }
+  } catch (_) {}
+}
+
 function startListeners() {
   if (startListeners._started) return;
+  stopListeners(); // Limpieza defensiva antes de marcar inicio
   startListeners._started = true;
-  stopListeners(); // Limpieza defensiva
+  liveSyncState = { fichaTypes: false, submissions: false };
+  setConnectionState('syncing');
 
   const handleSnapErr = (colName, err, showUserToast = false) => {
     // Si la sesión se cerró o se está cerrando, los listeners devuelven permission-denied de forma natural
@@ -947,8 +1110,11 @@ function startListeners() {
 
       state.fichaTypes = loaded;
       state.fichaTypes.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+      saveArrayCache('agebre_cache_ficha_types', state.fichaTypes);
+      saveIdbCache('fichaTypes_full', state.fichaTypes);
+      markLiveSync('fichaTypes');
       renderDebounced();
-    }, err => handleSnapErr('fichaTypes', err, true))
+    }, err => { markLiveSync('fichaTypes'); handleSnapErr('fichaTypes', err, true); })
   );
 
   activeUnsubscribers.push(
@@ -957,22 +1123,21 @@ function startListeners() {
       subs.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
       subs = healCoordTutoriaSubmissions(subs, dbNs);
       state.submissions = subs;
-      try {
-        sessionStorage.setItem('agebre_cache_submissions', JSON.stringify(subs.slice(0, 300)));
-      } catch (_) {}
+      saveArrayCache('agebre_cache_submissions', subs, compactSubmissionForCache);
+      saveIdbCache('submissions_full', subs);
+      markLiveSync('submissions');
       if (state.activeTab !== 'registrar') {
         renderDebounced();
       }
-    }, err => handleSnapErr('submissions', err, true))
+    }, err => { markLiveSync('submissions'); handleSnapErr('submissions', err, true); })
   );
 
   activeUnsubscribers.push(
     dbNs.collection('colegios').onSnapshot(snap => {
       state.colegios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       state.colegios.sort((a, b) => (a.ie || '').localeCompare(b.ie || ''));
-      try {
-        sessionStorage.setItem('agebre_cache_colegios', JSON.stringify(state.colegios.slice(0, 300)));
-      } catch (_) {}
+      saveArrayCache('agebre_cache_colegios', state.colegios);
+      saveIdbCache('colegios_full', state.colegios);
       if (state.activeTab !== 'registrar') {
         renderDebounced();
       }
@@ -1000,9 +1165,7 @@ function startListeners() {
         });
       }
       state.responsables.sort((a, b) => (a.nombresApellidos || a.especialista || '').localeCompare(b.nombresApellidos || b.especialista || ''));
-      try {
-        sessionStorage.setItem('agebre_cache_responsables', JSON.stringify(state.responsables));
-      } catch (_) {}
+      saveArrayCache('agebre_cache_responsables', state.responsables);
       if (state.activeTab !== 'registrar') {
         renderDebounced();
       }
@@ -1141,9 +1304,7 @@ function ensureDirectivosListener() {
   activeUnsubscribers.push(
     dbNs.collection('directivos').onSnapshot(snap => {
       state.directivos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      try {
-        sessionStorage.setItem('agebre_cache_directivos', JSON.stringify(state.directivos.slice(0, 300)));
-      } catch (_) {}
+      saveArrayCache('agebre_cache_directivos', state.directivos);
       if (state.activeTab === 'directorio' || state.activeTab === 'colegios') {
         renderDebounced();
       }
@@ -1196,7 +1357,7 @@ function ensureFirmasListeners() {
 }
 
 /* ============================= ESTADO DE CONEXIÓN ============================= */
-function setConnectionState(status) { // 'connecting' | 'online' | 'offline' | 'slow'
+function setConnectionState(status) { // 'connecting' | 'syncing' | 'online' | 'offline' | 'slow'
   const pill = document.getElementById('connectionStatusPill');
   const alertEl = document.getElementById('connectionAlert');
   if (!pill) return;
@@ -1206,6 +1367,11 @@ function setConnectionState(status) { // 'connecting' | 'online' | 'offline' | '
     pill.className = 'connPill online';
     if (label) label.textContent = 'En línea';
     pill.title = 'Conectado a Firebase Firestore en tiempo real';
+    if (alertEl) alertEl.style.display = 'none';
+  } else if (status === 'syncing') {
+    pill.className = 'connPill connecting';
+    if (label) label.textContent = 'Sincronizando…';
+    pill.title = 'Sincronizando registros actualizados desde Firebase Firestore...';
     if (alertEl) alertEl.style.display = 'none';
   } else if (status === 'connecting') {
     pill.className = 'connPill connecting';
@@ -1632,8 +1798,9 @@ async function initApp() {
   setupAuthListeners(auth, firestoreDb, { onLogin, onLogout });
 }
 
-// Render inicial (muestra el estado vacío mientras carga Firebase)
+// Render inicial (muestra caché local instantánea mientras carga Firebase)
 render();
+hydrateCacheFromIdb();
 initApp();
 
 
