@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    features/reportes/index.js — Orquestador central de Reportes y Consolidado
    UGEL 03 · AGEBRE · Fase 2 Reorganización
    ========================================================================= */
@@ -537,12 +537,25 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     const s = x.s; const st = x.st;
     const sFt = isAllMode ? getFichaType(s.fichaTypeId) : ft;
     const isEbr = isFichaEbrGestionEscolar(sFt || ft || s);
+    const isCoordTutoria = isFichaCoordTutoriaJec(sFt || ft);
+    const isCoordPedagogico = isFichaCoordPedagogico(sFt || ft);
+    const isJec = isFichaJec(sFt || ft || s);
     const vNum = getSubmissionVisitaNum(s, sFt || ft);
     let status = null;
     if (st && st.estado && st.estado.label) {
       status = { label: st.estado.label, cls: st.estado.cls };
     } else {
       status = statusFromPct(st.pct, sFt, st?.conteo_si, st?.puntaje, vNum);
+    }
+    if (isJec || isCoordTutoria || isCoordPedagogico) {
+      const l = String(status.label || '').toLowerCase();
+      if (l.includes('lograd') || l.includes('cumple') || l === 'l') {
+        status = { label: 'Logrado', cls: 'st-logrado' };
+      } else if (l.includes('proces') || l.includes('parcial') || l === 'p') {
+        status = { label: 'Proceso', cls: 'st-proceso' };
+      } else if (l.includes('inici') || l.includes('incipient') || l.includes('no cumple') || l.includes('mejorar') || l === 'i') {
+        status = { label: 'Inicio', cls: 'st-inicio' };
+      }
     }
     const isOpen = consExpanded === s.id;
     const detailContent = isOpen ? buildDetail(s) : '';
@@ -556,9 +569,6 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     const displayResp = (subResp && !/^\d+$/.test(subResp) && !subResp.includes('@') && subResp !== '—')
       ? subResp
       : ((s.responsable && !/^\d+$/.test(String(s.responsable).trim()) && !String(s.responsable).includes('@')) ? String(s.responsable).trim() : (subResp || '—'));
-    const isCoordTutoria = isFichaCoordTutoriaJec(sFt || ft);
-    const isCoordPedagogico = isFichaCoordPedagogico(sFt || ft);
-    const isJec = isFichaJec(sFt || ft || s);
     let pctDisplay = (st.pct === null ? '—' : st.pct + '%');
     if (isEbr && st.puntaje !== undefined && st.puntaje !== null) {
       const v = getMomentoVisitaEbr(s);
@@ -572,11 +582,17 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
       const pts = (st.puntaje ?? s.puntaje ?? s.puntajeTotal ?? 0);
       pctDisplay = '<strong>' + pts + '/111 pts</strong><br><small style="color:var(--text-muted);font-weight:600">(' + (st.pct ?? s.pct ?? 0) + '%)</small>';
     } else if (isJec && vNum === 3) {
-      const cSi = (st.conteo_si ?? s.conteo_si ?? 0);
-      pctDisplay = '<strong>' + cSi + '/26 Sí</strong><br><small style="color:var(--text-muted);font-weight:600">(' + (st.pct ?? s.pct ?? 0) + '%)</small>';
+      const maxItems = 26;
+      const rawSi = (st.conteo_si !== undefined && st.conteo_si !== null) ? st.conteo_si : (s.conteo_si ?? 0);
+      const cSi = Math.min(rawSi, maxItems);
+      const pctVal = maxItems > 0 ? Math.round((cSi / maxItems) * 100) : (st.pct ?? s.pct ?? 0);
+      pctDisplay = '<strong>' + cSi + '/' + maxItems + ' Sí</strong><br><small style="color:var(--text-muted);font-weight:600">(' + pctVal + '%)</small>';
     } else if (isJec && vNum === 2) {
-      const cSi = (st.conteo_si ?? s.conteo_si ?? 0);
-      pctDisplay = '<strong>' + cSi + '/31 Sí</strong><br><small style="color:var(--text-muted);font-weight:600">(' + (st.pct ?? s.pct ?? 0) + '%)</small>';
+      const maxItems = 31;
+      const rawSi = (st.conteo_si !== undefined && st.conteo_si !== null) ? st.conteo_si : (s.conteo_si ?? 0);
+      const cSi = Math.min(rawSi, maxItems);
+      const pctVal = maxItems > 0 ? Math.round((cSi / maxItems) * 100) : (st.pct ?? s.pct ?? 0);
+      pctDisplay = '<strong>' + cSi + '/' + maxItems + ' Sí</strong><br><small style="color:var(--text-muted);font-weight:600">(' + pctVal + '%)</small>';
     }
 
     const visitaLabel = (sFt && !sFt.tieneVisitas && !s.visita) ? '—' : ('V' + vNum);
@@ -628,6 +644,7 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     const isEbr = isFichaEbrGestionEscolar(sFt || ft || last.s);
     const isCoordTutoria = isFichaCoordTutoriaJec(sFt || ft);
     const isCoordPedagogico = isFichaCoordPedagogico(sFt || ft);
+    const isJec = isFichaJec(sFt || ft || last.s);
     const withP = g.visitas.filter(x => x.st && x.st.pct !== null);
     const avg = withP.length ? Math.round(withP.reduce((a, x) => a + x.st.pct, 0) / withP.length) : null;
     const withPts = g.visitas.filter(x => x.st && x.st.puntaje !== undefined && x.st.puntaje !== null);
@@ -648,6 +665,16 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
       gst = { label: last.st.estado.label, cls: last.st.estado.cls };
     } else {
       gst = statusFromPct(avg, sFt, avgSi, avgPts, last.s.visita);
+    }
+    if ((isJec || isCoordTutoria || isCoordPedagogico) && gst) {
+      const l = String(gst.label || '').toLowerCase();
+      if (l.includes('lograd') || l.includes('cumple') || l === 'l') {
+        gst = { label: 'Logrado', cls: 'st-logrado' };
+      } else if (l.includes('proces') || l.includes('parcial') || l === 'p') {
+        gst = { label: 'Proceso', cls: 'st-proceso' };
+      } else if (l.includes('inici') || l.includes('incipient') || l.includes('no cumple') || l.includes('mejorar') || l === 'i') {
+        gst = { label: 'Inicio', cls: 'st-inicio' };
+      }
     }
     const scoreTitle = ((isCoordTutoria || isCoordPedagogico || isEbr) && avgPts !== null) ? ' title="' + avgPts + '/' + maxPts + ' pts"' : '';
 
@@ -713,6 +740,16 @@ export function renderConsBody(state, getFichaType, dbNs, isAdmin, navigate, cur
     const isJecPedag = isFichaCoordPedagogico(sFt || ft);
     const isCoordFicha = isJecTutoria || isJecPedag;
     const isAnyJec = isCoordFicha || isFichaJec(sFt || ft);
+    if (isAnyJec && gst) {
+      const l = String(gst.label || '').toLowerCase();
+      if (l.includes('lograd') || l.includes('cumple') || l === 'l') {
+        gst = { label: 'Logrado', cls: 'st-logrado' };
+      } else if (l.includes('proces') || l.includes('parcial') || l === 'p') {
+        gst = { label: 'Proceso', cls: 'st-proceso' };
+      } else if (l.includes('inici') || l.includes('incipient') || l.includes('no cumple') || l.includes('mejorar') || l === 'i') {
+        gst = { label: 'Inicio', cls: 'st-inicio' };
+      }
+    }
     const scoreTitle = ((isCoordFicha || isEbr) && avgPts !== null) ? ' title="' + avgPts + '/' + maxPts + ' pts"' : '';
 
     let visitBadges = '';

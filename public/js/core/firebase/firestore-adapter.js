@@ -38,20 +38,14 @@ export { getFirestore, runTransaction };
  * @returns {import('firebase/firestore').Firestore}
  */
 export function initFirestore(firebaseApp) {
+  // En Microsoft Edge y navegadores con Tracking Prevention o múltiples pestañas,
+  // persistentLocalCache con IndexedDB genera 'INTERNAL ASSERTION FAILED: Unexpected state'
+  // en persistent_stream.ts cuando el navegador bloquea transacciones o locks de IndexedDB.
+  // memoryLocalCache() es completamente inmune a bloqueos de almacenamiento, rápido y seguro.
   let cacheConfig = null;
   try {
-    if (typeof window !== 'undefined' && window.indexedDB) {
-      cacheConfig = persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-      });
-    } else {
-      cacheConfig = memoryLocalCache();
-    }
-  } catch (_) {
-    try {
-      cacheConfig = memoryLocalCache();
-    } catch (_) {}
-  }
+    cacheConfig = memoryLocalCache();
+  } catch (_) {}
 
   try {
     return initializeFirestore(firebaseApp, {
@@ -59,7 +53,7 @@ export function initFirestore(firebaseApp) {
       ...(cacheConfig ? { localCache: cacheConfig } : {})
     });
   } catch (e1) {
-    console.warn('initFirestore con cache falló, reintentando long-polling básico:', e1);
+    console.warn('initFirestore con memoryLocalCache falló, reintentando long-polling básico:', e1);
     try {
       return initializeFirestore(firebaseApp, {
         experimentalForceLongPolling: true

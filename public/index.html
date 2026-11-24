@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 
 <head>
@@ -7,6 +7,68 @@
   <title>Sistematización de Fichas de Monitoreo</title>
   <meta name="description"
     content="Sistema compartido de fichas de monitoreo educativo: registra visitas, cruza colegios con tu REI y genera reportes de avance al instante.">
+
+  <!-- Safe Storage Shim (Previene bloqueos por Tracking Prevention en Edge/Chrome/Safari) -->
+  <script>
+    (function() {
+      function createMemoryStorage() {
+        var store = {};
+        return {
+          getItem: function(k) { return Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null; },
+          setItem: function(k, v) { store[k] = String(v); },
+          removeItem: function(k) { delete store[k]; },
+          clear: function() { store = {}; },
+          key: function(i) { return Object.keys(store)[i] || null; },
+          get length() { return Object.keys(store).length; }
+        };
+      }
+      try {
+        var tK = '__t_st__';
+        window.sessionStorage.setItem(tK, '1');
+        window.sessionStorage.removeItem(tK);
+      } catch (e) {
+        try {
+          Object.defineProperty(window, 'sessionStorage', {
+            value: createMemoryStorage(),
+            configurable: true,
+            writable: true
+          });
+        } catch (_) {
+          try { window.sessionStorage = createMemoryStorage(); } catch (__) {}
+        }
+      }
+      try {
+        var tK2 = '__t_loc__';
+        window.localStorage.setItem(tK2, '1');
+        window.localStorage.removeItem(tK2);
+      } catch (e) {
+        try {
+          Object.defineProperty(window, 'localStorage', {
+            value: createMemoryStorage(),
+            configurable: true,
+            writable: true
+          });
+        } catch (_) {
+          try { window.localStorage = createMemoryStorage(); } catch (__) {}
+        }
+      }
+
+      // Limpieza preventiva de bases de datos corruptas de IndexedDB de Firestore
+      try {
+        if (typeof window !== 'undefined' && window.indexedDB && typeof window.indexedDB.databases === 'function') {
+          window.indexedDB.databases().then(function(dbs) {
+            if (Array.isArray(dbs)) {
+              dbs.forEach(function(db) {
+                if (db.name && db.name.toLowerCase().indexOf('firestore') !== -1 && db.name.toLowerCase().indexOf('localstorage') === -1) {
+                  try { window.indexedDB.deleteDatabase(db.name); } catch (_) {}
+                }
+              });
+            }
+          }).catch(function() {});
+        }
+      } catch (_) {}
+    })();
+  </script>
 
   <!-- Favicon -->
   <link rel="icon"
@@ -422,8 +484,8 @@
 
   <!-- ===== MÓDULO PRINCIPAL (ES6 Modules) ===== -->
   <!-- Fase 1: precarga del motor de cálculo puro -->
-  <link rel="modulepreload" href="./js/calcEngine.js?v=20261120_v11">
-  <script type="module" src="./js/app.js?v=20261120_v11"></script>
+  <link rel="modulepreload" href="./js/calcEngine.js?v=20261123_v14">
+  <script type="module" src="./js/app.js?v=20261124_v2"></script>
 
 </body>
 

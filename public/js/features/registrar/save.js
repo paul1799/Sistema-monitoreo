@@ -29,11 +29,11 @@ import {
   ESPECIALISTA_JEC_OFICIAL
 } from '../../calcEngine.js?v=20261103_v8';
 import { syncDirectivosFromFicha } from '../../directorio.js?v=20261013_v1';
-import { isFichaCebeGestion, guardarFormularioCebe } from '../../cebe-gestion.js?v=20261119_v1';
-import { isFichaPriteGestion, guardarFormularioPrite } from '../../prite-gestion.js?v=20261119_v1';
-import { isFichaEbrGestionEscolar, collectEbrGestionFormData, resetEbrFormState } from '../../ebr-gestion.js?v=20261119_v1';
-import { isFichaJec, collectJecFormData, resetJecFormState } from '../../jec-monitoreo.js?v=20261119_v1';
-import { collectJec1erFormData, resetJec1erFormState } from '../../jec-1er-monitoreo.js?v=20261119_v1';
+import { isFichaCebeGestion, guardarFormularioCebe } from '../../cebe-gestion.js';
+import { isFichaPriteGestion, guardarFormularioPrite } from '../../prite-gestion.js';
+import { isFichaEbrGestionEscolar, collectEbrGestionFormData, resetEbrFormState } from '../../ebr-gestion.js';
+import { isFichaJec, collectJecFormData, resetJecFormState } from '../../jec-monitoreo.js';
+import { collectJec1erFormData, resetJec1erFormState } from '../../jec-1er-monitoreo.js';
 import { getSubmissionVisitaNum } from '../../domain/fichas/index.js';
 import { normalizeExtras } from '../plantillas/index.js';
 import {
@@ -189,7 +189,10 @@ export async function onSubmitRegistro(e, ft, state, dbNs, currentUser, navigate
 
     // Interceptar guardado de Ficha Unificada de Implementación del Modelo JEC (1er, 2do y 3er momento)
     if (isFichaJec(ft) && !isFichaCoordTutoriaJec(ft) && !isFichaCoordPedagogico(ft)) {
-      const formVis = (form && form.dataset && form.dataset.visita) ? Number(form.dataset.visita) : null;
+      const activeCardVis = document.querySelector('.jecVisitaCard.active')?.dataset?.jecVisita;
+      const formVis = (form && form.dataset && form.dataset.visita)
+        ? Number(form.dataset.visita)
+        : (activeCardVis ? Number(activeCardVis) : null);
       const activeVis = formVis || currentJecVisita || (editingSubmissionData ? getSubmissionVisitaNum(editingSubmissionData, ft) : 1);
       let jecData;
       if (activeVis === 1) {

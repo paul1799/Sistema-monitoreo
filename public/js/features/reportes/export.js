@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    features/reportes/export.js — Lógica de exportación a CSV y utilidades de descarga
    UGEL 03 · AGEBRE · Fase 2 Reorganización
    ========================================================================= */
@@ -43,7 +43,14 @@ export async function exportCsv(ft, statsList) {
     if (!subResp || /^\d+$/.test(subResp) || subResp.includes('@') || subResp === '—') {
       subResp = (s.responsable && !/^\d+$/.test(String(s.responsable).trim()) && !String(s.responsable).includes('@')) ? String(s.responsable).trim() : '';
     }
-    const stLabel = (st && st.estado && st.estado.label) ? st.estado.label : statusFromPct(st.pct, ft, st?.conteo_si, st?.puntaje, s?.visita).label;
+        let stLabel = (st && st.estado && st.estado.label) ? st.estado.label : statusFromPct(st.pct, ft, st?.conteo_si, st?.puntaje, s?.visita).label;
+    const isJecRow = isFichaJec(ft || s) || isFichaCoordTutoriaJec(ft || s) || isFichaCoordPedagogico(ft || s);
+    if (isJecRow) {
+      const l = String(stLabel || '').toLowerCase();
+      if (l.includes('lograd') || l.includes('cumple') || l === 'l') stLabel = 'Logrado';
+      else if (l.includes('proces') || l.includes('parcial') || l === 'p') stLabel = 'Proceso';
+      else if (l.includes('inici') || l.includes('incipient') || l.includes('no cumple') || l.includes('mejorar') || l === 'i') stLabel = 'Inicio';
+    }
     const dirCsv = resolveDirectorName(s);
     const dirFinal = (dirCsv && dirCsv !== '—') ? dirCsv : '';
     if (isCoord) {

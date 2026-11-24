@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    pdf/consolidado-v2.js — Generador oficial del Reporte Consolidado PDF V2
    UGEL 03 · AGEBRE
    ========================================================================= */
@@ -28,7 +28,8 @@ import { ESPECIALISTA_JEC_OFICIAL } from '../calc/reglas.js';
 import { isFichaCebeGestion, CEBE_SECCIONES } from '../cebe-gestion.js';
 import { isFichaPriteGestion, PRITE_SECCIONES } from '../prite-gestion.js';
 import { getEbrSeccionesForVisita } from '../ebr-gestion.js';
-import { JEC_SECCIONES } from '../jec-monitoreo.js';
+import { JEC_SECCIONES, JEC_3ER_SECCIONES } from '../jec-monitoreo.js';
+import { JEC_1ER_SECCIONES } from '../jec-1er-monitoreo.js';
 import { computeItemAgg } from '../reportes-datos.js';
 
 function getCoordinatorCell(s, ft) {
@@ -649,7 +650,30 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
         const vTarget = hasV3 ? 3 : (hasV2 ? 2 : 1);
         seccionesParaAgg = getEbrSeccionesForVisita(vTarget, groupFt);
       } else if (isFichaJec(groupFt)) {
-        seccionesParaAgg = (groupFt?.secciones && groupFt.secciones.length === JEC_SECCIONES.length) ? groupFt.secciones : JEC_SECCIONES;
+        const statWithSec = groupStats.find(x => x.st?.secciones && x.st.secciones.length > 0);
+        if (statWithSec && statWithSec.st.secciones.length > 0) {
+          seccionesParaAgg = statWithSec.st.secciones.map(sc => {
+            const count = sc.total || 0;
+            return {
+              nombre: sc.nombre,
+              items: count > 0 ? Array(count).fill({}) : []
+            };
+          });
+        } else {
+          const vFilter = filters.visita ? Number(filters.visita) : null;
+          const hasV3 = groupStats.some(x => Number(x.s?.visita) === 3 || Number(x.s?.momento) === 3 || x.s?.fichaTypeId === 'ft_msejec_3er');
+          const hasV2 = groupStats.some(x => Number(x.s?.visita) === 2 || Number(x.s?.momento) === 2 || x.s?.fichaTypeId === 'ft_msejec_2do');
+          const hasV1 = groupStats.some(x => Number(x.s?.visita) === 1 || Number(x.s?.momento) === 1 || x.s?.fichaTypeId === 'ft_msejec_1er' || x.s?.condicionesCumplidas !== undefined || (x.s?.puntajeTotal > 7));
+          const vTarget = vFilter || (hasV1 && !hasV2 && !hasV3 ? 1 : (hasV3 && !hasV2 ? 3 : (hasV2 ? 2 : (hasV1 ? 1 : 2))));
+
+          if (vTarget === 1) {
+            seccionesParaAgg = (groupFt?.seccionesPorVisita?.[0] || groupFt?.seccionesPorVisita?.['0'] || JEC_1ER_SECCIONES);
+          } else if (vTarget === 3) {
+            seccionesParaAgg = (groupFt?.seccionesPorVisita?.[2] || groupFt?.seccionesPorVisita?.['2'] || JEC_3ER_SECCIONES);
+          } else {
+            seccionesParaAgg = (groupFt?.seccionesPorVisita?.[1] || groupFt?.seccionesPorVisita?.['1'] || (groupFt?.secciones && groupFt.secciones.length === 3 ? groupFt.secciones : JEC_SECCIONES));
+          }
+        }
       }
 
       if (seccionesParaAgg.length === 0 && groupStats[0]?.st?.secciones) {
@@ -707,6 +731,24 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
           const secCells = seccionesParaAgg.map(sec => {
             let p = secMap[sec.nombre];
             if (p === undefined) p = normSecMap.get(normKey(sec.nombre));
+            if (p === undefined || p === null) {
+              const nSec = normKey(sec.nombre);
+              for (const [k, v] of normSecMap.entries()) {
+                if (k && nSec && (k.includes(nSec) || nSec.includes(k))) {
+                  p = v;
+                  break;
+                }
+              }
+            }
+            if ((p === undefined || p === null) && groupIsJec) {
+              const nSec = normKey(sec.nombre);
+              for (const [k, v] of normSecMap.entries()) {
+                if (nSec.includes('pedagogic') && k.includes('pedagogic')) { p = v; break; }
+                if (nSec.includes('gestion') && k.includes('gestion') && !k.includes('soporte')) { p = v; break; }
+                if (nSec.includes('soporte') && k.includes('soporte')) { p = v; break; }
+                if (nSec.includes('condicion') && k.includes('condicion')) { p = v; break; }
+              }
+            }
             if (p === undefined || p === null) return '—';
             let bg = [255, 255, 255];
             let col = [15, 27, 45];
@@ -717,7 +759,7 @@ export async function exportConsolidadoReportPdfV2(statsList, fichaType, filters
           });
 
           const globPct = st.pct !== null && st.pct !== undefined ? `${st.pct}%` : '—';
-          const globStatus = st.pct === null || st.pct === undefined ? 'Sin datos' : (st.pct >= gLogCut ? 'Logrado' : (st.pct >= gProcCut ? 'En proceso' : (groupIsEbr ? 'Inicio' : 'Por mejorar')));
+          const globStatus = st.pct === null || st.pct === undefined ? 'Sin datos' : (st.pct >= gLogCut ? 'Logrado' : (st.pct >= gProcCut ? (groupIsJec ? 'Proceso' : 'En proceso') : 'Inicio'));
           const statusCol = st.pct >= gLogCut ? [4, 120, 87] : (st.pct >= gProcCut ? [180, 83, 9] : [185, 28, 28]);
           const statusBg = st.pct >= gLogCut ? [236, 253, 245] : (st.pct >= gProcCut ? [254, 243, 199] : [254, 226, 226]);
 

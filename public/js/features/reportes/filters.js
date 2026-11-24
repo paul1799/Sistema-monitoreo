@@ -329,7 +329,7 @@ export function loadReportesFiltersFromUrl(state) {
     const url = new URL(window.location.href);
     const pTipo = url.searchParams.get('tipo');
     if (pTipo) {
-      if (pTipo === 'all' || pTipo === '__ALL__') {
+      if (pTipo === 'all' || pTipo === '__ALL__' || pTipo === '--all' || pTipo === 'todas') {
         f.tipo = '__ALL__';
       } else if (state.fichaTypes.some(ft => ft.id === pTipo && isFichaActiva(ft))) {
         f.tipo = pTipo;

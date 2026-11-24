@@ -13,6 +13,7 @@ import {
 
 import {
   JEC_SECCIONES,
+  getActiveJecSections,
   getNivelLogroJec
 } from '../jec-monitoreo.js';
 
@@ -246,8 +247,13 @@ export async function exportJecFichaPdf(sub, fichaType, colegio = null, download
     });
   };
 
-  buildJecDocTable('momento1', 'a', '1er monitoreo');
-  buildJecDocTable('momento2', 'b', '2do monitoreo');
+  if (visitaNum === 3) {
+    buildJecDocTable('momento3', 'a', '3er monitoreo');
+  } else {
+    buildJecDocTable('momento1', 'a', '1er monitoreo');
+    buildJecDocTable('momento2', 'b', '2do monitoreo');
+  }
+
 
   // -------------------------------------------------------------------------
   // VI. COMPONENTES E INDICADORES DE MONITOREO (31 ÍTEMS CON HALLAZGOS)
@@ -257,7 +263,8 @@ export async function exportJecFichaPdf(sub, fichaType, colegio = null, download
   let totalSi = 0;
   let totalNo = 0;
 
-  JEC_SECCIONES.forEach(sec => {
+  const activeSections = getActiveJecSections(fichaType, visitaNum);
+  activeSections.forEach(sec => {
     let secSi = 0, secNo = 0;
 
     const secRows = (sec.items || []).map(it => {

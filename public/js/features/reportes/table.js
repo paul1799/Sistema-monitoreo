@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    features/reportes/table.js — Generación de tablas, filas pendientes y detalle
    UGEL 03 · AGEBRE · Fase 2 Reorganización
    ========================================================================= */
@@ -341,10 +341,10 @@ export function buildDetail(s) {
       const totalSi = s.conteo_si !== undefined
         ? s.conteo_si
         : (s.respuestas || []).filter(r => (r.valor || '').toLowerCase() === 'si' || (r.valor || '').toLowerCase() === 'sí').length;
-      let nivel = 'Implementación incipiente';
+      let nivel = 'Inicio';
       let cls = 'st-inicio';
-      if (totalSi >= 21) { nivel = 'Implementación lograda'; cls = 'st-logrado'; }
-      else if (totalSi >= 14) { nivel = 'Implementación parcial'; cls = 'st-proceso'; }
+      if (totalSi >= 21) { nivel = 'Logrado'; cls = 'st-logrado'; }
+      else if (totalSi >= 14) { nivel = 'Proceso'; cls = 'st-proceso'; }
 
       jecNivelBanner = `
         <div style="margin-bottom:14px;padding:12px 16px;border-radius:8px;background:var(--surface-card,#ffffff);border:1px solid var(--border-soft,#e2e8f0);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -354,7 +354,7 @@ export function buildDetail(s) {
           </div>
           <div style="text-align:right">
             <span class="badge ${esc(cls)}" style="font-size:12.5px;padding:5px 12px;font-weight:700">${esc(nivel)}</span>
-            <div style="font-size:11.5px;color:var(--text-muted,#64748b);margin-top:3px;font-weight:600">${totalSi} de 26 respuestas "Sí"</div>
+            <div style="font-size:11.5px;color:var(--text-muted,#64748b);margin-top:3px;font-weight:600">${Math.min(totalSi, 26)} de 26 respuestas "Sí"</div>
           </div>
         </div>
       `;
@@ -371,7 +371,7 @@ export function buildDetail(s) {
           </div>
           <div style="text-align:right">
             <span class="badge ${esc(nivelObj.cls)}" style="font-size:12.5px;padding:5px 12px;font-weight:700">${esc(nivelObj.nivel)}</span>
-            <div style="font-size:11.5px;color:var(--text-muted,#64748b);margin-top:3px;font-weight:600">${totalSi} de 31 respuestas "Sí"</div>
+            <div style="font-size:11.5px;color:var(--text-muted,#64748b);margin-top:3px;font-weight:600">${Math.min(totalSi, 31)} de 31 respuestas "Sí"</div>
           </div>
         </div>
       `;

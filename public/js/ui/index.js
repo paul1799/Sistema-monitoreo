@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    ui/index.js — Punto de entrada unificado y exportaciones del subsistema UI
    ========================================================================= */
 
@@ -24,7 +24,7 @@ export * from './dashboard.js?v=20261119_v1';
 export * from './alertas.js?v=20261103_v8';
 
 // Administración de usuarios y roles
-export * from './usuarios.js?v=20261120_v1';
+export * from './usuarios.js?v=20261123_v15';
 export * from './perfil-modal.js?v=20261120_v1';
 
 // Directorio y gestión de directivos / responsables

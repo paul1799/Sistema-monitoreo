@@ -1,4 +1,4 @@
-/**
+﻿/**
  * public/js/calc/evaluador.js
  * Funciones de evaluación de estados, niveles y porcentajes por regla
  * UGEL 03 · AGEBRE
@@ -67,12 +67,12 @@ export function estadoPorRegla(resultado, regla_nivel) {
         }
       }
       if (conteo >= 24) {
-        return { nivel: 'Implementación lograda', estado_panel: 'Logrado', cls: 'st-logrado' };
+        return { nivel: 'Logrado', estado_panel: 'Logrado', cls: 'st-logrado' };
       }
       if (conteo >= 12) {
-        return { nivel: 'Implementación parcial', estado_panel: 'En proceso', cls: 'st-proceso' };
+        return { nivel: 'Proceso', estado_panel: 'En proceso', cls: 'st-proceso' };
       }
-      return { nivel: 'Implementación incipiente', estado_panel: 'Inicio', cls: 'st-inicio' };
+      return { nivel: 'Inicio', estado_panel: 'Inicio', cls: 'st-inicio' };
     }
 
     // â”€â”€ Tipo B: puntaje directo (ej. EBR Gestión Escolar, Coordinador(a) de Tutoría JEC) â”€â”€

@@ -1,11 +1,11 @@
-/* =========================================================================
+﻿/* =========================================================================
    app.js — Archivo principal que importa los demás módulos e inicializa
    el flujo completo de la aplicación.
    ========================================================================= */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { FIREBASE_CONFIG } from './firebase-config.js?v=20261118_v6';
-import { getFirestore, initFirestore, makeDbAdapter } from './firestore.js?v=20261118_v2';
+import { getFirestore, initFirestore, makeDbAdapter } from './firestore.js?v=20261123_v10';
 import { getAuth, signOut, setupAuthListeners } from './auth.js?v=20261120_v2';
 import {
   esc,
@@ -29,13 +29,15 @@ import {
   getConcursoSubTab,
   setConcursoSubTab,
   getDeletedFichaTypeIds,
+  SEED_CONCURSOS_DEFAULTS,
 } from './ui.js?v=20261120_v1';
 
-import { renderPortalView } from './portal.js?v=20261118_v1';
-import { renderDirectorioTab } from './directorio.js?v=20261119_v2';
-import { openUserProfileModal, openChangePasswordModal } from './ui/perfil-modal.js?v=20261120_v1';
+import { renderPortalView } from './portal.js?v=20261123_v10';
+import { renderDirectorioTab } from './directorio.js?v=20261123_v10';
+import { openUserProfileModal, openChangePasswordModal } from './ui/perfil-modal.js?v=20261123_v10';
 import { renderAlertasTab, getAlertCount } from './alertas.js?v=20261023_v3';
-import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261103_v8';
+import { ESPECIALISTA_JEC_OFICIAL } from './calcEngine.js?v=20261123_v10';
+import { safeSessionGet, safeSessionSet, safeSessionRemove } from './core/utils/storage.js?v=20261123_v10';
 import { PLANTILLAS_BASE_OFICIALES, ALIAS_A_PLANTILLA_BASE } from './catalogo-plantillas-base.js?v=20261016_v4';
 import { isFichaEbrGestionEscolar, isFichaCoordTutoriaJec } from './calc/detectors.js?v=20261103_v8';
 import { cleanForFirestore } from './ui/core-utils.js?v=20261103_v8';
@@ -43,13 +45,20 @@ import { cleanForFirestore } from './ui/core-utils.js?v=20261103_v8';
 /* ============================= MANEJADORES GLOBALES DE ERROR ============================= */
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (event) => {
+    const errText = String(event.error?.message || event.message || '');
+    if (errText.includes('INTERNAL ASSERTION FAILED') || errText.includes('Unexpected state') || errText.includes('heartbeats') || errText.includes('Quota exceeded') || errText.includes('resource-exhausted') || errText.includes('Tracking Prevention')) {
+      return;
+    }
     console.error('Error no controlado en la aplicación:', event.error || event.message);
     showToast('Aviso del sistema: ' + (event.message || 'Ocurrió un error inesperado en la interfaz.'));
   });
 
   window.addEventListener('unhandledrejection', (event) => {
-    console.error('Promesa rechazada no controlada:', event.reason);
     const msg = event.reason ? (event.reason.message || String(event.reason)) : 'Operación asíncrona interrumpida';
+    if (msg.includes('INTERNAL ASSERTION FAILED') || msg.includes('Unexpected state') || msg.includes('heartbeats') || msg.includes('Quota exceeded') || msg.includes('resource-exhausted') || msg.includes('Tracking Prevention')) {
+      return;
+    }
+    console.error('Promesa rechazada no controlada:', event.reason);
     showToast('Aviso del sistema: ' + msg);
   });
 }
@@ -64,23 +73,60 @@ let currentUser = null;
 let currentRole = null; // 'admin' | 'general'
 let connectionTimer = null;
 
+// Carga instantánea de catálogo base oficial y plantillas locales (0ms de latencia)
+function getInitialFichaTypes() {
+  const initial = [];
+  try {
+    const deletedIds = typeof getDeletedFichaTypeIds === 'function' ? getDeletedFichaTypeIds() : new Set();
+    const localCustoms = JSON.parse(localStorage.getItem('agebre_local_custom_ficha_types') || '[]');
+    if (Array.isArray(localCustoms)) {
+      localCustoms.forEach(lc => {
+        if (lc && lc.id && !deletedIds.has(lc.id)) initial.push(lc);
+      });
+    }
+    if (typeof PLANTILLAS_BASE_OFICIALES === 'object' && PLANTILLAS_BASE_OFICIALES) {
+      Object.entries(PLANTILLAS_BASE_OFICIALES).forEach(([id, baseFt]) => {
+        if (!deletedIds.has(id) && (!ALIAS_A_PLANTILLA_BASE || !ALIAS_A_PLANTILLA_BASE[id])) {
+          if (!initial.some(x => x.id === id)) {
+            initial.push({ id, ...baseFt });
+          }
+        }
+      });
+    }
+    initial.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  } catch (_) {}
+  return initial;
+}
+
+// Carga segura desde caché local de sesión para evitar pantallas en blanco
+function getCachedArray(key) {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (_) {}
+  return [];
+}
+
 const state = {
   modulo: sessionStorage.getItem('agebre_active_modulo') || 'portal', // 'portal' | 'monitoreo' | 'concursos'
   currentUserRoleDoc: null,
   activeTab: 'dashboard',
-  fichaTypes: [],  // {id, nombre, descripcion, icono, tipoRespuesta, secciones, extras}
-  submissions: [],  // {id, fichaTypeId, ...}
-  roles: [],  // {id(=uid), email, role, createdAt}  — solo admin
-  colegios: [],  // {id, rei, codigoLocal, ie, ...}
-  directivos: [],  // {id, colegioId, codigoLocal, cargo, apellidosNombres, dni, telefono, correo, condicion, estado, fuente, historial, ...}
-  responsables: [],  // {id, red, distrito, especialista, nombresApellidos, cargo, modalidad, celular, correo}
-  tiposConcurso: [],  // {id, nombre, tipoParticipacion, tieneGenero, tieneDisciplina, tieneTituloTrabajo, categorias, ...}
-  concursoRegistros: [],  // {id, tipoConcursoId, etapa, categoria, institucion, participantes, asesores, ...}
-  concursoCuerpoTecnico: [], // {id, grupoKey, tipoConcursoId, etapa, categoria, disciplina, genero, personas, bitacora, ...}
-  compromisos: [],  // {id, fichaId, institucion, ugel, responsable, texto, plazo, estado, ...}
-  areasFirma: [],  // {id, nombre, sigla, descripcionEncabezado, logo, activa, esPredeterminada}
-  plantillasFirmantes: [], // {id, areaId, tipoReporte, orden, cargo, nombreOpcional, entidad, leyenda}
-  preferenciasDescarga: [], // {usuarioId, tipoReporte, areaId, firmantesJson, opcionesJson}
+  fichaTypes: getInitialFichaTypes(),  // Pre-poblado de inmediato (14 plantillas oficiales listas al instante)
+  submissions: getCachedArray('agebre_cache_submissions'),
+  roles: getCachedArray('agebre_cache_roles'),  // {id(=uid), email, role, createdAt}  — con respaldo en caché
+  colegios: getCachedArray('agebre_cache_colegios'),
+  directivos: getCachedArray('agebre_cache_directivos'),
+  responsables: getCachedArray('agebre_cache_responsables'),
+  tiposConcurso: (typeof SEED_CONCURSOS_DEFAULTS !== 'undefined' && Array.isArray(SEED_CONCURSOS_DEFAULTS)) ? JSON.parse(JSON.stringify(SEED_CONCURSOS_DEFAULTS)) : [],
+  concursoRegistros: [],
+  concursoCuerpoTecnico: [],
+  compromisos: [],
+  areasFirma: [],
+  plantillasFirmantes: [],
+  preferenciasDescarga: [],
 };
 
 // Exponer state globalmente para depuración y resiliencia de módulos
@@ -89,20 +135,31 @@ if (typeof window !== 'undefined') {
 }
 
 function isAdmin() {
-  const email = (currentUser?.email || '').toLowerCase();
-  const uDoc = state?.currentUserRoleDoc ||
-    (typeof window !== 'undefined' && window.state?.currentUserRoleDoc) ||
-    (() => {
-      try {
-        const uid = currentUser?.uid;
-        if (uid) {
-          const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
-          if (raw) return JSON.parse(raw);
+  let uDoc = state?.currentUserRoleDoc ||
+    (typeof window !== 'undefined' && window.state?.currentUserRoleDoc);
+  if (!uDoc) {
+    try {
+      const uid = currentUser?.uid;
+      if (uid) {
+        const raw = sessionStorage.getItem('agebre_user_doc_' + uid);
+        if (raw) uDoc = JSON.parse(raw);
+      }
+      if (!uDoc) {
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const k = sessionStorage.key(i);
+          if (k && k.startsWith('agebre_user_doc_')) {
+            const raw = sessionStorage.getItem(k);
+            if (raw) {
+              uDoc = JSON.parse(raw);
+              break;
+            }
+          }
         }
-      } catch (_) {}
-      return null;
-    })();
+      }
+    } catch (_) {}
+  }
 
+  const email = (currentUser?.email || uDoc?.email || '').toLowerCase();
   return currentRole === 'admin' ||
     currentRole === 'coordinador' ||
     uDoc?.role === 'admin' ||
@@ -111,6 +168,13 @@ function isAdmin() {
     uDoc?.userType === 'admin' ||
     email === 'agebre@ugel03.gob.pe' ||
     email === 'paulmontalvo54@gmail.com';
+}
+
+function updateAdminNavVisibility() {
+  const admin = isAdmin();
+  document.querySelectorAll('.navbtn[data-admin-only]').forEach(b => {
+    b.style.display = admin ? '' : 'none';
+  });
 }
 
 if (typeof window !== 'undefined') {
@@ -144,7 +208,7 @@ function seleccionarModulo(mod) {
       showToast('🔒 Acceso restringido: El Administrador debe habilitar tu acceso al Módulo de Concursos.');
     }
     state.modulo = 'monitoreo';
-    sessionStorage.setItem('agebre_active_modulo', 'monitoreo');
+    safeSessionSet('agebre_active_modulo', 'monitoreo');
     render();
     return;
   }
@@ -152,17 +216,18 @@ function seleccionarModulo(mod) {
   state.modulo = mod;
   const welcomeBanner = document.getElementById('welcomeBanner');
   if (mod === 'portal') {
-    sessionStorage.removeItem('agebre_active_modulo');
+    safeSessionRemove('agebre_active_modulo');
     state.activeTab = 'portal';
     if (welcomeBanner) welcomeBanner.classList.remove('welcomeBanner--concursos');
   } else if (mod === 'monitoreo') {
-    sessionStorage.setItem('agebre_active_modulo', 'monitoreo');
+    safeSessionSet('agebre_active_modulo', 'monitoreo');
     if (state.activeTab === 'portal' || state.activeTab === 'concursos') {
       state.activeTab = 'dashboard';
     }
     if (welcomeBanner) welcomeBanner.classList.remove('welcomeBanner--concursos');
   } else if (mod === 'concursos') {
-    sessionStorage.setItem('agebre_active_modulo', 'concursos');
+    ensureConcursoListeners();
+      safeSessionSet('agebre_active_modulo', 'concursos');
     state.activeTab = 'concursos';
     if (welcomeBanner) welcomeBanner.classList.add('welcomeBanner--concursos');
   }
@@ -203,6 +268,25 @@ function renderSubNavBar() {
   subNav.style.display = 'flex';
   if (welcomeBanner) welcomeBanner.style.display = 'flex';
 
+  const currentMod = state.modulo;
+  const currentAdmin = String(Boolean(isAdmin()));
+  if (subNav.dataset.currentModulo === currentMod && subNav.dataset.currentAdmin === currentAdmin && subNav.querySelector('.navbtn')) {
+    if (currentMod === 'monitoreo') {
+      subNav.querySelectorAll('.navbtn[data-tab]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === state.activeTab);
+      });
+    } else if (currentMod === 'concursos') {
+      const currentSub = typeof getConcursoSubTab === 'function' ? getConcursoSubTab() : 'consolidado';
+      subNav.querySelectorAll('.navbtn[data-csubtab]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.csubtab === currentSub);
+      });
+    }
+    updateAdminNavVisibility();
+    return;
+  }
+  subNav.dataset.currentModulo = currentMod;
+  subNav.dataset.currentAdmin = currentAdmin;
+
   if (state.modulo === 'monitoreo') {
     welcomeBanner?.classList.remove('welcomeBanner--concursos');
     const titleEl = welcomeBanner?.querySelector('.welcomeTitle');
@@ -229,11 +313,9 @@ function renderSubNavBar() {
       <button type="button" class="navbtn ${state.activeTab === 'responsables' ? 'active' : ''}" data-tab="responsables">
         <span class="ic">👥</span> Responsables
       </button>
-      ${isAdmin() ? `
-        <button type="button" class="navbtn ${state.activeTab === 'usuarios' ? 'active' : ''}" data-tab="usuarios" data-admin-only="1">
-          <span class="ic">◈</span> Usuarios
-        </button>
-      ` : ''}
+      <button type="button" class="navbtn ${state.activeTab === 'usuarios' ? 'active' : ''}" data-tab="usuarios" data-admin-only="1" style="${isAdmin() ? '' : 'display:none;'}">
+        <span class="ic">◈</span> Usuarios
+      </button>
     `;
 
     subNav.querySelectorAll('.navbtn[data-tab]').forEach(btn => {
@@ -269,11 +351,9 @@ function renderSubNavBar() {
       <button type="button" class="navbtn ${currentSub === 'asistente' ? 'active' : ''}" data-csubtab="asistente">
         <span class="ic">🔤</span> Revisar nombres
       </button>
-      ${isAdmin() ? `
-        <button type="button" class="navbtn ${currentSub === 'tipos' ? 'active' : ''}" data-csubtab="tipos" data-admin-only="1">
-          <span class="ic">⚙</span> Tipos de concurso
-        </button>
-      ` : ''}
+      <button type="button" class="navbtn ${currentSub === 'tipos' ? 'active' : ''}" data-csubtab="tipos" data-admin-only="1" style="${isAdmin() ? '' : 'display:none;'}">
+        <span class="ic">⚙</span> Tipos de concurso
+      </button>
     `;
 
     subNav.querySelectorAll('.navbtn[data-csubtab]').forEach(btn => {
@@ -309,10 +389,11 @@ function navigate(tab) {
   }
   if (tab === 'concursos') {
     state.modulo = 'concursos';
-    sessionStorage.setItem('agebre_active_modulo', 'concursos');
+    ensureConcursoListeners();
+      safeSessionSet('agebre_active_modulo', 'concursos');
   } else {
     state.modulo = 'monitoreo';
-    sessionStorage.setItem('agebre_active_modulo', 'monitoreo');
+    safeSessionSet('agebre_active_modulo', 'monitoreo');
   }
   state.activeTab = tab;
   forceResetBodyScroll();
@@ -340,19 +421,19 @@ function navigate(tab) {
 }
 
 /* ============================= RENDER DISPATCH ============================= */
-let _renderRaf = null;
-function renderDebounced() {
-  if (_renderRaf) return;
-  _renderRaf = requestAnimationFrame(() => {
-    _renderRaf = null;
+let _renderTimer = null;
+function renderDebounced(delay = 50) {
+  if (_renderTimer) clearTimeout(_renderTimer);
+  _renderTimer = setTimeout(() => {
+    _renderTimer = null;
     render();
-  });
+  }, delay);
 }
 
 function render() {
-  if (_renderRaf) {
-    cancelAnimationFrame(_renderRaf);
-    _renderRaf = null;
+  if (_renderTimer) {
+    clearTimeout(_renderTimer);
+    _renderTimer = null;
   }
   setAppState(state);
   const c = document.getElementById('tabContent');
@@ -384,23 +465,13 @@ function render() {
     }
   }
 
-  switch (state.activeTab) {
+  try {
+    switch (state.activeTab) {
     case 'dashboard':
-      if (state.fichaTypes.length === 0) {
-        c.innerHTML = '<div class="pageHead"><h2>Resumen general</h2><p>Vista consolidada de monitoreo y niveles de avance institucional.</p></div>' +
-          '<div class="cards" style="margin-bottom:24px">' +
-          '<div class="card skeletonCard"><div class="skeletonPulse" style="height:34px;width:70px;margin-bottom:8px"></div><div class="skeletonPulse" style="height:14px;width:130px"></div></div>' +
-          '<div class="card skeletonCard"><div class="skeletonPulse" style="height:34px;width:70px;margin-bottom:8px"></div><div class="skeletonPulse" style="height:14px;width:130px"></div></div>' +
-          '<div class="card skeletonCard"><div class="skeletonPulse" style="height:34px;width:70px;margin-bottom:8px"></div><div class="skeletonPulse" style="height:14px;width:130px"></div></div>' +
-          '<div class="card skeletonCard"><div class="skeletonPulse" style="height:34px;width:70px;margin-bottom:8px"></div><div class="skeletonPulse" style="height:14px;width:130px"></div></div>' +
-          '</div>' +
-          '<div class="panel" style="padding:22px">' +
-          '<div class="skeletonPulse" style="height:22px;width:240px;margin-bottom:16px"></div>' +
-          '<div class="skeletonPulse" style="height:160px;width:100%"></div>' +
-          '</div>';
-      } else {
-        c.innerHTML = viewDashboard(state, getFichaType, render);
+      if (!state.fichaTypes || state.fichaTypes.length === 0) {
+        state.fichaTypes = getInitialFichaTypes();
       }
+      c.innerHTML = viewDashboard(state, getFichaType, render);
       break;
     case 'registrar':
       renderRegistrarTab(c, state, getFichaType, dbNs, currentUser, navigate, isAdmin());
@@ -409,34 +480,53 @@ function render() {
       renderConsolidadoTab(c, state, getFichaType, dbNs, isAdmin(), navigate, currentUser);
       break;
     case 'concursos':
+      ensureConcursoListeners();
       renderConcursosTab(c, state, dbNs, isAdmin(), currentUser, navigate);
       break;
     case 'colegios':
+      ensureDirectivosListener();
       renderColegiosTab(c, state, getFichaType, dbNs, isAdmin(), currentUser);
       break;
     case 'directorio':
+      ensureDirectivosListener();
       renderDirectorioTab(c, state, dbNs, isAdmin(), currentUser, navigate);
       break;
     case 'alertas':
       state.activeTab = 'dashboard';
+      if (!state.fichaTypes || state.fichaTypes.length === 0) state.fichaTypes = getInitialFichaTypes();
       c.innerHTML = viewDashboard(state, getFichaType, render);
       break;
     case 'tipos':
+      ensureFirmasListeners();
       state.activeTab = 'registrar';
       if (isAdmin()) setRegistrarSubTab('plantillas');
       renderRegistrarTab(c, state, getFichaType, dbNs, currentUser, navigate, isAdmin());
       break;
     case 'usuarios':
+      ensureAdminRoleListeners();
       isAdmin() ? renderUsuariosTab(c, state, dbNs, currentUser) : renderForbidden(c);
       break;
     case 'responsables':
       renderResponsablesTab(c, state, dbNs, isAdmin(), currentUser);
       break;
+    }
+  } catch (renderErr) {
+    console.error('Error al renderizar pestaña ' + state.activeTab + ':', renderErr);
+    c.innerHTML = '<div style="margin:24px;padding:24px;background:#FFF1F2;border:1px solid #FDA4AF;border-radius:10px;color:#9F1239;">' +
+      '<h3 style="margin-top:0">⚠️ Aviso de carga de sección</h3>' +
+      '<p>No se pudo completar la visualización de la sección actual (' + esc(state.activeTab) + '): <strong>' + esc(renderErr.message || String(renderErr)) + '</strong></p>' +
+      '<button class="btn" type="button" onclick="location.reload()">Recargar vista</button>' +
+      '</div>';
   }
 }
 
 /* ============================= FIRESTORE LISTENERS ============================= */
 let activeUnsubscribers = [];
+let concursoListenersStarted = false;
+
+let directivosListenerStarted = false;
+let rolesListenerStarted = false;
+let firmasListenersStarted = false;
 
 function stopListeners() {
   if (Array.isArray(activeUnsubscribers)) {
@@ -448,6 +538,10 @@ function stopListeners() {
   }
   activeUnsubscribers = [];
   startListeners._started = false;
+  concursoListenersStarted = false;
+  directivosListenerStarted = false;
+  rolesListenerStarted = false;
+  firmasListenersStarted = false;
 }
 
 function healCoordTutoriaSubmissions(subs, dbNs) {
@@ -516,6 +610,28 @@ function startListeners() {
       // 1. Filtrar cualquier documento que el usuario haya eliminado explícitamente
       const activeRaw = rawLoaded.filter(x => !deletedIds.has(x.id));
       const loadedIds = new Set(activeRaw.map(x => x.id));
+
+      // 1b. Inyectar plantillas personalizadas guardadas localmente (por ejemplo, si falló Firestore por cuota)
+      try {
+        const localCustoms = JSON.parse(localStorage.getItem('agebre_local_custom_ficha_types') || '[]');
+        if (Array.isArray(localCustoms)) {
+          localCustoms.forEach(lc => {
+            if (lc && lc.id && !deletedIds.has(lc.id)) {
+              const existingIdx = activeRaw.findIndex(x => x.id === lc.id);
+              if (existingIdx !== -1) {
+                if ((Number(lc.updatedAt) || 0) >= (Number(activeRaw[existingIdx].updatedAt) || 0)) {
+                  activeRaw[existingIdx] = { ...activeRaw[existingIdx], ...lc };
+                }
+              } else {
+                activeRaw.push(lc);
+                loadedIds.add(lc.id);
+              }
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Error leyendo plantillas locales:', e);
+      }
 
       // 2. Inyectar plantillas oficiales base si no existen en Firestore y no fueron eliminadas ni son alias
       Object.entries(PLANTILLAS_BASE_OFICIALES).forEach(([id, baseFt]) => {
@@ -712,14 +828,7 @@ function startListeners() {
           coordTutDoc.extras = JSON.parse(JSON.stringify(PLANTILLAS_BASE_OFICIALES.ft_coord_tutoria_jec.extras));
           coordTutDoc.regla_nivel = PLANTILLAS_BASE_OFICIALES.ft_coord_tutoria_jec.regla_nivel;
           coordTutDoc.escala = 'ESCALA_1_3';
-          if (dbNs && currentUser) {
-            dbNs.collection('fichaTypes').doc('ft_coord_tutoria_jec').set({
-              secciones: coordTutDoc.secciones,
-              extras: coordTutDoc.extras,
-              regla_nivel: coordTutDoc.regla_nivel,
-              escala: coordTutDoc.escala
-            }, { merge: true }).catch(() => {});
-          }
+// Normalizado defensivo en memoria
         }
       }
 
@@ -751,24 +860,7 @@ function startListeners() {
           rubricasDoc.tablas = JSON.parse(JSON.stringify(canon.tablas));
           rubricasDoc.compromisos = JSON.parse(JSON.stringify(canon.compromisos));
           rubricasDoc.regla_nivel = canon.regla_nivel;
-          if (dbNs && currentUser) {
-            dbNs.collection('fichaTypes').doc('ft_rubricas_aula').set({
-              nombre: canon.nombre,
-              nombreCorto: canon.nombreCorto,
-              descripcion: canon.descripcion,
-              icono: canon.icono,
-              color: canon.color,
-              modalidad: canon.modalidad,
-              grupo: canon.grupo,
-              tipoRespuesta: canon.tipoRespuesta,
-              secciones: rubricasDoc.secciones,
-              extras: rubricasDoc.extras,
-              tablas: rubricasDoc.tablas,
-              compromisos: rubricasDoc.compromisos,
-              regla_nivel: canon.regla_nivel,
-              updatedAt: Date.now()
-            }, { merge: true }).catch(() => {});
-          }
+// Normalizado defensivo en memoria
         }
       }
 
@@ -860,12 +952,14 @@ function startListeners() {
   );
 
   activeUnsubscribers.push(
-    dbNs.collection('submissions').limit(1000).onSnapshot(snap => {
+    dbNs.collection('submissions').onSnapshot(snap => {
       let subs = snap.docs.map(d => ({ ...d.data(), id: d.id }));
       subs.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
       subs = healCoordTutoriaSubmissions(subs, dbNs);
       state.submissions = subs;
-      // No destruir el formulario si el usuario está en la pestaña registrar
+      try {
+        sessionStorage.setItem('agebre_cache_submissions', JSON.stringify(subs.slice(0, 300)));
+      } catch (_) {}
       if (state.activeTab !== 'registrar') {
         renderDebounced();
       }
@@ -876,19 +970,13 @@ function startListeners() {
     dbNs.collection('colegios').onSnapshot(snap => {
       state.colegios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       state.colegios.sort((a, b) => (a.ie || '').localeCompare(b.ie || ''));
+      try {
+        sessionStorage.setItem('agebre_cache_colegios', JSON.stringify(state.colegios.slice(0, 300)));
+      } catch (_) {}
       if (state.activeTab !== 'registrar') {
         renderDebounced();
       }
     }, err => handleSnapErr('colegios', err, true))
-  );
-
-  activeUnsubscribers.push(
-    dbNs.collection('directivos').onSnapshot(snap => {
-      state.directivos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (state.activeTab === 'directorio' || state.activeTab === 'colegios') {
-        renderDebounced();
-      }
-    }, err => handleSnapErr('directivos', err, true))
   );
 
   activeUnsubscribers.push(
@@ -912,66 +1000,16 @@ function startListeners() {
         });
       }
       state.responsables.sort((a, b) => (a.nombresApellidos || a.especialista || '').localeCompare(b.nombresApellidos || b.especialista || ''));
+      try {
+        sessionStorage.setItem('agebre_cache_responsables', JSON.stringify(state.responsables));
+      } catch (_) {}
       if (state.activeTab !== 'registrar') {
         renderDebounced();
       }
     }, err => handleSnapErr('responsables', err, false))
   );
 
-  // Catálogo de tipos de concurso
-  activeUnsubscribers.push(
-    dbNs.collection('tiposConcurso').onSnapshot(snap => {
-      state.tiposConcurso = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      state.tiposConcurso.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
-      if (state.activeTab === 'concursos') {
-        renderDebounced();
-      }
-    }, err => handleSnapErr('tiposConcurso', err, false))
-  );
-
-  // Registros de concursos
-  activeUnsubscribers.push(
-    dbNs.collection('concursoRegistros').orderBy('createdAt', 'desc').limit(2000).onSnapshot(snap => {
-      state.concursoRegistros = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (state.activeTab === 'concursos') {
-        renderDebounced();
-      }
-    }, err => handleSnapErr('concursoRegistros', err, false))
-  );
-
-  // Cuerpo técnico por grupo de concurso (JEDPA u otros)
-  activeUnsubscribers.push(
-    dbNs.collection('concursoCuerpoTecnico').onSnapshot(snap => {
-      state.concursoCuerpoTecnico = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (state.activeTab === 'concursos') {
-        renderDebounced();
-      }
-    }, err => handleSnapErr('concursoCuerpoTecnico', err, false))
-  );
-
-  // Catálogo administrable de áreas de firma
-  activeUnsubscribers.push(
-    dbNs.collection('areasFirma').onSnapshot(snap => {
-      state.areasFirma = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      state.areasFirma.sort((a, b) => (a.orden || 99) - (b.orden || 99));
-      if (state.activeTab === 'tipos' || state.activeTab === 'registrar') {
-        renderDebounced();
-      }
-    }, err => handleSnapErr('areasFirma', err, false))
-  );
-
-  // Plantillas de firmantes por área y tipo de reporte
-  activeUnsubscribers.push(
-    dbNs.collection('plantillasFirmantes').onSnapshot(snap => {
-      state.plantillasFirmantes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      state.plantillasFirmantes.sort((a, b) => (a.orden || 99) - (b.orden || 99));
-      if (state.activeTab === 'tipos' || state.activeTab === 'registrar') {
-        renderDebounced();
-      }
-    }, err => handleSnapErr('plantillasFirmantes', err, false))
-  );
-
-  // Compromisos de mejora
+  // Compromisos de mejora (ligero)
   activeUnsubscribers.push(
     dbNs.collection('compromisos').onSnapshot(snap => {
       state.compromisos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -981,14 +1019,18 @@ function startListeners() {
     }, err => handleSnapErr('compromisos', err, false))
   );
 
-  if (isAdmin()) {
-    activeUnsubscribers.push(
-      dbNs.collection('roles').onSnapshot(snap => {
-        state.roles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        state.roles.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
-        renderDebounced();
-      }, err => handleSnapErr('roles', err, false))
-    );
+  // Carga bajo demanda (Lazy Loading) según pestaña activa inicial
+  if (state.modulo === 'concursos') {
+    ensureConcursoListeners();
+  }
+  if (state.activeTab === 'directorio' || state.activeTab === 'colegios') {
+    ensureDirectivosListener();
+  }
+  if (state.activeTab === 'tipos') {
+    ensureFirmasListeners();
+  }
+  if (state.activeTab === 'usuarios' && isAdmin()) {
+    ensureAdminRoleListeners();
   }
 
   // Listener en tiempo real del rol y permisos del usuario actual (incluso para especialistas)
@@ -1004,6 +1046,8 @@ function startListeners() {
             if (effectiveRole && effectiveRole !== currentRole) {
               currentRole = effectiveRole;
             }
+            updateAdminNavVisibility();
+            if (isAdmin()) ensureAdminRoleListeners();
             if (data.nombre) {
               const topName = document.getElementById('topUserName');
               if (topName) topName.textContent = data.nombre;
@@ -1026,6 +1070,129 @@ function startListeners() {
   }
 
   renderDebounced();
+}
+
+function ensureConcursoListeners() {
+  if (concursoListenersStarted || !dbNs) return;
+  concursoListenersStarted = true;
+
+  // Fallback inmediato con los 6 concursos oficiales para que nunca aparezca vacío
+  if (!state.tiposConcurso || state.tiposConcurso.length === 0) {
+    if (typeof SEED_CONCURSOS_DEFAULTS !== 'undefined' && Array.isArray(SEED_CONCURSOS_DEFAULTS)) {
+      state.tiposConcurso = JSON.parse(JSON.stringify(SEED_CONCURSOS_DEFAULTS));
+    }
+  }
+
+  activeUnsubscribers.push(
+    dbNs.collection('tiposConcurso').onSnapshot(snap => {
+      const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (loaded.length > 0) {
+        const loadedIds = new Set(loaded.map(x => x.id));
+        if (typeof SEED_CONCURSOS_DEFAULTS !== 'undefined' && Array.isArray(SEED_CONCURSOS_DEFAULTS)) {
+          SEED_CONCURSOS_DEFAULTS.forEach(def => {
+            if (!loadedIds.has(def.id)) loaded.push({ ...def });
+          });
+        }
+        state.tiposConcurso = loaded;
+      } else if (typeof SEED_CONCURSOS_DEFAULTS !== 'undefined' && Array.isArray(SEED_CONCURSOS_DEFAULTS)) {
+        state.tiposConcurso = JSON.parse(JSON.stringify(SEED_CONCURSOS_DEFAULTS));
+      }
+      state.tiposConcurso.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+      if (state.activeTab === 'concursos') {
+        renderDebounced();
+      }
+    }, err => {
+      handleSnapErr('tiposConcurso', err, false);
+      if (!state.tiposConcurso || state.tiposConcurso.length === 0) {
+        if (typeof SEED_CONCURSOS_DEFAULTS !== 'undefined' && Array.isArray(SEED_CONCURSOS_DEFAULTS)) {
+          state.tiposConcurso = JSON.parse(JSON.stringify(SEED_CONCURSOS_DEFAULTS));
+        }
+        if (state.activeTab === 'concursos') renderDebounced();
+      }
+    })
+  );
+
+  activeUnsubscribers.push(
+    dbNs.collection('concursoRegistros').orderBy('createdAt', 'desc').limit(2000).onSnapshot(snap => {
+      const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (loaded.length > 0) {
+        state.concursoRegistros = loaded;
+      }
+      if (state.activeTab === 'concursos') {
+        renderDebounced();
+      }
+    }, err => handleSnapErr('concursoRegistros', err, false))
+  );
+
+  activeUnsubscribers.push(
+    dbNs.collection('concursoCuerpoTecnico').onSnapshot(snap => {
+      state.concursoCuerpoTecnico = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (state.activeTab === 'concursos') {
+        renderDebounced();
+      }
+    }, err => handleSnapErr('concursoCuerpoTecnico', err, false))
+  );
+}
+
+// Carga bajo demanda del padrón de directivos (optimización de red)
+function ensureDirectivosListener() {
+  if (directivosListenerStarted || !dbNs) return;
+  directivosListenerStarted = true;
+  activeUnsubscribers.push(
+    dbNs.collection('directivos').onSnapshot(snap => {
+      state.directivos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      try {
+        sessionStorage.setItem('agebre_cache_directivos', JSON.stringify(state.directivos.slice(0, 300)));
+      } catch (_) {}
+      if (state.activeTab === 'directorio' || state.activeTab === 'colegios') {
+        renderDebounced();
+      }
+    }, err => handleSnapErr('directivos', err, false))
+  );
+}
+
+// Carga bajo demanda del módulo de gestión de usuarios (solo admin)
+function ensureAdminRoleListeners() {
+  if (rolesListenerStarted || !dbNs || !isAdmin()) return;
+  rolesListenerStarted = true;
+  if (!state.roles || state.roles.length === 0) {
+    state.roles = getCachedArray('agebre_cache_roles');
+  }
+  activeUnsubscribers.push(
+    dbNs.collection('roles').onSnapshot(snap => {
+      state.roles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      state.roles.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
+      try { localStorage.setItem('agebre_cache_roles', JSON.stringify(state.roles)); } catch (_) {}
+      if (state.activeTab === 'usuarios') {
+        renderDebounced();
+      }
+    }, err => handleSnapErr('roles', err, false))
+  );
+}
+
+// Carga bajo demanda de áreas y firmantes oficiales
+function ensureFirmasListeners() {
+  if (firmasListenersStarted || !dbNs) return;
+  firmasListenersStarted = true;
+  activeUnsubscribers.push(
+    dbNs.collection('areasFirma').onSnapshot(snap => {
+      state.areasFirma = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      state.areasFirma.sort((a, b) => (a.orden || 99) - (b.orden || 99));
+      if (state.activeTab === 'tipos' || state.activeTab === 'registrar') {
+        renderDebounced();
+      }
+    }, err => handleSnapErr('areasFirma', err, false))
+  );
+
+  activeUnsubscribers.push(
+    dbNs.collection('plantillasFirmantes').onSnapshot(snap => {
+      state.plantillasFirmantes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      state.plantillasFirmantes.sort((a, b) => (a.orden || 99) - (b.orden || 99));
+      if (state.activeTab === 'tipos' || state.activeTab === 'registrar') {
+        renderDebounced();
+      }
+    }, err => handleSnapErr('plantillasFirmantes', err, false))
+  );
 }
 
 /* ============================= ESTADO DE CONEXIÓN ============================= */
@@ -1117,6 +1284,39 @@ function setupUserProfileDropdown(user) {
       closeDropdown();
     }
   });
+
+  // Opción Administrador: Gestión de Usuarios
+  let btnGestionUsuarios = document.getElementById('btnMenuGestionUsuarios');
+  if (isAdmin() && !btnGestionUsuarios) {
+    const lastDivider = dropdownMenu.querySelector('.userDropdownDivider:last-of-type');
+    if (lastDivider) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'userDropdownItem';
+      btn.id = 'btnMenuGestionUsuarios';
+      btn.setAttribute('role', 'menuitem');
+      btn.innerHTML = `
+        <span class="userDropdownIcon">◈</span>
+        <div class="userDropdownItemText">
+          <strong>Gestión de Usuarios</strong>
+          <small>Crear especialistas y asignar colegios</small>
+        </div>
+      `;
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        closeDropdown();
+        navigate('usuarios');
+      };
+      dropdownMenu.insertBefore(btn, lastDivider);
+    }
+  } else if (btnGestionUsuarios) {
+    btnGestionUsuarios.style.display = isAdmin() ? '' : 'none';
+    btnGestionUsuarios.onclick = (e) => {
+      e.stopPropagation();
+      closeDropdown();
+      navigate('usuarios');
+    };
+  }
 
   // Opción 1: Actualizar mis datos
   const btnActualizar = document.getElementById('btnMenuActualizarDatos');
@@ -1219,7 +1419,7 @@ function onLogin(user, role, userRoleDoc) {
   // Si el usuario no tiene acceso a concursos habilitado por el administrador, ingresa directamente a Monitoreo y Seguimiento
   if (!canAccessConcursos()) {
     state.modulo = 'monitoreo';
-    sessionStorage.setItem('agebre_active_modulo', 'monitoreo');
+    safeSessionSet('agebre_active_modulo', 'monitoreo');
   } else {
     const savedMod = sessionStorage.getItem('agebre_active_modulo') || 'portal';
     state.modulo = savedMod;
@@ -1228,10 +1428,11 @@ function onLogin(user, role, userRoleDoc) {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
 
-  // Ocultar botones de admin si el usuario es general
-  document.querySelectorAll('.navbtn[data-admin-only]').forEach(b => {
-    b.style.display = isAdmin() ? '' : 'none';
-  });
+  // Ocultar o mostrar botones de admin según el rol
+  updateAdminNavVisibility();
+  if (isAdmin()) {
+    ensureAdminRoleListeners();
+  }
 
   // 1. Actualizar barra superior de usuario
   const emailStr = user.email || user.displayName || 'usuario';
@@ -1308,7 +1509,7 @@ function onLogout() {
   state.currentUserRoleDoc = null;
   state.modulo = 'portal';
   try {
-    sessionStorage.removeItem('agebre_active_modulo');
+    safeSessionRemove('agebre_active_modulo');
     if (currentUser?.uid) sessionStorage.removeItem('agebre_role_' + currentUser.uid);
   } catch (_) { }
 
@@ -1434,3 +1635,58 @@ async function initApp() {
 // Render inicial (muestra el estado vacío mientras carga Firebase)
 render();
 initApp();
+
+
+// Delegación global universal de eventos con useCapture para clics seguros en tarjetas y pestañas
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (e) => {
+    const portalCard = e.target.closest('#portalCardMonitoreo, [data-select-module="monitoreo"]');
+    if (portalCard) {
+      e.preventDefault();
+      e.stopPropagation();
+      seleccionarModulo('monitoreo');
+      return;
+    }
+
+    const cPortalCard = e.target.closest('#portalCardConcursos, [data-select-module="concursos"]');
+    if (cPortalCard) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!canAccessConcursos()) {
+        showToast('⚠️ Acceso restringido: Tu cuenta de especialista actualmente solo tiene acceso a Monitoreo y Seguimiento.');
+        return;
+      }
+      seleccionarModulo('concursos');
+      return;
+    }
+
+    const navBtn = e.target.closest('#subNavBar .navbtn[data-tab]');
+    if (navBtn && navBtn.dataset.tab) {
+      e.preventDefault();
+      e.stopPropagation();
+      const tab = navBtn.dataset.tab;
+      if (tab === 'registrar') {
+        clearEditMode();
+        setRegBuiltFor(null);
+        setRegistrarSubTab('registrar');
+      }
+      navigate(tab);
+      return;
+    }
+
+    const cNavBtn = e.target.closest('#subNavBar .navbtn[data-csubtab]');
+    if (cNavBtn && cNavBtn.dataset.csubtab) {
+      e.preventDefault();
+      e.stopPropagation();
+      const cTab = cNavBtn.dataset.csubtab;
+      if (typeof setConcursoSubTab === 'function') {
+        setConcursoSubTab(cTab);
+      }
+      state.activeTab = 'concursos';
+      forceResetBodyScroll();
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      render();
+      return;
+    }
+  }, true);
+}

@@ -9,6 +9,6 @@ export * from './rules.js';
 export * from './detector.js';
 export * from './evaluador.js';
 export * from './engine-helpers.js';
-export * from './engine.js';
+export * from './engine.js?v=20261123_v7';
 export * from './item-identity.js';
 

@@ -194,15 +194,16 @@ export function calcScore(respuestas, fichaType) {
     let secSi    = 0;
     let secPuntos = 0;
 
+    const isCondSec = isJec1er && (sIdx === 0 || sec.id?.includes('cond') || /condici[oó]n/i.test(sec.nombre || ''));
+    const isRubricSec = isJec1er && !isCondSec;
+    const secEscala = isCondSec
+      ? 'SI_NO_NA'
+      : (isRubricSec ? 'ESCALA_1_3' : (isSiNo ? 'SI_NO_NA' : (sec.escala || (sec.tipo ? (LEGADO_A_ESCALA[sec.tipo] || sec.tipo) : null) || escala)));
+
     for (let iIdx = 0; iIdx < (sec.items || []).length; iIdx++) {
       const it = sec.items[iIdx];
       const v = resolveItemValue(valMap, it, sec, sIdx, iIdx, isJec);
 
-      const isCondSec = isJec1er && (sIdx === 0 || sec.id?.includes('cond') || /condici[oó]n/i.test(sec.nombre || ''));
-      const isRubricSec = isJec1er && !isCondSec;
-      const secEscala = isCondSec
-        ? 'SI_NO_NA'
-        : (isRubricSec ? 'ESCALA_1_3' : (isSiNo ? 'SI_NO_NA' : (sec.escala || (sec.tipo ? (LEGADO_A_ESCALA[sec.tipo] || sec.tipo) : null) || escala)));
       const sc = puntajeItem(secEscala, v);
       if (sc !== null) {
         secScore += sc;

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * public/js/calc/reglas.js
  * Reglas de nivel predefinidas para los diferentes instrumentos de monitoreo
  * UGEL 03 Â· AGEBRE
@@ -9,9 +9,9 @@ export const REGLA_NIVEL_JEC = {
   tipo:   'conteo',
   cuenta: 'si',
   rangos: [
-    { nivel: 'ImplementaciÃ³n lograda',    min: 24, max: 31, estado_panel: 'Logrado'    },
-    { nivel: 'ImplementaciÃ³n parcial',    min: 12, max: 23, estado_panel: 'En proceso' },
-    { nivel: 'ImplementaciÃ³n incipiente', min:  0, max: 11, estado_panel: 'Inicio'     },
+    { nivel:        'Logrado',    min: 24, max: 31, estado_panel: 'Logrado'    },
+    { nivel:        'Proceso',    min: 12, max: 23, estado_panel: 'En proceso' },
+    { nivel:        'Inicio', min:  0, max: 11, estado_panel: 'Inicio'     },
   ],
 };
 
@@ -20,9 +20,9 @@ export const REGLA_NIVEL_JEC_3ER_MOMENTO = {
   tipo:   'conteo',
   cuenta: 'si',
   rangos: [
-    { nivel: 'Implementación lograda',    min: 21, max: 26, estado_panel: 'Logrado'    },
-    { nivel: 'Implementación parcial',    min: 14, max: 20, estado_panel: 'En proceso' },
-    { nivel: 'Implementación incipiente', min:  0, max: 13, estado_panel: 'Inicio'     },
+    { nivel:        'Logrado',    min: 21, max: 26, estado_panel: 'Logrado'    },
+    { nivel:        'Proceso',    min: 14, max: 20, estado_panel: 'En proceso' },
+    { nivel:        'Inicio', min:  0, max: 13, estado_panel: 'Inicio'     },
   ],
 };
 
@@ -35,21 +35,21 @@ export const REGLA_NIVEL_JEC_1ER_MOMENTO = {
   nota:       'Regla oficial 1er Monitoreo JEC: Inicio (1 a 56), Proceso (57 a 83), Logrado (84 a 111)',
   rangos: [
     {
-      nivel:        'LOGRADO',
+      nivel:        'Logrado',
       min:          84,
       max:          111,
       estado_panel: 'Logrado',
       descripcion:  'La IE cumple con la mayorÃ­a de los Ã­tems establecidos.'
     },
     {
-      nivel:        'PROCESO',
+      nivel:        'Proceso',
       min:          57,
       max:          83,
       estado_panel: 'En proceso',
       descripcion:  'La IE cumple con mÃ¡s de la mitad de los Ã­tems establecidos.'
     },
     {
-      nivel:        'INICIO',
+      nivel:        'Inicio',
       min:          1,
       max:          56,
       estado_panel: 'Inicio',
@@ -133,7 +133,7 @@ export const REGLA_NIVEL_COORD_PEDAGOGICO = {
 export const REGLA_NIVEL_GENERICA = {
   tipo: 'porcentaje',
   umbrales: [
-    { nivel: 'Logrado',     min: 85, estado_panel: 'Logrado'    },
+    { nivel:        'Logrado',     min: 85, estado_panel: 'Logrado'    },
     { nivel: 'En proceso',  min: 70, estado_panel: 'En proceso' },
     { nivel: 'Por mejorar', min:  0, estado_panel: 'Inicio'     },
   ],

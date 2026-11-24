@@ -31,7 +31,8 @@ import {
   buildFichaTypePayload,
   validateBuilderPayload,
   normalizeExtras,
-  blankBuilder
+  blankBuilder,
+  saveLocalCustomFichaType
 } from './payload.js';
 import {
   buildPreviewInnerHtml,
@@ -2095,20 +2096,29 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       };
 
       try {
-        let finalDocId = builderEditingId;
-        if (finalDocId) {
-          await dbNs.collection('fichaTypes').doc(finalDocId).set(payload);
-          showToast('✓ Borrador de ficha actualizado.');
-        } else {
-          payload.createdAt = Date.now();
-          const docRef = await dbNs.collection('fichaTypes').add(payload);
-          finalDocId = docRef.id;
-          builderEditingId = finalDocId;
-          showToast('✓ Borrador guardado exitosamente.');
+        let finalDocId = builderEditingId || ('draft_' + Date.now());
+        let cloudSaved = false;
+
+        if (dbNs) {
+          try {
+            if (builderEditingId) {
+              await dbNs.collection('fichaTypes').doc(finalDocId).set(payload);
+            } else {
+              payload.createdAt = Date.now();
+              const docRef = await dbNs.collection('fichaTypes').add(payload);
+              finalDocId = docRef.id;
+              builderEditingId = finalDocId;
+            }
+            cloudSaved = true;
+          } catch (cloudErr) {
+            console.warn('[editor] No se pudo guardar borrador en Firestore (posible cuota):', cloudErr);
+          }
         }
 
-        // Sincronizar inmediatamente en el estado en memoria para que no haya desfasaje
         const savedItem = { id: finalDocId, ...payload };
+        saveLocalCustomFichaType(savedItem);
+
+        // Sincronizar inmediatamente en el estado en memoria para que no haya desfasaje
         if (state && Array.isArray(state.fichaTypes)) {
           const idx = state.fichaTypes.findIndex(f => f.id === finalDocId);
           if (idx !== -1) {
@@ -2130,6 +2140,12 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         if (typeof setRegBuiltFor === 'function') setRegBuiltFor(null);
         if (typeof resetRegBuiltFor === 'function') resetRegBuiltFor();
         if (typeof window !== 'undefined' && typeof window.resetRegBuiltFor === 'function') { window.resetRegBuiltFor(); }
+
+        if (cloudSaved) {
+          showToast('✓ Borrador guardado exitosamente.');
+        } else {
+          showToast('✓ Borrador guardado localmente en tu equipo.');
+        }
 
         builderIsDirty = false;
         const di = document.getElementById('dirtyIndicator');
@@ -2316,20 +2332,31 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
       };
 
       try {
-        let finalDocId = builderEditingId;
-        if (finalDocId) {
-          await dbNs.collection('fichaTypes').doc(finalDocId).set(payload);
-          showToast('✓ Tipo de ficha actualizado exitosamente.');
-        } else {
-          payload.createdAt = Date.now();
-          const docRef = await dbNs.collection('fichaTypes').add(payload);
-          finalDocId = docRef.id;
-          builderEditingId = finalDocId;
-          showToast('✓ Tipo de ficha creado exitosamente.');
+        let finalDocId = builderEditingId || ('custom_' + Date.now());
+        let cloudSaved = false;
+
+        if (dbNs) {
+          try {
+            if (builderEditingId) {
+              await dbNs.collection('fichaTypes').doc(finalDocId).set(payload);
+            } else {
+              payload.createdAt = Date.now();
+              const docRef = await dbNs.collection('fichaTypes').add(payload);
+              finalDocId = docRef.id;
+              builderEditingId = finalDocId;
+            }
+            cloudSaved = true;
+          } catch (cloudErr) {
+            console.warn('[editor] No se pudo guardar en Firestore (posible cuota excedida):', cloudErr);
+          }
         }
 
-        // Sincronizar inmediatamente en el estado en memoria para que cualquier re-verificación o edición inmediata tenga los datos exactos
         const savedItem = { id: finalDocId, ...payload };
+
+        // Guardar SIEMPRE localmente para resiliencia total frente a la cuota diaria de Firestore
+        saveLocalCustomFichaType(savedItem);
+
+        // Sincronizar inmediatamente en el estado en memoria para que cualquier re-verificación o edición inmediata tenga los datos exactos
         if (state && Array.isArray(state.fichaTypes)) {
           const idx = state.fichaTypes.findIndex(f => f.id === finalDocId);
           if (idx !== -1) {
@@ -2352,6 +2379,13 @@ export function renderSplitScreenBuilder(container, state, getFichaType, dbNs, i
         if (typeof resetRegBuiltFor === 'function') resetRegBuiltFor();
         if (typeof window !== 'undefined' && typeof window.resetRegBuiltFor === 'function') { window.resetRegBuiltFor(); }
 
+        if (cloudSaved) {
+          showToast('✓ Tipo de ficha guardado exitosamente en la nube.');
+        } else {
+          showToast('✓ Ficha guardada localmente en tu equipo (la cuota de Firestore de hoy se ha completado). Podrás usarla normalmente.');
+        }
+
+        // Cerrar el editor y volver a la vista de lista de plantillas limpiamente
         builderIsDirty = false;
         builderJsonUnlocked = false;
         tiposView = 'list';

@@ -277,3 +277,36 @@ export function validateBuilderPayload(bs) {
   return { valid: true };
 }
 
+export function getLocalCustomFichaTypes() {
+  try {
+    const raw = localStorage.getItem('agebre_local_custom_ficha_types');
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr;
+    }
+  } catch (_) {}
+  return [];
+}
+
+export function saveLocalCustomFichaType(item) {
+  if (!item || !item.id) return;
+  try {
+    const list = getLocalCustomFichaTypes();
+    const idx = list.findIndex(f => f.id === item.id);
+    if (idx !== -1) {
+      list[idx] = item;
+    } else {
+      list.push(item);
+    }
+    localStorage.setItem('agebre_local_custom_ficha_types', JSON.stringify(list));
+  } catch (_) {}
+}
+
+export function removeLocalCustomFichaType(id) {
+  if (!id) return;
+  try {
+    const list = getLocalCustomFichaTypes().filter(f => f.id !== id);
+    localStorage.setItem('agebre_local_custom_ficha_types', JSON.stringify(list));
+  } catch (_) {}
+}
+

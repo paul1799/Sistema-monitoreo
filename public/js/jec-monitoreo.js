@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    jec-monitoreo.js — Módulo especializado para la Ficha:
    "Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC"
    UGEL 03 · AGEBRE
@@ -21,6 +21,7 @@ import { RUBRICAS_OBSERVACION_AULA } from './ebr-gestion.js';
 import { isFichaJec, REGLA_NIVEL_JEC, estadoPorRegla, ESPECIALISTA_JEC_OFICIAL, isFichaEspecialistaJec } from './calcEngine.js?v=20260928_v12';
 import { clearEditMode } from './core/state/app-state.js';
 import { getScopedColegios } from './core/user-scope.js';
+import { JEC_1ER_SECCIONES } from './jec-1er-monitoreo.js';
 
 export { isFichaJec, REGLA_NIVEL_JEC, ESPECIALISTA_JEC_OFICIAL, isFichaEspecialistaJec };
 
@@ -493,8 +494,30 @@ export const JEC_3ER_SECCIONES = [
 export function getActiveJecSections(ft, visitaNum = 2) {
   const v = Number(visitaNum) || 2;
   const vIdx = v - 1;
+  const countItems = (arr) => Array.isArray(arr) ? arr.reduce((acc, s) => acc + (s.items?.length || 0), 0) : 0;
 
-  // 1. Si la plantilla tiene seccionesPorVisita configuradas (desde Firestore o plantilla unificada)
+  // 1. Si es Visita 3 (Salida / Balance Anual JEC): exactamente 26 ítems oficiales
+  if (v === 3) {
+    const secVis3 = ft?.seccionesPorVisita?.[vIdx] ?? ft?.seccionesPorVisita?.[String(vIdx)];
+    if (Array.isArray(secVis3) && countItems(secVis3) === 26) {
+      return secVis3;
+    }
+    return JEC_3ER_SECCIONES;
+  }
+
+  // 2. Si es Visita 1 y no hay configuración específica en seccionesPorVisita
+  if (v === 1) {
+    const secVis1 = ft?.seccionesPorVisita?.[0] ?? ft?.seccionesPorVisita?.['0'];
+    if (Array.isArray(secVis1) && secVis1.length > 0 && countItems(secVis1) !== 31 && countItems(secVis1) !== 26) {
+      return secVis1;
+    }
+    if (Array.isArray(ft?.secciones) && ft.secciones.some(s => (s.items || []).some(i => i.id?.startsWith('jec1_') || i.id?.startsWith('cond_')))) {
+      return ft.secciones;
+    }
+    return JEC_1ER_SECCIONES;
+  }
+
+  // 3. Si la plantilla tiene seccionesPorVisita configuradas (Visita 2)
   if (ft?.seccionesPorVisita) {
     const secVis = ft.seccionesPorVisita[vIdx] ?? ft.seccionesPorVisita[String(vIdx)];
     if (Array.isArray(secVis) && secVis.length > 0) {
@@ -502,12 +525,7 @@ export function getActiveJecSections(ft, visitaNum = 2) {
     }
   }
 
-  // 2. Si es Visita 3 y no hay configuración específica en la plantilla, retornar los 26 ítems oficiales
-  if (v === 3) {
-    return JEC_3ER_SECCIONES;
-  }
-
-  // 3. Si es Visita 2 y ft.secciones no contiene ítems de 1er Momento (rúbricas o jec1_)
+  // 4. Si es Visita 2 y ft.secciones no contiene ítems de 1er Momento (rúbricas o jec1_)
   if (v === 2 && Array.isArray(ft?.secciones) && ft.secciones.length > 0) {
     const hasJec1Items = ft.secciones.some(s => (s.items || []).some(i => i.id?.startsWith('jec1_') || i.id?.startsWith('cond_')));
     if (!hasJec1Items) {
@@ -515,7 +533,7 @@ export function getActiveJecSections(ft, visitaNum = 2) {
     }
   }
 
-  // 4. Fallback canónico oficial para visita 2 (31 ítems de proceso)
+  // 5. Fallback canónico oficial para visita 2 (31 ítems de proceso)
   return JEC_SECCIONES;
 }
 
@@ -535,57 +553,41 @@ export function getActiveJecSections(ft, visitaNum = 2) {
 export function getNivelLogroJec(conteoSi, totalItems = 31, config = null, visitaNum = null) {
   const c = Number(conteoSi) || 0;
   const tot = Number(totalItems) || 31;
-  const v = visitaNum ? Number(visitaNum) : (tot === 26 ? 3 : 2);
+  const v = visitaNum ? Number(visitaNum) : (tot === 26 ? 3 : (tot === 37 ? 1 : 2));
 
-  // Si existe regla_nivel_config personalizada desde la plantilla en Firestore
-  if (config) {
-    const minLog = Number(config.minLog ?? config.logrado?.min ?? (v === 3 ? 21 : 24));
-    const minProc = Number(config.minProc ?? config.proceso?.min ?? (v === 3 ? 14 : 12));
-    const maxLog = tot;
-    const maxProc = Math.max(0, minLog - 1);
-    const maxIni = Math.max(0, minProc - 1);
-    const lblLog = config.lblLog || config.logrado?.label || 'Implementación lograda';
-    const lblProc = config.lblProc || config.proceso?.label || 'Implementación parcial';
-    const lblIni = config.lblIni || config.inicio?.label || 'Implementación incipiente';
-    if (c >= minLog) {
-      return {
-        nivel: lblLog, estado_panel: 'Logrado', cls: 'st-logrado', color: 'var(--ok)', badgeBg: 'var(--ok-bg)',
-        rangoTexto: `De ${minLog} a ${maxLog} respuestas "Sí"`, rangoMin: minLog, rangoMax: maxLog,
-        rangoMinIni: 0, rangoMaxIni: maxIni, rangoMinProc: minProc, rangoMaxProc: maxProc, rangoMinLog: minLog, rangoMaxLog: maxLog
-      };
-    }
-    if (c >= minProc) {
-      return {
-        nivel: lblProc, estado_panel: 'En proceso', cls: 'st-proceso', color: 'var(--warn)', badgeBg: 'var(--warn-bg)',
-        rangoTexto: `De ${minProc} a ${maxProc} respuestas "Sí"`, rangoMin: minProc, rangoMax: maxProc,
-        rangoMinIni: 0, rangoMaxIni: maxIni, rangoMinProc: minProc, rangoMaxProc: maxProc, rangoMinLog: minLog, rangoMaxLog: maxLog
-      };
-    }
-    return {
-      nivel: lblIni, estado_panel: 'Inicio', cls: 'st-inicio', color: 'var(--danger)', badgeBg: 'var(--danger-bg)',
-      rangoTexto: `De 0 a ${maxIni} respuestas "Sí"`, rangoMin: 0, rangoMax: maxIni,
-      rangoMinIni: 0, rangoMaxIni: maxIni, rangoMinProc: minProc, rangoMaxProc: maxProc, rangoMinLog: minLog, rangoMaxLog: maxLog
-    };
-  }
+  let minLog, minProc, lblLog, lblProc, lblIni;
 
-  // Reglas oficiales según Momento / Total de ítems:
-  // 3er Momento (26 ítems): Lograda: 21-26, Parcial: 14-20, Incipiente: 0-13
-  // 2do Momento (31 ítems): Lograda: 24-31, Parcial: 12-23, Incipiente: 0-11
-  let minLog, minProc;
   if (v === 3 || tot === 26) {
-    minLog = tot === 26 ? 21 : Math.round(tot * (21 / 26));
-    minProc = tot === 26 ? 14 : Math.round(tot * (14 / 26));
+    // Escala ministerial oficial para el 3er Momento (Balance Anual JEC - 26 ítems)
+    // Lograda: 21 a 26 respuestas "Sí", Parcial: 14 a 20, Incipiente: 0 a 13
+    minLog = Number(config?.v3_minLog ?? config?.momento3?.minLog ?? (tot === 26 ? 21 : Math.round(tot * (21 / 26))));
+    minProc = Number(config?.v3_minProc ?? config?.momento3?.minProc ?? (tot === 26 ? 14 : Math.round(tot * (14 / 26))));
+    lblLog = 'Logrado';
+    lblProc = 'Proceso';
+    lblIni = 'Inicio';
+  } else if (config) {
+    minLog = Number(config.minLog ?? config.logrado?.min ?? 24);
+    minProc = Number(config.minProc ?? config.proceso?.min ?? 12);
+    lblLog = 'Logrado';
+    lblProc = 'Proceso';
+    lblIni = 'Inicio';
   } else {
+    // Reglas oficiales según Momento / Total de ítems:
+    // 2do Momento (31 ítems): Lograda: 24-31, Parcial: 12-23, Incipiente: 0-11
     minLog = tot === 31 ? 24 : Math.round(tot * (24 / 31));
     minProc = tot === 31 ? 12 : Math.round(tot * (12 / 31));
+    lblLog = 'Logrado';
+    lblProc = 'Proceso';
+    lblIni = 'Inicio';
   }
+
   const maxLog = tot;
   const maxProc = Math.max(0, minLog - 1);
   const maxIni = Math.max(0, minProc - 1);
 
   if (c >= minLog) {
     return {
-      nivel: 'Implementación lograda',
+      nivel: lblLog,
       estado_panel: 'Logrado',
       cls: 'st-logrado',
       color: 'var(--ok)',
@@ -603,7 +605,7 @@ export function getNivelLogroJec(conteoSi, totalItems = 31, config = null, visit
   }
   if (c >= minProc) {
     return {
-      nivel: 'Implementación parcial',
+      nivel: lblProc,
       estado_panel: 'En proceso',
       cls: 'st-proceso',
       color: 'var(--warn)',
@@ -620,7 +622,7 @@ export function getNivelLogroJec(conteoSi, totalItems = 31, config = null, visit
     };
   }
   return {
-    nivel: 'Implementación incipiente',
+    nivel: lblIni,
     estado_panel: 'Inicio',
     cls: 'st-inicio',
     color: 'var(--danger)',
@@ -858,7 +860,7 @@ export function renderJecVisitaSelectorHtml(currentVisita = 2) {
           </p>
         </div>
         <div class="badge" style="background:var(--primary-tint);color:var(--primary-dark);font-weight:700;font-size:12px;padding:4px 10px;border-radius:12px">
-          ${isV1 ? '1er Monitoreo (Inicio) · 37 ítems' : isV2 ? '2do Monitoreo (Proceso) · 31 ítems + R1–R5' : '3er Monitoreo (Salida) · 31 ítems (Balance)'}
+          ${isV1 ? '1er Monitoreo (Inicio) · 37 ítems' : isV2 ? '2do Monitoreo (Proceso) · 31 ítems + R1–R5' : '3er Monitoreo (Salida) · 26 ítems (Balance Anual)'}
         </div>
       </div>
 
@@ -900,11 +902,11 @@ export function renderJecVisitaSelectorHtml(currentVisita = 2) {
               ${isV3 ? '✓ ' : ''}3er Monitoreo · Tercer momento
             </span>
             <span style="font-size:11px;background:${isV3 ? 'var(--primary)' : 'var(--line)'};color:${isV3 ? '#fff' : 'var(--ink-soft)'};padding:2px 8px;border-radius:10px;font-weight:700">
-              31 ítems (Balance)
+              26 ítems (Balance)
             </span>
           </div>
           <div style="font-size:12px;color:var(--ink-soft);line-height:1.4">
-            Balance anual y cierre de gestión de la implementación del Modelo de Servicio Educativo JEC, compromisos de salida y acuerdos finales.
+            Balance anual y cierre de gestión de la implementación del Modelo de Servicio Educativo JEC (26 indicadores Sí/No), compromisos de salida y acuerdos finales.
           </div>
         </button>
       </div>
@@ -920,7 +922,8 @@ export function renderJecVisitaSelectorHtml(currentVisita = 2) {
 export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEditing = false, forcedVisita = null) {
   if (!host) return;
 
-  const activeVisitaNum = forcedVisita ? Number(forcedVisita) : (ft?.momento || 2);
+  const urlVisita = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('visita') : null;
+  const activeVisitaNum = Number(forcedVisita || urlVisita || ft?.momento || 2);
 
   // Aspectos e ítems dinámicos desde ft.seccionesPorVisita o ft.secciones
   const activeSections = getActiveJecSections(ft, activeVisitaNum);
@@ -929,14 +932,14 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
   // Calcular conteo actual de respuestas Sí en tiempo real
   const conteoSi = Object.values(jecFormState.respuestas).filter(v => v === 'si').length;
   const conteoRespondidos = Object.values(jecFormState.respuestas).filter(v => v).length;
-  const totalItems = activeItems.length || (activeVisitaNum === 3 ? 26 : JEC_ITEMS.length);
+  const totalItems = activeItems.length || (activeVisitaNum === 3 ? 26 : (activeVisitaNum === 1 ? 37 : JEC_ITEMS.length));
   const nivelActual = getNivelLogroJec(conteoSi, totalItems, ft?.regla_nivel_config, activeVisitaNum);
   const pctAvance = Math.round((conteoSi / totalItems) * 100);
   const pctRespondidos = Math.round((conteoRespondidos / totalItems) * 100);
   const submitLabel = isEditing ? 'Actualizar registro' : 'Guardar registro';
 
   host.innerHTML = `
-    <form id="regForm" autocomplete="off" class="jecFormContainer" style="max-width:1120px;margin:0 auto">
+    <form id="regForm" data-visita="${activeVisitaNum}" autocomplete="off" class="jecFormContainer" style="max-width:1120px;margin:0 auto">
       ${renderJecVisitaSelectorHtml(activeVisitaNum)}
       <!-- ─── BARRA FLOTANTE DE NIVEL DE LOGRO EN TIEMPO REAL ─── -->
       <div class="panel jecLiveHeader" style="position:sticky;top:104px;z-index:25;background:var(--surface);border-left:5px solid ${nivelActual.color};box-shadow:var(--shadow-md);margin-bottom:20px;padding:12px 18px">
@@ -1251,7 +1254,7 @@ export function renderJecForm(host, ft, state, dbNs, currentUser, navigate, isEd
     </form>
   `;
 
-  attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEditing);
+  attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEditing, activeVisitaNum);
   if (activeVisitaNum === 3) {
     updateDocenteRowCalculations('momento3', host);
   } else {
@@ -1470,7 +1473,7 @@ function renderComponentesJecHtml(ft = null, activeVisitaNum = 2) {
 /**
  * Vincula todos los eventos reactivos del formulario JEC
  */
-function attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEditing) {
+function attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEditing, activeVisitaNum = null) {
   // 1. Buscador Autocomplete de Institución Educativa
   const instInput = host.querySelector('#f_institucion');
   const dropdown = host.querySelector('#jecIeDropdown');
@@ -1670,7 +1673,7 @@ function attachJecFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
       }
 
       // Recalcular nivel de logro general en tiempo real y avance
-      updateLiveNivelJec(host);
+      updateLiveNivelJec(host, ft, activeVisitaNum);
     };
   });
 
@@ -1943,12 +1946,20 @@ function updateDocenteRowCalculations(momentoKey, host) {
  * Actualiza el badge superior, la barra de progreso y la tabla oficial de nivel de logro
  */
 function updateLiveNivelJec(host, ft = null, activeVisitaNum = null) {
-  const vNum = Number(activeVisitaNum || host?.querySelector?.('.jecVisitaBtn.active-visita')?.dataset?.visita || 2);
+  const formVis = host?.dataset?.visita
+    || host?.querySelector?.('#regForm')?.dataset?.visita
+    || document.querySelector('#regForm')?.dataset?.visita;
+  const cardVis = host?.querySelector?.('.jecVisitaCard.active')?.dataset?.jecVisita
+    || document.querySelector('.jecVisitaCard.active')?.dataset?.jecVisita;
+  const btnVis = host?.querySelector?.('.jecVisitaBtn.active-visita')?.dataset?.visita
+    || document.querySelector('.jecVisitaBtn.active-visita')?.dataset?.visita;
+
+  const vNum = Number(activeVisitaNum || formVis || cardVis || btnVis || 2);
   const conteoSi = Object.values(jecFormState.respuestas).filter(v => v === 'si').length;
   const conteoRespondidos = Object.values(jecFormState.respuestas).filter(v => v).length;
   const activeSections = getActiveJecSections(ft, vNum);
   const activeItems = activeSections.flatMap(s => s.items || []);
-  const totalItems = activeItems.length || (vNum === 3 ? 26 : JEC_ITEMS.length);
+  const totalItems = activeItems.length || (vNum === 3 ? 26 : (vNum === 1 ? 37 : JEC_ITEMS.length));
   const pctAvance = Math.round((conteoSi / totalItems) * 100);
   const pctRespondidos = Math.round((conteoRespondidos / totalItems) * 100);
   const nivel = getNivelLogroJec(conteoSi, totalItems, ft?.regla_nivel_config, vNum);
@@ -2086,6 +2097,15 @@ function syncJecStateFromDom(host) {
     }
   });
 
+  // Respuestas desde botones interactivos Sí / No en tarjetas JEC
+  host.querySelectorAll('.jecItemCard').forEach(card => {
+    const id = card.dataset.itemId;
+    const activeBtn = card.querySelector('.btnJecOpt.active-si, .btnJecOpt.active-no');
+    if (id && activeBtn && activeBtn.dataset.val) {
+      jecFormState.respuestas[id] = activeBtn.dataset.val.toLowerCase();
+    }
+  });
+
   // Compromisos
   jecFormState.compromisoDirector = (host.querySelector('#jec_comp_director')?.value || '').trim();
   jecFormState.compromisoMonitor = (host.querySelector('#jec_comp_monitor')?.value || '').trim();
@@ -2109,7 +2129,9 @@ export function collectJecFormData(host, ft, isEdit = false, activeVisita = null
   }
 
   // Construir array de respuestas oficial (dinámico respetando ft.seccionesPorVisita)
-  const vNum = Number(activeVisita || host?.querySelector?.('.jecVisitaBtn.active-visita')?.dataset?.visita || 2);
+  const activeCardVis = host?.querySelector?.('.jecVisitaCard.active')?.dataset?.jecVisita || document.querySelector('.jecVisitaCard.active')?.dataset?.jecVisita;
+  const formVis = host?.dataset?.visita || host?.querySelector?.('#regForm')?.dataset?.visita || document.querySelector('#regForm')?.dataset?.visita;
+  const vNum = Number(activeVisita || formVis || activeCardVis || host?.querySelector?.('.jecVisitaBtn.active-visita')?.dataset?.visita || 2);
   const activeSections = getActiveJecSections(ft, vNum);
   const activeItems = activeSections.flatMap(s => (s.items || []).map(it => ({ ...it, seccion: s.nombre })));
 
@@ -2118,9 +2140,33 @@ export function collectJecFormData(host, ft, isEdit = false, activeVisita = null
   let conteoTotal = 0;
 
   const respuestas = activeItems.map(it => {
-    const radio = host?.querySelector?.(`input[name="item_${it.id}"]:checked`);
-    const val = (radio ? radio.value : (jecFormState.respuestas[it.id] || '')).toLowerCase();
-    const hallazgo = jecFormState.hallazgos[it.id] || '';
+    // 1. Búsqueda en DOM de botón seleccionado (.active-si / .active-no)
+    const card = host?.querySelector?.(`.jecItemCard[data-item-id="${it.id}"]`) || document.querySelector(`.jecItemCard[data-item-id="${it.id}"]`);
+    const activeBtn = card?.querySelector?.('.btnJecOpt.active-si, .btnJecOpt.active-no');
+    const domVal = activeBtn?.dataset?.val ? activeBtn.dataset.val.toLowerCase() : null;
+
+    // 2. Búsqueda en radio inputs si existieran
+    const radio = host?.querySelector?.(`input[name="item_${it.id}"]:checked`) || document.querySelector(`input[name="item_${it.id}"]:checked`);
+    const radioVal = radio ? radio.value.toLowerCase() : null;
+
+    // 3. Búsqueda en jecFormState.respuestas (por id, num o jec_num)
+    const stateVal = (
+      jecFormState.respuestas[it.id] ||
+      jecFormState.respuestas[it.num] ||
+      jecFormState.respuestas[`jec_${it.num}`] ||
+      ''
+    ).toLowerCase();
+
+    const val = domVal || radioVal || stateVal || '';
+    if (val) {
+      jecFormState.respuestas[it.id] = val;
+    }
+
+    const hallazgoInput = card?.querySelector?.('.jecItemHallazgo');
+    const hallazgo = (hallazgoInput ? hallazgoInput.value.trim() : '') || jecFormState.hallazgos[it.id] || '';
+    if (hallazgo) {
+      jecFormState.hallazgos[it.id] = hallazgo;
+    }
 
     if (val === 'si') conteoSi++;
     else if (val === 'no') conteoNo++;
@@ -2137,7 +2183,7 @@ export function collectJecFormData(host, ft, isEdit = false, activeVisita = null
     };
   });
 
-  const totalItems = activeItems.length || (vNum === 3 ? 26 : JEC_ITEMS.length);
+  const totalItems = activeItems.length || (vNum === 3 ? 26 : (vNum === 1 ? 37 : JEC_ITEMS.length));
   const esBorrador = conteoTotal < totalItems;
 
   if (esBorrador) {

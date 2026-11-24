@@ -44,7 +44,7 @@ import {
   setTiposView,
   openFichaInBuilder,
   startNewPlantillaBuilder
-} from './editor.js?v=20261120_v1';
+} from './editor.js?v=20261123_v8';
 
 async function verifyAdminPassword(pw, adminEmail) {
   const authModule = await import('../../core/firebase/auth.js');

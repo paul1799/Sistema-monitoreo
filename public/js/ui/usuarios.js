@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    ui/usuarios.js — Administración y creación de usuarios y roles del sistema
    UGEL 03 · Sistema de Monitoreo y Acompañamiento Pedagógico 2026
    ========================================================================= */
@@ -1342,7 +1342,13 @@ export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, stateO
 
   const state = (typeof stateOrOnComplete === 'object' && stateOrOnComplete !== null) ? stateOrOnComplete : (typeof window !== 'undefined' ? window.state : {});
   const onComplete = (typeof stateOrOnComplete === 'function') ? stateOrOnComplete : onCompleteCb;
-  const allColegios = state?.colegios || (typeof window !== 'undefined' && window.state?.colegios) || [];
+  let allColegios = (state?.colegios && state.colegios.length) ? state.colegios : (typeof window !== 'undefined' && window.state?.colegios) || [];
+  if (!allColegios.length) {
+    try {
+      const stored = sessionStorage.getItem('agebre_cache_colegios') || localStorage.getItem('agebre_cache_colegios');
+      if (stored) allColegios = JSON.parse(stored);
+    } catch (_) {}
+  }
 
   const rawMods = userDoc.modalidades || userDoc.modalidad || 'EBR';
   const userMods = Array.isArray(rawMods) ? rawMods : String(rawMods).split(/[,\s/]+/).map(s => s.trim().toUpperCase());
@@ -1364,7 +1370,7 @@ export function openEditUserJurisdictionModal(userDoc, dbNs, currentUser, stateO
   const reisNumbers = Array.from({ length: 16 }, (_, i) => String(i + 1).padStart(2, '0'));
 
   overlay.innerHTML = `
-    <div class="downloadModalContent" style="max-width:560px;border-radius:14px;box-shadow:0 20px 40px rgba(11,27,54,0.3)">
+    <div class="downloadModalCard" style="max-width:560px;background:#FFFFFF;border-radius:14px;box-shadow:0 20px 40px rgba(11,27,54,0.3);overflow:hidden">
       <div class="downloadModalHeader" style="background:var(--navy-900);color:#FFFFFF;border-top-left-radius:14px;border-top-right-radius:14px;padding:16px 20px">
         <div style="display:flex;align-items:center;gap:10px">
           <span style="font-size:22px">📍</span>
@@ -1780,7 +1786,13 @@ function openCreateUserModal(dbNs, currentUser, stateOrOnComplete, onCompleteCb)
 
   const state = (typeof stateOrOnComplete === 'object' && stateOrOnComplete !== null) ? stateOrOnComplete : (typeof window !== 'undefined' ? window.state : {});
   const onComplete = (typeof stateOrOnComplete === 'function') ? stateOrOnComplete : onCompleteCb;
-  const allColegios = state?.colegios || (typeof window !== 'undefined' && window.state?.colegios) || [];
+  let allColegios = (state?.colegios && state.colegios.length) ? state.colegios : (typeof window !== 'undefined' && window.state?.colegios) || [];
+  if (!allColegios.length) {
+    try {
+      const stored = sessionStorage.getItem('agebre_cache_colegios') || localStorage.getItem('agebre_cache_colegios');
+      if (stored) allColegios = JSON.parse(stored);
+    } catch (_) {}
+  }
 
   const overlay = document.createElement('div');
   overlay.id = 'modalCrearUsuario';
@@ -2316,7 +2328,8 @@ function openCreateUserModal(dbNs, currentUser, stateOrOnComplete, onCompleteCb)
       // 4. Guardar rol en la colección 'roles' con Modalidad, REIs y Colegios asignados
       const hasConcursos = Boolean(document.getElementById('newAccConcursos')?.checked || role === 'admin');
 
-      await dbNs.collection('roles').doc(newUid).set({
+      const newUserRoleDoc = {
+        id: newUid,
         email: email,
         nombre: nombre,
         nombresApellidos: nombre,
@@ -2334,7 +2347,19 @@ function openCreateUserModal(dbNs, currentUser, stateOrOnComplete, onCompleteCb)
         estadoVerificacion: 'verificado',
         createdAt: Date.now(),
         creadoPor: currentUser?.email || 'admin'
-      });
+      };
+
+      await dbNs.collection('roles').doc(newUid).set(newUserRoleDoc);
+
+      if (state && Array.isArray(state.roles)) {
+        const existingIdx = state.roles.findIndex(r => r.id === newUid || (r.email && r.email.toLowerCase() === email.toLowerCase()));
+        if (existingIdx !== -1) {
+          state.roles[existingIdx] = newUserRoleDoc;
+        } else {
+          state.roles.unshift(newUserRoleDoc);
+        }
+        try { localStorage.setItem('agebre_cache_roles', JSON.stringify(state.roles)); } catch (_) {}
+      }
 
       // 5. Registrar en logActividades para el Historial
       try {
@@ -2421,7 +2446,7 @@ function openCreateUserModal(dbNs, currentUser, stateOrOnComplete, onCompleteCb)
 
       let msg = 'Ocurrió un error al registrar el usuario.';
       if (err.code === 'auth/email-already-in-use') {
-        msg = `El correo ${email} ya tiene una cuenta registrada en Firebase Authentication.`;
+        msg = `El correo ${email} ya tiene una cuenta registrada en Firebase Authentication. Si deseas modificar su jurisdicción o colegios a cargo, puedes hacerlo directamente desde el botón "📍 Jurisdicción" en la tabla de usuarios.`;
       } else if (err.code === 'auth/invalid-email') {
         msg = 'El formato del correo electrónico no es válido.';
       } else if (err.code === 'auth/weak-password') {

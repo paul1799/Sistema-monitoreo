@@ -28,17 +28,17 @@ import {
 import {
   renderEbrGestionForm,
   preloadEbrFormState
-} from '../../ebr-gestion.js?v=20261119_v1';
+} from '../../ebr-gestion.js';
 import {
   isFichaCebeGestion,
   renderCebeGestionForm,
   preloadCebeFormState
-} from '../../cebe-gestion.js?v=20261119_v1';
+} from '../../cebe-gestion.js';
 import {
   isFichaPriteGestion,
   renderPriteGestionForm,
   preloadPriteFormState
-} from '../../prite-gestion.js?v=20261119_v1';
+} from '../../prite-gestion.js';
 import {
   renderAreasYFirmantesView,
   renderPlantillasManagementView,

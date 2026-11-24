@@ -140,6 +140,8 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   background: #FFFFFF;
   transition: transform 0.25s ease;
+  pointer-events: none;
+  user-select: none;
 }
 
 .portalCard:hover .portalCardImg {

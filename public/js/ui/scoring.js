@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    ui/scoring.js — Reglas de puntuación, agregación y visualización de indicadores
    ========================================================================= */
 
@@ -26,7 +26,7 @@ import {
   getReglaNivelEbrGestion,
   getNivelEbrGestion,
   getMomentoVisitaEbr
-} from '../calcEngine.js?v=20261120_v11';
+} from '../calcEngine.js?v=20261123_v7';
 import * as RepDatos from '../reportes-datos.js?v=20261120_v11';
 import { getEbrSeccionesForVisita } from '../ebr-gestion.js';
 import { isFichaJec, JEC_SECCIONES, getActiveJecSections } from '../jec-monitoreo.js';
@@ -138,10 +138,23 @@ export function statusFromPct(pct, fichaType, conteo_si, puntaje, visita) {
     regla = REGLA_NIVEL_JEC;
   }
   const estado = estadoPorRegla({ pct: pct ?? null, conteo_si: conteo_si || 0, puntaje: puntaje ?? null }, regla);
+  let finalLbl = estado.nivel;
+  let finalPanel = estado.estado_panel;
+  let finalCls = estado.cls;
+  if (isJec) {
+    const l = String(finalLbl || finalPanel || '').toLowerCase();
+    if (l.includes('lograd') || l.includes('cumple') || l === 'l') {
+      finalLbl = 'Logrado'; finalPanel = 'Logrado'; finalCls = 'st-logrado';
+    } else if (l.includes('proces') || l.includes('parcial') || l === 'p') {
+      finalLbl = 'Proceso'; finalPanel = 'En proceso'; finalCls = 'st-proceso';
+    } else if (l.includes('inici') || l.includes('incipient') || l.includes('no cumple') || l.includes('mejorar') || l === 'i') {
+      finalLbl = 'Inicio'; finalPanel = 'Inicio'; finalCls = 'st-inicio';
+    }
+  }
   return {
-    label: estado.nivel,
-    estado_panel: estado.estado_panel,
-    cls: estado.cls,
+    label: finalLbl,
+    estado_panel: finalPanel,
+    cls: finalCls,
     descripcion: estado.descripcion || '',
     puntaje: estado.puntaje
   };
@@ -558,6 +571,9 @@ export function stackedBar(counts, total, tipoRespuesta) {
  * @param {Object} ft - fichaType
  * @returns {{ pct: number|null, secciones: Array, estado: Object, conteo_si: number }}
  */
+// Caché de alto rendimiento para evitar recalcular innecesariamente en cada render
+const _computeStatsCache = new Map();
+
 export function computeStats(sub, ft) {
   if (!ft || !sub) {
     return {
@@ -568,6 +584,11 @@ export function computeStats(sub, ft) {
       puntaje: 0,
       puntaje_max: 0,
     };
+  }
+
+  const cacheKey = (sub.id || '') ? `${sub.id}_${sub.updatedAt || sub.createdAt || ''}_${sub.visita || ''}_${ft.id || ''}_${ft.visita || ''}` : null;
+  if (cacheKey && _computeStatsCache.has(cacheKey)) {
+    return _computeStatsCache.get(cacheKey);
   }
 
   let respuestasArray = sub.respuestas || sub.respuestasArray || sub.items;
@@ -717,6 +738,8 @@ export function computeStats(sub, ft) {
       const secJec = getActiveJecSections(ft, vJec);
       ftForCalc = {
         ...ft,
+        visita: vJec,
+        momento: vJec,
         secciones: secJec,
         tipoRespuesta: 'si_no',
         escala: 'SI_NO_NA',
@@ -810,7 +833,24 @@ export function computeStats(sub, ft) {
       : ((String(subNiv).toLowerCase().includes('proces') || String(subNiv).toLowerCase().includes('parcial')) ? 'st-proceso' : 'st-inicio');
   }
 
-  return {
+  if (isFichaJec(ft || sub)) {
+    const l = String(finalEstado.label || finalEstado.estado_panel || '').toLowerCase();
+    if (l.includes('lograd') || l.includes('cumple') || l === 'l') {
+      finalEstado.label = 'Logrado';
+      finalEstado.estado_panel = 'Logrado';
+      finalEstado.cls = 'st-logrado';
+    } else if (l.includes('proces') || l.includes('parcial') || l === 'p') {
+      finalEstado.label = 'Proceso';
+      finalEstado.estado_panel = 'En proceso';
+      finalEstado.cls = 'st-proceso';
+    } else if (l.includes('inici') || l.includes('incipient') || l.includes('no cumple') || l.includes('mejorar') || l === 'i') {
+      finalEstado.label = 'Inicio';
+      finalEstado.estado_panel = 'Inicio';
+      finalEstado.cls = 'st-inicio';
+    }
+  }
+
+  const output = {
     pct: result.pct,
     puntaje: result.puntaje,
     puntaje_max: result.puntaje_max,
@@ -819,6 +859,11 @@ export function computeStats(sub, ft) {
     conteo_si: result.conteo_si,
     estado: finalEstado,
   };
+  if (cacheKey) {
+    if (_computeStatsCache.size > 3000) _computeStatsCache.clear();
+    _computeStatsCache.set(cacheKey, output);
+  }
+  return output;
 }
 if (typeof window !== 'undefined') {
   window.computeStats = computeStats;

@@ -212,6 +212,9 @@ export function renderFichaPicker({
     return true;
   });
 
+  // Optimización de rendimiento: calcular envíos autorizados deduplicados una sola vez fuera del bucle
+  const baseScopedSubs = deduplicateTwinSubmissions(getScopedSubmissions(state, state?.currentUserRoleDoc, actualIsAdmin, getFichaType));
+
   const cardsHtml = filteredTypes.length === 0 ? `
     <div class="empty" style="padding:32px 20px">
       <h4>No se encontraron fichas de monitoreo</h4>
@@ -227,12 +230,11 @@ export function renderFichaPicker({
     const cardTitle = isEbrImpl
       ? 'Monitoreo y Asistencia Técnica a la Gestión Escolar - UGEL 03 EBR'
       : (isJecImpl ? 'Monitoreo a la Implementación del Modelo JEC' : ft.nombre);
-    const scopedSubs = getScopedSubmissions(state, state?.currentUserRoleDoc, actualIsAdmin, getFichaType);
     const count = isEbrImpl
-      ? deduplicateTwinSubmissions(scopedSubs.filter(s => isFichaEbrGestionEscolar(s))).length
+      ? baseScopedSubs.filter(s => isFichaEbrGestionEscolar(s)).length
       : (isJecImpl
-        ? deduplicateTwinSubmissions(scopedSubs.filter(s => isFichaJec(s) && !isFichaCoordTutoriaJec(s) && !isFichaCoordPedagogico(s))).length
-        : deduplicateTwinSubmissions(scopedSubs.filter(s => s.fichaTypeId === ft.id)).length);
+        ? baseScopedSubs.filter(s => isFichaJec(s) && !isFichaCoordTutoriaJec(s) && !isFichaCoordPedagogico(s)).length
+        : baseScopedSubs.filter(s => s.fichaTypeId === ft.id).length);
     const templateForCard = isEbrImpl ? (PLANTILLAS_BASE_OFICIALES?.ft_gestion_ugel03_ebr || ft) : ft;
     const totalItems = (templateForCard.secciones || []).reduce((a, s) => a + (s.items || []).length, 0);
     const totalSecs = (templateForCard.secciones || []).length;

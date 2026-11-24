@@ -1,4 +1,4 @@
-import { calcScore, puntajeItem, estadoPorRegla, LEGADO_A_ESCALA, buildResponseValMap, resolveItemValue } from './calcEngine.js?v=20261120_v11';
+import { calcScore, puntajeItem, estadoPorRegla, LEGADO_A_ESCALA, buildResponseValMap, resolveItemValue } from './calcEngine.js?v=20261123_v7';
 import { computeStats } from './ui/scoring.js';
 /*  */import { isFichaCoordPedagogico, isFichaCoordTutoriaJec, isFichaMaterialesCebe } from './calc/detectors.js?v=20261120_v11';
 import { MATERIALES_CEBE_SECCIONES } from './domain/fichas/catalogo-base.js';
