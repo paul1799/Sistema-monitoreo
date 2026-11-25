@@ -88,7 +88,7 @@ import {
   syncCommonJecFields,
   renderUnifiedJecForm,
   renderDynamicForm
-} from './form-render.js?v=20261119_v1';
+} from './form-render.js?v=20261125_v2';
 import { onSubmitRegistro } from './save.js';
 import {
   fileToBase64,

@@ -19,6 +19,17 @@ import { getResponsableForColegio } from './ui/scoring.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha } from './directorio.js?v=20261013_v1';
 import { getScopedColegios } from './core/user-scope.js';
 
+function normalizePriteScaleValue(rawVal) {
+  if (rawVal === undefined || rawVal === null) return '';
+  const s = String(rawVal).trim().toLowerCase();
+  if (!s) return '';
+  if (s === 'logrado' || s === 'l' || s === '3' || s === 'si' || s === 'sí') return 'logrado';
+  if (s === 'proceso' || s === 'p' || s === '2' || s === 'en proceso') return 'proceso';
+  if (s === 'inicio' || s === 'i' || s === '1' || s === 'no') return 'inicio';
+  if (s === 'na' || s === 'n.a.' || s === 'n/a' || s === 'no_aplica' || s === 'no aplica') return 'na';
+  return s;
+}
+
 /**
  * Detecta si una plantilla o submission corresponde a la Ficha de Gestión Escolar PRITE
  */
@@ -545,26 +556,42 @@ export function preloadPriteFormState(sub, ft) {
 
   // Respuestas de ítems
   if (sub.respuestasPorVisita) {
-    priteFormState.respuestasPorVisita = { ...sub.respuestasPorVisita };
+    Object.keys(sub.respuestasPorVisita).forEach(vk => {
+      const vMap = sub.respuestasPorVisita[vk];
+      if (vMap && typeof vMap === 'object') {
+        if (!priteFormState.respuestasPorVisita[vk]) priteFormState.respuestasPorVisita[vk] = {};
+        Object.entries(vMap).forEach(([k, val]) => {
+          priteFormState.respuestasPorVisita[vk][k] = normalizePriteScaleValue(val);
+        });
+      }
+    });
   }
-  if (Array.isArray(sub.respuestas)) {
+  const rawPriteResp = Array.isArray(sub.respuestas) ? sub.respuestas : (Array.isArray(sub.items) ? sub.items : []);
+  if (rawPriteResp.length > 0) {
     const kActiva = `v${priteFormState.visita}`;
     if (!priteFormState.respuestasPorVisita[kActiva]) priteFormState.respuestasPorVisita[kActiva] = {};
-    sub.respuestas.forEach((r, idx) => {
+    rawPriteResp.forEach((r, idx) => {
       if (!r) return;
-      let targetId = r.id;
-      if (!targetId || (!targetId.startsWith('gp_') && !targetId.startsWith('prite_'))) {
-        const num = r.num || (idx + 1);
-        targetId = `gp_${num}`;
-      } else if (targetId.startsWith('prite_')) {
-        const num = targetId.replace('prite_', '');
-        targetId = `gp_${num}`;
+      const valNorm = normalizePriteScaleValue(r.valor ?? r.value ?? r.v ?? r.respuesta);
+      const evidText = r.evidencia || r.hallazgo || r.hallazgos || r.observaciones || '';
+      const num = r.num || (idx + 1);
+      const gpId = `gp_${num}`;
+      const priteId = `prite_${num}`;
+      const numId = `num_${num}`;
+
+      if (valNorm) {
+        if (r.id) priteFormState.respuestasPorVisita[kActiva][r.id] = valNorm;
+        if (r.canonicalId) priteFormState.respuestasPorVisita[kActiva][r.canonicalId] = valNorm;
+        priteFormState.respuestasPorVisita[kActiva][gpId] = valNorm;
+        priteFormState.respuestasPorVisita[kActiva][priteId] = valNorm;
+        priteFormState.respuestasPorVisita[kActiva][numId] = valNorm;
       }
-      if (r.valor) {
-        priteFormState.respuestasPorVisita[kActiva][targetId] = String(r.valor).toLowerCase();
-      }
-      if (r.evidencia || r.hallazgo) {
-        priteFormState.evidenciasPorItem[targetId] = r.evidencia || r.hallazgo;
+      if (evidText) {
+        if (r.id) priteFormState.evidenciasPorItem[r.id] = evidText;
+        if (r.canonicalId) priteFormState.evidenciasPorItem[r.canonicalId] = evidText;
+        priteFormState.evidenciasPorItem[gpId] = evidText;
+        priteFormState.evidenciasPorItem[priteId] = evidText;
+        priteFormState.evidenciasPorItem[numId] = evidText;
       }
     });
   }
@@ -708,11 +735,29 @@ export function renderPriteGestionForm(host, ft, state, dbNs, currentUser, navig
   const activeSections = getActivePriteSections(ft);
   const totalItemsCount = activeSections.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0) || TOTAL_PRITE_ITEMS;
 
+  let runningPriteIdx = 0;
   const htmlSecciones = activeSections.map((sec, sIdx) => {
     const itemsHtml = (sec.items || []).map((it, iIdx) => {
-      const val = (respuestasActivas[it.id] || '').toLowerCase();
-      const evidVal = priteFormState.evidenciasPorItem[it.id] || '';
-      const selectedSubs = subOpcionesActivas[it.id] || [];
+      runningPriteIdx++;
+      const seqNum = (it.num !== undefined && it.num !== null && it.num !== '') ? it.num : runningPriteIdx;
+      const val = normalizePriteScaleValue(
+        respuestasActivas[it.id] ||
+        respuestasActivas[`gp_${seqNum}`] ||
+        respuestasActivas[`prite_${seqNum}`] ||
+        respuestasActivas[`num_${seqNum}`] ||
+        ''
+      );
+      const evidVal =
+        priteFormState.evidenciasPorItem[it.id] ||
+        priteFormState.evidenciasPorItem[`gp_${seqNum}`] ||
+        priteFormState.evidenciasPorItem[`prite_${seqNum}`] ||
+        priteFormState.evidenciasPorItem[`num_${seqNum}`] ||
+        '';
+      const selectedSubs =
+        subOpcionesActivas[it.id] ||
+        subOpcionesActivas[`gp_${seqNum}`] ||
+        subOpcionesActivas[`num_${seqNum}`] ||
+        [];
 
       let subOpcionesHtml = '';
       if (Array.isArray(it.subOpciones) && it.subOpciones.length > 0) {

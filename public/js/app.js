@@ -30,7 +30,7 @@ import {
   setConcursoSubTab,
   getDeletedFichaTypeIds,
   SEED_CONCURSOS_DEFAULTS,
-} from './ui.js?v=20261120_v1';
+} from './ui.js?v=20261125_v2';
 
 import { renderPortalView } from './portal.js?v=20261123_v10';
 import { renderDirectorioTab } from './directorio.js?v=20261123_v10';
@@ -126,14 +126,19 @@ function compactItemForCache(r) {
   if (!r || typeof r !== 'object') return r;
   const out = {};
   if (r.id !== undefined) out.id = r.id;
+  if (r.canonicalId !== undefined) out.canonicalId = r.canonicalId;
   if (r.num !== undefined) out.num = r.num;
   if (r.seccion !== undefined) out.seccion = r.seccion;
   if (r.valor !== undefined) out.valor = r.valor;
+  if (r.value !== undefined) out.value = r.value;
   if (r.respuesta !== undefined) out.respuesta = r.respuesta;
   if (r.puntos !== undefined) out.puntos = r.puntos;
   if (r.puntaje !== undefined) out.puntaje = r.puntaje;
   if (r.aplica !== undefined) out.aplica = r.aplica;
   if (r.observaciones) out.observaciones = r.observaciones;
+  if (r.evidencia) out.evidencia = r.evidencia;
+  if (r.hallazgo) out.hallazgo = r.hallazgo;
+  if (r.hallazgos) out.hallazgos = r.hallazgos;
   return out;
 }
 

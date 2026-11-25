@@ -13,15 +13,15 @@ import {
   drawVectorCheckbox,
   formatPersonName,
   resolveDirectorData
-} from '../pdf-core.js';
+} from '../pdf-core.js?v=20261125_v6';
 
 import {
   OFFICIAL_DIRECTIVO_ITEMS,
   OFFICIAL_DIRECTIVO_DIMENSIONS
 } from './constants.js';
 
-import { exportEbrGestionFichaPdf } from './ficha-ebr.js';
-import { exportJecFichaPdf } from './ficha-jec.js';
+import { exportEbrGestionFichaPdf } from './ficha-ebr.js?v=20261125_v6';
+import { exportJecFichaPdf } from './ficha-jec.js?v=20261125_v6';
 
 import {
   isFichaEbrGestionEscolar,
@@ -29,7 +29,8 @@ import {
   isFichaCoordTutoriaJec,
   isFichaCoordPedagogico,
   isFichaEspecialistaJec,
-  isFichaMonitoreoDocente
+  isFichaMonitoreoDocente,
+  isFichaMaterialesCebe
 } from '../calc/detectors.js';
 
 import { _obtenerValorDocente } from '../matriz/format-helpers.js';
@@ -177,7 +178,7 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
   const horaInicio = sub.horaInicio || getExtraVal('hora de inicio') || '';
   const horaTermino = sub.horaTermino || getExtraVal('hora de término') || getExtraVal('hora de termino') || '';
   const horarioStr = (horaInicio && horaTermino) ? `${horaInicio} – ${horaTermino}` : (horaInicio || horaTermino || '—');
-  const codLocal = sub.codigoModular || (colegio ? (colegio.codigoLocal || colegio.codigoModular) : '') || '';
+  const codLocal = sub.codigoLocal || sub.codLocal || sub.codigoModular || (colegio ? (colegio.codigoLocal || colegio.codigoModular) : '') || '';
 
   const isCoordTutoria = isFichaCoordTutoriaJec(fichaType);
   const isCoordPedagogico = isFichaCoordPedagogico(fichaType);
@@ -227,7 +228,18 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
   let tableRows = [];
   let columnStyles = {};
 
-  const respuestas = sub.respuestas || [];
+  const vNumInd = Number(sub.visita) || 1;
+  const vKeyInd = `v${vNumInd}`;
+  let respuestas = sub.respuestas;
+  if (!respuestas || (Array.isArray(respuestas) && respuestas.length === 0) || (typeof respuestas === 'object' && !Array.isArray(respuestas) && Object.keys(respuestas).length === 0)) {
+    if (sub.respuestasPorVisita && sub.respuestasPorVisita[vKeyInd]) {
+      respuestas = sub.respuestasPorVisita[vKeyInd];
+    } else if (sub.items) {
+      respuestas = sub.items;
+    } else {
+      respuestas = [];
+    }
+  }
 
   if (isNivel14) {
     // =========================================================================
@@ -460,10 +472,13 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
         5: { cellWidth: 96 }
       },
       didDrawCell: (data) => {
-        if (data.cell && data.cell.raw && data.cell.raw.isCheckboxes) {
+        if (!data || data.section !== 'body' || !data.cell || !data.cell.raw) return;
+        const rawObj = data.cell.raw;
+        const cellMeta = (rawObj.isCheckboxes && Array.isArray(rawObj.items)) ? rawObj : rawObj.raw;
+        if (cellMeta && cellMeta.isCheckboxes) {
           const doc = data.doc;
           if (!doc) return;
-          const items = data.cell.raw.items || [];
+          const items = cellMeta.items || [];
           const boxSize = 7.5;
           const boxY = data.cell.y + (data.cell.height - boxSize) / 2;
           let curX = data.cell.x + 8;
@@ -576,6 +591,8 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
             else if (lvl === 1) bg = [254, 226, 226];
             return {
               content: '',
+              isCheckmark: true,
+              level: lvl,
               raw: { isCheckmark: true, level: lvl },
               styles: { fillColor: bg, halign: 'center', valign: 'middle' }
             };
@@ -642,12 +659,15 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
           6: { halign: 'left', cellWidth: 119, fontSize: 7.2 }
         },
         didDrawCell: (data) => {
-          if (data.cell && data.cell.raw && data.cell.raw.isCheckmark) {
+          if (!data || data.section !== 'body' || !data.cell || !data.cell.raw) return;
+          const rawObj = data.cell.raw;
+          const cellMeta = rawObj.isCheckmark ? rawObj : rawObj.raw;
+          if (cellMeta && cellMeta.isCheckmark) {
             const doc = data.doc;
             if (!doc) return;
             const cx = data.cell.x + data.cell.width / 2;
             const cy = data.cell.y + data.cell.height / 2;
-            const lvl = data.cell.raw.level;
+            const lvl = cellMeta.level;
             let col = [18, 41, 77];
             if (lvl === 4) col = [4, 120, 87];
             else if (lvl === 3) col = [180, 83, 9];
@@ -977,27 +997,158 @@ export async function exportFichaIndividualPdf(sub, fichaType, colegio = null, d
     { cargo: `Jefatura de ${areaSigla}`, entidad: 'UGEL 03', nombre: '', leyenda: 'V.° B.°' }
   ]);
 
-  const metaGrid = isNivel14 ? [] : [
-    { label: 'Institución Educativa', value: ieName },
-    { label: 'Fecha de Monitoreo', value: fechaVisita },
-    { label: 'N.° de Visita', value: numVisita },
-    { label: 'Especialista / Monitor', value: responsable },
-    { label: 'Director(a)', value: director },
-    { label: 'Código Modular / Local', value: codLocal || '—' },
-    ...(isCoordTutoria ? [
-      { label: 'Puntaje Total Obtenido', value: `${tutoriaPts} / 63 puntos (${tutoriaPct}%)` },
-      { label: 'Nivel de Cumplimiento', value: `${(tutoriaNivel || '').toUpperCase()}` }
-    ] : (isCoordPedagogico ? [
-      { label: 'Puntaje Total Obtenido', value: `${pedagPts} / 51 puntos (${pedagPct}%)` },
-      { label: 'Nivel de Cumplimiento', value: `${(pedagNivel || '').toUpperCase()}` }
-    ] : []))
-  ];
+  const normTxt = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const getExtraByIdOrLabel = (extraId, labelPattern) => {
+    const byId = extraId ? subExtras.find(x => x && x.id === extraId) : null;
+    if (byId && byId.value !== undefined && byId.value !== null && String(byId.value).trim() !== '') {
+      return String(byId.value).trim();
+    }
+    if (labelPattern) {
+      const pNorm = normTxt(labelPattern);
+      const byLbl = subExtras.find(x => x && x.label && normTxt(x.label).includes(pNorm));
+      if (byLbl && byLbl.value !== undefined && byLbl.value !== null && String(byLbl.value).trim() !== '') {
+        return String(byLbl.value).trim();
+      }
+    }
+    return '';
+  };
+
+  const ftIdLower = String(fichaType.id || '').toLowerCase();
+  const ftNameNorm = normTxt(rawTypeName);
+  const isCebeGestion = ftIdLower === 'ft_gestion_cebe' || (ftNameNorm.includes('cebe') && !ftNameNorm.includes('materiales') && !ftNameNorm.includes('lector'));
+  const isPriteGestion = ftIdLower === 'ft_prite_gestion' || ftNameNorm.includes('prite');
+  const isMateriales = isFichaMaterialesCebe(fichaType);
+
+  const codDisplay = sub.codigoLocal || sub.codLocal || codLocal || '—';
+  const redDisplay = (red && red !== '—') ? (String(red).toUpperCase().startsWith('RE') ? String(red) : `REI ${red}`) : '—';
+  const dirDisplay = (director && director !== '—')
+    ? (directorDni ? `${formatPersonName(director)} (DNI: ${directorDni})` : formatPersonName(director))
+    : '—';
+
+  let metaTitle = '';
+  let metaGrid = [];
+
+  if (!isNivel14) {
+    if (isCebeGestion || isPriteGestion) {
+      metaTitle = 'I. DATOS GENERALES DE LA INSTITUCIÓN EDUCATIVA';
+      const nivObj = sub.nivelesAtiende || {};
+      const nivSelected = [nivObj.inicial ? 'Inicial' : '', nivObj.primaria ? 'Primaria' : ''].filter(Boolean);
+      const nivelesText = nivSelected.length > 0 ? nivSelected.join(' · ') : (getExtraVal('niveles') || nivelAtencion || '—');
+      const accEst = (sub.tablasPersonal && sub.tablasPersonal.accesoEstudiantes) || sub.accesoEstudiantes || {};
+      const totEst = (accEst.total !== undefined && accEst.total !== '') ? accEst.total : (getExtraVal('matriculados') || getExtraVal('total') || '—');
+      metaGrid = [
+        [
+          { label: isPriteGestion ? 'PROGRAMA (PRITE)' : 'INSTITUCIÓN EDUCATIVA (CEBE)', value: ieName, span: 2 },
+          { label: 'CÓDIGO DE LOCAL', value: codDisplay }
+        ],
+        [
+          { label: 'UGEL', value: ugel },
+          { label: 'REI', value: redDisplay },
+          { label: 'FECHA DE VISITA', value: fechaVisita }
+        ],
+        [
+          { label: 'N.° DE VISITA', value: numVisita },
+          { label: 'NIVELES QUE ATIENDE', value: nivelesText },
+          { label: isPriteGestion ? 'NIÑOS MATRICULADOS' : 'TOTAL ESTUDIANTES MATRICULADOS', value: String(totEst) }
+        ],
+        [
+          { label: isPriteGestion ? 'DIRECTORA / COORDINADORA' : 'DIRECTOR(A)', value: dirDisplay, span: 2 },
+          { label: 'ESPECIALISTA / MONITOR', value: responsable }
+        ]
+      ];
+    } else if (isMateriales) {
+      metaTitle = 'I. DATOS GENERALES DE LA INSTITUCIÓN EDUCATIVA';
+      metaGrid = [
+        [
+          { label: 'INSTITUCIÓN EDUCATIVA (CEBE / PRITE)', value: ieName, span: 2 },
+          { label: 'CÓDIGO LOCAL', value: getExtraByIdOrLabel('ex_cod_local', 'codigo local') || codDisplay }
+        ],
+        [
+          { label: 'UGEL', value: getExtraByIdOrLabel('ex_ugel', 'ugel') || ugel },
+          { label: 'REI', value: getExtraByIdOrLabel('ex_rei', 'rei') || redDisplay },
+          { label: 'FECHA DE MONITOREO', value: fechaVisita }
+        ],
+        [
+          { label: 'DIRECCIÓN', value: getExtraByIdOrLabel('ex_direccion', 'direccion') || (colegio && colegio.direccion) || '—', span: 2 },
+          { label: 'TELÉFONO', value: getExtraByIdOrLabel('ex_telefono', 'telefono') || '—' }
+        ],
+        [
+          { label: 'DIRECTORA', value: getExtraByIdOrLabel('ex_directora', 'directora') || director },
+          { label: 'CORREO ELECTRÓNICO', value: getExtraByIdOrLabel('ex_correo', 'correo') || '—' },
+          { label: 'RESPONSABLE DEL MONITOREO', value: getExtraByIdOrLabel('ex_responsable', 'responsable') || responsable }
+        ]
+      ];
+    } else if (isCoordTutoria || isCoordPedagogico) {
+      metaTitle = 'I. DATOS GENERALES Y DE IDENTIFICACIÓN (JEC)';
+      const coordLabel = isCoordTutoria ? 'COORDINADOR(A) DE TUTORÍA' : 'COORDINADOR(A) PEDAGÓGICO(A)';
+      const coordName = getExtraByIdOrLabel('ex_coord', 'coordinador') || sub.coordinador || '—';
+      const coordCond = getExtraByIdOrLabel('ex_coord_condicion', 'condicion del coordinador') || '';
+      const coordEsp = getExtraByIdOrLabel('ex_coord_esp', 'especialidad') || '';
+      const coordDni = getExtraByIdOrLabel('ex_coord_dni', 'dni del coordinador') || '';
+      const cantDoc = getExtraByIdOrLabel('ex_cant_tut', 'docentes') || '—';
+      const horasVis = getExtraByIdOrLabel('ex_horas_visita', 'horas') || '—';
+      const dirJecName = getExtraByIdOrLabel('ex_dir_nombre', 'director') || dirDisplay;
+      const ptsVal = isCoordTutoria ? `${tutoriaPts} / 63 pts (${tutoriaPct}%)` : `${pedagPts} / 51 pts (${pedagPct}%)`;
+      const nivVal = ((isCoordTutoria ? tutoriaNivel : pedagNivel) || '—').toUpperCase();
+      metaGrid = [
+        [
+          { label: 'INSTITUCIÓN EDUCATIVA JEC', value: ieName, span: 2 },
+          { label: 'CÓDIGO MODULAR / LOCAL', value: codDisplay }
+        ],
+        [
+          { label: 'UGEL', value: ugel },
+          { label: 'REI', value: redDisplay },
+          { label: 'FECHA / VISITA', value: `${fechaVisita} · ${numVisita}` }
+        ],
+        [
+          { label: coordLabel, value: coordDni ? `${coordName} (DNI: ${coordDni})` : coordName, span: 2 },
+          { label: 'CONDICIÓN / ESPECIALIDAD', value: [coordCond, coordEsp].filter(Boolean).join(' · ') || '—' }
+        ],
+        [
+          { label: 'DIRECTOR(A) DE LA I.E.', value: dirJecName },
+          { label: 'ESPECIALISTA / MONITOR', value: responsable },
+          { label: isCoordTutoria ? 'TUTORES A CARGO / HORAS' : 'DOCENTES A CARGO / HORAS', value: `${cantDoc} · ${horasVis}` }
+        ],
+        [
+          { label: 'PUNTAJE TOTAL OBTENIDO', value: ptsVal, span: 2 },
+          { label: 'NIVEL DE CUMPLIMIENTO', value: nivVal }
+        ]
+      ];
+    } else {
+      metaTitle = 'I. DATOS GENERALES DE LA FICHA';
+      metaGrid = [
+        [
+          { label: 'INSTITUCIÓN EDUCATIVA', value: ieName, span: 2 },
+          { label: 'CÓDIGO MODULAR / LOCAL', value: codDisplay }
+        ],
+        [
+          { label: 'UGEL', value: ugel },
+          { label: 'REI / RED', value: redDisplay },
+          { label: 'FECHA DE MONITOREO', value: fechaVisita }
+        ],
+        [
+          { label: 'N.° DE VISITA', value: numVisita },
+          { label: 'DIRECTOR(A)', value: dirDisplay },
+          { label: 'ESPECIALISTA / MONITOR', value: responsable }
+        ]
+      ];
+      const skipExtras = ['institucion', 'ugel', 'red', 'rei', 'fecha', 'codigo', 'director', 'responsable', 'visita'];
+      const extraCells = subExtras
+        .filter(ex => ex && ex.label && ex.value !== undefined && ex.value !== null && String(ex.value).trim() !== '')
+        .filter(ex => !skipExtras.some(sk => normTxt(ex.label).includes(sk)))
+        .map(ex => ({ label: ex.label, value: String(ex.value).trim() }));
+      for (let i = 0; i < extraCells.length; i += 3) {
+        metaGrid.push(extraCells.slice(i, i + 3));
+      }
+    }
+  }
 
   await createOfficialPdfDocument({
     title,
     subtitle: 'Monitoreo y Acompañamiento 2026 · UGEL 03',
     orientation: downloadConfig.orientation || 'portrait',
     introParagraph,
+    metaTitle,
     metaGrid,
     tableHeaders,
     tableRows,

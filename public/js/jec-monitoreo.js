@@ -1,4 +1,4 @@
-﻿/* =========================================================================
+/* =========================================================================
    jec-monitoreo.js — Módulo especializado para la Ficha:
    "Monitoreo y Asistencia Técnica a la Implementación del Modelo JEC"
    UGEL 03 · AGEBRE
@@ -821,13 +821,48 @@ export function preloadJecFormState(sub, ft) {
     }
   }
 
-  // Respuestas y hallazgos
-  (sub.respuestas || []).forEach(r => {
-    if (r && r.id) {
-      jecFormState.respuestas[r.id] = (r.valor || '').toLowerCase();
-      if (r.hallazgos || r.observaciones) {
-        jecFormState.hallazgos[r.id] = r.hallazgos || r.observaciones;
-      }
+  // Respuestas y hallazgos (normalizados y mapeados por múltiples claves para edición segura)
+  const normalizeJecSiNoVal = (raw) => {
+    if (raw === undefined || raw === null) return '';
+    const s = String(raw).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (!s) return '';
+    if (s === 'si' || s === '3' || s === 'logrado') return 'si';
+    if (s === 'no' || s === '1' || s === 'inicio') return 'no';
+    if (s === 'na' || s === 'n/a' || s === 'n.a.' || s === 'no aplica' || s === 'no_aplica') return 'na';
+    return s;
+  };
+  let jecRawList = [];
+  if (Array.isArray(sub.respuestas)) jecRawList = sub.respuestas;
+  else if (Array.isArray(sub.items)) jecRawList = sub.items;
+  else if (sub.respuestas && typeof sub.respuestas === 'object') {
+    jecRawList = Object.entries(sub.respuestas).map(([k, val]) =>
+      (val && typeof val === 'object') ? { id: k, ...val } : { id: k, valor: val }
+    );
+  }
+  jecRawList.forEach((r, idx) => {
+    if (!r) return;
+    const normVal = normalizeJecSiNoVal(r.valor ?? r.value ?? r.v ?? r.respuesta);
+    const obsVal = r.hallazgos || r.hallazgo || r.observaciones || r.evidencia || '';
+    let num = r.num;
+    if (!num && r.id) {
+      const m = String(r.id).match(/^(?:j\d*|jec\d*|num)_?(\d+)$/i);
+      if (m) num = parseInt(m[1], 10);
+    }
+    if (!num) num = idx + 1;
+
+    if (normVal) {
+      if (r.id) jecFormState.respuestas[r.id] = normVal;
+      if (r.canonicalId) jecFormState.respuestas[r.canonicalId] = normVal;
+      jecFormState.respuestas[`j2_${num}`] = normVal;
+      jecFormState.respuestas[`j3_${num}`] = normVal;
+      jecFormState.respuestas[`num_${num}`] = normVal;
+    }
+    if (obsVal) {
+      if (r.id) jecFormState.hallazgos[r.id] = obsVal;
+      if (r.canonicalId) jecFormState.hallazgos[r.canonicalId] = obsVal;
+      jecFormState.hallazgos[`j2_${num}`] = obsVal;
+      jecFormState.hallazgos[`j3_${num}`] = obsVal;
+      jecFormState.hallazgos[`num_${num}`] = obsVal;
     }
   });
   if (sub.observacionesItems && typeof sub.observacionesItems === 'object') {
@@ -1421,6 +1456,7 @@ function renderDocentesTableJec(momentoKey, data) {
  */
 function renderComponentesJecHtml(ft = null, activeVisitaNum = 2) {
   const activeSections = getActiveJecSections(ft, activeVisitaNum);
+  let runningJecIdx = 0;
   return activeSections.map((sec, sIdx) => `
     <div class="jecSeccionBlock" style="margin-bottom:20px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden">
       <div style="background:var(--surface-2);padding:10px 14px;font-weight:700;font-size:13.5px;color:var(--primary-dark);border-bottom:1px solid var(--line)">
@@ -1428,8 +1464,19 @@ function renderComponentesJecHtml(ft = null, activeVisitaNum = 2) {
       </div>
       <div style="padding:12px 14px;background:var(--surface)">
         ${(sec.items || []).map((it, ii) => {
-    const val = jecFormState.respuestas[it.id] || '';
-    const hallazgo = jecFormState.hallazgos[it.id] || '';
+    runningJecIdx++;
+    const seqNum = (it.num !== undefined && it.num !== null && it.num !== '') ? it.num : runningJecIdx;
+    const rawVal =
+      jecFormState.respuestas[it.id] ||
+      jecFormState.respuestas[`j${activeVisitaNum}_${seqNum}`] ||
+      jecFormState.respuestas[`num_${seqNum}`] ||
+      '';
+    const val = String(rawVal).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const hallazgo =
+      jecFormState.hallazgos[it.id] ||
+      jecFormState.hallazgos[`j${activeVisitaNum}_${seqNum}`] ||
+      jecFormState.hallazgos[`num_${seqNum}`] ||
+      '';
     const isSi = val === 'si';
     const isNo = val === 'no';
     const numDisplay = it.num || ((sIdx + 1) + '.' + (ii + 1));

@@ -1762,10 +1762,38 @@ export function renderDynamicForm({
         renderCompList();
 
         // Precargar respuestas y evidencias con matching unificado oficial
-        const loadedAnswers = Array.isArray(d.respuestas) ? d.respuestas : [];
+        const rawRespSource = (Array.isArray(d.respuestas) && d.respuestas.length > 0)
+          ? d.respuestas
+          : (Array.isArray(d.items) && d.items.length > 0 ? d.items : (d.respuestas || d.items || []));
+        const loadedAnswers = Array.isArray(rawRespSource)
+          ? rawRespSource
+          : Object.entries(rawRespSource).map(([k, v]) => (v && typeof v === 'object') ? { id: k, ...v } : { id: k, valor: v });
         const isJec = isFichaJec(ft) || isFichaCoordTutoriaJec(ft) || isFichaCoordPedagogico(ft) || isFichaEspecialistaJec(ft);
         const valMap = buildResponseValMap(loadedAnswers, isJec);
-        const evidMap = buildResponseValMap(loadedAnswers.map(ans => ({ ...ans, valor: ans.evidencia })), isJec);
+        const evidMap = buildResponseValMap(
+          loadedAnswers.map(ans => ({ ...ans, valor: ans.evidencia || ans.observaciones || ans.hallazgo || ans.hallazgos })),
+          isJec
+        );
+
+        const findRadioByVal = (itemDomKey, itemId, rawVal) => {
+          const vStr = String(rawVal).trim();
+          const vLow = vStr.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          const romanMap = { 'i': '1', 'ii': '2', 'iii': '3', 'iv': '4', '1': '1', '2': '2', '3': '3', '4': '4' };
+          const naMap = (vLow === 'n/a' || vLow === 'n.a.' || vLow === 'no aplica' || vLow === 'no_aplica') ? 'na' : null;
+          const ipsMap = ft.tipoRespuesta === 'ips'
+            ? ({ l: 'logrado', p: 'proceso', i: 'inicio' }[vLow] || null)
+            : null;
+          const candidates = [vStr, vLow, naMap, ipsMap, romanMap[vLow]].filter(Boolean);
+          for (const cand of candidates) {
+            const safeCand = cand.replace(/"/g, '\\"');
+            const r = host.querySelector('input[name="item_' + itemDomKey + '"][value="' + safeCand + '"]') ||
+                      host.querySelector('input[name="item_' + itemId + '"][value="' + safeCand + '"]') ||
+                      document.querySelector('input[name="item_' + itemDomKey + '"][value="' + safeCand + '"]') ||
+                      document.querySelector('input[name="item_' + itemId + '"][value="' + safeCand + '"]');
+            if (r) return r;
+          }
+          return null;
+        };
 
         if (Array.isArray(ft.secciones)) {
           ft.secciones.forEach((sec, sIdx) => {
@@ -1775,16 +1803,7 @@ export function renderDynamicForm({
               const evidencia = resolveItemValue(evidMap, it, sec, sIdx, iIdx, isJec);
 
               if (valor !== undefined && valor !== null && valor !== '') {
-                let radio = document.querySelector('input[name="item_' + itemDomKey + '"][value="' + valor + '"]') ||
-                            document.querySelector('input[name="item_' + it.id + '"][value="' + valor + '"]');
-                if (!radio && typeof valor === 'string') {
-                  const romanMap = { 'I': '1', 'II': '2', 'III': '3', 'IV': '4', '1': '1', '2': '2', '3': '3', '4': '4' };
-                  const mapped = romanMap[valor.trim().toUpperCase()] || romanMap[valor.trim()];
-                  if (mapped) {
-                    radio = document.querySelector('input[name="item_' + itemDomKey + '"][value="' + mapped + '"]') ||
-                            document.querySelector('input[name="item_' + it.id + '"][value="' + mapped + '"]');
-                  }
-                }
+                const radio = findRadioByVal(itemDomKey, it.id, valor);
                 if (radio) radio.checked = true;
               }
               if (evidencia) {

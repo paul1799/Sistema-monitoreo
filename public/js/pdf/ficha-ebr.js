@@ -9,7 +9,7 @@ import {
   drawVectorCheckmark,
   formatPersonName,
   resolveDirectorData
-} from '../pdf-core.js';
+} from '../pdf-core.js?v=20261125_v6';
 
 import {
   getEbrSeccionesForVisita,
@@ -17,7 +17,8 @@ import {
 } from '../ebr-gestion.js';
 
 import {
-  getNivelEbrGestion
+  getNivelEbrGestion,
+  getReglaNivelEbrGestion
 } from '../calc/evaluador.js';
 
 /**
@@ -42,15 +43,28 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
   const formacionTecnica = (sub.ie && sub.ie.formacionTecnica !== undefined) ? sub.ie.formacionTecnica : (sub.formacionTecnica === true);
 
   const title = 'FICHA DE MONITOREO Y ASISTENCIA TÉCNICA A LA GESTIÓN ESCOLAR UGEL-03-EBR';
-  const subtitle = `En el marco de la RM N.° 501-2025-MINEDU · ${isV1 ? 'Visita 1 (Primer momento)' : isV3 ? 'Visita 3 (Tercer momento · Salida y balance anual)' : 'Visita 2 (Segundo momento)'}`;
+  const visitaHeaderLabel = isV1 ? 'Visita 1 (Primer momento)' : isV3 ? 'Visita 3 (Tercer momento · Salida y balance anual)' : 'Visita 2 (Segundo momento)';
+  const subtitle = `En el marco de la RM N.° 501-2025-MINEDU · ${visitaHeaderLabel}`;
+  const respClean = (sub.responsable && !String(sub.responsable).includes('@') && !/^\d+$/.test(String(sub.responsable).trim()))
+    ? formatPersonName(sub.responsable)
+    : (sub.especialistaNombre ? formatPersonName(sub.especialistaNombre) : 'Especialista UGEL 03');
+  const redDisplay = (red && red !== '—') ? (String(red).toUpperCase().startsWith('RED') ? String(red) : `RED ${red}`) : '—';
 
   const metaGrid = [
-    { label: 'INSTITUCIÓN EDUCATIVA', value: ieName },
-    { label: 'CÓDIGO DE LOCAL', value: codLocal },
-    { label: 'UGEL', value: ugel },
-    { label: 'RED EDUCATIVA', value: red ? `RED ${red}` : '—' },
-    { label: 'FECHA DE VISITA', value: fechaVisita },
-    { label: 'SEC. FORMACIÓN TÉCNICA', value: formacionTecnica ? 'Sí' : 'No' }
+    [
+      { label: 'INSTITUCIÓN EDUCATIVA', value: ieName, span: 2 },
+      { label: 'CÓDIGO DE LOCAL', value: codLocal }
+    ],
+    [
+      { label: 'UGEL', value: ugel },
+      { label: 'RED EDUCATIVA', value: redDisplay },
+      { label: 'FECHA DE VISITA', value: fechaVisita }
+    ],
+    [
+      { label: 'ESPECIALISTA / MONITOR RESPONSABLE', value: respClean },
+      { label: 'N.° DE VISITA / MOMENTO', value: visitaHeaderLabel },
+      { label: 'SEC. CON FORMACIÓN TÉCNICA', value: formacionTecnica ? 'Sí' : 'No' }
+    ]
   ];
 
   const customTables = [];
@@ -292,8 +306,26 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
 */
   const secAspectosRomano = (isV2 || isV3) ? 'VI' : 'IV';
   const seccionesDef = getEbrSeccionesForVisita(visitaNum, fichaType);
+  const totalItemsPdf = seccionesDef.reduce((acc, s) => acc + (s.items || []).length, 0) || (isV2 ? 23 : (isV3 ? 18 : 19));
 
-  const respuestas = sub.respuestas || [];
+  const rawRespSrc = (Array.isArray(sub.respuestas) && sub.respuestas.length > 0)
+    ? sub.respuestas
+    : (Array.isArray(sub.items) && sub.items.length > 0 ? sub.items : (sub.respuestas || sub.items || []));
+  const respuestas = Array.isArray(rawRespSrc)
+    ? rawRespSrc
+    : Object.entries(rawRespSrc).map(([k, v]) => (v && typeof v === 'object') ? { id: k, ...v } : { id: k, valor: v });
+
+  const normalizeEbrPdfVal = (rawVal) => {
+    if (rawVal === undefined || rawVal === null) return '';
+    const s = String(rawVal).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (!s) return '';
+    if (s === 'logrado' || s === 'l' || s === '3' || s === 'si') return 'logrado';
+    if (s === 'proceso' || s === 'p' || s === '2' || s === 'en proceso') return 'proceso';
+    if (s === 'inicio' || s === 'i' || s === '1' || s === 'no') return 'inicio';
+    if (s === 'na' || s === 'n/a' || s === 'n.a.' || s === 'no_aplica' || s === 'no aplica') return 'na';
+    return s;
+  };
+
   const projsInnovacion = Array.isArray(sub.proyectosInnovacion) ? sub.proyectosInnovacion.filter(p => p && p.trim()) : [];
 
   let globalItemIdx = 1;
@@ -302,12 +334,22 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
     let iniCount = 0, procCount = 0, logCount = 0, naCount = 0;
 
     const secRows = (sec.items || []).map(it => {
-      const itemNum = it.num || globalItemIdx;
+      const seqPos = globalItemIdx;
+      const itemNum = it.num || seqPos;
       globalItemIdx++;
 
-      const resp = respuestas.find(r => r.id === it.id || r.num === itemNum) || {};
-      const val = (resp.valor || '').toLowerCase();
-      const obs = resp.observaciones ? resp.observaciones.trim() : '';
+      const visitKey = `ge${visitaNum}_${itemNum}`;
+      const genKey = `ge_${itemNum}`;
+      const numKey = `num_${itemNum}`;
+      const resp =
+        respuestas.find(r => r && (r.id === it.id || r.canonicalId === it.id)) ||
+        respuestas.find(r => r && (r.id === visitKey || r.canonicalId === visitKey || r.id === genKey || r.id === numKey)) ||
+        respuestas.find(r => r && r.num !== undefined && r.num !== null && Number(r.num) === Number(itemNum)) ||
+        (respuestas.length === totalItemsPdf ? respuestas[seqPos - 1] : null) ||
+        {};
+      const val = normalizeEbrPdfVal(resp.valor ?? resp.value ?? resp.v ?? resp.respuesta ?? '');
+      const obsRaw = resp.observaciones || resp.hallazgos || resp.hallazgo || resp.evidencia || '';
+      const obs = String(obsRaw).trim();
 
       if (val === 'inicio') iniCount++;
       else if (val === 'proceso') procCount++;
@@ -318,6 +360,8 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
         if (val === colVal) {
           return {
             content: '',
+            isCheckmark: true,
+            color: markColor,
             raw: { isCheckmark: true, color: markColor },
             styles: { halign: 'center', valign: 'middle' }
           };
@@ -381,12 +425,15 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
         fontStyle: 'bold'
       },
       didDrawCell: (data) => {
-        if (data.cell && data.cell.raw && data.cell.raw.isCheckmark) {
+        if (!data || data.section !== 'body' || !data.cell || !data.cell.raw) return;
+        const rawObj = data.cell.raw;
+        const cellMeta = rawObj.isCheckmark ? rawObj : rawObj.raw;
+        if (cellMeta && cellMeta.isCheckmark) {
           const doc = data.doc;
           if (!doc) return;
           const cx = data.cell.x + data.cell.width / 2;
           const cy = data.cell.y + data.cell.height / 2;
-          const col = data.cell.raw.color || [5, 150, 105];
+          const col = cellMeta.color || [5, 150, 105];
           drawVectorCheckmark(doc, cx, cy, 7.5, col, 1.4);
         }
       }
@@ -396,40 +443,47 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
   // -------------------------------------------------------------------------
   // RESULTADO Y NIVEL DE CUMPLIMIENTO OFICIAL (UGEL 03 EBR)
   // -------------------------------------------------------------------------
-  const ebrVisitaNum = isV2 ? 2 : 1;
-  const maxPtsOficial = isV2 ? 69 : 57;
+  const ebrVisitaNum = isV3 ? 3 : (isV2 ? 2 : 1);
+  const maxPtsOficial = totalItemsPdf * 3;
   let ebrPuntaje = (sub.puntaje !== undefined && sub.puntaje !== null) ? Number(sub.puntaje) : null;
-  if ((ebrPuntaje === null || ebrPuntaje > maxPtsOficial) && Array.isArray(sub.respuestas) && sub.respuestas.length > 0) {
+  if ((ebrPuntaje === null || ebrPuntaje > maxPtsOficial) && respuestas.length > 0) {
     let pSum = 0;
-    const seenNums = new Set();
-    const maxCount = isV2 ? 23 : 19;
-    sub.respuestas.forEach(r => {
-      let num = r?.num;
-      if (!num && r?.id) {
-        const m = String(r.id).match(/^(?:ge\d*|num)_?(\d+)$/);
-        if (m) num = parseInt(m[1], 10);
-      }
-      if (num && num >= 1 && num <= maxCount && !seenNums.has(num)) {
-        seenNums.add(num);
-        const vL = String(r?.valor || '').toLowerCase();
-        if (vL === 'logrado' || vL === 'si') pSum += 3;
+    const seenKeys = new Set();
+    let seqIdx = 0;
+    seccionesDef.forEach(sec => {
+      (sec.items || []).forEach(it => {
+        seqIdx++;
+        const itemNum = it.num || seqIdx;
+        const visitKey = `ge${visitaNum}_${itemNum}`;
+        const r =
+          respuestas.find(x => x && (x.id === it.id || x.canonicalId === it.id)) ||
+          respuestas.find(x => x && (x.id === visitKey || x.id === `ge_${itemNum}` || x.id === `num_${itemNum}`)) ||
+          respuestas.find(x => x && x.num !== undefined && x.num !== null && Number(x.num) === Number(itemNum)) ||
+          (respuestas.length === totalItemsPdf ? respuestas[seqIdx - 1] : null);
+        if (!r || seenKeys.has(itemNum)) return;
+        seenKeys.add(itemNum);
+        const vL = normalizeEbrPdfVal(r.valor ?? r.value ?? r.v ?? r.respuesta);
+        if (vL === 'logrado') pSum += 3;
         else if (vL === 'proceso') pSum += 2;
-        else if (vL === 'inicio' || vL === 'no') pSum += 1;
-      }
+        else if (vL === 'inicio') pSum += 1;
+      });
     });
     ebrPuntaje = Math.min(maxPtsOficial, pSum);
   } else if (ebrPuntaje !== null && ebrPuntaje > maxPtsOficial) {
     ebrPuntaje = maxPtsOficial;
   }
   if (ebrPuntaje === null) ebrPuntaje = 0;
-  const ebrNivelObj = getNivelEbrGestion(ebrPuntaje, ebrVisitaNum);
-  const momentoSubTitle = isV2
-    ? 'Escala oficial 2do Momento: Inicio (0–23 pts) · Proceso (24–46 pts) · Logrado (47–69 pts)'
-    : 'Escala oficial 1er Momento: Inicio (0–19 pts) · Proceso (20–38 pts) · Logrado (39–57 pts)';
+  const ebrNivelObj = getNivelEbrGestion(ebrPuntaje, ebrVisitaNum, maxPtsOficial, totalItemsPdf);
+  const reglaOficial = getReglaNivelEbrGestion(ebrVisitaNum, totalItemsPdf);
+  const rLog = reglaOficial.rangos.find(r => r.nivel === 'Logrado') || { min: 0, max: maxPtsOficial };
+  const rProc = reglaOficial.rangos.find(r => r.nivel === 'Proceso') || { min: 0, max: 0 };
+  const rIni = reglaOficial.rangos.find(r => r.nivel === 'Inicio') || { min: 0, max: 0 };
+  const momentoLabel = isV3 ? '3er Momento' : (isV2 ? '2do Momento' : '1er Momento');
+  const momentoSubTitle = `Escala oficial ${momentoLabel}: Inicio (${rIni.min}–${rIni.max} pts) · Proceso (${rProc.min}–${rProc.max} pts) · Logrado (${rLog.min}–${rLog.max} pts)`;
 
-  const isLogradoRow = ebrPuntaje >= (isV2 ? 47 : 39);
-  const isProcesoRow = ebrPuntaje >= (isV2 ? 24 : 20) && ebrPuntaje <= (isV2 ? 46 : 38);
-  const isInicioRow = ebrPuntaje <= (isV2 ? 23 : 19);
+  const isLogradoRow = ebrNivelObj.nivel === 'Logrado';
+  const isProcesoRow = ebrNivelObj.nivel === 'Proceso';
+  const isInicioRow = ebrNivelObj.nivel === 'Inicio';
 
   customTables.push({
     title: 'NIVEL DE CUMPLIMIENTO OFICIAL (SEGÚN PUNTAJE OBTENIDO)',
@@ -439,19 +493,19 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
     tableRows: [
       [
         { content: 'LOGRADO' + (isLogradoRow ? '  ✓ (OBTENIDO)' : ''), styles: { halign: 'center', fontStyle: 'bold', fillColor: isLogradoRow ? [209, 250, 229] : [255, 255, 255], textColor: [4, 120, 87] } },
-        { content: isV2 ? 'De 47 a 69 pts' : 'De 39 a 57 pts', styles: { halign: 'center', fontStyle: 'bold', fillColor: isLogradoRow ? [209, 250, 229] : [255, 255, 255] } },
+        { content: `De ${rLog.min} a ${rLog.max} pts`, styles: { halign: 'center', fontStyle: 'bold', fillColor: isLogradoRow ? [209, 250, 229] : [255, 255, 255] } },
         { content: isLogradoRow ? `${ebrPuntaje} pts (${ebrNivelObj.pct}%)` : '—', styles: { halign: 'center', fontStyle: 'bold', fillColor: isLogradoRow ? [209, 250, 229] : [255, 255, 255] } },
         { content: 'Evidencia un nivel óptimo en las condiciones y compromisos de gestión escolar.', styles: { fontSize: 7.2, fillColor: isLogradoRow ? [209, 250, 229] : [255, 255, 255] } }
       ],
       [
         { content: 'PROCESO' + (isProcesoRow ? '  ✓ (OBTENIDO)' : ''), styles: { halign: 'center', fontStyle: 'bold', fillColor: isProcesoRow ? [254, 243, 199] : [255, 255, 255], textColor: [180, 83, 9] } },
-        { content: isV2 ? 'De 24 a 46 pts' : 'De 20 a 38 pts', styles: { halign: 'center', fontStyle: 'bold', fillColor: isProcesoRow ? [254, 243, 199] : [255, 255, 255] } },
+        { content: `De ${rProc.min} a ${rProc.max} pts`, styles: { halign: 'center', fontStyle: 'bold', fillColor: isProcesoRow ? [254, 243, 199] : [255, 255, 255] } },
         { content: isProcesoRow ? `${ebrPuntaje} pts (${ebrNivelObj.pct}%)` : '—', styles: { halign: 'center', fontStyle: 'bold', fillColor: isProcesoRow ? [254, 243, 199] : [255, 255, 255] } },
         { content: 'En proceso de implementación; requiere consolidar acciones de mejora.', styles: { fontSize: 7.2, fillColor: isProcesoRow ? [254, 243, 199] : [255, 255, 255] } }
       ],
       [
         { content: 'INICIO' + (isInicioRow ? '  ✓ (OBTENIDO)' : ''), styles: { halign: 'center', fontStyle: 'bold', fillColor: isInicioRow ? [254, 226, 226] : [255, 255, 255], textColor: [185, 28, 28] } },
-        { content: isV2 ? 'De 0 a 23 pts' : 'De 0 a 19 pts', styles: { halign: 'center', fontStyle: 'bold', fillColor: isInicioRow ? [254, 226, 226] : [255, 255, 255] } },
+        { content: `De ${rIni.min} a ${rIni.max} pts`, styles: { halign: 'center', fontStyle: 'bold', fillColor: isInicioRow ? [254, 226, 226] : [255, 255, 255] } },
         { content: isInicioRow ? `${ebrPuntaje} pts (${ebrNivelObj.pct}%)` : '—', styles: { halign: 'center', fontStyle: 'bold', fillColor: isInicioRow ? [254, 226, 226] : [255, 255, 255] } },
         { content: 'Requiere asistencia técnica prioritaria para el cumplimiento de las condiciones de gestión.', styles: { fontSize: 7.2, fillColor: isInicioRow ? [254, 226, 226] : [255, 255, 255] } }
       ]
@@ -546,28 +600,33 @@ export async function exportEbrGestionFichaPdf(sub, fichaType, colegio = null, d
   });
 
   // 3. Especialista
-  const respClean = (sub.responsable && !sub.responsable.includes('@') && !/^\d+$/.test(String(sub.responsable).trim()))
-    ? sub.responsable
-    : 'Especialista UGEL 03';
   signaturesList.push({
     cargo: 'Especialista / Monitor de Gestión Escolar',
-    nombre: formatPersonName(respClean),
+    nombre: respClean,
     entidad: 'UGEL 03 · AGEBRE',
     leyenda: `DNI: ${sub.monitorDni || '—'}`
   });
 
-  const pdfFilename = `Ficha_Gestion_EBR_${isV1 ? 'Visita1' : 'Visita2'}_${(ieName || 'IE').replace(/[^a-zA-Z0-9]/g, '_')}_2026.pdf`;
+  const visitaTag = isV1 ? 'Visita1' : isV3 ? 'Visita3' : 'Visita2';
+  const pdfFilename = `Ficha_Gestion_EBR_${visitaTag}_${(ieName || 'IE').replace(/[^a-zA-Z0-9]/g, '_')}_2026.pdf`;
+  const incluirIntro = downloadConfig.incluirIntro !== false;
 
   // Invocar creador oficial de documento PDF
   return await createOfficialPdfDocument({
     title,
     subtitle,
     orientation: 'portrait',
-    introParagraph: `En Lima, a la fecha ${fechaVisita}, se aplicó la Ficha de Monitoreo y Asistencia Técnica a la Gestión Escolar en la IE ${ieName} (${codLocal}), correspondiente a la ${isV1 ? 'Visita 1 (Primer momento)' : 'Visita 2 (Segundo momento)'}.`,
+    introParagraph: incluirIntro
+      ? `En Lima, a la fecha ${fechaVisita}, se aplicó la Ficha de Monitoreo y Asistencia Técnica a la Gestión Escolar en la IE ${ieName} (${codLocal}), correspondiente a la ${visitaHeaderLabel}.`
+      : '',
+    metaTitle: 'I. DATOS GENERALES DE LA INSTITUCIÓN EDUCATIVA',
     metaGrid,
     customTables,
     signatures: signaturesList,
     lugarFecha: `Lima, ${fechaVisita}`,
+    sinFirmas: downloadConfig.sinFirmas === true,
+    areaConfig: downloadConfig.areaConfig || null,
+    incluirQr: downloadConfig.incluirQr !== false,
     filename: pdfFilename,
     marcaBorrador: sub.esBorrador === true
   });

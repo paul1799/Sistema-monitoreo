@@ -1,4 +1,4 @@
-﻿/* =========================================================================
+/* =========================================================================
    ui/index.js — Punto de entrada unificado y exportaciones del subsistema UI
    ========================================================================= */
 
@@ -40,7 +40,7 @@ export * from './concursos-tab.js?v=20261103_v8';
 export * from './jec-reportes.js?v=20261103_v8';
 
 // Formulario dinámico de registro y edición de fichas
-export * from './registrar.js?v=20261119_v1';
+export * from './registrar.js?v=20261125_v2';
 
 // Vista consolidada, reportes ejecutivos, filtros y pendientes
 export * from './consolidado.js?v=20261119_v14';

@@ -44,7 +44,7 @@ import {
   createOfficialPdfDocument as _createOfficialPdfDocument,
   resolveDirectorData as _resolveDirectorData,
   resolveDirectorName as _resolveDirectorName
-} from './pdf-core.js?v=20261014_v1';
+} from './pdf-core.js?v=20261125_v6';
 
 import {
   OFFICIAL_DIRECTIVO_ITEMS as _OFFICIAL_DIRECTIVO_ITEMS,
@@ -58,7 +58,7 @@ import {
   exportConsolidadoReportPdfV1 as _exportConsolidadoReportPdfV1,
   exportConsolidadoReportPdf as _exportConsolidadoReportPdf,
   exportColegiosReportPdf as _exportColegiosReportPdf
-} from './pdf-monitoreo.js?v=20261015_v1';
+} from './pdf-monitoreo.js?v=20261125_v6';
 
 import {
   parseArteDisciplina as _parseArteDisciplina,

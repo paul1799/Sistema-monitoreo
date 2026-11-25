@@ -9,7 +9,7 @@ import {
   drawVectorCheckmark,
   formatPersonName,
   resolveDirectorData
-} from '../pdf-core.js';
+} from '../pdf-core.js?v=20261125_v6';
 
 import {
   JEC_SECCIONES,
@@ -72,19 +72,28 @@ export async function exportJecFichaPdf(sub, fichaType, colegio = null, download
     formacionTecnica = ftVal === 'Sí' || ftVal === 'si' || ftVal === true;
   }
 
+  const vNumJec = Number(sub.visita) || 2;
+  const momentoJecLabel = vNumJec === 3 ? 'Visita 3 (Tercer momento · Salida)' : 'Visita 2 (Segundo momento · Proceso)';
+  const reiDisplay = (rei && rei !== '—') ? (String(rei).toUpperCase().startsWith('REI') ? String(rei) : `REI ${rei}`) : '—';
   const title = 'FICHA DE MONITOREO Y ASISTENCIA TÉCNICA A LA IMPLEMENTACIÓN DEL MODELO JEC';
-  const subtitle = 'Modelo de Servicio Educativo Jornada Escolar Completa — UGEL 03 · Lima Metropolitana';
+  const subtitle = `Modelo de Servicio Educativo Jornada Escolar Completa · ${momentoJecLabel} · UGEL 03`;
 
   const metaGrid = [
-    { label: 'INSTITUCIÓN EDUCATIVA', value: ieName },
-    { label: 'CÓDIGO MODULAR', value: codModular },
-    { label: 'UGEL', value: ugel },
-    { label: 'REI', value: rei ? `REI ${rei}` : '—' },
-    { label: 'FECHA DE VISITA', value: fechaVisita },
-    { label: 'SECCIONES', value: String(secciones) },
-    { label: 'CANTIDAD ESTUDIANTES', value: String(estudiantes) },
-    { label: 'CANTIDAD DOCENTES', value: String(docentesTotal) },
-    { label: 'SEC. FORMACIÓN TÉCNICA', value: formacionTecnica ? 'Sí' : 'No' }
+    [
+      { label: 'INSTITUCIÓN EDUCATIVA', value: ieName, span: 2 },
+      { label: 'CÓDIGO MODULAR', value: codModular }
+    ],
+    [
+      { label: 'UGEL', value: ugel },
+      { label: 'REI', value: reiDisplay },
+      { label: 'FECHA DE VISITA', value: fechaVisita }
+    ],
+    [
+      { label: 'SECCIONES', value: String(secciones) },
+      { label: 'CANTIDAD ESTUDIANTES', value: String(estudiantes) },
+      { label: 'CANTIDAD DOCENTES', value: String(docentesTotal) },
+      { label: 'SEC. FORMACIÓN TÉCNICA', value: formacionTecnica ? 'Sí' : 'No' }
+    ]
   ];
 
   const customTables = [];
@@ -258,22 +267,36 @@ export async function exportJecFichaPdf(sub, fichaType, colegio = null, download
   // -------------------------------------------------------------------------
   // VI. COMPONENTES E INDICADORES DE MONITOREO (31 ÍTEMS CON HALLAZGOS)
   // -------------------------------------------------------------------------
-  const respuestas = sub.respuestas || [];
+  const rawJecResp = (Array.isArray(sub.respuestas) && sub.respuestas.length > 0)
+    ? sub.respuestas
+    : (Array.isArray(sub.items) && sub.items.length > 0 ? sub.items : (sub.respuestas || sub.items || []));
+  const respuestas = Array.isArray(rawJecResp)
+    ? rawJecResp
+    : Object.entries(rawJecResp).map(([k, v]) => (v && typeof v === 'object') ? { id: k, ...v } : { id: k, valor: v });
   const hallazgosMap = sub.observacionesItems || {};
   let totalSi = 0;
   let totalNo = 0;
 
   const activeSections = getActiveJecSections(fichaType, visitaNum);
+  const totalJecItemsPdf = activeSections.reduce((acc, s) => acc + (s.items || []).length, 0);
+  let runningJecIdx = 0;
   activeSections.forEach(sec => {
     let secSi = 0, secNo = 0;
 
     const secRows = (sec.items || []).map(it => {
-      const resp = respuestas.find(r => r.id === it.id || Number(r.num) === Number(it.num)) || {};
-      const val = (resp.valor || '').toLowerCase();
-      const hallazgo = resp.hallazgos || resp.observaciones || hallazgosMap[it.id] || '—';
+      runningJecIdx++;
+      const seqNum = (it.num !== undefined && it.num !== null && it.num !== '') ? it.num : runningJecIdx;
+      const resp =
+        respuestas.find(r => r && (r.id === it.id || r.canonicalId === it.id)) ||
+        respuestas.find(r => r && (r.id === `j${visitaNum}_${seqNum}` || r.id === `num_${seqNum}`)) ||
+        respuestas.find(r => r && r.num !== undefined && r.num !== null && Number(r.num) === Number(seqNum)) ||
+        (respuestas.length === totalJecItemsPdf ? respuestas[runningJecIdx - 1] : null) ||
+        {};
+      const val = String(resp.valor ?? resp.value ?? resp.v ?? resp.respuesta ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const hallazgo = resp.hallazgos || resp.hallazgo || resp.observaciones || resp.evidencia || hallazgosMap[it.id] || hallazgosMap[`j${visitaNum}_${seqNum}`] || '—';
 
-      const isSi = val === 'si' || val === 'sí';
-      const isNo = val === 'no';
+      const isSi = val === 'si' || val === '3' || val === 'logrado';
+      const isNo = val === 'no' || val === '1' || val === 'inicio';
 
       if (isSi) { secSi++; totalSi++; }
       else if (isNo) { secNo++; totalNo++; }
@@ -282,6 +305,8 @@ export async function exportJecFichaPdf(sub, fichaType, colegio = null, download
         if (active) {
           return {
             content: '',
+            isCheckmark: true,
+            color,
             raw: { isCheckmark: true, color },
             styles: { halign: 'center', valign: 'middle' }
           };
@@ -337,12 +362,15 @@ export async function exportJecFichaPdf(sub, fichaType, colegio = null, download
         fontStyle: 'bold'
       },
       didDrawCell: (data) => {
-        if (data.cell && data.cell.raw && data.cell.raw.isCheckmark) {
+        if (!data || data.section !== 'body' || !data.cell || !data.cell.raw) return;
+        const rawObj = data.cell.raw;
+        const cellMeta = rawObj.isCheckmark ? rawObj : rawObj.raw;
+        if (cellMeta && cellMeta.isCheckmark) {
           const doc = data.doc;
           if (!doc) return;
           const cx = data.cell.x + data.cell.width / 2;
           const cy = data.cell.y + data.cell.height / 2;
-          const col = data.cell.raw.color || [5, 150, 105];
+          const col = cellMeta.color || [5, 150, 105];
           drawVectorCheckmark(doc, cx, cy, 7.5, col, 1.4);
         }
       }
@@ -447,17 +475,24 @@ export async function exportJecFichaPdf(sub, fichaType, colegio = null, download
     }
   ];
 
-  const pdfFilename = `Ficha_JEC_${(ieName || 'IE').replace(/[^a-zA-Z0-9]/g, '_')}_2026.pdf`;
+  const pdfFilename = `Ficha_JEC_Visita${vNumJec}_${(ieName || 'IE').replace(/[^a-zA-Z0-9]/g, '_')}_2026.pdf`;
+  const incluirIntro = downloadConfig.incluirIntro !== false;
 
   return await createOfficialPdfDocument({
     title,
     subtitle,
     orientation: 'portrait',
-    introParagraph: `En Lima, a la fecha ${fechaVisita}, se procedió a realizar la jornada de monitoreo y asistencia técnica a la implementación del Modelo de Servicio Educativo Jornada Escolar Completa (JEC) en la IE ${ieName} (${codModular}), a cargo de la especialista de JEC ${jecRespName || ESPECIALISTA_JEC_OFICIAL.nombresApellidos}.`,
+    introParagraph: incluirIntro
+      ? `En Lima, a la fecha ${fechaVisita}, se procedió a realizar la jornada de monitoreo y asistencia técnica a la implementación del Modelo de Servicio Educativo Jornada Escolar Completa (JEC) en la IE ${ieName} (${codModular}), correspondiente a la ${momentoJecLabel}, a cargo de la especialista de JEC ${jecRespName || ESPECIALISTA_JEC_OFICIAL.nombresApellidos}.`
+      : '',
+    metaTitle: 'III. DATOS GENERALES DE LA INSTITUCIÓN EDUCATIVA',
     metaGrid,
     customTables,
     signatures: signaturesList,
     lugarFecha: `Lima, ${fechaVisita}`,
+    sinFirmas: downloadConfig.sinFirmas === true,
+    areaConfig: downloadConfig.areaConfig || null,
+    incluirQr: downloadConfig.incluirQr !== false,
     filename: pdfFilename,
     marcaBorrador: sub.esBorrador === true
   });
@@ -480,19 +515,26 @@ export async function exportJec1erFichaPdf(sub, fichaType, colegio = null, downl
   const docentesTotal = sub.docentes || sub.cantDocentes || sub.docentesTotal || '—';
   const secundariaTecnica = (sub.secundariaTecnica === 'SI' || sub.formacionTecnica === true) ? 'Sí' : 'No';
 
+  const reiDisplayV1 = (rei && rei !== '—') ? (String(rei).toUpperCase().startsWith('REI') ? String(rei) : `REI ${rei}`) : '—';
   const title = '1ER MONITOREO Y ASISTENCIA TÉCNICA A LA IMPLEMENTACIÓN DEL MODELO JEC';
   const subtitle = 'Modelo de Servicio Educativo Jornada Escolar Completa — Primer Momento (Inicio) · UGEL 03';
 
   const metaGrid = [
-    { label: 'INSTITUCIÓN EDUCATIVA', value: ieName },
-    { label: 'CÓDIGO MODULAR', value: codModular },
-    { label: 'UGEL', value: ugel },
-    { label: 'REI', value: rei ? `REI ${rei}` : '—' },
-    { label: 'FECHA DE VISITA', value: fechaVisita },
-    { label: 'SECCIONES', value: String(secciones) },
-    { label: 'CANTIDAD ESTUDIANTES', value: String(estudiantes) },
-    { label: 'CANTIDAD DOCENTES', value: String(docentesTotal) },
-    { label: 'SEC. FORMACIÓN TÉCNICA', value: secundariaTecnica }
+    [
+      { label: 'INSTITUCIÓN EDUCATIVA', value: ieName, span: 2 },
+      { label: 'CÓDIGO MODULAR', value: codModular }
+    ],
+    [
+      { label: 'UGEL', value: ugel },
+      { label: 'REI', value: reiDisplayV1 },
+      { label: 'FECHA DE VISITA', value: fechaVisita }
+    ],
+    [
+      { label: 'SECCIONES', value: String(secciones) },
+      { label: 'CANTIDAD ESTUDIANTES', value: String(estudiantes) },
+      { label: 'CANTIDAD DOCENTES', value: String(docentesTotal) },
+      { label: 'SEC. FORMACIÓN TÉCNICA', value: secundariaTecnica }
+    ]
   ];
 
   const customTables = [];
@@ -625,6 +667,8 @@ export async function exportJec1erFichaPdf(sub, fichaType, colegio = null, downl
       if (active) {
         return {
           content: '',
+          isCheckmark: true,
+          color,
           raw: { isCheckmark: true, color },
           styles: { halign: 'center', valign: 'middle' }
         };
@@ -674,12 +718,15 @@ export async function exportJec1erFichaPdf(sub, fichaType, colegio = null, downl
       fontStyle: 'bold'
     },
     didDrawCell: (data) => {
-      if (data.cell && data.cell.raw && data.cell.raw.isCheckmark) {
+      if (!data || data.section !== 'body' || !data.cell || !data.cell.raw) return;
+      const rawObj = data.cell.raw;
+      const cellMeta = rawObj.isCheckmark ? rawObj : rawObj.raw;
+      if (cellMeta && cellMeta.isCheckmark) {
         const doc = data.doc;
         if (!doc) return;
         const cx = data.cell.x + data.cell.width / 2;
         const cy = data.cell.y + data.cell.height / 2;
-        const col = data.cell.raw.color || [5, 150, 105];
+        const col = cellMeta.color || [5, 150, 105];
         drawVectorCheckmark(doc, cx, cy, 7.5, col, 1.4);
       }
     }
@@ -867,16 +914,23 @@ export async function exportJec1erFichaPdf(sub, fichaType, colegio = null, downl
   ];
 
   const pdfFilename = `Ficha_JEC_1er_Monitoreo_${(ieName || 'IE').replace(/[^a-zA-Z0-9]/g, '_')}_2026.pdf`;
+  const incluirIntroV1 = downloadConfig.incluirIntro !== false;
 
   return await createOfficialPdfDocument({
     title,
     subtitle,
     orientation: 'portrait',
-    introParagraph: `En Lima, a la fecha ${fechaVisita}, se procedió a realizar la jornada oficial del Primer Monitoreo y Asistencia Técnica (Inicio) a la implementación del Modelo de Servicio Educativo Jornada Escolar Completa (JEC) en la IE ${ieName} (${codModular}), a cargo de la especialista de JEC ${jecRespName || ESPECIALISTA_JEC_OFICIAL.nombresApellidos}.`,
+    introParagraph: incluirIntroV1
+      ? `En Lima, a la fecha ${fechaVisita}, se procedió a realizar la jornada oficial del Primer Monitoreo y Asistencia Técnica (Inicio) a la implementación del Modelo de Servicio Educativo Jornada Escolar Completa (JEC) en la IE ${ieName} (${codModular}), a cargo de la especialista de JEC ${jecRespName || ESPECIALISTA_JEC_OFICIAL.nombresApellidos}.`
+      : '',
+    metaTitle: 'III. DATOS GENERALES DE LA INSTITUCIÓN EDUCATIVA',
     metaGrid,
     customTables,
     signatures: signaturesList,
     lugarFecha: `Lima, ${fechaVisita}`,
+    sinFirmas: downloadConfig.sinFirmas === true,
+    areaConfig: downloadConfig.areaConfig || null,
+    incluirQr: downloadConfig.incluirQr !== false,
     filename: pdfFilename,
     marcaBorrador: sub.esBorrador === true
   });

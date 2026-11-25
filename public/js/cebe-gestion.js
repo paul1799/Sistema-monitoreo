@@ -18,6 +18,17 @@ import { getResponsableForColegio } from './ui/scoring.js?v=20261015_v1';
 import { getDirectivosActivosForColegio, cleanTextCode, syncDirectivosFromFicha } from './directorio.js?v=20261013_v1';
 import { getScopedColegios } from './core/user-scope.js';
 
+function normalizeCebeScaleValue(rawVal) {
+  if (rawVal === undefined || rawVal === null) return '';
+  const s = String(rawVal).trim().toLowerCase();
+  if (!s) return '';
+  if (s === 'logrado' || s === 'l' || s === '3' || s === 'si' || s === 'sí') return 'logrado';
+  if (s === 'proceso' || s === 'p' || s === '2' || s === 'en proceso') return 'proceso';
+  if (s === 'inicio' || s === 'i' || s === '1' || s === 'no') return 'inicio';
+  if (s === 'na' || s === 'n.a.' || s === 'n/a' || s === 'no_aplica' || s === 'no aplica') return 'na';
+  return s;
+}
+
 /**
  * Detecta si una plantilla o submission corresponde a la Ficha de Gestión Escolar CEBE
  */
@@ -364,23 +375,39 @@ export function preloadCebeFormState(sub, ft) {
 
   // Respuestas de ítems
   if (sub.respuestasPorVisita) {
-    cebeFormState.respuestasPorVisita = { ...sub.respuestasPorVisita };
+    Object.keys(sub.respuestasPorVisita).forEach(vk => {
+      const vMap = sub.respuestasPorVisita[vk];
+      if (vMap && typeof vMap === 'object') {
+        if (!cebeFormState.respuestasPorVisita[vk]) cebeFormState.respuestasPorVisita[vk] = {};
+        Object.entries(vMap).forEach(([k, val]) => {
+          cebeFormState.respuestasPorVisita[vk][k] = normalizeCebeScaleValue(val);
+        });
+      }
+    });
   }
-  if (Array.isArray(sub.respuestas)) {
+  const rawCebeResp = Array.isArray(sub.respuestas) ? sub.respuestas : (Array.isArray(sub.items) ? sub.items : []);
+  if (rawCebeResp.length > 0) {
     const kActiva = `v${cebeFormState.visita}`;
     if (!cebeFormState.respuestasPorVisita[kActiva]) cebeFormState.respuestasPorVisita[kActiva] = {};
-    sub.respuestas.forEach((r, idx) => {
+    rawCebeResp.forEach((r, idx) => {
       if (!r) return;
-      let targetId = r.id;
-      if (!targetId || !targetId.startsWith('gc_')) {
-        const num = r.num || (idx + 1);
-        targetId = `gc_${num}`;
+      const valNorm = normalizeCebeScaleValue(r.valor ?? r.value ?? r.v ?? r.respuesta);
+      const evidText = r.evidencia || r.hallazgo || r.hallazgos || r.observaciones || '';
+      const num = r.num || (idx + 1);
+      const gcId = `gc_${num}`;
+      const numId = `num_${num}`;
+
+      if (valNorm) {
+        if (r.id) cebeFormState.respuestasPorVisita[kActiva][r.id] = valNorm;
+        if (r.canonicalId) cebeFormState.respuestasPorVisita[kActiva][r.canonicalId] = valNorm;
+        cebeFormState.respuestasPorVisita[kActiva][gcId] = valNorm;
+        cebeFormState.respuestasPorVisita[kActiva][numId] = valNorm;
       }
-      if (r.valor) {
-        cebeFormState.respuestasPorVisita[kActiva][targetId] = String(r.valor).toLowerCase();
-      }
-      if (r.evidencia || r.hallazgo) {
-        cebeFormState.evidenciasPorItem[targetId] = r.evidencia || r.hallazgo;
+      if (evidText) {
+        if (r.id) cebeFormState.evidenciasPorItem[r.id] = evidText;
+        if (r.canonicalId) cebeFormState.evidenciasPorItem[r.canonicalId] = evidText;
+        cebeFormState.evidenciasPorItem[gcId] = evidText;
+        cebeFormState.evidenciasPorItem[numId] = evidText;
       }
     });
   }
@@ -553,10 +580,22 @@ export function renderCebeGestionForm(host, ft, state, dbNs, currentUser, naviga
   const activeSections = getActiveCebeSections(ft);
   const totalItemsCount = activeSections.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0) || TOTAL_CEBE_ITEMS;
 
+  let runningCebeIdx = 0;
   const htmlSecciones = activeSections.map((sec, sIdx) => {
     const itemsHtml = (sec.items || []).map((it, iIdx) => {
-      const val = (respuestasActivas[it.id] || '').toLowerCase();
-      const evidVal = cebeFormState.evidenciasPorItem[it.id] || '';
+      runningCebeIdx++;
+      const seqNum = (it.num !== undefined && it.num !== null && it.num !== '') ? it.num : runningCebeIdx;
+      const val = normalizeCebeScaleValue(
+        respuestasActivas[it.id] ||
+        respuestasActivas[`gc_${seqNum}`] ||
+        respuestasActivas[`num_${seqNum}`] ||
+        ''
+      );
+      const evidVal =
+        cebeFormState.evidenciasPorItem[it.id] ||
+        cebeFormState.evidenciasPorItem[`gc_${seqNum}`] ||
+        cebeFormState.evidenciasPorItem[`num_${seqNum}`] ||
+        '';
       const itemNumDisplay = (it.num !== undefined && it.num !== null && it.num !== '') ? it.num : (sIdx + 1) + '.' + (iIdx + 1);
 
       const hasObs = Boolean(evidVal && evidVal.trim());

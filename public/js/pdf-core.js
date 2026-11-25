@@ -638,6 +638,8 @@ export async function createOfficialPdfDocument({
   orientation = 'portrait',
   introParagraph = '',
   soloEncabezadoPagina1 = false,
+  metaTitle = '',
+  metaCols = null,
   metaGrid = [],
   tableHeaders = [],
   tableRows = [],
@@ -741,118 +743,202 @@ export async function createOfficialPdfDocument({
 
   if (metaGrid && metaGrid.length > 0) {
     const boxW = pageW - 2 * margin;
-    const numItems = metaGrid.length;
+    const defaultCols = metaCols || (orientation === 'landscape' ? 4 : 3);
+    const hasRowArrays = Array.isArray(metaGrid[0]);
 
-    const hasCustomRatios = metaGrid.some(item => typeof item.widthRatio === 'number' && item.widthRatio > 0);
-    let ratios;
-    if (hasCustomRatios) {
-      const sum = metaGrid.reduce((acc, it) => acc + (it.widthRatio || (1 / numItems)), 0);
-      ratios = metaGrid.map(it => (it.widthRatio || (1 / numItems)) / sum);
-    } else if (numItems === 4 && metaGrid[0].label && metaGrid[0].label.toLowerCase().includes('concurso')) {
-      ratios = [0.44, 0.14, 0.20, 0.22];
+    let rows = [];
+    if (hasRowArrays) {
+      rows = metaGrid
+        .filter(r => Array.isArray(r) && r.length > 0)
+        .map(r => r.map(item => ({
+          item,
+          span: Math.max(1, Number(item.span) || 1),
+          ratio: typeof item.widthRatio === 'number' && item.widthRatio > 0 ? item.widthRatio : null
+        })));
     } else {
-      ratios = metaGrid.map(() => 1 / numItems);
+      const hasCustomRatios = metaGrid.some(item => typeof item.widthRatio === 'number' && item.widthRatio > 0);
+      const hasSpanOrBreak = metaGrid.some(item => item.span || item.fullWidth || item.newRow);
+      if (!hasSpanOrBreak && (metaGrid.length <= 4 || hasCustomRatios)) {
+        const isConcursoBar = metaGrid.length === 4 && metaGrid[0].label && metaGrid[0].label.toLowerCase().includes('concurso');
+        const defaultRatios = isConcursoBar ? [0.44, 0.14, 0.20, 0.22] : null;
+        rows = [metaGrid.map((item, idx) => ({
+          item,
+          span: 1,
+          ratio: (typeof item.widthRatio === 'number' && item.widthRatio > 0)
+            ? item.widthRatio
+            : (defaultRatios ? defaultRatios[idx] : 1)
+        }))];
+      } else {
+        let curRow = [];
+        let curSpan = 0;
+        metaGrid.forEach(item => {
+          const itemSpan = item.fullWidth
+            ? defaultCols
+            : Math.min(defaultCols, Math.max(1, Number(item.span) || 1));
+          if (curRow.length > 0 && (item.newRow || curSpan + itemSpan > defaultCols)) {
+            rows.push(curRow);
+            curRow = [];
+            curSpan = 0;
+          }
+          curRow.push({
+            item,
+            span: itemSpan,
+            ratio: (typeof item.widthRatio === 'number' && item.widthRatio > 0) ? item.widthRatio : null
+          });
+          curSpan += itemSpan;
+        });
+        if (curRow.length > 0) rows.push(curRow);
+      }
     }
 
-    let colAccX = margin;
-    const preparedItems = metaGrid.map((item, idx) => {
-      const colW = boxW * ratios[idx];
-      const colX = colAccX;
-      colAccX += colW;
+    const resolveMetaValueStr = (item) => {
+      if (item.value === undefined || item.value === null) return '—';
+      if (typeof item.value === 'object') {
+        const objStr = (item.value.nombre || item.value.nombres || item.value.nombresApellidos || formatearNombre(item.value) || '—').trim();
+        return sanitizePdfText(objStr) || '—';
+      }
+      const s = sanitizePdfText(String(item.value).trim());
+      if (!s || s === '[object Object]' || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') {
+        return '—';
+      }
+      return s;
+    };
 
-      const maxTextW = Math.max(20, colW - 14);
+    const padX = 8;
+    const padTop = 7;
+    const padBottom = 7;
+    const labelLineH = 8.5;
+    const valLineH = 10.5;
+    const noteLineH = 8;
 
-      doc.setFont(baseFont || 'helvetica', 'bold');
-      doc.setFontSize(7);
-      const labelLines = doc.splitTextToSize((item.label || '').toUpperCase(), maxTextW);
+    const preparedRows = rows.map(row => {
+      const hasRatios = row.every(c => c.ratio !== null);
+      const totalWeight = row.reduce((acc, c) => acc + (hasRatios ? c.ratio : c.span), 0) || 1;
+      let colAccX = margin;
+      let maxRowH = 34;
 
-      doc.setFont(baseFont || 'helvetica', 'normal');
-      doc.setFontSize(8.5);
-      let valStr = '—';
-      if (item.value !== undefined && item.value !== null) {
-        if (typeof item.value === 'object') {
-          valStr = (item.value.nombre || item.value.nombres || item.value.nombresApellidos || formatearNombre(item.value) || '—').trim();
-        } else {
-          valStr = String(item.value).trim();
-          if (valStr === '[object Object]' || valStr.toLowerCase() === 'null' || valStr.toLowerCase() === 'undefined') {
-            valStr = '—';
-          }
+      const cells = row.map(c => {
+        const weight = hasRatios ? c.ratio : c.span;
+        const colW = boxW * (weight / totalWeight);
+        const colX = colAccX;
+        colAccX += colW;
+
+        const maxTextW = Math.max(24, colW - (padX * 2));
+        const labelStr = sanitizePdfText((c.item.label || '').toUpperCase());
+        const valStr = resolveMetaValueStr(c.item);
+        const noteStr = c.item.note ? sanitizePdfText(String(c.item.note)) : '';
+
+        doc.setFont(baseFont || 'helvetica', 'bold');
+        doc.setFontSize(6.8);
+        const labelLines = doc.splitTextToSize(labelStr, maxTextW);
+
+        doc.setFont(baseFont || 'helvetica', 'bold');
+        doc.setFontSize(8.5);
+        const valueLines = doc.splitTextToSize(valStr, maxTextW);
+
+        let noteLines = [];
+        if (noteStr) {
+          doc.setFont(baseFont || 'helvetica', 'normal');
+          doc.setFontSize(6.8);
+          noteLines = doc.splitTextToSize(noteStr, maxTextW);
         }
-      }
-      const valueLines = doc.splitTextToSize(valStr, maxTextW);
 
-      let noteLines = [];
-      if (item.note) {
-        doc.setFontSize(6.5);
-        noteLines = doc.splitTextToSize(item.note, maxTextW);
-      }
+        const labelBlockH = labelLines.length * labelLineH;
+        const valBlockH = valueLines.length * valLineH;
+        const noteBlockH = noteLines.length > 0 ? (3 + noteLines.length * noteLineH) : 0;
+        const cellH = Math.max(34, Math.ceil(padTop + labelBlockH + 3 + valBlockH + noteBlockH + padBottom));
+        if (cellH > maxRowH) maxRowH = cellH;
 
-      return {
-        colX,
-        colW,
-        maxTextW,
-        labelLines,
-        valueLines,
-        noteLines,
-        item
-      };
+        return {
+          colX,
+          colW,
+          labelLines,
+          valueLines,
+          noteLines,
+          item: c.item
+        };
+      });
+
+      return { cells, height: maxRowH };
     });
 
-    let maxContentBottom = 34;
-    preparedItems.forEach(p => {
-      const valStartY = 11 + (p.labelLines.length * 8) + 3;
-      const valEndY = valStartY + ((p.valueLines.length - 1) * 9.5);
-      let itemBottom = valEndY + 4;
-      if (p.noteLines.length > 0) {
-        const noteStartY = Math.max(valEndY + 8, 30);
-        itemBottom = noteStartY + ((p.noteLines.length - 1) * 7.5) + 4;
-      }
-      if (itemBottom > maxContentBottom) {
-        maxContentBottom = itemBottom;
-      }
-    });
+    const titleBarH = metaTitle ? 20 : 0;
+    const totalBoxH = titleBarH + preparedRows.reduce((acc, r) => acc + r.height, 0);
 
-    const boxH = Math.max(34, Math.ceil(maxContentBottom));
+    if (curY + totalBoxH > pageH - 48) {
+      doc.addPage();
+      curY = safeDrawHeader(doc.internal.getCurrentPageInfo().pageNumber);
+    }
 
-    doc.setFillColor(247, 249, 252);
-    doc.setDrawColor(227, 232, 239);
-    doc.roundedRect(margin, curY, boxW, boxH, 3, 3, 'FD');
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(211, 220, 232);
+    doc.setLineWidth(0.75);
+    doc.roundedRect(margin, curY, boxW, totalBoxH, 3, 3, 'FD');
 
-    preparedItems.forEach(p => {
-      const textX = p.colX + 7;
-
+    let rowY = curY;
+    if (metaTitle) {
+      doc.setFillColor(18, 41, 77);
+      doc.rect(margin, curY, boxW, titleBarH, 'F');
       doc.setFont(baseFont || 'helvetica', 'bold');
-      doc.setFontSize(7);
-      doc.setTextColor(91, 107, 128);
-      let labelY = curY + 11;
-      p.labelLines.forEach(line => {
-        doc.text(line, textX, labelY);
-        labelY += 8;
-      });
+      doc.setFontSize(8.2);
+      doc.setTextColor(255, 255, 255);
+      doc.text(sanitizePdfText(metaTitle.toUpperCase()), margin + 8, curY + 13.5);
+      rowY += titleBarH;
+    }
 
-      doc.setFont(baseFont || 'helvetica', 'normal');
-      doc.setFontSize(8.5);
-      doc.setTextColor(11, 27, 54);
-      let valY = curY + 11 + (p.labelLines.length * 8) + 3;
-      if (p.labelLines.length === 1) valY = curY + 22;
-      p.valueLines.forEach(line => {
-        doc.text(line, textX, valY);
-        valY += 9.5;
-      });
-
-      if (p.noteLines.length > 0) {
-        doc.setFontSize(6.5);
-        doc.setTextColor(138, 151, 168);
-        let noteY = (p.valueLines.length === 1 && p.labelLines.length === 1)
-          ? (curY + 30)
-          : (valY - 9.5 + 8);
-        p.noteLines.forEach(line => {
-          doc.text(line, textX, noteY);
-          noteY += 7.5;
-        });
+    preparedRows.forEach((pRow, rIdx) => {
+      if (rIdx > 0 || metaTitle) {
+        doc.setDrawColor(218, 226, 236);
+        doc.setLineWidth(0.5);
+        doc.line(margin, rowY, margin + boxW, rowY);
       }
+
+      pRow.cells.forEach((p, cIdx) => {
+        if (cIdx > 0) {
+          doc.setDrawColor(225, 232, 240);
+          doc.setLineWidth(0.5);
+          doc.line(p.colX, rowY, p.colX, rowY + pRow.height);
+        }
+
+        const textX = p.colX + padX;
+        let textY = rowY + padTop + 6;
+
+        doc.setFont(baseFont || 'helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(84, 100, 122);
+        p.labelLines.forEach(line => {
+          doc.text(line, textX, textY);
+          textY += labelLineH;
+        });
+
+        textY += 2.5;
+        doc.setFont(baseFont || 'helvetica', p.item && p.item.boldValue === false ? 'normal' : 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(15, 27, 45);
+        p.valueLines.forEach(line => {
+          doc.text(line, textX, textY);
+          textY += valLineH;
+        });
+
+        if (p.noteLines.length > 0) {
+          textY += 1.5;
+          doc.setFont(baseFont || 'helvetica', 'normal');
+          doc.setFontSize(6.8);
+          doc.setTextColor(115, 130, 148);
+          p.noteLines.forEach(line => {
+            doc.text(line, textX, textY);
+            textY += noteLineH;
+          });
+        }
+      });
+
+      rowY += pRow.height;
     });
-    curY += boxH + 10;
+
+    doc.setDrawColor(211, 220, 232);
+    doc.setLineWidth(0.75);
+    doc.roundedRect(margin, curY, boxW, totalBoxH, 3, 3, 'S');
+    curY += totalBoxH + 12;
   }
 
   if (typeof renderCustomTable === 'function') {
@@ -905,9 +991,14 @@ export async function createOfficialPdfDocument({
           if (typeof resY === 'number') curY = resY;
         }
 
-        if ((t.head || t.tableHeaders) && t.tableRows && t.tableRows.length > 0) {
+        if (t.tableRows && t.tableRows.length > 0) {
+          const computedHead = t.head
+            ? t.head
+            : (Array.isArray(t.tableHeaders) && t.tableHeaders.length > 0
+              ? (Array.isArray(t.tableHeaders[0]) ? t.tableHeaders : [t.tableHeaders])
+              : undefined);
           doc.autoTable({
-            head: t.head ? t.head : (Array.isArray(t.tableHeaders[0]) ? t.tableHeaders : [t.tableHeaders]),
+            ...(computedHead ? { head: computedHead } : {}),
             body: t.tableRows,
             startY: curY,
             margin: { left: margin, right: margin, top: soloEncabezadoPagina1 ? (orientation === 'landscape' ? 32 : 36) : (headerBottomY + 14), bottom: 42 },
@@ -936,7 +1027,20 @@ export async function createOfficialPdfDocument({
               fillColor: [247, 249, 252]
             }, t.alternateRowStyles || {}),
             columnStyles: t.columnStyles || {},
-            didDrawCell: t.didDrawCell || null,
+            didDrawCell: (data) => {
+              if (data && !data.doc) data.doc = doc;
+              if (typeof t.didDrawCell === 'function') {
+                t.didDrawCell(data);
+              } else if (data && data.section === 'body' && data.cell && data.cell.raw) {
+                const rawObj = data.cell.raw;
+                const cellMeta = (rawObj.isCheckmark || rawObj.isCheckboxes) ? rawObj : rawObj.raw;
+                if (cellMeta && cellMeta.isCheckmark) {
+                  const cx = data.cell.x + data.cell.width / 2;
+                  const cy = data.cell.y + data.cell.height / 2;
+                  drawVectorCheckmark(doc, cx, cy, 7.5, cellMeta.color || [5, 150, 105], 1.4);
+                }
+              }
+            },
             didParseCell: (data) => {
               if (data.cell) {
                 if (Array.isArray(data.cell.text)) {

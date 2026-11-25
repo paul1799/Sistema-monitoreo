@@ -5,4 +5,4 @@
 // modularizado public/js/pdf/ manteniendo 100% de compatibilidad
 // con todas las importaciones existentes en el proyecto.
 
-export * from './pdf/index.js';
+export * from './pdf/index.js?v=20261125_v6';

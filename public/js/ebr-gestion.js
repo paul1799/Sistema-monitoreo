@@ -29,6 +29,20 @@ import {
 import { getScopedColegios } from './core/user-scope.js';
 
 /**
+ * Normaliza los valores de escala I / P / L / NA (incluyendo alias históricos o mayúsculas)
+ */
+function normalizeEbrScaleValue(rawVal) {
+  if (rawVal === undefined || rawVal === null) return '';
+  const s = String(rawVal).trim().toLowerCase();
+  if (!s) return '';
+  if (s === 'logrado' || s === 'l' || s === '3' || s === 'si' || s === 'sí') return 'logrado';
+  if (s === 'proceso' || s === 'p' || s === '2' || s === 'en proceso') return 'proceso';
+  if (s === 'inicio' || s === 'i' || s === '1' || s === 'no') return 'inicio';
+  if (s === 'na' || s === 'n.a.' || s === 'n/a' || s === 'no_aplica' || s === 'no aplica') return 'na';
+  return s;
+}
+
+/**
  * Resuelve las secciones e indicadores correspondientes a la visita (1, 2 o 3)
  * priorizando las secciones configuradas dinámicamente en Firestore (activeFt.seccionesPorVisita)
  * con fallback a los catálogos estándar para garantizar 100% de compatibilidad histórica.
@@ -769,7 +783,9 @@ export function preloadEbrFormState(sub, ft) {
   const isV2 = ebrFormState.visita === 2;
   const isV3 = ebrFormState.visita === 3;
   const canonicalPrefix = isV3 ? 'ge3_' : (isV2 ? 'ge2_' : 'ge1_');
-  const maxItems = isV3 ? 28 : (isV2 ? 23 : 19);
+  const activeSecsForLoad = getEbrSeccionesForVisita(ebrFormState.visita, ft || ebrFormState.ft || currentEbrFt);
+  const dynamicCount = activeSecsForLoad.reduce((acc, s) => acc + (s.items || []).length, 0);
+  const maxItems = Math.max(dynamicCount, isV3 ? 28 : (isV2 ? 23 : 19));
 
   let rawList = [];
   if (Array.isArray(sub.respuestas)) rawList = sub.respuestas;
@@ -778,24 +794,41 @@ export function preloadEbrFormState(sub, ft) {
     rawList = Object.entries(sub.respuestas).map(([k, val]) => ({ id: k, valor: val }));
   }
 
-  rawList.forEach(r => {
+  rawList.forEach((r, idx) => {
     if (!r) return;
-    const v = r.valor || r.value || '';
+    const rawVal = r.valor ?? r.value ?? r.v ?? r.respuesta ?? '';
+    const v = normalizeEbrScaleValue(rawVal);
+    const obsText = r.observaciones || r.hallazgos || r.hallazgo || r.evidencia || '';
     let num = r.num;
     if (!num && r.id) {
-      const m = String(r.id).match(/^(?:ge\d*|num)_?(\d+)$/);
+      const m = String(r.id).match(/^(?:ge\d*|num)_?(\d+)$/i);
       if (m) num = parseInt(m[1], 10);
+    }
+    if (!num && r.canonicalId) {
+      const m = String(r.canonicalId).match(/^(?:ge\d*|num)_?(\d+)$/i);
+      if (m) num = parseInt(m[1], 10);
+    }
+    if (!num && Number.isFinite(idx)) {
+      num = idx + 1;
+    }
+
+    if (r.id) {
+      ebrFormState.respuestas[r.id] = v;
+      if (obsText) ebrFormState.observacionesItems[r.id] = obsText;
+    }
+    if (r.canonicalId) {
+      ebrFormState.respuestas[r.canonicalId] = v;
+      if (obsText) ebrFormState.observacionesItems[r.canonicalId] = obsText;
     }
     if (num && num >= 1 && num <= maxItems) {
       const canonicalId = `${canonicalPrefix}${num}`;
       ebrFormState.respuestas[canonicalId] = v;
-      if (r.observaciones) {
-        ebrFormState.observacionesItems[canonicalId] = r.observaciones;
-      }
-    } else if (r.id) {
-      ebrFormState.respuestas[r.id] = v;
-      if (r.observaciones) {
-        ebrFormState.observacionesItems[r.id] = r.observaciones;
+      ebrFormState.respuestas[`ge_${num}`] = v;
+      ebrFormState.respuestas[`num_${num}`] = v;
+      if (obsText) {
+        ebrFormState.observacionesItems[canonicalId] = obsText;
+        ebrFormState.observacionesItems[`ge_${num}`] = obsText;
+        ebrFormState.observacionesItems[`num_${num}`] = obsText;
       }
     }
   });
@@ -1157,10 +1190,10 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
       ? 'Copia el Total de Docentes por nivel desde el segundo momento'
       : 'Copia el Total de Docentes por nivel desde el primer momento';
     const btnJalarId = isV3 ? 'btnJalarDocentesM2' : 'btnJalarDocentesM1';
-    const btnJalarText = isV3 ? '📥 Jalar datos del segundo momento' : '📥 Jalar datos del primer momento';
+    const btnJalarText = isV3 ? '📥 Cargar datos del segundo momento' : '📥 Cargar datos del primer momento';
     const btnJalarTitle = isV3
-      ? 'Jalar los datos de los docentes registrados en la Visita 2 (Segundo momento)'
-      : 'Jalar los datos de los docentes registrados en la Visita 1 (Primer momento)';
+      ? 'Carga los datos de los docentes registrados en la Visita 2 (Segundo momento)'
+      : 'Carga los datos de los docentes registrados en la Visita 1 (Primer momento)';
     const t5Ayuda = isV3
       ? 'Resultados correspondientes al tercer momento (salida y balance anual) de monitoreo a la práctica pedagógica.'
       : 'Resultados acumulados o correspondientes al segundo momento de monitoreo a la práctica pedagógica.';
@@ -1232,9 +1265,24 @@ export function renderEbrGestionForm(host, ft, state, dbNs, currentUser, navigat
   const seccionesAspectosHtml = seccionesActuales.map((sec, sIdx) => {
     const itemsHtml = (sec.items || []).map(it => {
       globalItemIndex++;
+      const itemNum = it.num || globalItemIndex;
+      const visitKey = `ge${currentVisita}_${itemNum}`;
       const normItId = String(it.id).replace(/^ge\d*_/, 'ge_');
-      const currentVal = ebrFormState.respuestas[it.id] || ebrFormState.respuestas[normItId] || (it.num ? ebrFormState.respuestas['num_' + it.num] : '') || '';
-      const currentObs = ebrFormState.observacionesItems[it.id] || ebrFormState.observacionesItems[normItId] || '';
+      const rawCurrentVal =
+        ebrFormState.respuestas[it.id] ||
+        ebrFormState.respuestas[visitKey] ||
+        ebrFormState.respuestas[normItId] ||
+        ebrFormState.respuestas[`ge_${itemNum}`] ||
+        ebrFormState.respuestas[`num_${itemNum}`] ||
+        '';
+      const currentVal = normalizeEbrScaleValue(rawCurrentVal);
+      const currentObs =
+        ebrFormState.observacionesItems[it.id] ||
+        ebrFormState.observacionesItems[visitKey] ||
+        ebrFormState.observacionesItems[normItId] ||
+        ebrFormState.observacionesItems[`ge_${itemNum}`] ||
+        ebrFormState.observacionesItems[`num_${itemNum}`] ||
+        '';
 
       const tieneProyectos = it.tieneProyectosList === true;
       const proyectosHtml = tieneProyectos ? `
@@ -2624,7 +2672,7 @@ function attachEbrFormEvents(host, ft, state, dbNs, currentUser, navigate, isEdi
 
         const hasAnyTeacherData = sourceRows.some(r => Number(r.monitoreados) > 0 || Number(r.total) > 0);
         if (hasAnyTeacherData) {
-          showToast(`✓ Se jalaron los datos de docentes del ${targetVLabel} (${sourceRows.length} niveles cargados).`);
+          showToast(`✓ Datos de docentes del ${targetVLabel} cargados correctamente (${sourceRows.length} niveles).`);
         } else {
           showToast(`ℹ️ Se cargaron los niveles del ${targetVLabel}, pero los valores de docentes estaban vacíos o en 0.`);
         }
